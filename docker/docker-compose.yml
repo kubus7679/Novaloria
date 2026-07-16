@@ -1,0 +1,19 @@
+services:
+  freecol-server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "3541:3541"
+    volumes:
+      - freecol-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "3541"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  freecol-data:
