@@ -115,10 +115,23 @@ struct MapView: View {
             uniqueKeysWithValues: game.players.values.map { ($0.id, colorForPlayer($0)) }
         )
 
+        // Build a tile-keyed unit map, resolving indirect locations:
+        // - Unit directly on tile: location == tileId
+        // - Unit on carrier (ship): location == carrierId → carrier.location == tileId
+        // - Unit in colony building: location == colony/buildingId → colony.tileId
         var unitsByTile: [String: [FreeColGame.Unit]] = [:]
         for unit in game.units.values {
-            if let loc = unit.location {
+            guard let loc = unit.location else { continue }
+            if game.tiles[loc] != nil {
                 unitsByTile[loc, default: []].append(unit)
+            } else if let carrier = game.units[loc],
+                      let carrierLoc = carrier.location,
+                      game.tiles[carrierLoc] != nil {
+                // Embarked on a ship — show on the ship's tile
+                unitsByTile[carrierLoc, default: []].append(unit)
+            } else if let colony = game.colonies[loc], let tileId = colony.tileId {
+                // Working inside a colony building
+                unitsByTile[tileId, default: []].append(unit)
             }
         }
 
