@@ -1120,15 +1120,13 @@ final class GameState {
     func moveSelectedUnit(to destinationTileId: String) {
         guard canMoveSelectedUnit(to: destinationTileId),
               let unitId = selectedUnitId,
+              let unit = cachedGame?.units[unitId],
               let game = cachedGame else {
             errorMessage = "Ungueltige Bewegung."
             return
         }
-        // Compute FreeCol direction from source tile to destination tile
-        guard let srcTileId = game.units[unitId]?.location,
-              let srcTile = game.tiles[srcTileId],
-              let dstTile = game.tiles[destinationTileId],
-              let dir = freecolDirection(from: srcTile, to: dstTile) else {
+        guard let sourceTileId = resolveUnitTileId(unit, in: game),
+              let dir = attackDirection(fromTileId: sourceTileId, toTileId: destinationTileId, in: game) else {
             errorMessage = "Ziel nicht benachbart."
             return
         }
@@ -1151,27 +1149,6 @@ final class GameState {
             } catch {
                 errorMessage = error.localizedDescription
             }
-        }
-    }
-
-    /// Returns the FreeCol direction string ("N","NE","E","SE","S","SW","W","NW")
-    /// for moving from `src` to `dst` on a staggered isometric grid, or nil if not adjacent.
-    private func freecolDirection(from src: Tile, to dst: Tile) -> String? {
-        let dx = dst.x - src.x
-        let dy = dst.y - src.y
-        // For odd source rows, NE/SE have Δx=0; for even rows Δx=+1.
-        // SW/NW always: Δx=-1. N/S: Δy=±2. E/W: Δy=0.
-        let isOdd = src.y % 2 != 0
-        switch (dx, dy) {
-        case (0, -2):              return "N"
-        case (isOdd ? 0 : 1, -1): return "NE"
-        case (1, 0):               return "E"
-        case (isOdd ? 0 : 1, 1):  return "SE"
-        case (0, 2):               return "S"
-        case (-1, 1):              return "SW"
-        case (-1, 0):              return "W"
-        case (-1, -1):             return "NW"
-        default:                   return nil
         }
     }
 
@@ -2719,13 +2696,11 @@ final class GameState {
               unit.movesLeft > 0,
               unit.state == .active,
               unit.location != destinationTileId,
-              let dstTile = game.tiles[destinationTileId] else {
+              game.tiles[destinationTileId] != nil else {
             return false
         }
-        // Only allow movement to adjacent tiles (must have a computable direction)
-        guard let srcTileId = unit.location,
-              let srcTile = game.tiles[srcTileId],
-              freecolDirection(from: srcTile, to: dstTile) != nil else {
+        guard let sourceTileId = resolveUnitTileId(unit, in: game),
+              attackDirection(fromTileId: sourceTileId, toTileId: destinationTileId, in: game) != nil else {
             return false
         }
         return true
