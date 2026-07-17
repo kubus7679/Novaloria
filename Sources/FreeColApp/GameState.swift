@@ -1206,28 +1206,24 @@ final class GameState {
     func moveSelectedUnitTo(destinationTileId: String) {
         guard canMoveSelectedUnitTo(destinationTileId: destinationTileId),
               let unitId = selectedUnitId,
+              let unit = cachedGame?.units[unitId],
               let game = cachedGame else {
             errorMessage = "Ziel kann nicht erreicht werden."
             return
         }
+        // Adjacent target: regular one-step move.
+        if canMoveSelectedUnit(to: destinationTileId) {
+            moveSelectedUnit(to: destinationTileId)
+            return
+        }
+        // Distant target: take one legal step toward it.
+        guard let nextStepTileId = nextStepTowardDestination(for: unit, destinationTileId: destinationTileId, in: game) else {
+            errorMessage = "Kein gueltiger Schritt zum Ziel verfuegbar."
+            return
+        }
         errorMessage = nil
 
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "moveTo",
-                    attributes: ["destination": destinationTileId, "unit": unitId],
-                    children: []
-                )
-                if server != nil {
-                    game.setUnitDestination(unitId: unitId, destinationId: destinationTileId)
-                    gameUpdateID += 1
-                }
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-        }
+        moveSelectedUnit(to: nextStepTileId)
     }
 
 
@@ -2913,6 +2909,41 @@ final class GameState {
             ]
 
         return mapping.first(where: { $0.value.0 == dx && $0.value.1 == dy })?.key
+    }
+
+    private func nextStepTowardDestination(for unit: FreeColGame.Unit, destinationTileId: String, in game: Game) -> String? {
+        guard let sourceTileId = resolveUnitTileId(unit, in: game),
+              let source = game.tiles[sourceTileId],
+              let destination = game.tiles[destinationTileId] else {
+            return nil
+        }
+
+        let neighborDeltas: [(Int, Int)] = source.y.isMultiple(of: 2)
+            ? [(0, -2), (0, -1), (1, 0), (0, 1), (0, 2), (-1, 1), (-1, 0), (-1, -1)]
+            : [(0, -2), (1, -1), (1, 0), (1, 1), (0, 2), (0, 1), (-1, 0), (0, -1)]
+
+        func score(x: Int, y: Int) -> Int {
+            abs(destination.x - x) + abs(destination.y - y)
+        }
+
+        var bestTileId: String?
+        var bestScore: Int = .max
+        for (dx, dy) in neighborDeltas {
+            let nx = source.x + dx
+            let ny = source.y + dy
+            guard let neighbor = game.tiles.values.first(where: { $0.x == nx && $0.y == ny }) else {
+                continue
+            }
+            guard canMoveSelectedUnit(to: neighbor.id) else {
+                continue
+            }
+            let candidateScore = score(x: nx, y: ny)
+            if candidateScore < bestScore {
+                bestScore = candidateScore
+                bestTileId = neighbor.id
+            }
+        }
+        return bestTileId
     }
 
     private func isValidDirection(_ direction: String) -> Bool {
