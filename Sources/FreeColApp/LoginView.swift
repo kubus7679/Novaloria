@@ -238,6 +238,10 @@ struct LoginView: View {
 
 
             Spacer()
+
+            Text("FreeColClient \(AppVersion.displayString)")
+                .font(.caption2)
+                .foregroundColor(Color(white: 0.45))
         }
         .frame(width: 380)
         .frame(maxHeight: .infinity)

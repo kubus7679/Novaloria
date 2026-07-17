@@ -1,5 +1,8 @@
 import SwiftUI
 import FreeColClient
+#if canImport(AppKit)
+import AppKit
+#endif
 
 @main
 struct FreeColApp: App {
@@ -20,5 +23,26 @@ struct FreeColApp: App {
             .environment(gameState)
             .frame(minWidth: 500, minHeight: 400)
         }
+        .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("About FreeColClient") {
+                    showAboutPanel()
+                }
+            }
+        }
+    }
+
+    private func showAboutPanel() {
+#if canImport(AppKit)
+        NSApplication.shared.orderFrontStandardAboutPanel(options: [
+            .applicationName: "FreeColClient",
+            .applicationVersion: AppVersion.version,
+            .version: AppVersion.gitHash,
+            .credits: NSAttributedString(
+                string: "Open-source macOS client for the FreeCol turn-based strategy game.\nhttps://github.com/Copilot/FreeColClient",
+                attributes: [.font: NSFont.systemFont(ofSize: 11)]
+            ),
+        ])
+#endif
     }
 }
