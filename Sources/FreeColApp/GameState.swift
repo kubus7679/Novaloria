@@ -101,7 +101,12 @@ final class GameState {
               unit.unitType?.localizedCaseInsensitiveContains("colonist") == true else {
             return false
         }
-        return game.colonies.first(where: { $0.value.tileId == loc }) == nil
+        guard game.colonies.first(where: { $0.value.tileId == loc }) == nil,
+              let tile = game.tiles[loc],
+              isBuildableColonyTile(tile) else {
+            return false
+        }
+        return true
     }
 
     var canJoinSelectedColony: Bool {
@@ -548,6 +553,10 @@ final class GameState {
         clearPendingEndTurn()
         if let message = parsed.attributes["message"], !message.isEmpty {
             reconcileFromServerErrorMessage(message)
+            if message.contains("can not build colony") {
+                errorMessage = "Diese Einheit kann hier keine Kolonie gruenden."
+                return
+            }
             errorMessage = message
             return
         }
@@ -3006,6 +3015,17 @@ final class GameState {
             || type.contains("frigate")
             || type.contains("privateer")
             || type.contains("manowar")
+    }
+
+    private func isBuildableColonyTile(_ tile: Tile) -> Bool {
+        guard let type = tile.type?.lowercased() else { return false }
+        guard !type.contains("ocean"),
+              !type.contains("highseas"),
+              !type.contains("lake"),
+              tile.settlement == nil else {
+            return false
+        }
+        return true
     }
 
     private func startMessageLoop(client: FreeColClient, server: MockServer? = nil) {

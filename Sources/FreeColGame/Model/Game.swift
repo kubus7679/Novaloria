@@ -177,7 +177,13 @@ public final class Game: @unchecked Sendable {
     public func buildColony(unitId: String, colonyName: String) {
         guard let unit = units[unitId],
               let tileId = unit.location,
-              colonies.first(where: { $0.value.tileId == tileId }) == nil else { return }
+              colonies.first(where: { $0.value.tileId == tileId }) == nil,
+              let tile = tiles[tileId],
+              let type = tile.type?.lowercased(),
+              !type.contains("ocean"),
+              !type.contains("highseas"),
+              !type.contains("lake"),
+              tile.settlement == nil else { return }
         let colonyId = "colony-\(colonyName.lowercased().replacingOccurrences(of: " ", with: "-"))"
         guard let colony = try? Colony(
             id: colonyId,
