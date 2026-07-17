@@ -355,4 +355,14 @@ Stabilize in-game turn progression so end-turn actions are only sent when legal 
 - [x] Verified all tests pass (75 passed, 0 failed)
 - Detailed plan saved in `Docs/Plans/phase38-learn-skill-plan.md`.
 
+## Next Implementation Plan (Phase 39 NewLandName Action MVP)
+
+- [x] Verified NewLandNameMessage is in MessageRegistry
+- [x] Implemented nameNewLandWithSelectedUnit(name:) action in GameState
+- [x] Added unit test for message serialization/deserialization
+- [x] Added integration test for client-to-server action sending
+- [x] Verified all tests pass (77 passed, 0 failed)
+- Detailed plan saved in `Docs/Plans/phase39-new-land-name-plan.md`.
+
+
 

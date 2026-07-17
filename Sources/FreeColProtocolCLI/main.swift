@@ -440,6 +440,27 @@ test("LearnSkillMessage") {
     try assertEqual(parsed.direction, "S")
 }
 
+test("NewLandNameMessage") {
+    let msg = NewLandNameMessage(
+        unit: "unit-explorer",
+        newLandName: "New Amsterdam"
+    )
+    try assertEqual(msg.unit, "unit-explorer")
+    try assertEqual(msg.newLandName, "New Amsterdam")
+    try assertEqual(msg.tag, "newLandName")
+    
+    let (attrs, _) = msg.encode()
+    try assertEqual(attrs["unit"], "unit-explorer")
+    try assertEqual(attrs["newLandName"], "New Amsterdam")
+    
+    let parsed = try NewLandNameMessage(
+        attributes: ["unit": "u-caravel", "newLandName": "Nova Terra"],
+        children: []
+    )
+    try assertEqual(parsed.unit, "u-caravel")
+    try assertEqual(parsed.newLandName, "Nova Terra")
+}
+
 // MARK: - Integration tests (require network stack)
 
 func integrationTest(_ name: String, closure: @escaping () async throws -> Void) async {
@@ -2412,6 +2433,54 @@ await integrationTest("client sends learnSkill action") {
             }
             guard learnMsg.attributes["direction"] == "NE" else {
                 throw TestError(message: "learnSkill direction mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends newLandName action") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-newland-1" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <map id="map-0" width="2" height="2">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-1" unitType="model.unit.caravel" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "newLandName",
+                attributes: ["unit": "unit-1", "newLandName": "New Amsterdam"],
+                children: []
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let nameLine = try await server.nextLine()
+            let nameMsg = try XMLDecoder.decode(nameLine)
+
+            guard nameMsg.tag == "newLandName" else {
+                throw TestError(message: "expected newLandName, got \(nameMsg.tag)")
+            }
+            guard nameMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "newLandName unit mismatch")
+            }
+            guard nameMsg.attributes["newLandName"] == "New Amsterdam" else {
+                throw TestError(message: "newLandName name mismatch")
             }
         }
         while try await group.next() != nil {}

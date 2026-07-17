@@ -2117,6 +2117,50 @@ final class GameState {
         return true
     }
 
+    func nameNewLandWithSelectedUnit(_ landName: String) {
+        let trimmedName = landName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            errorMessage = "Bitte einen Namen eingeben."
+            return
+        }
+        guard canNameNewLandWithSelectedUnit,
+              let unitId = selectedUnitId,
+              let game = cachedGame else {
+            errorMessage = "Neues Land kann nicht benannt werden."
+            return
+        }
+        errorMessage = nil
+
+        Task {
+            do {
+                let msg = ParsedMessage(
+                    tag: "newLandName",
+                    attributes: [
+                        "unit": unitId,
+                        "newLandName": trimmedName,
+                    ],
+                    children: []
+                )
+                try await client?.send(message: msg)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    var canNameNewLandWithSelectedUnit: Bool {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let unitId = selectedUnitId,
+              let unit = game.units[unitId],
+              let localPlayerId = resolveLocalPlayerId(),
+              unit.owner == localPlayerId else {
+            return false
+        }
+        return true
+    }
+
     func canAttackSelectedUnitMelee(onTile targetTileId: String) -> Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,
