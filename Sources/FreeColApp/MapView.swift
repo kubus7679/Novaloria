@@ -1,12 +1,12 @@
 import SwiftUI
 import FreeColGame
 
-private let tileW: Double = 64
-private let tileH: Double = 32
-private let colW: Double = tileW / 2
-private let rowH: Double = tileH / 2
+private let baseTileW: Double = 64
+private let baseTileH: Double = 32
 
-private func tileOrigin(x: Int, y: Int) -> CGPoint {
+private func tileOrigin(x: Int, y: Int, tileW: Double, tileH: Double) -> CGPoint {
+    let colW = tileW / 2
+    let rowH = tileH / 2
     let offsetX = y.isMultiple(of: 2) ? 0.0 : colW
     return CGPoint(
         x: Double(x) * colW + offsetX + colW,
@@ -14,20 +14,20 @@ private func tileOrigin(x: Int, y: Int) -> CGPoint {
     )
 }
 
-private func diamondVertices(at origin: CGPoint) -> [CGPoint] {
+private func diamondVertices(at origin: CGPoint, tileW: Double, tileH: Double) -> [CGPoint] {
     [
-        CGPoint(x: origin.x,           y: origin.y - tileH / 2),
+        CGPoint(x: origin.x,             y: origin.y - tileH / 2),
         CGPoint(x: origin.x + tileW / 2, y: origin.y),
-        CGPoint(x: origin.x,           y: origin.y + tileH / 2),
+        CGPoint(x: origin.x,             y: origin.y + tileH / 2),
         CGPoint(x: origin.x - tileW / 2, y: origin.y),
     ]
 }
 
-private func hitTest(location: CGPoint, tiles: [Tile]) -> Tile? {
+private func hitTest(location: CGPoint, tiles: [Tile], tileW: Double, tileH: Double) -> Tile? {
     let halfW = tileW / 2
     let halfH = tileH / 2
     for tile in tiles {
-        let origin = tileOrigin(x: tile.x, y: tile.y)
+        let origin = tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
         let dx = abs(location.x - origin.x) / halfW
         let dy = abs(location.y - origin.y) / halfH
         if dx + dy <= 1 {
@@ -72,6 +72,14 @@ private func colorForPlayer(_ player: Player) -> Color {
 struct MapView: View {
     @Environment(GameState.self) private var state
 
+    // Zoom: default 2.0 → tileW=128, tileH=64 → ~15 tiles visible in an 800px-wide panel
+    @State private var zoomScale: Double = 2.0
+    private let minZoom: Double = 0.5
+    private let maxZoom: Double = 5.0
+
+    private var tileW: Double { baseTileW * zoomScale }
+    private var tileH: Double { baseTileH * zoomScale }
+
     private func resolveUnitTileId(_ unit: FreeColGame.Unit, in game: Game) -> String? {
         if let loc = unit.location, game.tiles[loc] != nil {
             return loc
@@ -96,6 +104,8 @@ struct MapView: View {
         guard game.map != nil else { return nil }
         let tiles = Array(game.tiles.values)
         guard !tiles.isEmpty else { return nil }
+        let colW = tileW / 2
+        let rowH = tileH / 2
         let maxCol = tiles.map(\.x).max() ?? 0
         let maxRow = tiles.map(\.y).max() ?? 0
         let canvasW = Double(maxCol + 2) * colW + tileW
@@ -122,145 +132,150 @@ struct MapView: View {
 
     var body: some View {
         if let game = state.game, let data = renderData(for: game) {
-            ScrollView([.horizontal, .vertical]) {
-                Canvas { ctx, _ in
-                    for tile in data.tiles {
-                        let origin = tileOrigin(x: tile.x, y: tile.y)
-                        let verts = diamondVertices(at: origin)
-                        var path = Path()
-                        path.addLines(verts)
-                        path.closeSubpath()
+            VStack(spacing: 0) {
+                zoomControls
+                ScrollView([.horizontal, .vertical]) {
+                    Canvas { ctx, _ in
+                        for tile in data.tiles {
+                            let origin = tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
+                            let verts = diamondVertices(at: origin, tileW: tileW, tileH: tileH)
+                            var path = Path()
+                            path.addLines(verts)
+                            path.closeSubpath()
 
-                        let fill = colorForTile(tile.type)
+                            let fill = colorForTile(tile.type)
 
-                        if tile.id == state.selectedTileId {
-                            ctx.fill(path, with: .color(.yellow))
-                        } else {
-                            ctx.fill(path, with: .color(fill))
-                        }
+                            if tile.id == state.selectedTileId {
+                                ctx.fill(path, with: .color(.yellow))
+                            } else {
+                                ctx.fill(path, with: .color(fill))
+                            }
 
-                        if let ownerId = tile.owner, let ownerColor = data.playerColorById[ownerId] {
-                            ctx.stroke(path, with: .color(ownerColor), lineWidth: 2)
-                        } else {
-                            ctx.stroke(path, with: .color(fill.opacity(0.8)), lineWidth: 0.5)
-                        }
+                            if let ownerId = tile.owner, let ownerColor = data.playerColorById[ownerId] {
+                                ctx.stroke(path, with: .color(ownerColor), lineWidth: 2)
+                            } else {
+                                ctx.stroke(path, with: .color(fill.opacity(0.8)), lineWidth: 0.5)
+                            }
 
-                        if tile.settlement != nil {
-                            let s: Double = 12
-                            let marker = Path(roundedRect: CGRect(
-                                x: origin.x - s / 2,
-                                y: origin.y - s / 2,
-                                width: s,
-                                height: s
-                            ), cornerSize: CGSize(width: 2, height: 2))
-                            ctx.fill(marker, with: .color(.white))
-                            ctx.stroke(marker, with: .color(.black), lineWidth: 1)
-                        }
+                            if tile.settlement != nil {
+                                let s: Double = max(8, tileW * 0.18)
+                                let marker = Path(roundedRect: CGRect(
+                                    x: origin.x - s / 2,
+                                    y: origin.y - s / 2,
+                                    width: s,
+                                    height: s
+                                ), cornerSize: CGSize(width: 2, height: 2))
+                                ctx.fill(marker, with: .color(.white))
+                                ctx.stroke(marker, with: .color(.black), lineWidth: 1)
+                            }
 
-                        if let units = data.unitsByTile[tile.id] {
-                            for (i, unit) in units.enumerated() {
-                                let r: Double = 5
-                                let ux = origin.x + Double(i - units.count / 2) * (r * 2 + 1)
-                                let uy = origin.y + tileH / 4
-                                let dot = Path(ellipseIn: CGRect(
-                                    x: ux - r,
-                                    y: uy - r,
-                                    width: r * 2,
-                                    height: r * 2
-                                ))
-                                let ownerColor = unit.owner.flatMap { data.playerColorById[$0] } ?? .white
+                            if let units = data.unitsByTile[tile.id] {
+                                for (i, unit) in units.enumerated() {
+                                    let r: Double = max(4, tileW * 0.09)
+                                    let ux = origin.x + Double(i - units.count / 2) * (r * 2 + 1)
+                                    let uy = origin.y + tileH / 4
+                                    let dot = Path(ellipseIn: CGRect(
+                                        x: ux - r,
+                                        y: uy - r,
+                                        width: r * 2,
+                                        height: r * 2
+                                    ))
+                                    let ownerColor = unit.owner.flatMap { data.playerColorById[$0] } ?? .white
 
-                                if unit.id == state.selectedUnitId {
-                                    ctx.fill(dot, with: .color(.yellow))
-                                } else {
-                                    ctx.fill(dot, with: .color(ownerColor))
+                                    if unit.id == state.selectedUnitId {
+                                        ctx.fill(dot, with: .color(.yellow))
+                                    } else {
+                                        ctx.fill(dot, with: .color(ownerColor))
+                                    }
+                                    ctx.stroke(dot, with: .color(.black), lineWidth: 1)
                                 }
-                                ctx.stroke(dot, with: .color(.black), lineWidth: 1)
                             }
                         }
-                    }
 
-                    if let selectedUnitId = state.selectedUnitId,
-                       let selectedUnit = game.units[selectedUnitId],
-                       let destinationTileId = selectedUnit.destination,
-                       let destinationTile = data.tiles.first(where: { $0.id == destinationTileId }),
-                       let sourceTileId = resolveUnitTileId(selectedUnit, in: game),
-                       let sourceTile = data.tiles.first(where: { $0.id == sourceTileId }) {
-                        let sourceOrigin = tileOrigin(x: sourceTile.x, y: sourceTile.y)
-                        let destinationOrigin = tileOrigin(x: destinationTile.x, y: destinationTile.y)
+                        if let selectedUnitId = state.selectedUnitId,
+                           let selectedUnit = game.units[selectedUnitId],
+                           let destinationTileId = selectedUnit.destination,
+                           let destinationTile = data.tiles.first(where: { $0.id == destinationTileId }),
+                           let sourceTileId = resolveUnitTileId(selectedUnit, in: game),
+                           let sourceTile = data.tiles.first(where: { $0.id == sourceTileId }) {
+                            let sourceOrigin = tileOrigin(x: sourceTile.x, y: sourceTile.y, tileW: tileW, tileH: tileH)
+                            let destinationOrigin = tileOrigin(x: destinationTile.x, y: destinationTile.y, tileW: tileW, tileH: tileH)
 
-                        if sourceTileId != destinationTileId {
-                            var previewPath = Path()
-                            previewPath.move(to: sourceOrigin)
-                            previewPath.addLine(to: destinationOrigin)
-                            ctx.stroke(
-                                previewPath,
-                                with: .color(.yellow.opacity(0.9)),
-                                style: StrokeStyle(lineWidth: 2, dash: [6, 4])
+                            if sourceTileId != destinationTileId {
+                                var previewPath = Path()
+                                previewPath.move(to: sourceOrigin)
+                                previewPath.addLine(to: destinationOrigin)
+                                ctx.stroke(
+                                    previewPath,
+                                    with: .color(.yellow.opacity(0.9)),
+                                    style: StrokeStyle(lineWidth: 2, dash: [6, 4])
+                                )
+                            }
+
+                            let markerSize = max(10, tileW * 0.15)
+                            let markerRect = CGRect(
+                                x: destinationOrigin.x - markerSize / 2,
+                                y: destinationOrigin.y - markerSize / 2,
+                                width: markerSize,
+                                height: markerSize
                             )
+                            let marker = Path(ellipseIn: markerRect)
+                            ctx.stroke(marker, with: .color(.yellow), lineWidth: 2)
                         }
 
-                        let markerRect = CGRect(
-                            x: destinationOrigin.x - 7,
-                            y: destinationOrigin.y - 7,
-                            width: 14,
-                            height: 14
-                        )
-                        let marker = Path(ellipseIn: markerRect)
-                        ctx.stroke(marker, with: .color(.yellow), lineWidth: 2)
-                    }
+                        if let cue = state.mapAnimationCue,
+                           let sourceTile = data.tiles.first(where: { $0.id == cue.sourceTileId }),
+                           let targetTile = data.tiles.first(where: { $0.id == cue.targetTileId }) {
+                            let source = tileOrigin(x: sourceTile.x, y: sourceTile.y, tileW: tileW, tileH: tileH)
+                            let target = tileOrigin(x: targetTile.x, y: targetTile.y, tileW: tileW, tileH: tileH)
 
-                    if let cue = state.mapAnimationCue,
-                       let sourceTile = data.tiles.first(where: { $0.id == cue.sourceTileId }),
-                       let targetTile = data.tiles.first(where: { $0.id == cue.targetTileId }) {
-                        let source = tileOrigin(x: sourceTile.x, y: sourceTile.y)
-                        let target = tileOrigin(x: targetTile.x, y: targetTile.y)
+                            let color: Color
+                            let lineWidth: Double
+                            switch cue.style {
+                            case .move:
+                                color = .cyan
+                                lineWidth = 3
+                            case .attack:
+                                color = .red
+                                lineWidth = 3
+                            case .attackSuccess:
+                                color = .green
+                                lineWidth = 3
+                            case .attackFail:
+                                color = .orange
+                                lineWidth = 3
+                            }
 
-                        let color: Color
-                        let lineWidth: Double
-                        switch cue.style {
-                        case .move:
-                            color = .cyan
-                            lineWidth = 3
-                        case .attack:
-                            color = .red
-                            lineWidth = 3
-                        case .attackSuccess:
-                            color = .green
-                            lineWidth = 3
-                        case .attackFail:
-                            color = .orange
-                            lineWidth = 3
+                            var line = Path()
+                            line.move(to: source)
+                            line.addLine(to: target)
+                            ctx.stroke(line, with: .color(color.opacity(0.95)), style: StrokeStyle(lineWidth: lineWidth, dash: [4, 3]))
+
+                            let pulseR = max(9, tileW * 0.12)
+                            let pulse = Path(ellipseIn: CGRect(x: target.x - pulseR, y: target.y - pulseR, width: pulseR * 2, height: pulseR * 2))
+                            ctx.stroke(pulse, with: .color(color), lineWidth: 2)
                         }
 
-                        var line = Path()
-                        line.move(to: source)
-                        line.addLine(to: target)
-                        ctx.stroke(line, with: .color(color.opacity(0.95)), style: StrokeStyle(lineWidth: lineWidth, dash: [4, 3]))
-
-                        let pulse = Path(ellipseIn: CGRect(x: target.x - 9, y: target.y - 9, width: 18, height: 18))
-                        ctx.stroke(pulse, with: .color(color), lineWidth: 2)
+                        // Selection highlight outline
+                        if let selId = state.selectedTileId,
+                           let selTile = data.tiles.first(where: { $0.id == selId }) {
+                            let origin = tileOrigin(x: selTile.x, y: selTile.y, tileW: tileW, tileH: tileH)
+                            let verts = diamondVertices(at: origin, tileW: tileW, tileH: tileH)
+                            var selPath = Path()
+                            selPath.addLines(verts)
+                            selPath.closeSubpath()
+                            ctx.stroke(selPath, with: .color(.white), lineWidth: 3)
+                        }
                     }
-
-                    // Selection highlight outline
-                    if let selId = state.selectedTileId,
-                       let selTile = data.tiles.first(where: { $0.id == selId }) {
-                        let origin = tileOrigin(x: selTile.x, y: selTile.y)
-                        let verts = diamondVertices(at: origin)
-                        var selPath = Path()
-                        selPath.addLines(verts)
-                        selPath.closeSubpath()
-                        ctx.stroke(selPath, with: .color(.white), lineWidth: 3)
-                    }
+                    .frame(width: data.canvasSize.width, height: data.canvasSize.height)
+                    .background(Color(white: 0.08))
+                    .gesture(
+                        SpatialTapGesture()
+                            .onEnded { value in
+                                handleTap(at: value.location, tiles: data.tiles, game: game)
+                            }
+                    )
                 }
-                .frame(width: data.canvasSize.width, height: data.canvasSize.height)
-                .background(Color(white: 0.08))
-                .gesture(
-                    SpatialTapGesture()
-                        .onEnded { value in
-                            handleTap(at: value.location, tiles: data.tiles, game: game)
-                        }
-                )
             }
         } else {
             Text("No map loaded")
@@ -269,8 +284,43 @@ struct MapView: View {
         }
     }
 
+    private var zoomControls: some View {
+        HStack(spacing: 8) {
+            Button {
+                zoomScale = max(minZoom, zoomScale / 1.4)
+            } label: {
+                Image(systemName: "minus.magnifyingglass")
+            }
+            .buttonStyle(.plain)
+
+            Text("\(Int(zoomScale * 100))%")
+                .font(.caption.monospacedDigit())
+                .frame(width: 44)
+
+            Button {
+                zoomScale = min(maxZoom, zoomScale * 1.4)
+            } label: {
+                Image(systemName: "plus.magnifyingglass")
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                zoomScale = 2.0
+            } label: {
+                Text("Reset")
+                    .font(.caption)
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Color(white: 0.12))
+    }
+
     private func handleTap(at location: CGPoint, tiles: [Tile], game: Game) {
-        guard let tappedTile = hitTest(location: location, tiles: tiles) else { return }
+        guard let tappedTile = hitTest(location: location, tiles: tiles, tileW: tileW, tileH: tileH) else { return }
 
         if let selId = state.selectedUnitId,
            let selectedUnit = game.units[selId] {

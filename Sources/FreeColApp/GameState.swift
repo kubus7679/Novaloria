@@ -2828,6 +2828,10 @@ final class GameState {
         return mapping.first(where: { $0.value.0 == dx && $0.value.1 == dy })?.key
     }
 
+    private func isValidDirection(_ direction: String) -> Bool {
+        ["N", "NE", "E", "SE", "S", "SW", "W", "NW"].contains(direction)
+    }
+
     private func clearPendingEndTurn() {
         isEndingTurn = false
         pendingEndTurnTurn = nil
