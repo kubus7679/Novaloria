@@ -3,26 +3,26 @@ import Foundation
 public struct ChangeWorkImprovementTypeMessage: FreeColMessage {
     public static let tag = "changeWorkImprovementType"
 
-    public let improvementType: String?
     public let unit: String?
+    public let improvementType: String?
 
     public init(
-        improvementType: String? = nil,
-        unit: String? = nil
+        unit: String? = nil,
+        improvementType: String? = nil
     ) {
-        self.improvementType = improvementType
         self.unit = unit
+        self.improvementType = improvementType
     }
 
     public init(attributes: Attributes, children: Children) throws {
-        self.improvementType = attributes["improvementType"]
         self.unit = attributes["unit"]
+        self.improvementType = attributes["improvementType"]
     }
 
     public func encode() -> (attributes: Attributes, children: Children) {
         var attrs: Attributes = [:]
-        if let v = improvementType { attrs["improvementType"] = v }
         if let v = unit { attrs["unit"] = v }
+        if let v = improvementType { attrs["improvementType"] = v }
         return (attrs, [])
     }
 }

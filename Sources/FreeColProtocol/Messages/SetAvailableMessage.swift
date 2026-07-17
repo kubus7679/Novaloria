@@ -3,26 +3,26 @@ import Foundation
 public struct SetAvailableMessage: FreeColMessage {
     public static let tag = "setAvailable"
 
-    public let state: String?
     public let nation: String?
+    public let state: String?
 
     public init(
-        state: String? = nil,
-        nation: String? = nil
+        nation: String? = nil,
+        state: String? = nil
     ) {
-        self.state = state
         self.nation = nation
+        self.state = state
     }
 
     public init(attributes: Attributes, children: Children) throws {
-        self.state = attributes["state"]
         self.nation = attributes["nation"]
+        self.state = attributes["state"]
     }
 
     public func encode() -> (attributes: Attributes, children: Children) {
         var attrs: Attributes = [:]
-        if let v = state { attrs["state"] = v }
         if let v = nation { attrs["nation"] = v }
+        if let v = state { attrs["state"] = v }
         return (attrs, [])
     }
 }

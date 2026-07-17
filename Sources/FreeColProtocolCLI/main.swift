@@ -464,9 +464,9 @@ test("NewLandNameMessage") {
 test("NewRegionNameMessage") {
     let msg = NewRegionNameMessage(
         unit: "unit-explorer",
+        region: "region-5",
         newRegionName: "Pacific Region",
-        tile: "tile-42",
-        region: "region-5"
+        tile: "tile-42"
     )
     try assertEqual(msg.unit, "unit-explorer")
     try assertEqual(msg.newRegionName, "Pacific Region")
@@ -482,10 +482,10 @@ test("NewRegionNameMessage") {
     
     let parsed = try NewRegionNameMessage(
         attributes: [
-            "unit": "u-caravel",
             "newRegionName": "Atlantic Zone",
+            "region": "region-3",
             "tile": "tile-99",
-            "region": "region-3"
+            "unit": "u-caravel"
         ],
         children: []
     )
@@ -497,10 +497,10 @@ test("NewRegionNameMessage") {
 
 test("InciteMessage") {
     let msg = InciteMessage(
-        unit: "unit-diplomat",
+        gold: "100",
         settlement: "is-1",
         enemy: "player-2",
-        gold: "100"
+        unit: "unit-diplomat"
     )
     try assertEqual(msg.unit, "unit-diplomat")
     try assertEqual(msg.settlement, "is-1")
@@ -515,13 +515,34 @@ test("InciteMessage") {
     try assertEqual(attrs["gold"], "100")
     
     let parsed = try InciteMessage(
-        attributes: ["unit": "u-scout", "settlement": "is-5", "enemy": "player-1", "gold": "50"],
+        attributes: ["enemy": "player-1", "gold": "50", "settlement": "is-5", "unit": "u-scout"],
         children: []
     )
     try assertEqual(parsed.unit, "u-scout")
     try assertEqual(parsed.settlement, "is-5")
     try assertEqual(parsed.enemy, "player-1")
     try assertEqual(parsed.gold, "50")
+}
+
+test("DeliverGiftMessage") {
+    let msg = DeliverGiftMessage(
+        unit: "unit-colonist",
+        settlement: "is-boston"
+    )
+    try assertEqual(msg.unit, "unit-colonist")
+    try assertEqual(msg.settlement, "is-boston")
+    try assertEqual(msg.tag, "deliverGift")
+    
+    let (attrs, _) = msg.encode()
+    try assertEqual(attrs["unit"], "unit-colonist")
+    try assertEqual(attrs["settlement"], "is-boston")
+    
+    let parsed = try DeliverGiftMessage(
+        attributes: ["unit": "u-missionary", "settlement": "is-tribal"],
+        children: []
+    )
+    try assertEqual(parsed.unit, "u-missionary")
+    try assertEqual(parsed.settlement, "is-tribal")
 }
 
 // MARK: - Integration tests (require network stack)
@@ -2575,10 +2596,10 @@ await integrationTest("client sends newRegionName action") {
             try await client.send(message: ParsedMessage(
                 tag: "newRegionName",
                 attributes: [
-                    "unit": "unit-1",
+                    "newRegionName": "Pacific Zone",
                     "region": "region-5",
                     "tile": "tile-1",
-                    "newRegionName": "Pacific Zone"
+                    "unit": "unit-1"
                 ],
                 children: []
             ))
@@ -2635,10 +2656,10 @@ await integrationTest("client sends incite action") {
             try await client.send(message: ParsedMessage(
                 tag: "incite",
                 attributes: [
-                    "unit": "unit-1",
-                    "settlement": "is-5",
                     "enemy": "player-2",
-                    "gold": "200"
+                    "gold": "200",
+                    "settlement": "is-5",
+                    "unit": "unit-1"
                 ],
                 children: []
             ))
@@ -2664,6 +2685,57 @@ await integrationTest("client sends incite action") {
             }
             guard inciteMsg.attributes["gold"] == "200" else {
                 throw TestError(message: "incite gold mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends deliverGift action") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-gift-1" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <map id="map-0" width="2" height="2">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-missionary" unitType="model.unit.missionary" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "deliverGift",
+                attributes: [
+                    "settlement": "is-tribal-village",
+                    "unit": "unit-missionary"
+                ],
+                children: []
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let giftLine = try await server.nextLine()
+            let giftMsg = try XMLDecoder.decode(giftLine)
+
+            guard giftMsg.tag == "deliverGift" else {
+                throw TestError(message: "expected deliverGift, got \(giftMsg.tag)")
+            }
+            guard giftMsg.attributes["unit"] == "unit-missionary" else {
+                throw TestError(message: "deliverGift unit mismatch")
+            }
+            guard giftMsg.attributes["settlement"] == "is-tribal-village" else {
+                throw TestError(message: "deliverGift settlement mismatch")
             }
         }
         while try await group.next() != nil {}
