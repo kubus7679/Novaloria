@@ -1186,6 +1186,50 @@ final class GameState {
         }
     }
 
+    func canMoveSelectedUnitTo(destinationTileId: String) -> Bool {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let unitId = selectedUnitId,
+              let unit = game.units[unitId],
+              let localPlayerId = resolveLocalPlayerId(),
+              unit.owner == localPlayerId,
+              unit.movesLeft > 0,
+              unit.state == .active,
+              unit.location != destinationTileId,
+              game.tiles[destinationTileId] != nil else {
+            return false
+        }
+        return true
+    }
+
+    func moveSelectedUnitTo(destinationTileId: String) {
+        guard canMoveSelectedUnitTo(destinationTileId: destinationTileId),
+              let unitId = selectedUnitId,
+              let game = cachedGame else {
+            errorMessage = "Ziel kann nicht erreicht werden."
+            return
+        }
+        errorMessage = nil
+
+        Task {
+            do {
+                let msg = ParsedMessage(
+                    tag: "moveTo",
+                    attributes: ["destination": destinationTileId, "unit": unitId],
+                    children: []
+                )
+                if server != nil {
+                    game.setUnitDestination(unitId: unitId, destinationId: destinationTileId)
+                    gameUpdateID += 1
+                }
+                try await client?.send(message: msg)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
 
     func buildColony(name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)

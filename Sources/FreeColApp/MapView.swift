@@ -466,8 +466,8 @@ struct MapView: View {
             state.selectUnit(selectedUnitId, onTile: tappedTile.id)
             if state.canMoveSelectedUnit(to: tappedTile.id) {
                 state.moveSelectedUnit(to: tappedTile.id)
-            } else if state.canSetSelectedUnitDestination(to: tappedTile.id) {
-                state.setSelectedUnitDestination(to: tappedTile.id)
+            } else if state.canMoveSelectedUnitTo(destinationTileId: tappedTile.id) {
+                state.moveSelectedUnitTo(destinationTileId: tappedTile.id)
             }
             return
         }
