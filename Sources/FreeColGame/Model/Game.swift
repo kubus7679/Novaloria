@@ -56,6 +56,14 @@ public final class Game: @unchecked Sendable {
                                         children: child.children,
                                         game: self)
                 players[player.id] = player
+                // Units in Europe / high seas appear as direct children of <player>
+                for playerChild in child.children where playerChild.tag == "unit" {
+                    let unit = try Unit(id: playerChild.attributes["id"] ?? UUID().uuidString,
+                                        attributes: playerChild.attributes,
+                                        children: playerChild.children,
+                                        game: self)
+                    units[unit.id] = unit
+                }
             case "unit":
                 let unit = try Unit(id: child.attributes["id"] ?? UUID().uuidString,
                                     attributes: child.attributes,
@@ -383,6 +391,34 @@ public final class Game: @unchecked Sendable {
                                     children: child.children,
                                     game: self)
                 tiles[tile.id] = tile
+
+                // Units and settlements nested inside the tile element
+                for tileChild in child.children {
+                    switch tileChild.tag {
+                    case "unit":
+                        let unit = try Unit(id: tileChild.attributes["id"] ?? UUID().uuidString,
+                                            attributes: tileChild.attributes,
+                                            children: tileChild.children,
+                                            game: self)
+                        units[unit.id] = unit
+                    case "colony", "indianSettlement":
+                        let colony = try Colony(id: tileChild.attributes["id"] ?? UUID().uuidString,
+                                                attributes: tileChild.attributes,
+                                                children: tileChild.children,
+                                                game: self)
+                        colonies[colony.id] = colony
+                        // Register units working inside this colony
+                        for colChild in tileChild.children where colChild.tag == "unit" {
+                            let unit = try Unit(id: colChild.attributes["id"] ?? UUID().uuidString,
+                                                attributes: colChild.attributes,
+                                                children: colChild.children,
+                                                game: self)
+                            units[unit.id] = unit
+                        }
+                    default:
+                        break
+                    }
+                }
             }
         }
     }

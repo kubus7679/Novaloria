@@ -135,6 +135,19 @@ struct MapView: View {
             }
         }
 
+        // Debug: log unit placement summary
+        let totalUnits = game.units.count
+        let placedUnits = unitsByTile.values.reduce(0) { $0 + $1.count }
+        if totalUnits > 0 {
+            print("[MapView] units in game: \(totalUnits), placed on map: \(placedUnits)")
+            for unit in game.units.values.prefix(3) {
+                print("[MapView]   unit \(unit.id) type=\(unit.unitType ?? "nil") loc=\(unit.location ?? "nil")")
+            }
+            if let sampleTileId = tiles.first?.id {
+                print("[MapView]   sample tileId=\(sampleTileId)")
+            }
+        }
+
         return RenderData(
             tiles: tiles,
             canvasSize: CGSize(width: canvasW, height: canvasH),
