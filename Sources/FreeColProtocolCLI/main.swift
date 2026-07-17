@@ -419,6 +419,27 @@ test("EquipForRoleMessage") {
     try assertEqual(parsed.count, "2")
 }
 
+test("LearnSkillMessage") {
+    let msg = LearnSkillMessage(
+        unit: "unit-settler",
+        direction: "NE"
+    )
+    try assertEqual(msg.unit, "unit-settler")
+    try assertEqual(msg.direction, "NE")
+    try assertEqual(msg.tag, "learnSkill")
+    
+    let (attrs, _) = msg.encode()
+    try assertEqual(attrs["unit"], "unit-settler")
+    try assertEqual(attrs["direction"], "NE")
+    
+    let parsed = try LearnSkillMessage(
+        attributes: ["unit": "u-scout", "direction": "S"],
+        children: []
+    )
+    try assertEqual(parsed.unit, "u-scout")
+    try assertEqual(parsed.direction, "S")
+}
+
 // MARK: - Integration tests (require network stack)
 
 func integrationTest(_ name: String, closure: @escaping () async throws -> Void) async {
@@ -2342,6 +2363,55 @@ await integrationTest("client sends equipForRole action") {
             }
             guard equipMsg.attributes["count"] == "1" else {
                 throw TestError(message: "equipForRole count mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends learnSkill action") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-learn-1" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <map id="map-0" width="3" height="3">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+        <tile id="tile-1" x="1" y="0" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-1" unitType="model.unit.freeColonist" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "learnSkill",
+                attributes: ["unit": "unit-1", "direction": "NE"],
+                children: []
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let learnLine = try await server.nextLine()
+            let learnMsg = try XMLDecoder.decode(learnLine)
+
+            guard learnMsg.tag == "learnSkill" else {
+                throw TestError(message: "expected learnSkill, got \(learnMsg.tag)")
+            }
+            guard learnMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "learnSkill unit mismatch")
+            }
+            guard learnMsg.attributes["direction"] == "NE" else {
+                throw TestError(message: "learnSkill direction mismatch")
             }
         }
         while try await group.next() != nil {}

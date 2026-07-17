@@ -346,3 +346,13 @@ Stabilize in-game turn progression so end-turn actions are only sent when legal 
 - [x] Verified all tests pass (73 passed, 0 failed)
 - Detailed plan saved in `Docs/Plans/phase37-equip-for-role-plan.md`.
 
+## Next Implementation Plan (Phase 38 LearnSkill Action MVP)
+
+- [x] Verified LearnSkillMessage is in MessageRegistry
+- [x] Implemented learnSkillAtSelectedUnit(direction:) action in GameState
+- [x] Added unit test for message serialization/deserialization
+- [x] Added integration test for client-to-server action sending
+- [x] Verified all tests pass (75 passed, 0 failed)
+- Detailed plan saved in `Docs/Plans/phase38-learn-skill-plan.md`.
+
+

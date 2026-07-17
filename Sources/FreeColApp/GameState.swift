@@ -2076,6 +2076,47 @@ final class GameState {
         return true
     }
 
+    func learnSkillAtSelectedUnit(direction: String) {
+        guard canLearnSkillAtSelectedUnit,
+              let unitId = selectedUnitId,
+              let game = cachedGame else {
+            errorMessage = "Fähigkeit kann nicht erlernt werden."
+            return
+        }
+        errorMessage = nil
+
+        Task {
+            do {
+                let msg = ParsedMessage(
+                    tag: "learnSkill",
+                    attributes: [
+                        "unit": unitId,
+                        "direction": direction,
+                    ],
+                    children: []
+                )
+                try await client?.send(message: msg)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    var canLearnSkillAtSelectedUnit: Bool {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let unitId = selectedUnitId,
+              let unit = game.units[unitId],
+              let localPlayerId = resolveLocalPlayerId(),
+              unit.owner == localPlayerId,
+              unit.movesLeft > 0,
+              unit.state == .active else {
+            return false
+        }
+        return true
+    }
+
     func canAttackSelectedUnitMelee(onTile targetTileId: String) -> Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,
