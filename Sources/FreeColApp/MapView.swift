@@ -200,8 +200,10 @@ struct MapView: View {
         if let game = state.game, let data = renderData(for: game) {
             VStack(spacing: 0) {
                 zoomControls
-                ScrollView([.horizontal, .vertical]) {
-                    Canvas { ctx, _ in
+                ScrollViewReader { proxy in
+                    ScrollView([.horizontal, .vertical]) {
+                        ZStack(alignment: .topLeading) {
+                            Canvas { ctx, _ in
                         for tile in data.tiles {
                             let origin = tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
                             let verts = diamondVertices(at: origin, tileW: tileW, tileH: tileH)
@@ -370,19 +372,39 @@ struct MapView: View {
                             selPath.closeSubpath()
                             ctx.stroke(selPath, with: .color(.white), lineWidth: 3)
                         }
-                    }
-                    .frame(width: data.canvasSize.width, height: data.canvasSize.height)
-                    .background(Color(white: 0.08))
-                    .overlay(
-                        MapMouseCaptureView(
-                            onLeftClick: { location in
-                                handleLeftClick(at: location, tiles: data.tiles, game: game)
-                            },
-                            onRightClick: { location in
-                                handleRightClick(at: location, tiles: data.tiles, game: game)
                             }
-                        )
-                    )
+                            .frame(width: data.canvasSize.width, height: data.canvasSize.height)
+                            .background(Color(white: 0.08))
+
+                            ForEach(data.tiles) { tile in
+                                Color.clear
+                                    .frame(width: 1, height: 1)
+                                    .position(tileAnchorPosition(for: tile))
+                                    .id(tile.id)
+                            }
+
+                            MapMouseCaptureView(
+                                onLeftClick: { location in
+                                    handleLeftClick(at: location, tiles: data.tiles, game: game)
+                                },
+                                onRightClick: { location in
+                                    handleRightClick(at: location, tiles: data.tiles, game: game)
+                                }
+                            )
+                            .frame(width: data.canvasSize.width, height: data.canvasSize.height)
+                        }
+                        .frame(width: data.canvasSize.width, height: data.canvasSize.height)
+                    }
+                    .onAppear {
+                        if let tileId = state.selectedTileId {
+                            proxy.scrollTo(tileId, anchor: .center)
+                        }
+                    }
+                    .onChange(of: state.selectedTileId) { _, newValue in
+                        if let tileId = newValue {
+                            proxy.scrollTo(tileId, anchor: .center)
+                        }
+                    }
                 }
             }
         } else {
@@ -456,6 +478,10 @@ struct MapView: View {
         } else {
             state.selectUnit(nil, onTile: tappedTile.id)
         }
+    }
+
+    private func tileAnchorPosition(for tile: Tile) -> CGPoint {
+        tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
     }
 
     private func handleRightClick(at location: CGPoint, tiles: [Tile], game: Game) {

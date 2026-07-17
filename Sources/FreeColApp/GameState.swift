@@ -61,6 +61,7 @@ final class GameState {
     private var pendingEndTurnTurn: Int?
     var mapAnimationCue: MapAnimationCue?
     private var mapAnimationCueToken: Int = 0
+    private var didAutoFocusInitialUnit: Bool = false
 
     var isLocalPlayerAdmin: Bool {
         guard let game = cachedGame,
@@ -660,6 +661,7 @@ final class GameState {
         pendingEndTurnTurn = nil
         mapAnimationCue = nil
         mapAnimationCueToken += 1
+        didAutoFocusInitialUnit = false
     }
 
     func setReady(_ ready: Bool) {
@@ -2832,6 +2834,7 @@ final class GameState {
         reconcileSelectionWithGame()
         reconcileSelectedUnitOrderWithGame()
         reconcilePendingEndTurnWithGame()
+        autoFocusInitialUnitIfNeeded()
     }
 
     private func reconcileSelectionWithGame() {
@@ -3001,6 +3004,28 @@ final class GameState {
     private func clearPendingEndTurn() {
         isEndingTurn = false
         pendingEndTurnTurn = nil
+    }
+
+    private func autoFocusInitialUnitIfNeeded() {
+        guard !didAutoFocusInitialUnit,
+              selectedUnitId == nil,
+              phase == .inGame,
+              let game = cachedGame,
+              let localPlayerId = resolveLocalPlayerId() else {
+            return
+        }
+
+        let unit = game.units.values
+            .sorted { $0.id < $1.id }
+            .first(where: {
+                $0.owner == localPlayerId
+                && $0.state == .active
+                && resolveUnitTileId($0, in: game) != nil
+            })
+
+        guard let unit else { return }
+        selectUnit(unit.id, onTile: resolveUnitTileId(unit, in: game))
+        didAutoFocusInitialUnit = true
     }
 
     private func isLikelyCarrier(_ unit: FreeColGame.Unit, in game: Game) -> Bool {
