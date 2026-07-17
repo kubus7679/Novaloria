@@ -221,35 +221,36 @@ struct MapView: View {
                             if let units = data.unitsByTile[tile.id] {
                                 let count = units.count
                                 for (i, unit) in units.enumerated() {
-                                    let unitH: Double = tileH * 0.85
-                                    let unitW: Double = unitH * 0.52   // ~33:64 aspect ratio
-                                    let spacing: Double = min(unitW + 2, tileW / Double(max(count, 1)))
+                                    let r: Double = max(6, tileH * 0.18)
+                                    let spacing: Double = min(r * 2.5, tileW / Double(max(count, 1)))
                                     let startX = origin.x - spacing * Double(count - 1) / 2.0
                                     let ux = startX + spacing * Double(i)
-                                    let uy = origin.y + tileH / 4
+                                    let uy = origin.y
 
                                     let isSelected = unit.id == state.selectedUnitId
                                     let ownerColor = unit.owner.flatMap { data.playerColorById[$0] } ?? .white
 
+                                    // Always draw a colored dot so units are visible even without sprites
+                                    let dotRect = CGRect(x: ux - r, y: uy - r, width: r * 2, height: r * 2)
+                                    if isSelected {
+                                        ctx.fill(Path(ellipseIn: dotRect.insetBy(dx: -4, dy: -4)), with: .color(.yellow.opacity(0.8)))
+                                    }
+                                    ctx.fill(Path(ellipseIn: dotRect), with: .color(ownerColor))
+                                    ctx.stroke(Path(ellipseIn: dotRect), with: .color(.black), lineWidth: 1.5)
+
+                                    // Draw unit sprite on top if available
                                     if let nsImg = TileImageCache.shared.unitImage(forUnitType: unit.unitType) {
-                                        let unitRect = CGRect(
-                                            x: ux - unitW / 2,
-                                            y: uy - unitH,
-                                            width: unitW,
-                                            height: unitH
+                                        let imgSize = nsImg.size
+                                        let aspect = imgSize.width > 0 ? imgSize.height / imgSize.width : 1.0
+                                        let spriteW: Double = tileW * 0.5
+                                        let spriteH: Double = spriteW * aspect
+                                        let spriteRect = CGRect(
+                                            x: ux - spriteW / 2,
+                                            y: uy - spriteH * 0.9,
+                                            width: spriteW,
+                                            height: spriteH
                                         )
-                                        if isSelected {
-                                            // Yellow glow behind selected unit
-                                            let glowRect = unitRect.insetBy(dx: -3, dy: -3)
-                                            ctx.fill(Path(glowRect), with: .color(.yellow.opacity(0.6)))
-                                        }
-                                        ctx.draw(Image(nsImage: nsImg), in: unitRect)
-                                    } else {
-                                        // Fallback: colored dot
-                                        let r: Double = max(4, tileW * 0.09)
-                                        let dot = Path(ellipseIn: CGRect(x: ux - r, y: uy - r, width: r * 2, height: r * 2))
-                                        ctx.fill(dot, with: .color(isSelected ? .yellow : ownerColor))
-                                        ctx.stroke(dot, with: .color(.black), lineWidth: 1)
+                                        ctx.draw(Image(nsImage: nsImg), in: spriteRect)
                                     }
                                 }
                             }

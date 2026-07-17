@@ -1124,29 +1124,57 @@ final class GameState {
             errorMessage = "Ungueltige Bewegung."
             return
         }
+        // Compute FreeCol direction from source tile to destination tile
+        guard let srcTileId = game.units[unitId]?.location,
+              let srcTile = game.tiles[srcTileId],
+              let dstTile = game.tiles[destinationTileId],
+              let dir = freecolDirection(from: srcTile, to: dstTile) else {
+            errorMessage = "Ziel nicht benachbart."
+            return
+        }
         errorMessage = nil
         Task {
             do {
                 let msg = ParsedMessage(
-                    tag: "moveTo",
-                    attributes: ["unit": unitId, "destination": destinationTileId],
+                    tag: "move",
+                    attributes: ["direction": dir, "unit": unitId],
                     children: []
                 )
-                // For local games (MockServer), directly update the game model
-                // since the MockServer won't process move messages.
+                // For local games (MockServer), directly update the game model.
                 if server != nil {
                     game.moveUnit(unitId, to: destinationTileId)
                     reconcileSelectionWithGame()
                     gameUpdateID += 1
                 }
                 try await client?.send(message: msg)
-                // Keep unit selection after move so consecutive actions stay possible.
                 selectUnit(unitId, onTile: destinationTileId)
             } catch {
                 errorMessage = error.localizedDescription
             }
         }
     }
+
+    /// Returns the FreeCol direction string ("N","NE","E","SE","S","SW","W","NW")
+    /// for moving from `src` to `dst` on a staggered isometric grid, or nil if not adjacent.
+    private func freecolDirection(from src: Tile, to dst: Tile) -> String? {
+        let dx = dst.x - src.x
+        let dy = dst.y - src.y
+        // For odd source rows, NE/SE have Δx=0; for even rows Δx=+1.
+        // SW/NW always: Δx=-1. N/S: Δy=±2. E/W: Δy=0.
+        let isOdd = src.y % 2 != 0
+        switch (dx, dy) {
+        case (0, -2):              return "N"
+        case (isOdd ? 0 : 1, -1): return "NE"
+        case (1, 0):               return "E"
+        case (isOdd ? 0 : 1, 1):  return "SE"
+        case (0, 2):               return "S"
+        case (-1, 1):              return "SW"
+        case (-1, 0):              return "W"
+        case (-1, -1):             return "NW"
+        default:                   return nil
+        }
+    }
+
 
     func buildColony(name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -2691,7 +2719,13 @@ final class GameState {
               unit.movesLeft > 0,
               unit.state == .active,
               unit.location != destinationTileId,
-              game.tiles[destinationTileId] != nil else {
+              let dstTile = game.tiles[destinationTileId] else {
+            return false
+        }
+        // Only allow movement to adjacent tiles (must have a computable direction)
+        guard let srcTileId = unit.location,
+              let srcTile = game.tiles[srcTileId],
+              freecolDirection(from: srcTile, to: dstTile) != nil else {
             return false
         }
         return true
