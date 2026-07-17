@@ -26,15 +26,19 @@ private func diamondVertices(at origin: CGPoint, tileW: Double, tileH: Double) -
 private func hitTest(location: CGPoint, tiles: [Tile], tileW: Double, tileH: Double) -> Tile? {
     let halfW = tileW / 2
     let halfH = tileH / 2
+    var bestTile: Tile?
+    var bestScore: Double = .greatestFiniteMagnitude
     for tile in tiles {
         let origin = tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
         let dx = abs(location.x - origin.x) / halfW
         let dy = abs(location.y - origin.y) / halfH
-        if dx + dy <= 1 {
-            return tile
+        let score = dx + dy
+        if score <= 1, score <= bestScore {
+            bestScore = score
+            bestTile = tile
         }
     }
-    return nil
+    return bestTile
 }
 
 private let tileColors: [String: Color] = [
@@ -102,7 +106,10 @@ struct MapView: View {
 
     private func renderData(for game: Game) -> RenderData? {
         guard game.map != nil else { return nil }
-        let tiles = Array(game.tiles.values)
+        let tiles = Array(game.tiles.values).sorted {
+            if $0.y == $1.y { return $0.x < $1.x }
+            return $0.y < $1.y
+        }
         guard !tiles.isEmpty else { return nil }
         let colW = tileW / 2
         let rowH = tileH / 2
@@ -441,7 +448,7 @@ struct MapView: View {
         // No unit selected: pick the first own unit on the tapped tile
         if let localPlayerId = state.localPlayerId,
            let unit = game.units.values.first(where: {
-               $0.location == tappedTile.id && $0.owner == localPlayerId
+               $0.owner == localPlayerId && resolveUnitTileId($0, in: game) == tappedTile.id
            }) {
             state.selectUnit(unit.id, onTile: tappedTile.id)
         } else {
