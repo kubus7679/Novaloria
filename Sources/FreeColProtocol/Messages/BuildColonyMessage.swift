@@ -3,26 +3,26 @@ import Foundation
 public struct BuildColonyMessage: FreeColMessage {
     public static let tag = "buildColony"
 
-    public let name: String?
     public let unit: String?
+    public let name: String?
 
     public init(
-        name: String? = nil,
-        unit: String? = nil
+        unit: String? = nil,
+        name: String? = nil
     ) {
-        self.name = name
         self.unit = unit
+        self.name = name
     }
 
     public init(attributes: Attributes, children: Children) throws {
-        self.name = attributes["name"]
         self.unit = attributes["unit"]
+        self.name = attributes["name"]
     }
 
     public func encode() -> (attributes: Attributes, children: Children) {
         var attrs: Attributes = [:]
-        if let v = name { attrs["name"] = v }
         if let v = unit { attrs["unit"] = v }
+        if let v = name { attrs["name"] = v }
         return (attrs, [])
     }
 }

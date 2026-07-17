@@ -3,31 +3,31 @@ import Foundation
 public struct MissionaryMessage: FreeColMessage {
     public static let tag = "missionary"
 
-    public let direction: String?
-    public let unit: String?
     public let denounce: String?
+    public let unit: String?
+    public let direction: String?
 
     public init(
-        direction: String? = nil,
+        denounce: String? = nil,
         unit: String? = nil,
-        denounce: String? = nil
+        direction: String? = nil
     ) {
-        self.direction = direction
-        self.unit = unit
         self.denounce = denounce
+        self.unit = unit
+        self.direction = direction
     }
 
     public init(attributes: Attributes, children: Children) throws {
-        self.direction = attributes["direction"]
-        self.unit = attributes["unit"]
         self.denounce = attributes["denounce"]
+        self.unit = attributes["unit"]
+        self.direction = attributes["direction"]
     }
 
     public func encode() -> (attributes: Attributes, children: Children) {
         var attrs: Attributes = [:]
-        if let v = direction { attrs["direction"] = v }
-        if let v = unit { attrs["unit"] = v }
         if let v = denounce { attrs["denounce"] = v }
+        if let v = unit { attrs["unit"] = v }
+        if let v = direction { attrs["direction"] = v }
         return (attrs, [])
     }
 }

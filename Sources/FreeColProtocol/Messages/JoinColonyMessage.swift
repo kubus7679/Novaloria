@@ -3,26 +3,26 @@ import Foundation
 public struct JoinColonyMessage: FreeColMessage {
     public static let tag = "joinColony"
 
-    public let colony: String?
     public let unit: String?
+    public let colony: String?
 
     public init(
-        colony: String? = nil,
-        unit: String? = nil
+        unit: String? = nil,
+        colony: String? = nil
     ) {
-        self.colony = colony
         self.unit = unit
+        self.colony = colony
     }
 
     public init(attributes: Attributes, children: Children) throws {
-        self.colony = attributes["colony"]
         self.unit = attributes["unit"]
+        self.colony = attributes["colony"]
     }
 
     public func encode() -> (attributes: Attributes, children: Children) {
         var attrs: Attributes = [:]
-        if let v = colony { attrs["colony"] = v }
         if let v = unit { attrs["unit"] = v }
+        if let v = colony { attrs["colony"] = v }
         return (attrs, [])
     }
 }

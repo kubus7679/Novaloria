@@ -3,26 +3,26 @@ import Foundation
 public struct GameEndedMessage: FreeColMessage {
     public static let tag = "gameEnded"
 
-    public let highScore: String?
     public let winner: String?
+    public let highScore: String?
 
     public init(
-        highScore: String? = nil,
-        winner: String? = nil
+        winner: String? = nil,
+        highScore: String? = nil
     ) {
-        self.highScore = highScore
         self.winner = winner
+        self.highScore = highScore
     }
 
     public init(attributes: Attributes, children: Children) throws {
-        self.highScore = attributes["highScore"]
         self.winner = attributes["winner"]
+        self.highScore = attributes["highScore"]
     }
 
     public func encode() -> (attributes: Attributes, children: Children) {
         var attrs: Attributes = [:]
-        if let v = highScore { attrs["highScore"] = v }
         if let v = winner { attrs["winner"] = v }
+        if let v = highScore { attrs["highScore"] = v }
         return (attrs, [])
     }
 }

@@ -394,6 +394,31 @@ test("Unit parses state enum") {
     try assertEqual(unit.state, .sailing)
 }
 
+test("EquipForRoleMessage") {
+    let msg = EquipForRoleMessage(
+        role: "model.role.missionary",
+        unit: "unit-123",
+        count: "1"
+    )
+    try assertEqual(msg.role, "model.role.missionary")
+    try assertEqual(msg.unit, "unit-123")
+    try assertEqual(msg.count, "1")
+    try assertEqual(msg.tag, "equipForRole")
+    
+    let (attrs, _) = msg.encode()
+    try assertEqual(attrs["role"], "model.role.missionary")
+    try assertEqual(attrs["unit"], "unit-123")
+    try assertEqual(attrs["count"], "1")
+    
+    let parsed = try EquipForRoleMessage(
+        attributes: ["role": "model.role.pioneer", "unit": "u2", "count": "2"],
+        children: []
+    )
+    try assertEqual(parsed.role, "model.role.pioneer")
+    try assertEqual(parsed.unit, "u2")
+    try assertEqual(parsed.count, "2")
+}
+
 // MARK: - Integration tests (require network stack)
 
 func integrationTest(_ name: String, closure: @escaping () async throws -> Void) async {
@@ -2266,6 +2291,57 @@ await integrationTest("client sends combat action messages") {
             }
             guard rangedMsg.attributes["target"] == "tile-1" else {
                 throw TestError(message: "attackRanged target mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends equipForRole action") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-equip-1" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <map id="map-0" width="2" height="2">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-1" unitType="model.unit.freeColonist" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "equipForRole",
+                attributes: ["unit": "unit-1", "role": "model.role.missionary", "count": "1"],
+                children: []
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let equipLine = try await server.nextLine()
+            let equipMsg = try XMLDecoder.decode(equipLine)
+
+            guard equipMsg.tag == "equipForRole" else {
+                throw TestError(message: "expected equipForRole, got \(equipMsg.tag)")
+            }
+            guard equipMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "equipForRole unit mismatch")
+            }
+            guard equipMsg.attributes["role"] == "model.role.missionary" else {
+                throw TestError(message: "equipForRole role mismatch")
+            }
+            guard equipMsg.attributes["count"] == "1" else {
+                throw TestError(message: "equipForRole count mismatch")
             }
         }
         while try await group.next() != nil {}

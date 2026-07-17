@@ -3,36 +3,36 @@ import Foundation
 public struct InciteMessage: FreeColMessage {
     public static let tag = "incite"
 
-    public let settlement: String?
-    public let gold: String?
-    public let enemy: String?
     public let unit: String?
+    public let settlement: String?
+    public let enemy: String?
+    public let gold: String?
 
     public init(
+        unit: String? = nil,
         settlement: String? = nil,
-        gold: String? = nil,
         enemy: String? = nil,
-        unit: String? = nil
+        gold: String? = nil
     ) {
-        self.settlement = settlement
-        self.gold = gold
-        self.enemy = enemy
         self.unit = unit
+        self.settlement = settlement
+        self.enemy = enemy
+        self.gold = gold
     }
 
     public init(attributes: Attributes, children: Children) throws {
-        self.settlement = attributes["settlement"]
-        self.gold = attributes["gold"]
-        self.enemy = attributes["enemy"]
         self.unit = attributes["unit"]
+        self.settlement = attributes["settlement"]
+        self.enemy = attributes["enemy"]
+        self.gold = attributes["gold"]
     }
 
     public func encode() -> (attributes: Attributes, children: Children) {
         var attrs: Attributes = [:]
-        if let v = settlement { attrs["settlement"] = v }
-        if let v = gold { attrs["gold"] = v }
-        if let v = enemy { attrs["enemy"] = v }
         if let v = unit { attrs["unit"] = v }
+        if let v = settlement { attrs["settlement"] = v }
+        if let v = enemy { attrs["enemy"] = v }
+        if let v = gold { attrs["gold"] = v }
         return (attrs, [])
     }
 }

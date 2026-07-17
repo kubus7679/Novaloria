@@ -336,3 +336,13 @@ Stabilize in-game turn progression so end-turn actions are only sent when legal 
 ## Next Implementation Plan (Phase 36 Claim Land Action MVP)
 
 - Detailed plan saved in `Docs/Plans/phase36-claim-land-action-plan.md`.
+
+## Next Implementation Plan (Phase 37 EquipForRole Action MVP)
+
+- [x] Generated EquipForRoleMessage from Java protocol source
+- [x] Implemented equipSelectedUnitForRole() action in GameState
+- [x] Added unit test for message serialization/deserialization
+- [x] Added integration test for client-to-server action sending
+- [x] Verified all tests pass (73 passed, 0 failed)
+- Detailed plan saved in `Docs/Plans/phase37-equip-for-role-plan.md`.
+

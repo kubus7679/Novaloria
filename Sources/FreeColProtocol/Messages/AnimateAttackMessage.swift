@@ -3,34 +3,34 @@ import Foundation
 public struct AnimateAttackMessage: FreeColMessage {
     public static let tag = "animateAttack"
 
-    public let attackerTile: String?
+    public let success: String?
     public let defenderTile: String?
     public let defender: String?
-    public let success: String?
     public let attacker: String?
+    public let attackerTile: String?
     public let children: [ParsedMessage]
 
     public init(
-        attackerTile: String? = nil,
+        success: String? = nil,
         defenderTile: String? = nil,
         defender: String? = nil,
-        success: String? = nil,
-        attacker: String? = nil
+        attacker: String? = nil,
+        attackerTile: String? = nil
     ) {
-        self.attackerTile = attackerTile
+        self.success = success
         self.defenderTile = defenderTile
         self.defender = defender
-        self.success = success
         self.attacker = attacker
+        self.attackerTile = attackerTile
         self.children = []
     }
 
     public init(attributes: Attributes, children: Children) throws {
-        self.attackerTile = attributes["attackerTile"]
+        self.success = attributes["success"]
         self.defenderTile = attributes["defenderTile"]
         self.defender = attributes["defender"]
-        self.success = attributes["success"]
         self.attacker = attributes["attacker"]
+        self.attackerTile = attributes["attackerTile"]
         self.children = children.compactMap { dict in
             guard let tag = dict.keys.first else { return nil }
             return ParsedMessage(tag: tag, attributes: [:], children: [])
@@ -39,11 +39,11 @@ public struct AnimateAttackMessage: FreeColMessage {
 
     public func encode() -> (attributes: Attributes, children: Children) {
         var attrs: Attributes = [:]
-        if let v = attackerTile { attrs["attackerTile"] = v }
+        if let v = success { attrs["success"] = v }
         if let v = defenderTile { attrs["defenderTile"] = v }
         if let v = defender { attrs["defender"] = v }
-        if let v = success { attrs["success"] = v }
         if let v = attacker { attrs["attacker"] = v }
+        if let v = attackerTile { attrs["attackerTile"] = v }
         return (attrs, [])
     }
 }

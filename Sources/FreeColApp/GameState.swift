@@ -2036,6 +2036,46 @@ final class GameState {
         }
     }
 
+    func equipSelectedUnitForRole(_ roleId: String, count: Int) {
+        guard canEquipSelectedUnitForRole,
+              let unitId = selectedUnitId,
+              let game = cachedGame else {
+            errorMessage = "Unit kann diese Rolle nicht annehmen."
+            return
+        }
+        errorMessage = nil
+
+        Task {
+            do {
+                let msg = ParsedMessage(
+                    tag: "equipForRole",
+                    attributes: [
+                        "unit": unitId,
+                        "role": roleId,
+                        "count": String(count),
+                    ],
+                    children: []
+                )
+                try await client?.send(message: msg)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    var canEquipSelectedUnitForRole: Bool {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let unitId = selectedUnitId,
+              let unit = game.units[unitId],
+              let localPlayerId = resolveLocalPlayerId(),
+              unit.owner == localPlayerId else {
+            return false
+        }
+        return true
+    }
+
     func canAttackSelectedUnitMelee(onTile targetTileId: String) -> Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,

@@ -3,26 +3,26 @@ import Foundation
 public struct AssignTradeRouteMessage: FreeColMessage {
     public static let tag = "assignTradeRoute"
 
-    public let unit: String?
     public let tradeRoute: String?
+    public let unit: String?
 
     public init(
-        unit: String? = nil,
-        tradeRoute: String? = nil
+        tradeRoute: String? = nil,
+        unit: String? = nil
     ) {
-        self.unit = unit
         self.tradeRoute = tradeRoute
+        self.unit = unit
     }
 
     public init(attributes: Attributes, children: Children) throws {
-        self.unit = attributes["unit"]
         self.tradeRoute = attributes["tradeRoute"]
+        self.unit = attributes["unit"]
     }
 
     public func encode() -> (attributes: Attributes, children: Children) {
         var attrs: Attributes = [:]
-        if let v = unit { attrs["unit"] = v }
         if let v = tradeRoute { attrs["tradeRoute"] = v }
+        if let v = unit { attrs["unit"] = v }
         return (attrs, [])
     }
 }
