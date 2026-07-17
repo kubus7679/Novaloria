@@ -16,7 +16,15 @@ let package = Package(
         .target(name: "FreeColGame", dependencies: ["FreeColProtocol"]),
         .target(name: "FreeColClient", dependencies: ["FreeColGame", "FreeColProtocol"]),
         .executableTarget(name: "FreeColProtocolCLI", dependencies: ["FreeColProtocol", "FreeColGame", "FreeColClient"]),
-        .executableTarget(name: "FreeColApp", dependencies: ["FreeColProtocol", "FreeColGame", "FreeColClient"]),
+        .executableTarget(
+            name: "FreeColApp",
+            dependencies: ["FreeColProtocol", "FreeColGame", "FreeColClient"],
+            resources: [
+                .copy("Resources/terrain"),
+                .copy("Resources/units"),
+                .copy("Resources/settlements"),
+            ]
+        ),
         .testTarget(name: "FreeColProtocolTests", dependencies: ["FreeColProtocol"]),
     ]
 )

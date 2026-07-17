@@ -143,51 +143,88 @@ struct MapView: View {
                             path.addLines(verts)
                             path.closeSubpath()
 
-                            let fill = colorForTile(tile.type)
-
+                            // --- Terrain fill ---
+                            let tileRect = CGRect(
+                                x: origin.x - tileW / 2,
+                                y: origin.y - tileH / 2,
+                                width: tileW,
+                                height: tileH
+                            )
                             if tile.id == state.selectedTileId {
                                 ctx.fill(path, with: .color(.yellow))
+                            } else if let nsImg = TileImageCache.shared.terrainImage(forType: tile.type) {
+                                var clipped = ctx
+                                clipped.clip(to: path)
+                                clipped.draw(Image(nsImage: nsImg), in: tileRect)
                             } else {
-                                ctx.fill(path, with: .color(fill))
+                                ctx.fill(path, with: .color(colorForTile(tile.type)))
                             }
 
+                            // --- Border / owner outline ---
                             if let ownerId = tile.owner, let ownerColor = data.playerColorById[ownerId] {
                                 ctx.stroke(path, with: .color(ownerColor), lineWidth: 2)
                             } else {
-                                ctx.stroke(path, with: .color(fill.opacity(0.8)), lineWidth: 0.5)
+                                ctx.stroke(path, with: .color(.black.opacity(0.25)), lineWidth: 0.5)
                             }
 
-                            if tile.settlement != nil {
-                                let s: Double = max(8, tileW * 0.18)
-                                let marker = Path(roundedRect: CGRect(
-                                    x: origin.x - s / 2,
-                                    y: origin.y - s / 2,
-                                    width: s,
-                                    height: s
-                                ), cornerSize: CGSize(width: 2, height: 2))
-                                ctx.fill(marker, with: .color(.white))
-                                ctx.stroke(marker, with: .color(.black), lineWidth: 1)
+                            // --- Settlement ---
+                            if let settlementInfo = tile.settlement {
+                                let kind = settlementKind(for: settlementInfo, in: game)
+                                let settlementH: Double = tileH * 0.8
+                                let settlementW: Double = tileW * 0.55
+                                let settlementRect = CGRect(
+                                    x: origin.x - settlementW / 2,
+                                    y: origin.y - settlementH * 0.75,
+                                    width: settlementW,
+                                    height: settlementH
+                                )
+                                if let nsImg = TileImageCache.shared.settlementImage(for: kind) {
+                                    ctx.draw(Image(nsImage: nsImg), in: settlementRect)
+                                } else {
+                                    let s: Double = max(8, tileW * 0.18)
+                                    let marker = Path(roundedRect: CGRect(
+                                        x: origin.x - s / 2, y: origin.y - s / 2,
+                                        width: s, height: s
+                                    ), cornerSize: CGSize(width: 2, height: 2))
+                                    ctx.fill(marker, with: .color(.white))
+                                    ctx.stroke(marker, with: .color(.black), lineWidth: 1)
+                                }
                             }
 
+                            // --- Units ---
                             if let units = data.unitsByTile[tile.id] {
+                                let count = units.count
                                 for (i, unit) in units.enumerated() {
-                                    let r: Double = max(4, tileW * 0.09)
-                                    let ux = origin.x + Double(i - units.count / 2) * (r * 2 + 1)
+                                    let unitH: Double = tileH * 0.85
+                                    let unitW: Double = unitH * 0.52   // ~33:64 aspect ratio
+                                    let spacing: Double = min(unitW + 2, tileW / Double(max(count, 1)))
+                                    let startX = origin.x - spacing * Double(count - 1) / 2.0
+                                    let ux = startX + spacing * Double(i)
                                     let uy = origin.y + tileH / 4
-                                    let dot = Path(ellipseIn: CGRect(
-                                        x: ux - r,
-                                        y: uy - r,
-                                        width: r * 2,
-                                        height: r * 2
-                                    ))
+
+                                    let isSelected = unit.id == state.selectedUnitId
                                     let ownerColor = unit.owner.flatMap { data.playerColorById[$0] } ?? .white
 
-                                    if unit.id == state.selectedUnitId {
-                                        ctx.fill(dot, with: .color(.yellow))
+                                    if let nsImg = TileImageCache.shared.unitImage(forUnitType: unit.unitType) {
+                                        let unitRect = CGRect(
+                                            x: ux - unitW / 2,
+                                            y: uy - unitH,
+                                            width: unitW,
+                                            height: unitH
+                                        )
+                                        if isSelected {
+                                            // Yellow glow behind selected unit
+                                            let glowRect = unitRect.insetBy(dx: -3, dy: -3)
+                                            ctx.fill(Path(glowRect), with: .color(.yellow.opacity(0.6)))
+                                        }
+                                        ctx.draw(Image(nsImage: nsImg), in: unitRect)
                                     } else {
-                                        ctx.fill(dot, with: .color(ownerColor))
+                                        // Fallback: colored dot
+                                        let r: Double = max(4, tileW * 0.09)
+                                        let dot = Path(ellipseIn: CGRect(x: ux - r, y: uy - r, width: r * 2, height: r * 2))
+                                        ctx.fill(dot, with: .color(isSelected ? .yellow : ownerColor))
+                                        ctx.stroke(dot, with: .color(.black), lineWidth: 1)
                                     }
-                                    ctx.stroke(dot, with: .color(.black), lineWidth: 1)
                                 }
                             }
                         }
@@ -317,6 +354,21 @@ struct MapView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(Color(white: 0.12))
+    }
+
+    private func settlementKind(for settlementId: String, in game: Game) -> SettlementKind {
+        guard let colony = game.colonies[settlementId] else { return .nativeCamp }
+        let type = colony.settlementType?.lowercased() ?? ""
+        if type.contains("aztec") { return .aztecCity }
+        if type.contains("inca") { return .incaCity }
+        if type.contains("indian") || type.contains("native") {
+            return colony.unitCount >= 3 ? .nativeVillage : .nativeCamp
+        }
+        // European colony — size by population
+        let pop = colony.unitCount
+        if pop >= 15 { return .colony(size: 3) }
+        if pop >= 8  { return .colony(size: 2) }
+        return .colony(size: 1)
     }
 
     private func handleTap(at location: CGPoint, tiles: [Tile], game: Game) {
