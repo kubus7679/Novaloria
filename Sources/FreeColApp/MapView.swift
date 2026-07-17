@@ -439,9 +439,10 @@ struct MapView: View {
         }
 
         // No unit selected: pick the first own unit on the tapped tile
-        if let unit = game.units.values.first(where: {
-            $0.location == tappedTile.id && $0.owner == game.currentPlayerId
-        }) {
+        if let localPlayerId = state.localPlayerId,
+           let unit = game.units.values.first(where: {
+               $0.location == tappedTile.id && $0.owner == localPlayerId
+           }) {
             state.selectUnit(unit.id, onTile: tappedTile.id)
         } else {
             state.selectUnit(nil, onTile: tappedTile.id)

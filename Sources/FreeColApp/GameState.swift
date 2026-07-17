@@ -79,6 +79,10 @@ final class GameState {
         return game.currentPlayerId == localPlayerId
     }
 
+    var localPlayerId: String? {
+        resolveLocalPlayerId()
+    }
+
     var canEndTurn: Bool {
         phase == .inGame && isLocalPlayersTurn && !isEndingTurn
     }

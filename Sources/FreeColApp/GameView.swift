@@ -88,7 +88,13 @@ struct GameView: View {
                     }
 
                     GroupBox("Units") {
-                        ForEach(game.units.values.filter { $0.owner == game.currentPlayerId }, id: \.id) { unit in
+                        ForEach(
+                            game.units.values.filter { unit in
+                                guard let localPlayerId = state.localPlayerId else { return false }
+                                return unit.owner == localPlayerId
+                            },
+                            id: \.id
+                        ) { unit in
                             HStack {
                                 Text(unit.unitType ?? "Unit")
                                     .font(.caption)
