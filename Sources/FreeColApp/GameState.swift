@@ -2308,6 +2308,52 @@ final class GameState {
         return true
     }
 
+    // MARK: Phase 43 - DemandTribute
+
+    func demandTributeFromSettlement(direction: String) {
+        guard canDemandTributeWithSelectedUnit,
+              let unitId = selectedUnitId else {
+            errorMessage = "Tribut kann nicht gefordert werden."
+            return
+        }
+        guard isValidDirection(direction) else {
+            errorMessage = "Ungültige Richtung."
+            return
+        }
+        errorMessage = nil
+
+        Task {
+            do {
+                let msg = ParsedMessage(
+                    tag: "demandTribute",
+                    attributes: [
+                        "direction": direction,
+                        "unit": unitId,
+                    ],
+                    children: []
+                )
+                try await client?.send(message: msg)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    var canDemandTributeWithSelectedUnit: Bool {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let unitId = selectedUnitId,
+              let unit = game.units[unitId],
+              let localPlayerId = resolveLocalPlayerId(),
+              unit.owner == localPlayerId,
+              unit.movesLeft > 0,
+              unit.state == .active else {
+            return false
+        }
+        return true
+    }
+
     func canAttackSelectedUnitMelee(onTile targetTileId: String) -> Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,

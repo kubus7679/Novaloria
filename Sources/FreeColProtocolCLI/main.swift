@@ -538,11 +538,32 @@ test("DeliverGiftMessage") {
     try assertEqual(attrs["settlement"], "is-boston")
     
     let parsed = try DeliverGiftMessage(
-        attributes: ["unit": "u-missionary", "settlement": "is-tribal"],
+        attributes: ["settlement": "is-tribal", "unit": "u-missionary"],
         children: []
     )
     try assertEqual(parsed.unit, "u-missionary")
     try assertEqual(parsed.settlement, "is-tribal")
+}
+
+test("DemandTributeMessage") {
+    let msg = DemandTributeMessage(
+        unit: "unit-scout",
+        direction: "N"
+    )
+    try assertEqual(msg.unit, "unit-scout")
+    try assertEqual(msg.direction, "N")
+    try assertEqual(msg.tag, "demandTribute")
+    
+    let (attrs, _) = msg.encode()
+    try assertEqual(attrs["unit"], "unit-scout")
+    try assertEqual(attrs["direction"], "N")
+    
+    let parsed = try DemandTributeMessage(
+        attributes: ["direction": "SE", "unit": "u-brave"],
+        children: []
+    )
+    try assertEqual(parsed.unit, "u-brave")
+    try assertEqual(parsed.direction, "SE")
 }
 
 // MARK: - Integration tests (require network stack)
@@ -2736,6 +2757,58 @@ await integrationTest("client sends deliverGift action") {
             }
             guard giftMsg.attributes["settlement"] == "is-tribal-village" else {
                 throw TestError(message: "deliverGift settlement mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends demandTribute action") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-tribute-1" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <map id="map-0" width="3" height="3">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+        <tile id="tile-1" x="1" y="0" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-scout" unitType="model.unit.scout" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "demandTribute",
+                attributes: [
+                    "direction": "N",
+                    "unit": "unit-scout"
+                ],
+                children: []
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let tributeLine = try await server.nextLine()
+            let tributeMsg = try XMLDecoder.decode(tributeLine)
+
+            guard tributeMsg.tag == "demandTribute" else {
+                throw TestError(message: "expected demandTribute, got \(tributeMsg.tag)")
+            }
+            guard tributeMsg.attributes["unit"] == "unit-scout" else {
+                throw TestError(message: "demandTribute unit mismatch")
+            }
+            guard tributeMsg.attributes["direction"] == "N" else {
+                throw TestError(message: "demandTribute direction mismatch")
             }
         }
         while try await group.next() != nil {}
