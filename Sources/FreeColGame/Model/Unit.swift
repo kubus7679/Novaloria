@@ -3,6 +3,7 @@ import FreeColProtocol
 
 public enum UnitState: String {
     case active = "ACTIVE"
+    case sentry = "SENTRY"
     case fortifying = "FORTIFYING"
     case fortified = "FORTIFIED"
     case sailing = "SAILING"
@@ -57,5 +58,6 @@ public struct Unit: GameObject, PartiallyUpdatable, Identifiable {
         currentStop = attributes.int("currentStop", default: currentStop)
         if let v = attributes["student"] { student = v }
         if let v = attributes["teacher"] { teacher = v }
+        if let v = attributes["workImprovementType"] { workImprovementType = v }
     }
 }

@@ -163,6 +163,23 @@ public actor Connection {
         throw FreeColProtocolError.disconnected
     }
 
+    public func nextLine(timeout: TimeInterval) async throws -> String? {
+        try await withThrowingTaskGroup(of: String?.self) { group in
+            group.addTask {
+                try await self.nextLine()
+            }
+
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                return nil
+            }
+
+            let result = try await group.next()!
+            group.cancelAll()
+            return result
+        }
+    }
+
     private func handleDisconnect(_ error: Error) {
         FreeColLogger.shared.error("Connection error: \(error)")
         continuation?.finish()

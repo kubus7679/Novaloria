@@ -17,5 +17,6 @@ let package = Package(
         .target(name: "FreeColClient", dependencies: ["FreeColGame", "FreeColProtocol"]),
         .executableTarget(name: "FreeColProtocolCLI", dependencies: ["FreeColProtocol", "FreeColGame", "FreeColClient"]),
         .executableTarget(name: "FreeColApp", dependencies: ["FreeColProtocol", "FreeColGame", "FreeColClient"]),
+        .testTarget(name: "FreeColProtocolTests", dependencies: ["FreeColProtocol"]),
     ]
 )

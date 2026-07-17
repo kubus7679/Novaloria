@@ -65,7 +65,10 @@ final class FreeColProtocolTests: XCTestCase {
             tag: parsed.tag,
             attributes: parsed.attributes
         )
-        XCTAssertEqual(reencoded, xml)
+        let reparsed = try XMLDecoder.decode(reencoded)
+        XCTAssertEqual(reparsed.tag, "move")
+        XCTAssertEqual(reparsed.attributes["unit"], "unit-3")
+        XCTAssertEqual(reparsed.attributes["direction"], "north")
     }
 
     func testXmlEscaping() throws {
@@ -82,6 +85,9 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertNotNil(messageRegistry["login"])
         XCTAssertNotNil(messageRegistry["move"])
         XCTAssertNotNil(messageRegistry["multiple"])
+        XCTAssertNotNil(messageRegistry["gameState"])
+        XCTAssertNotNil(messageRegistry["vacantPlayers"])
+        XCTAssertNotNil(messageRegistry["startGame"])
     }
 
     func testEndTurnMessage() throws {

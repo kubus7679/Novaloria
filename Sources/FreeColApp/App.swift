@@ -11,7 +11,7 @@ struct FreeColApp: App {
                 switch gameState.phase {
                 case .disconnected, .connecting:
                     LoginView()
-                case .login:
+                case .login, .lobby:
                     LoginView()
                 case .inGame:
                     GameView()

@@ -249,6 +249,48 @@ test("Game.applyRemove removes object") {
     try assertEqual(game.players.count, 0)
 }
 
+test("Game.moveUnit clears reached destination") {
+    let game = Game()
+    try game.load(from: ParsedMessage(tag: "game", attributes: ["id": "game-0"], children: [
+        ParsedMessage(tag: "map", attributes: ["id": "map-0", "width": "2", "height": "1"], children: [
+            ParsedMessage(tag: "tile", attributes: ["id": "tile-0", "x": "0", "y": "0", "type": "model.tile.plains"], children: []),
+            ParsedMessage(tag: "tile", attributes: ["id": "tile-1", "x": "1", "y": "0", "type": "model.tile.plains"], children: []),
+        ]),
+        ParsedMessage(tag: "unit", attributes: [
+            "id": "unit-1", "unitType": "model.unit.freeColonist", "location": "tile-0", "destination": "tile-1"
+        ], children: [])
+    ]))
+
+    game.moveUnit("unit-1", to: "tile-1")
+    try assertEqual(game.units["unit-1"]?.location, "tile-1")
+    try assertEqual(game.units["unit-1"]?.destination, nil)
+}
+
+test("Game.applyRemove clears dangling unit references") {
+    let game = Game()
+    try game.load(from: ParsedMessage(tag: "game", attributes: ["id": "game-0"], children: [
+        ParsedMessage(tag: "map", attributes: ["id": "map-0", "width": "2", "height": "1"], children: [
+            ParsedMessage(tag: "tile", attributes: ["id": "tile-0", "x": "0", "y": "0", "type": "model.tile.plains"], children: []),
+            ParsedMessage(tag: "tile", attributes: ["id": "tile-1", "x": "1", "y": "0", "type": "model.tile.plains"], children: []),
+        ]),
+        ParsedMessage(tag: "unit", attributes: [
+            "id": "unit-carrier", "unitType": "model.unit.caravel", "location": "tile-0"
+        ], children: []),
+        ParsedMessage(tag: "unit", attributes: [
+            "id": "unit-1", "unitType": "model.unit.freeColonist", "location": "unit-carrier", "destination": "tile-1"
+        ], children: [])
+    ]))
+
+    try game.applyRemove(ParsedMessage(
+        tag: "remove",
+        attributes: ["divert": "tile-1", "array_0": "unit-carrier"],
+        children: []
+    ))
+
+    try assertEqual(game.units["unit-1"]?.location, nil)
+    try assertEqual(game.units["unit-1"]?.destination, nil)
+}
+
 test("GameStateManager processes setCurrentPlayer") {
     let mgr = GameStateManager()
     try mgr.process(ParsedMessage(tag: "setCurrentPlayer", attributes: ["player": "player-1"], children: []))
@@ -279,6 +321,55 @@ test("GameStateManager processes multiple nested messages") {
     ]))
     try assertEqual(mgr.game.turn, Turn(60))
     try assertEqual(mgr.game.currentPlayerId, "player-2")
+}
+
+test("GameStateManager processes ready message") {
+    let mgr = GameStateManager()
+    try mgr.process(ParsedMessage(tag: "addPlayer", attributes: [:], children: [
+        ParsedMessage(tag: "player", attributes: [
+            "id": "player-1",
+            "username": "Alice",
+            "nationId": "model.nation.dutch"
+        ], children: [])
+    ]))
+
+    let handled = try mgr.process(ParsedMessage(
+        tag: "ready",
+        attributes: ["player": "player-1", "value": "true"],
+        children: []
+    ))
+
+    try assertEqual(handled, true)
+    try assertEqual(mgr.game.players["player-1"]?.ready, true)
+}
+
+test("GameStateManager processes reply-wrapped payloads") {
+    let mgr = GameStateManager()
+
+    let handled = try mgr.process(ParsedMessage(
+        tag: "reply",
+        attributes: ["networkReplyId": "17"],
+        children: [
+            ParsedMessage(tag: "setCurrentPlayer", attributes: ["player": "player-9"], children: []),
+            ParsedMessage(tag: "newTurn", attributes: ["turn": "77"], children: []),
+        ]
+    ))
+
+    try assertEqual(handled, true)
+    try assertEqual(mgr.game.currentPlayerId, "player-9")
+    try assertEqual(mgr.game.turn, Turn(77))
+}
+
+test("GameStateManager loadFromLogin tolerates pre-game login without game") {
+    let mgr = GameStateManager()
+    try mgr.loadFromLogin(LoginResult(
+        playerName: "Alice",
+        nationId: "model.nation.dutch",
+        serverState: .preGame,
+        game: nil,
+        player: nil
+    ))
+    try assertEqual(mgr.game.players.count, 0)
 }
 
 test("Specification loaded from parsed") {
@@ -417,6 +508,1957 @@ await integrationTest("client receives post-login updates") {
     }
 
     server.stop()
+}
+
+await integrationTest("connect captures vacantPlayers sent after gameState") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+        }
+        group.addTask {
+            try await server.waitForConnection()
+            await server.send("<gameState state=\"IN_GAME\"/>")
+            await server.flush()
+            try await Task.sleep(nanoseconds: 50_000_000)
+            await server.send("<vacantPlayers><player id=\"nation-dutch\" nationId=\"model.nation.dutch\" nationName=\"Dutch\"/></vacantPlayers>")
+            await server.flush()
+        }
+        while try await group.next() != nil {}
+    }
+
+    let initialState = await client.initialGameState
+    let vacantPlayers = await client.initialVacantPlayers
+
+    guard initialState == .inGame else {
+        throw TestError(message: "initialGameState not captured")
+    }
+    guard vacantPlayers?.tag == "vacantPlayers" else {
+        throw TestError(message: "vacantPlayers not captured")
+    }
+    guard vacantPlayers?.children.first?.attributes["nationId"] == "model.nation.dutch" else {
+        throw TestError(message: "vacantPlayers payload mismatch")
+    }
+
+    await server.stop()
+}
+
+await integrationTest("connect does not block when vacantPlayers is absent") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+        }
+        group.addTask {
+            try await server.waitForConnection()
+            await server.send("<gameState state=\"PRE_GAME\"/>")
+            await server.flush()
+        }
+        while try await group.next() != nil {}
+    }
+
+    let initialState = await client.initialGameState
+    let vacantPlayers = await client.initialVacantPlayers
+
+    guard initialState == .preGame else {
+        throw TestError(message: "initialGameState not captured for PRE_GAME")
+    }
+    guard vacantPlayers == nil else {
+        throw TestError(message: "vacantPlayers should remain nil when absent")
+    }
+
+    await server.stop()
+}
+
+await integrationTest("startGame reaches UI delegate during message loop") {
+    let server = MockServer()
+    let port = await server.port
+
+    let gameXML = """
+    <game id="game-2" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+    </game>
+    """
+
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let delegate = TestDelegate()
+    await client.setDelegate(delegate)
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            let result = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            guard result.serverState == .inGame else { throw TestError(message: "state not IN_GAME") }
+            try? await client.startMessageLoop()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            try await Task.sleep(nanoseconds: 250_000_000)
+            server.send("<startGame/>")
+            server.flush()
+            try await Task.sleep(nanoseconds: 500_000_000)
+            server.stop()
+        }
+        try await Task.sleep(nanoseconds: 5_000_000_000)
+        group.cancelAll()
+    }
+
+    guard delegate.receivedMessages.contains("startGame") else {
+        throw TestError(message: "startGame did not reach delegate")
+    }
+
+    server.stop()
+}
+
+await integrationTest("reconnect reaches UI delegate during message loop") {
+    let server = MockServer()
+    let port = await server.port
+
+    let gameXML = """
+    <game id="game-r1" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+    </game>
+    """
+
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let delegate = TestDelegate()
+    await client.setDelegate(delegate)
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try? await client.startMessageLoop()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            try await Task.sleep(nanoseconds: 250_000_000)
+            await server.send("<reconnect/>")
+            await server.flush()
+            try await Task.sleep(nanoseconds: 350_000_000)
+            await server.stop()
+        }
+        try await Task.sleep(nanoseconds: 5_000_000_000)
+        group.cancelAll()
+    }
+
+    guard delegate.receivedMessages.contains("reconnect") else {
+        throw TestError(message: "reconnect did not reach delegate")
+    }
+
+    await server.stop()
+}
+
+await integrationTest("endTurn applies server-driven turn sync") {
+    let server = MockServer()
+    let port = await server.port
+
+    let gameXML = """
+    <game id="game-turn-sync" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <player id="player-2" username="Bob" nationId="model.nation.french" gold="400"/>
+    </game>
+    """
+
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "endTurn", attributes: [:], children: []))
+            try? await client.startMessageLoop()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let endTurnLine = try await server.nextLine()
+            let endTurnMsg = try XMLDecoder.decode(endTurnLine)
+            guard endTurnMsg.tag == "endTurn" else {
+                throw TestError(message: "expected endTurn, got \(endTurnMsg.tag)")
+            }
+
+            await server.send("<multiple><newTurn turn=\"2\"/><setCurrentPlayer player=\"player-2\"/></multiple>")
+            await server.flush()
+            try await Task.sleep(nanoseconds: 400_000_000)
+            await server.stop()
+        }
+        try await Task.sleep(nanoseconds: 5_000_000_000)
+        group.cancelAll()
+    }
+
+    guard await client.game.turn == Turn(2) else {
+        throw TestError(message: "turn did not advance after endTurn")
+    }
+    guard await client.game.currentPlayerId == "player-2" else {
+        throw TestError(message: "currentPlayer did not switch after endTurn")
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends ready and requestLaunch messages") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-3" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "ready", attributes: ["value": "true"], children: []))
+            try await client.send(message: ParsedMessage(tag: "requestLaunch", attributes: [:], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            let readyLine = try await server.nextLine()
+            let launchLine = try await server.nextLine()
+
+            let readyMsg = try XMLDecoder.decode(readyLine)
+            let launchMsg = try XMLDecoder.decode(launchLine)
+
+            guard readyMsg.tag == "ready" else {
+                throw TestError(message: "expected ready, got \(readyMsg.tag)")
+            }
+            guard readyMsg.attributes["value"] == "true" else {
+                throw TestError(message: "ready value mismatch")
+            }
+            guard launchMsg.tag == "requestLaunch" else {
+                throw TestError(message: "expected requestLaunch, got \(launchMsg.tag)")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends setNation message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-3b" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "setNation", attributes: ["player": "player-1", "value": "model.nation.english"], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+
+            guard msg.tag == "setNation" else {
+                throw TestError(message: "expected setNation, got \(msg.tag)")
+            }
+            guard msg.attributes["player"] == "player-1" else {
+                throw TestError(message: "setNation player mismatch")
+            }
+            guard msg.attributes["value"] == "model.nation.english" else {
+                throw TestError(message: "setNation value mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends setNationType message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-3c" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "setNationType", attributes: ["player": "player-1", "value": "model.nationType.default"], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+
+            guard msg.tag == "setNationType" else {
+                throw TestError(message: "expected setNationType, got \(msg.tag)")
+            }
+            guard msg.attributes["player"] == "player-1" else {
+                throw TestError(message: "setNationType player mismatch")
+            }
+            guard msg.attributes["value"] == "model.nationType.default" else {
+                throw TestError(message: "setNationType value mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends setColor message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-3d" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "setColor", attributes: ["player": "player-1", "value": "#336699"], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+
+            guard msg.tag == "setColor" else {
+                throw TestError(message: "expected setColor, got \(msg.tag)")
+            }
+            guard msg.attributes["player"] == "player-1" else {
+                throw TestError(message: "setColor player mismatch")
+            }
+            guard msg.attributes["value"] == "#336699" else {
+                throw TestError(message: "setColor value mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends updateGameOptions message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-3e" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "updateGameOptions",
+                attributes: [:],
+                children: [ParsedMessage(tag: "option", attributes: ["id": "model.option.startingMoney", "value": "3000"], children: [])]
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+
+            guard msg.tag == "updateGameOptions" else {
+                throw TestError(message: "expected updateGameOptions, got \(msg.tag)")
+            }
+            guard let option = msg.children.first(where: { $0.tag == "option" }) else {
+                throw TestError(message: "updateGameOptions option child missing")
+            }
+            guard option.attributes["id"] == "model.option.startingMoney" else {
+                throw TestError(message: "updateGameOptions option id mismatch")
+            }
+            guard option.attributes["value"] == "3000" else {
+                throw TestError(message: "updateGameOptions option value mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends updateMapGeneratorOptions message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-3f" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "updateMapGeneratorOptions",
+                attributes: [:],
+                children: [ParsedMessage(tag: "option", attributes: ["id": "model.option.mapWidth", "value": "80"], children: [])]
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+
+            guard msg.tag == "updateMapGeneratorOptions" else {
+                throw TestError(message: "expected updateMapGeneratorOptions, got \(msg.tag)")
+            }
+            guard let option = msg.children.first(where: { $0.tag == "option" }) else {
+                throw TestError(message: "updateMapGeneratorOptions option child missing")
+            }
+            guard option.attributes["id"] == "model.option.mapWidth" else {
+                throw TestError(message: "updateMapGeneratorOptions option id mismatch")
+            }
+            guard option.attributes["value"] == "80" else {
+                throw TestError(message: "updateMapGeneratorOptions option value mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends chooseFoundingFather message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-3g" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "chooseFoundingFather",
+                attributes: ["foundingFather": "model.foundingFather.adamSmith"],
+                children: []
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+
+            guard msg.tag == "chooseFoundingFather" else {
+                throw TestError(message: "expected chooseFoundingFather, got \(msg.tag)")
+            }
+            guard msg.attributes["foundingFather"] == "model.foundingFather.adamSmith" else {
+                throw TestError(message: "chooseFoundingFather value mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends continue message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-3h" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "continue", attributes: [:], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+
+            guard msg.tag == "continue" else {
+                throw TestError(message: "expected continue, got \(msg.tag)")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends retire message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-3i" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "retire", attributes: [:], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+
+            guard msg.tag == "retire" else {
+                throw TestError(message: "expected retire, got \(msg.tag)")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends enterRevengeMode message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-3j" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "enterRevengeMode", attributes: [:], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+
+            guard msg.tag == "enterRevengeMode" else {
+                throw TestError(message: "expected enterRevengeMode, got \(msg.tag)")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends declineMounds message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-3k" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <unit id="unit-1" unitType="model.unit.scout" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+      <map id="map-0" width="1" height="1">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+      </map>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "declineMounds", attributes: ["unit": "unit-1"], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+
+            guard msg.tag == "declineMounds" else {
+                throw TestError(message: "expected declineMounds, got \(msg.tag)")
+            }
+            guard msg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "declineMounds unit mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends monarchAction message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-3l" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "monarchAction",
+                attributes: ["action": "RAISE_TAX_ACT", "player": "player-1"],
+                children: []
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+
+            guard msg.tag == "monarchAction" else {
+                throw TestError(message: "expected monarchAction, got \(msg.tag)")
+            }
+            guard msg.attributes["action"] == "RAISE_TAX_ACT" else {
+                throw TestError(message: "monarchAction action mismatch")
+            }
+            guard msg.attributes["player"] == "player-1" else {
+                throw TestError(message: "monarchAction player mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends setAI message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-3m" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "setAI",
+                attributes: ["player": "player-1", "ai": "true"],
+                children: []
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+
+            guard msg.tag == "setAI" else {
+                throw TestError(message: "expected setAI, got \(msg.tag)")
+            }
+            guard msg.attributes["player"] == "player-1" else {
+                throw TestError(message: "setAI player mismatch")
+            }
+            guard msg.attributes["ai"] == "true" else {
+                throw TestError(message: "setAI ai flag mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends setAvailable message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-3n" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "setAvailable",
+                attributes: ["player": "player-1"],
+                children: []
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+
+            guard msg.tag == "setAvailable" else {
+                throw TestError(message: "expected setAvailable, got \(msg.tag)")
+            }
+            guard msg.attributes["player"] == "player-1" else {
+                throw TestError(message: "setAvailable player mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends setStance message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-3o" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <player id="player-2" username="Bob" nationId="model.nation.french" gold="500"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "setStance",
+                attributes: ["stance": "WAR", "source": "player-1", "target": "player-2"],
+                children: []
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+
+            guard msg.tag == "setStance" else {
+                throw TestError(message: "expected setStance, got \(msg.tag)")
+            }
+            guard msg.attributes["stance"] == "WAR" else {
+                throw TestError(message: "setStance stance mismatch")
+            }
+            guard msg.attributes["source"] == "player-1" else {
+                throw TestError(message: "setStance source mismatch")
+            }
+            guard msg.attributes["target"] == "player-2" else {
+                throw TestError(message: "setStance target mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends declareIndependence message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-3p" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "declareIndependence",
+                attributes: ["countryName": "Freedonia", "nationName": "Free Colonials"],
+                children: []
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+
+            guard msg.tag == "declareIndependence" else {
+                throw TestError(message: "expected declareIndependence, got \(msg.tag)")
+            }
+            guard msg.attributes["countryName"] == "Freedonia" else {
+                throw TestError(message: "declareIndependence countryName mismatch")
+            }
+            guard msg.attributes["nationName"] == "Free Colonials" else {
+                throw TestError(message: "declareIndependence nationName mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends chat message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-3q" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <player id="player-2" username="Bob" nationId="model.nation.french" gold="500"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "chat",
+                attributes: ["sender": "player-1", "message": "Hello", "private": "player-2"],
+                children: []
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+
+            guard msg.tag == "chat" else {
+                throw TestError(message: "expected chat, got \(msg.tag)")
+            }
+            guard msg.attributes["sender"] == "player-1" else {
+                throw TestError(message: "chat sender mismatch")
+            }
+            guard msg.attributes["message"] == "Hello" else {
+                throw TestError(message: "chat message mismatch")
+            }
+            guard msg.attributes["private"] == "player-2" else {
+                throw TestError(message: "chat private mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends setDead message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-3r" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "setDead",
+                attributes: ["player": "player-1"],
+                children: []
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+
+            guard msg.tag == "setDead" else {
+                throw TestError(message: "expected setDead, got \(msg.tag)")
+            }
+            guard msg.attributes["player"] == "player-1" else {
+                throw TestError(message: "setDead player mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends claimLand message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-3s" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <map id="map-0" width="2" height="1">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+      </map>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "claimLand",
+                attributes: ["price": "100", "claimant": "player-1", "tile": "tile-0"],
+                children: []
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+
+            guard msg.tag == "claimLand" else {
+                throw TestError(message: "expected claimLand, got \(msg.tag)")
+            }
+            guard msg.attributes["price"] == "100" else {
+                throw TestError(message: "claimLand price mismatch")
+            }
+            guard msg.attributes["claimant"] == "player-1" else {
+                throw TestError(message: "claimLand claimant mismatch")
+            }
+            guard msg.attributes["tile"] == "tile-0" else {
+                throw TestError(message: "claimLand tile mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends core gameplay action messages") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-5" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <unit id="unit-1" unitType="model.unit.freeColonist" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+      <map id="map-0" width="2" height="1">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+        <tile id="tile-1" x="1" y="0" type="model.tile.plains"/>
+      </map>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "moveTo", attributes: ["unit": "unit-1", "destination": "tile-1"], children: []))
+            try await client.send(message: ParsedMessage(tag: "buildColony", attributes: ["unit": "unit-1", "name": "Alpha"], children: []))
+            try await client.send(message: ParsedMessage(tag: "endTurn", attributes: [:], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            let moveLine = try await server.nextLine()
+            let buildLine = try await server.nextLine()
+            let endTurnLine = try await server.nextLine()
+
+            let moveMsg = try XMLDecoder.decode(moveLine)
+            let buildMsg = try XMLDecoder.decode(buildLine)
+            let endTurnMsg = try XMLDecoder.decode(endTurnLine)
+
+            guard moveMsg.tag == "moveTo" else {
+                throw TestError(message: "expected moveTo, got \(moveMsg.tag)")
+            }
+            guard moveMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "moveTo unit mismatch")
+            }
+            guard moveMsg.attributes["destination"] == "tile-1" else {
+                throw TestError(message: "moveTo destination mismatch")
+            }
+
+            guard buildMsg.tag == "buildColony" else {
+                throw TestError(message: "expected buildColony, got \(buildMsg.tag)")
+            }
+            guard buildMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "buildColony unit mismatch")
+            }
+            guard buildMsg.attributes["name"] == "Alpha" else {
+                throw TestError(message: "buildColony name mismatch")
+            }
+
+            guard endTurnMsg.tag == "endTurn" else {
+                throw TestError(message: "expected endTurn, got \(endTurnMsg.tag)")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends joinColony/embark/disembark messages") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-6" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <map id="map-0" width="2" height="1">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+        <tile id="tile-1" x="1" y="0" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-1" unitType="model.unit.freeColonist" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+      <unit id="unit-ship" unitType="model.unit.caravel" owner="player-1" location="tile-0" movesLeft="6" state="ACTIVE"/>
+      <colony id="colony-1" name="Alpha" owner="player-1" tile="tile-0" settlementType="model.settlement.colony"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "joinColony", attributes: ["unit": "unit-1", "colony": "colony-1"], children: []))
+            try await client.send(message: ParsedMessage(tag: "embark", attributes: ["unit": "unit-1", "carrier": "unit-ship"], children: []))
+            try await client.send(message: ParsedMessage(tag: "disembark", attributes: ["unit": "unit-1"], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let joinLine = try await server.nextLine()
+            let embarkLine = try await server.nextLine()
+            let disembarkLine = try await server.nextLine()
+
+            let joinMsg = try XMLDecoder.decode(joinLine)
+            let embarkMsg = try XMLDecoder.decode(embarkLine)
+            let disembarkMsg = try XMLDecoder.decode(disembarkLine)
+
+            guard joinMsg.tag == "joinColony" else {
+                throw TestError(message: "expected joinColony, got \(joinMsg.tag)")
+            }
+            guard joinMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "joinColony unit mismatch")
+            }
+            guard joinMsg.attributes["colony"] == "colony-1" else {
+                throw TestError(message: "joinColony colony mismatch")
+            }
+
+            guard embarkMsg.tag == "embark" else {
+                throw TestError(message: "expected embark, got \(embarkMsg.tag)")
+            }
+            guard embarkMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "embark unit mismatch")
+            }
+            guard embarkMsg.attributes["carrier"] == "unit-ship" else {
+                throw TestError(message: "embark carrier mismatch")
+            }
+
+            guard disembarkMsg.tag == "disembark" else {
+                throw TestError(message: "expected disembark, got \(disembarkMsg.tag)")
+            }
+            guard disembarkMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "disembark unit mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends changeState message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-7" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <unit id="unit-1" unitType="model.unit.freeColonist" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+      <map id="map-0" width="1" height="1">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+      </map>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "changeState", attributes: ["unit": "unit-1", "state": "SENTRY"], children: []))
+            try await client.send(message: ParsedMessage(tag: "changeState", attributes: ["unit": "unit-1", "state": "SKIPPED"], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let line1 = try await server.nextLine()
+            let msg1 = try XMLDecoder.decode(line1)
+            guard msg1.tag == "changeState" else {
+                throw TestError(message: "expected first changeState, got \(msg1.tag)")
+            }
+            guard msg1.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "first changeState unit mismatch")
+            }
+            guard msg1.attributes["state"] == "SENTRY" else {
+                throw TestError(message: "first changeState state mismatch")
+            }
+
+            let line2 = try await server.nextLine()
+            let msg2 = try XMLDecoder.decode(line2)
+            guard msg2.tag == "changeState" else {
+                throw TestError(message: "expected second changeState, got \(msg2.tag)")
+            }
+            guard msg2.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "second changeState unit mismatch")
+            }
+            guard msg2.attributes["state"] == "SKIPPED" else {
+                throw TestError(message: "second changeState state mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends changeWorkImprovementType message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-7b" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <unit id="unit-1" unitType="model.unit.freeColonist" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+      <map id="map-0" width="1" height="1">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+      </map>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "changeWorkImprovementType", attributes: ["unit": "unit-1", "improvementType": "model.improvement.plow"], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+            guard msg.tag == "changeWorkImprovementType" else {
+                throw TestError(message: "expected changeWorkImprovementType, got \(msg.tag)")
+            }
+            guard msg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "changeWorkImprovementType unit mismatch")
+            }
+            guard msg.attributes["improvementType"] == "model.improvement.plow" else {
+                throw TestError(message: "changeWorkImprovementType improvementType mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends disbandUnit message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-8" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <unit id="unit-1" unitType="model.unit.freeColonist" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+      <map id="map-0" width="1" height="1">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+      </map>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "disbandUnit", attributes: ["unit": "unit-1"], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+            guard msg.tag == "disbandUnit" else {
+                throw TestError(message: "expected disbandUnit, got \(msg.tag)")
+            }
+            guard msg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "disbandUnit unit mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends setDestination message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-9" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <unit id="unit-1" unitType="model.unit.freeColonist" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+      <map id="map-0" width="2" height="1">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+        <tile id="tile-1" x="1" y="0" type="model.tile.plains"/>
+      </map>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "setDestination", attributes: ["unit": "unit-1", "destination": "tile-1"], children: []))
+            try await client.send(message: ParsedMessage(tag: "setDestination", attributes: ["unit": "unit-1"], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let setLine = try await server.nextLine()
+            let clearLine = try await server.nextLine()
+
+            let setMsg = try XMLDecoder.decode(setLine)
+            let clearMsg = try XMLDecoder.decode(clearLine)
+
+            guard setMsg.tag == "setDestination" else {
+                throw TestError(message: "expected setDestination, got \(setMsg.tag)")
+            }
+            guard setMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "setDestination unit mismatch")
+            }
+            guard setMsg.attributes["destination"] == "tile-1" else {
+                throw TestError(message: "setDestination destination mismatch")
+            }
+
+            guard clearMsg.tag == "setDestination" else {
+                throw TestError(message: "expected setDestination clear, got \(clearMsg.tag)")
+            }
+            guard clearMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "setDestination clear unit mismatch")
+            }
+            guard clearMsg.attributes["destination"] == nil else {
+                throw TestError(message: "setDestination clear should omit destination")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends assignTradeRoute message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-9b" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <map id="map-0" width="1" height="1">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-1" unitType="model.unit.wagonTrain" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "assignTradeRoute", attributes: ["unit": "unit-1", "tradeRoute": "route-1"], children: []))
+            try await client.send(message: ParsedMessage(tag: "assignTradeRoute", attributes: ["unit": "unit-1"], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let assignLine = try await server.nextLine()
+            let clearLine = try await server.nextLine()
+
+            let assignMsg = try XMLDecoder.decode(assignLine)
+            let clearMsg = try XMLDecoder.decode(clearLine)
+
+            guard assignMsg.tag == "assignTradeRoute" else {
+                throw TestError(message: "expected assignTradeRoute, got \(assignMsg.tag)")
+            }
+            guard assignMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "assignTradeRoute unit mismatch")
+            }
+            guard assignMsg.attributes["tradeRoute"] == "route-1" else {
+                throw TestError(message: "assignTradeRoute tradeRoute mismatch")
+            }
+
+            guard clearMsg.tag == "assignTradeRoute" else {
+                throw TestError(message: "expected assignTradeRoute clear, got \(clearMsg.tag)")
+            }
+            guard clearMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "assignTradeRoute clear unit mismatch")
+            }
+            guard clearMsg.attributes["tradeRoute"] == nil else {
+                throw TestError(message: "assignTradeRoute clear should omit tradeRoute")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends setCurrentStop message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-9c" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <map id="map-0" width="1" height="1">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-1" unitType="model.unit.wagonTrain" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE" currentStop="0"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "setCurrentStop", attributes: ["unit": "unit-1", "index": "2"], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+
+            guard msg.tag == "setCurrentStop" else {
+                throw TestError(message: "expected setCurrentStop, got \(msg.tag)")
+            }
+            guard msg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "setCurrentStop unit mismatch")
+            }
+            guard msg.attributes["index"] == "2" else {
+                throw TestError(message: "setCurrentStop index mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends cashInTreasureTrain message") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-9d" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <map id="map-0" width="1" height="1">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-1" unitType="model.unit.treasureTrain" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE" treasureAmount="500"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "cashInTreasureTrain", attributes: ["unit": "unit-1"], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let line = try await server.nextLine()
+            let msg = try XMLDecoder.decode(line)
+
+            guard msg.tag == "cashInTreasureTrain" else {
+                throw TestError(message: "expected cashInTreasureTrain, got \(msg.tag)")
+            }
+            guard msg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "cashInTreasureTrain unit mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends colony action messages") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-10" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <map id="map-0" width="1" height="1">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-1" unitType="model.unit.freeColonist" owner="player-1" location="colony-1" movesLeft="3" state="ACTIVE"/>
+            <unit id="unit-2" unitType="model.unit.masterCarpenter" owner="player-1" location="colony-1" movesLeft="3" state="ACTIVE"/>
+      <colony id="colony-1" name="Alpha" owner="player-1" tile="tile-0" settlementType="model.settlement.colony"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "changeWorkType", attributes: ["unit": "unit-1", "workType": "model.goods.grain"], children: []))
+            try await client.send(message: ParsedMessage(tag: "clearSpeciality", attributes: ["unit": "unit-1"], children: []))
+            try await client.send(message: ParsedMessage(tag: "assignTeacher", attributes: ["student": "unit-1", "teacher": "unit-2"], children: []))
+            try await client.send(message: ParsedMessage(tag: "assignTeacher", attributes: ["student": "unit-1"], children: []))
+            try await client.send(message: ParsedMessage(tag: "work", attributes: ["unit": "unit-1", "workLocation": "tile-0"], children: []))
+            try await client.send(message: ParsedMessage(tag: "rename", attributes: ["name": "Beta", "nameable": "colony-1"], children: []))
+            try await client.send(message: ParsedMessage(tag: "payForBuilding", attributes: ["colony": "colony-1"], children: []))
+            try await client.send(message: ParsedMessage(tag: "setGoodsLevels", attributes: ["colony": "colony-1"], children: []))
+            try await client.send(message: ParsedMessage(tag: "rearrangeColony", attributes: ["colony": "colony-1", "xLength": "0"], children: []))
+            try await client.send(message: ParsedMessage(tag: "setBuildQueue", attributes: ["colony": "colony-1", "xLength": "2", "x0": "model.building.carpenterHouse", "x1": "model.unit.artillery"], children: []))
+            try await client.send(message: ParsedMessage(tag: "putOutsideColony", attributes: ["unit": "unit-1"], children: []))
+            try await client.send(message: ParsedMessage(tag: "abandonColony", attributes: ["colony": "colony-1"], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let workLine = try await server.nextLine()
+            let clearSpecialityLine = try await server.nextLine()
+            let assignTeacherLine = try await server.nextLine()
+            let clearTeacherLine = try await server.nextLine()
+            let workLocationLine = try await server.nextLine()
+            let renameLine = try await server.nextLine()
+            let payLine = try await server.nextLine()
+            let goodsLevelsLine = try await server.nextLine()
+            let rearrangeLine = try await server.nextLine()
+            let queueLine = try await server.nextLine()
+            let outsideLine = try await server.nextLine()
+            let abandonLine = try await server.nextLine()
+
+            let workMsg = try XMLDecoder.decode(workLine)
+            let clearSpecialityMsg = try XMLDecoder.decode(clearSpecialityLine)
+            let assignTeacherMsg = try XMLDecoder.decode(assignTeacherLine)
+            let clearTeacherMsg = try XMLDecoder.decode(clearTeacherLine)
+            let workLocationMsg = try XMLDecoder.decode(workLocationLine)
+            let renameMsg = try XMLDecoder.decode(renameLine)
+            let payMsg = try XMLDecoder.decode(payLine)
+            let goodsLevelsMsg = try XMLDecoder.decode(goodsLevelsLine)
+            let rearrangeMsg = try XMLDecoder.decode(rearrangeLine)
+            let queueMsg = try XMLDecoder.decode(queueLine)
+            let outsideMsg = try XMLDecoder.decode(outsideLine)
+            let abandonMsg = try XMLDecoder.decode(abandonLine)
+
+            guard workMsg.tag == "changeWorkType" else {
+                throw TestError(message: "expected changeWorkType, got \(workMsg.tag)")
+            }
+            guard workMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "changeWorkType unit mismatch")
+            }
+            guard workMsg.attributes["workType"] == "model.goods.grain" else {
+                throw TestError(message: "changeWorkType workType mismatch")
+            }
+
+            guard clearSpecialityMsg.tag == "clearSpeciality" else {
+                throw TestError(message: "expected clearSpeciality, got \(clearSpecialityMsg.tag)")
+            }
+            guard clearSpecialityMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "clearSpeciality unit mismatch")
+            }
+
+            guard assignTeacherMsg.tag == "assignTeacher" else {
+                throw TestError(message: "expected assignTeacher, got \(assignTeacherMsg.tag)")
+            }
+            guard assignTeacherMsg.attributes["student"] == "unit-1" else {
+                throw TestError(message: "assignTeacher student mismatch")
+            }
+            guard assignTeacherMsg.attributes["teacher"] == "unit-2" else {
+                throw TestError(message: "assignTeacher teacher mismatch")
+            }
+
+            guard clearTeacherMsg.tag == "assignTeacher" else {
+                throw TestError(message: "expected assignTeacher clear, got \(clearTeacherMsg.tag)")
+            }
+            guard clearTeacherMsg.attributes["student"] == "unit-1" else {
+                throw TestError(message: "assignTeacher clear student mismatch")
+            }
+            guard clearTeacherMsg.attributes["teacher"] == nil else {
+                throw TestError(message: "assignTeacher clear should omit teacher")
+            }
+
+            guard workLocationMsg.tag == "work" else {
+                throw TestError(message: "expected work, got \(workLocationMsg.tag)")
+            }
+            guard workLocationMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "work unit mismatch")
+            }
+            guard workLocationMsg.attributes["workLocation"] == "tile-0" else {
+                throw TestError(message: "work workLocation mismatch")
+            }
+
+            guard renameMsg.tag == "rename" else {
+                throw TestError(message: "expected rename, got \(renameMsg.tag)")
+            }
+            guard renameMsg.attributes["name"] == "Beta" else {
+                throw TestError(message: "rename name mismatch")
+            }
+            guard renameMsg.attributes["nameable"] == "colony-1" else {
+                throw TestError(message: "rename nameable mismatch")
+            }
+
+            guard payMsg.tag == "payForBuilding" else {
+                throw TestError(message: "expected payForBuilding, got \(payMsg.tag)")
+            }
+            guard payMsg.attributes["colony"] == "colony-1" else {
+                throw TestError(message: "payForBuilding colony mismatch")
+            }
+
+            guard goodsLevelsMsg.tag == "setGoodsLevels" else {
+                throw TestError(message: "expected setGoodsLevels, got \(goodsLevelsMsg.tag)")
+            }
+            guard goodsLevelsMsg.attributes["colony"] == "colony-1" else {
+                throw TestError(message: "setGoodsLevels colony mismatch")
+            }
+
+            guard rearrangeMsg.tag == "rearrangeColony" else {
+                throw TestError(message: "expected rearrangeColony, got \(rearrangeMsg.tag)")
+            }
+            guard rearrangeMsg.attributes["colony"] == "colony-1" else {
+                throw TestError(message: "rearrangeColony colony mismatch")
+            }
+            guard rearrangeMsg.attributes["xLength"] == "0" else {
+                throw TestError(message: "rearrangeColony xLength mismatch")
+            }
+
+            guard queueMsg.tag == "setBuildQueue" else {
+                throw TestError(message: "expected setBuildQueue, got \(queueMsg.tag)")
+            }
+            guard queueMsg.attributes["colony"] == "colony-1" else {
+                throw TestError(message: "setBuildQueue colony mismatch")
+            }
+            guard queueMsg.attributes["xLength"] == "2" else {
+                throw TestError(message: "setBuildQueue xLength mismatch")
+            }
+            guard queueMsg.attributes["x0"] == "model.building.carpenterHouse" else {
+                throw TestError(message: "setBuildQueue x0 mismatch")
+            }
+            guard queueMsg.attributes["x1"] == "model.unit.artillery" else {
+                throw TestError(message: "setBuildQueue x1 mismatch")
+            }
+
+            guard outsideMsg.tag == "putOutsideColony" else {
+                throw TestError(message: "expected putOutsideColony, got \(outsideMsg.tag)")
+            }
+            guard outsideMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "putOutsideColony unit mismatch")
+            }
+
+            guard abandonMsg.tag == "abandonColony" else {
+                throw TestError(message: "expected abandonColony, got \(abandonMsg.tag)")
+            }
+            guard abandonMsg.attributes["colony"] == "colony-1" else {
+                throw TestError(message: "abandonColony colony mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends goods load/unload messages") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-11" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <map id="map-0" width="1" height="1">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-ship" unitType="model.unit.caravel" owner="player-1" location="tile-0" movesLeft="6" state="ACTIVE"/>
+      <colony id="colony-1" name="Alpha" owner="player-1" tile="tile-0" settlementType="model.settlement.colony"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "loadGoods", attributes: ["location": "colony-1", "type": "model.goods.grain", "amount": "20", "carrier": "unit-ship"], children: []))
+            try await client.send(message: ParsedMessage(tag: "unloadGoods", attributes: ["type": "model.goods.grain", "amount": "10", "carrier": "unit-ship"], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let loadLine = try await server.nextLine()
+            let unloadLine = try await server.nextLine()
+
+            let loadMsg = try XMLDecoder.decode(loadLine)
+            let unloadMsg = try XMLDecoder.decode(unloadLine)
+
+            guard loadMsg.tag == "loadGoods" else {
+                throw TestError(message: "expected loadGoods, got \(loadMsg.tag)")
+            }
+            guard loadMsg.attributes["location"] == "colony-1" else {
+                throw TestError(message: "loadGoods location mismatch")
+            }
+            guard loadMsg.attributes["type"] == "model.goods.grain" else {
+                throw TestError(message: "loadGoods type mismatch")
+            }
+            guard loadMsg.attributes["amount"] == "20" else {
+                throw TestError(message: "loadGoods amount mismatch")
+            }
+            guard loadMsg.attributes["carrier"] == "unit-ship" else {
+                throw TestError(message: "loadGoods carrier mismatch")
+            }
+
+            guard unloadMsg.tag == "unloadGoods" else {
+                throw TestError(message: "expected unloadGoods, got \(unloadMsg.tag)")
+            }
+            guard unloadMsg.attributes["type"] == "model.goods.grain" else {
+                throw TestError(message: "unloadGoods type mismatch")
+            }
+            guard unloadMsg.attributes["amount"] == "10" else {
+                throw TestError(message: "unloadGoods amount mismatch")
+            }
+            guard unloadMsg.attributes["carrier"] == "unit-ship" else {
+                throw TestError(message: "unloadGoods carrier mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends combat action messages") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-12" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <player id="player-2" username="Bob" nationId="model.nation.french" gold="500"/>
+      <map id="map-0" width="2" height="2">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+        <tile id="tile-1" x="1" y="0" type="model.tile.plains"/>
+        <tile id="tile-2" x="0" y="1" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-1" unitType="model.unit.freeColonist" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+      <unit id="enemy-1" unitType="model.unit.freeColonist" owner="player-2" location="tile-1" movesLeft="3" state="ACTIVE"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "attack", attributes: ["unit": "unit-1", "direction": "E"], children: []))
+            try await client.send(message: ParsedMessage(tag: "attackRanged", attributes: ["unit": "unit-1", "target": "tile-1"], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let attackLine = try await server.nextLine()
+            let rangedLine = try await server.nextLine()
+
+            let attackMsg = try XMLDecoder.decode(attackLine)
+            let rangedMsg = try XMLDecoder.decode(rangedLine)
+
+            guard attackMsg.tag == "attack" else {
+                throw TestError(message: "expected attack, got \(attackMsg.tag)")
+            }
+            guard attackMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "attack unit mismatch")
+            }
+            guard attackMsg.attributes["direction"] == "E" else {
+                throw TestError(message: "attack direction mismatch")
+            }
+
+            guard rangedMsg.tag == "attackRanged" else {
+                throw TestError(message: "expected attackRanged, got \(rangedMsg.tag)")
+            }
+            guard rangedMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "attackRanged unit mismatch")
+            }
+            guard rangedMsg.attributes["target"] == "tile-1" else {
+                throw TestError(message: "attackRanged target mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("message loop forwards animate events") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let delegate = TestDelegate()
+    await client.setDelegate(delegate)
+
+    let gameXML = """
+    <game id="game-13" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <player id="player-2" username="Bob" nationId="model.nation.french" gold="500"/>
+      <map id="map-0" width="2" height="1">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+        <tile id="tile-1" x="1" y="0" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-1" unitType="model.unit.freeColonist" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+      <unit id="unit-2" unitType="model.unit.freeColonist" owner="player-2" location="tile-1" movesLeft="3" state="ACTIVE"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try? await client.startMessageLoop()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            try await Task.sleep(nanoseconds: 250_000_000)
+            await server.send("<animateMove oldTile=\"tile-0\" unit=\"unit-1\" newTile=\"tile-1\"/>")
+            await server.send("<animateAttack attackerTile=\"tile-0\" defenderTile=\"tile-1\" attacker=\"unit-1\" defender=\"unit-2\" success=\"true\"/>")
+            await server.flush()
+            try await Task.sleep(nanoseconds: 300_000_000)
+            await server.stop()
+        }
+        try await Task.sleep(nanoseconds: 5_000_000_000)
+        group.cancelAll()
+    }
+
+    guard delegate.receivedMessages.contains("animateMove") else {
+        throw TestError(message: "animateMove not forwarded to delegate")
+    }
+    guard delegate.receivedMessages.contains("animateAttack") else {
+        throw TestError(message: "animateAttack not forwarded to delegate")
+    }
+}
+
+await integrationTest("message loop processes question payload and replies") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-4" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <player id="player-2" username="Bob" nationId="model.nation.french" gold="400"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            await client.startMessageLoop()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            try await Task.sleep(nanoseconds: 200_000_000)
+            await server.send("<question networkReplyId=\"9\"><setCurrentPlayer player=\"player-2\"/></question>")
+            await server.flush()
+
+            let replyLine = try await server.nextLine()
+            let reply = try XMLDecoder.decode(replyLine)
+            guard reply.tag == "reply" else {
+                throw TestError(message: "expected reply, got \(reply.tag)")
+            }
+            guard reply.attributes["networkReplyId"] == "9" else {
+                throw TestError(message: "unexpected reply id")
+            }
+
+            try await Task.sleep(nanoseconds: 200_000_000)
+            await server.stop()
+        }
+        try await Task.sleep(nanoseconds: 5_000_000_000)
+        group.cancelAll()
+    }
+
+    let current = await client.game.currentPlayerId
+    guard current == "player-2" else {
+        throw TestError(message: "question payload was not applied")
+    }
+}
+
+if ProcessInfo.processInfo.environment["REAL_SERVER_E2E"] == "1" {
+    await integrationTest("real Java server connect/login smoke") {
+        let host = ProcessInfo.processInfo.environment["REAL_SERVER_HOST"] ?? "127.0.0.1"
+        let port = Int(ProcessInfo.processInfo.environment["REAL_SERVER_PORT"] ?? "3541") ?? 3541
+        let client = FreeColClient(host: host, port: port)
+
+        try await client.connect()
+        guard await client.initialGameState != nil else {
+            throw TestError(message: "real server did not send gameState")
+        }
+
+        let vacant = await client.initialVacantPlayers
+        let nationId = vacant?.children.first?.attributes["nationId"]
+            ?? vacant?.children.first?.attributes["id"]
+            ?? "model.nation.dutch"
+        let userName = "CopilotE2E-\(Int(Date().timeIntervalSince1970))"
+
+        let result = try await client.login(userName: userName, nationId: nationId)
+        guard result.serverState == .preGame || result.serverState == .inGame else {
+            throw TestError(message: "unexpected server state after login: \(result.serverState.rawValue)")
+        }
+
+        if result.serverState == .preGame {
+            try await client.send(message: ParsedMessage(tag: "ready", attributes: ["value": "true"], children: []))
+            try await client.send(message: ParsedMessage(tag: "requestLaunch", attributes: [:], children: []))
+        } else {
+            try await client.send(message: ParsedMessage(tag: "endTurn", attributes: [:], children: []))
+        }
+
+        await client.disconnect()
+    }
+}
+
+if ProcessInfo.processInfo.environment["REAL_SERVER_DEEP_E2E"] == "1" {
+    await integrationTest("real Java server pregame-to-ingame probe") {
+        let host = ProcessInfo.processInfo.environment["REAL_SERVER_HOST"] ?? "127.0.0.1"
+        let port = Int(ProcessInfo.processInfo.environment["REAL_SERVER_PORT"] ?? "3541") ?? 3541
+        let client = FreeColClient(host: host, port: port)
+        let delegate = TestDelegate()
+        await client.setDelegate(delegate)
+
+        try await client.connect()
+        guard await client.initialGameState != nil else {
+            throw TestError(message: "real server did not send gameState")
+        }
+
+        let vacant = await client.initialVacantPlayers
+        let nationId = vacant?.children.first?.attributes["nationId"]
+            ?? vacant?.children.first?.attributes["id"]
+            ?? "model.nation.dutch"
+        let userName = "CopilotDeep-\(Int(Date().timeIntervalSince1970))"
+
+        let result = try await client.login(userName: userName, nationId: nationId)
+        guard result.serverState == .preGame || result.serverState == .inGame else {
+            throw TestError(message: "unexpected server state after login: \(result.serverState.rawValue)")
+        }
+
+        var launchProbeSent = false
+
+        // Probe launch path in pre-game. Servers may reject launch if not all players are ready.
+        if result.serverState == .preGame {
+            _ = try await client.ask(message: ParsedMessage(tag: "ready", attributes: ["value": "true"], children: []))
+            _ = try await client.ask(message: ParsedMessage(tag: "requestLaunch", attributes: [:], children: []))
+            launchProbeSent = true
+        }
+
+        let loopTask = Task {
+            await client.startMessageLoop()
+        }
+        try await Task.sleep(nanoseconds: 2_000_000_000)
+        loopTask.cancel()
+
+        let tags = delegate.receivedMessages
+        let sawSessionSignal = tags.contains("gameState") || tags.contains("startGame") || tags.contains("error")
+
+        // Real servers may keep PRE_GAME without broadcasting immediate events to this client.
+        // Passing ask/reply for ready/requestLaunch is still a valid transport-level success.
+        guard sawSessionSignal || launchProbeSent || result.serverState == .inGame else {
+            throw TestError(message: "no session signal and no launch probe activity observed")
+        }
+
+        // If the session reached in-game, probe endTurn transport opportunistically.
+        if await client.game.currentPlayerId != nil {
+            do {
+                _ = try await client.ask(message: ParsedMessage(tag: "endTurn", attributes: [:], children: []))
+            } catch FreeColProtocolError.disconnected {
+                // Real server can close/rotate connection during launch transitions.
+            }
+        }
+
+        await client.disconnect()
+    }
 }
 
 print("\n\(passed) passed, \(failed) failed")

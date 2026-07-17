@@ -71,7 +71,7 @@ public actor MockServer {
         try await waitForConnection()
         FreeColLogger.shared.info("MockServer starting handshake")
         send("<gameState state=\"PRE_GAME\"/>")
-        send("<vacantPlayers/>")
+        send("<vacantPlayers><player id=\"nation-dutch\" nationId=\"model.nation.dutch\" nationName=\"Dutch\"/><player id=\"nation-english\" nationId=\"model.nation.english\" nationName=\"English\"/></vacantPlayers>")
         flush()
 
         let ql = try await nextLine()

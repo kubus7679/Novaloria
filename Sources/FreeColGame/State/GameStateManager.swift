@@ -11,7 +11,12 @@ public final class GameStateManager: @unchecked Sendable {
 
     /// Reset with a new game (e.g. after loading a save or reconnecting).
     public func reset() {
-        // Game is a reference type; reassignment is handled by callers
+        game.clear()
+    }
+
+    /// Load a full `<game>` object after login.
+    public func loadGame(_ gameParsed: ParsedMessage) throws {
+        try game.load(from: gameParsed)
     }
 
     /// Process a parsed message from the server.
@@ -20,6 +25,25 @@ public final class GameStateManager: @unchecked Sendable {
     public func process(_ parsed: ParsedMessage) throws -> Bool {
         FreeColLogger.shared.debug("GameStateManager processing <\(parsed.tag)>")
         switch parsed.tag {
+        case "question":
+            // Defensive fallback: payload should normally be handled in FreeColClient.
+            // If a wrapped question reaches the model layer, still apply its payload.
+            if let payload = parsed.children.first {
+                return try process(payload)
+            }
+            return false
+
+        case "reply":
+            // Some server flows return state deltas inside reply payloads.
+            // Apply all children so model state does not depend on transport wrapping.
+            var handledAny = false
+            for child in parsed.children {
+                if try process(child) {
+                    handledAny = true
+                }
+            }
+            return handledAny
+
         case "multiple":
             for child in parsed.children {
                 try process(child)
@@ -65,13 +89,28 @@ public final class GameStateManager: @unchecked Sendable {
             }
             return true
 
+        case "ready":
+            guard let playerId = parsed.attributes["player"] else {
+                FreeColLogger.shared.debug("ready without player attribute")
+                return false
+            }
+            let readyValue = parsed.attributes.bool("value", default: false)
+            guard var player = game.players[playerId] else {
+                FreeColLogger.shared.debug("ready for unknown player: \(playerId)")
+                return false
+            }
+            player.ready = readyValue
+            game.players[playerId] = player
+            FreeColLogger.shared.debug("Player \(playerId) ready=\(readyValue)")
+            return true
+
         case "startGame":
             FreeColLogger.shared.info("Game started!")
-            return true
+            return false
 
         case "gameState":
             FreeColLogger.shared.debug("GameState: \(parsed.attributes["state"] ?? "?")")
-            return true
+            return false
 
         default:
             FreeColLogger.shared.debug("Unhandled message: <\(parsed.tag)>")
@@ -84,11 +123,21 @@ public final class GameStateManager: @unchecked Sendable {
         // The login message's children contain the full game
         for child in loginParsed.children {
             if child.tag == "game" {
-                try game.load(from: child)
+                try loadGame(child)
                 return
             }
         }
         throw GameError.noGameInLogin
+    }
+
+    /// Load from a decoded login result, if it carries a full `<game>` payload.
+    public func loadFromLogin(_ result: LoginResult) throws {
+        guard let gameParsed = result.game else {
+            FreeColLogger.shared.info("No game data in login reply (still \(result.serverState.rawValue))")
+            return
+        }
+        FreeColLogger.shared.info("Loading game state from login reply")
+        try loadGame(gameParsed)
     }
 
     public enum GameError: Error, CustomStringConvertible {

@@ -2,17 +2,20 @@
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-BUILD_DIR="$PROJECT_DIR/.build/arm64-apple-macosx/debug"
 APP_NAME="FreeCol"
+PRODUCT_NAME="FreeColApp"
 
 echo "Building $APP_NAME..."
-swift build --package-path "$PROJECT_DIR" --target FreeColApp
+swift build --package-path "$PROJECT_DIR" --product "$PRODUCT_NAME"
 
-APP_BUNDLE="$BUILD_DIR/$APP_NAME.app"
+BIN_DIR="$(swift build --package-path "$PROJECT_DIR" --show-bin-path)"
+SOURCE_BIN="$BIN_DIR/$PRODUCT_NAME"
+
+APP_BUNDLE="$BIN_DIR/$APP_NAME.app"
 mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
 
-cp "$BUILD_DIR/FreeColApp" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
+cp "$SOURCE_BIN" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
 cat > "$APP_BUNDLE/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>

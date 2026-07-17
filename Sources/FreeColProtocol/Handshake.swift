@@ -34,6 +34,8 @@ public struct InitialMessages {
 }
 
 public enum Handshake {
+    private static let initialMessageGracePeriod: TimeInterval = 0.2
+
     public static func receiveInitialMessages(_ connection: Connection) async throws -> InitialMessages {
         FreeColLogger.shared.info("Waiting for initial messages from server...")
         var gameState: ServerState?
@@ -42,25 +44,40 @@ public enum Handshake {
         while gameState == nil {
             let line = try await connection.nextLine()
             let parsed = try XMLDecoder.decode(line)
-            FreeColLogger.shared.debug("Received initial message: <\(parsed.tag)>")
-            switch parsed.tag {
-            case "gameState":
-                guard let raw = parsed.attributes["state"],
-                      let state = ServerState(rawValue: raw) else {
-                    throw FreeColProtocolError.invalidState("Unknown game state")
-                }
-                FreeColLogger.shared.info("Server state: \(raw)")
-                gameState = state
-            case "vacantPlayers":
-                FreeColLogger.shared.info("Vacant players: \(parsed.attributes)")
-                vacantPlayers = parsed
-            default:
-                FreeColLogger.shared.debug("Ignoring unexpected initial message: <\(parsed.tag)>")
-                break
-            }
+            try applyInitialMessage(parsed, gameState: &gameState, vacantPlayers: &vacantPlayers)
+        }
+
+                if gameState == .inGame {
+                        while vacantPlayers == nil,
+                                    let line = try await connection.nextLine(timeout: initialMessageGracePeriod) {
+                                let parsed = try XMLDecoder.decode(line)
+                                try applyInitialMessage(parsed, gameState: &gameState, vacantPlayers: &vacantPlayers)
+                        }
         }
 
         return InitialMessages(gameState: gameState!, vacantPlayers: vacantPlayers)
+    }
+
+    private static func applyInitialMessage(
+        _ parsed: ParsedMessage,
+        gameState: inout ServerState?,
+        vacantPlayers: inout ParsedMessage?
+    ) throws {
+        FreeColLogger.shared.debug("Received initial message: <\(parsed.tag)>")
+        switch parsed.tag {
+        case "gameState":
+            guard let raw = parsed.attributes["state"],
+                  let state = ServerState(rawValue: raw) else {
+                throw FreeColProtocolError.invalidState("Unknown game state")
+            }
+            FreeColLogger.shared.info("Server state: \(raw)")
+            gameState = state
+        case "vacantPlayers":
+            FreeColLogger.shared.info("Vacant players: \(parsed.attributes)")
+            vacantPlayers = parsed
+        default:
+            FreeColLogger.shared.debug("Ignoring unexpected initial message: <\(parsed.tag)>")
+        }
     }
 
     public static func login(
