@@ -495,6 +495,35 @@ test("NewRegionNameMessage") {
     try assertEqual(parsed.region, "region-3")
 }
 
+test("InciteMessage") {
+    let msg = InciteMessage(
+        unit: "unit-diplomat",
+        settlement: "is-1",
+        enemy: "player-2",
+        gold: "100"
+    )
+    try assertEqual(msg.unit, "unit-diplomat")
+    try assertEqual(msg.settlement, "is-1")
+    try assertEqual(msg.enemy, "player-2")
+    try assertEqual(msg.gold, "100")
+    try assertEqual(msg.tag, "incite")
+    
+    let (attrs, _) = msg.encode()
+    try assertEqual(attrs["unit"], "unit-diplomat")
+    try assertEqual(attrs["settlement"], "is-1")
+    try assertEqual(attrs["enemy"], "player-2")
+    try assertEqual(attrs["gold"], "100")
+    
+    let parsed = try InciteMessage(
+        attributes: ["unit": "u-scout", "settlement": "is-5", "enemy": "player-1", "gold": "50"],
+        children: []
+    )
+    try assertEqual(parsed.unit, "u-scout")
+    try assertEqual(parsed.settlement, "is-5")
+    try assertEqual(parsed.enemy, "player-1")
+    try assertEqual(parsed.gold, "50")
+}
+
 // MARK: - Integration tests (require network stack)
 
 func integrationTest(_ name: String, closure: @escaping () async throws -> Void) async {
@@ -2575,6 +2604,66 @@ await integrationTest("client sends newRegionName action") {
             }
             guard regionMsg.attributes["newRegionName"] == "Pacific Zone" else {
                 throw TestError(message: "newRegionName name mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends incite action") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-incite-1" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <player id="player-2" username="Bob" nationId="model.nation.french" gold="300"/>
+      <map id="map-0" width="2" height="2">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-1" unitType="model.unit.freeColonist" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "incite",
+                attributes: [
+                    "unit": "unit-1",
+                    "settlement": "is-5",
+                    "enemy": "player-2",
+                    "gold": "200"
+                ],
+                children: []
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let inciteLine = try await server.nextLine()
+            let inciteMsg = try XMLDecoder.decode(inciteLine)
+
+            guard inciteMsg.tag == "incite" else {
+                throw TestError(message: "expected incite, got \(inciteMsg.tag)")
+            }
+            guard inciteMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "incite unit mismatch")
+            }
+            guard inciteMsg.attributes["settlement"] == "is-5" else {
+                throw TestError(message: "incite settlement mismatch")
+            }
+            guard inciteMsg.attributes["enemy"] == "player-2" else {
+                throw TestError(message: "incite enemy mismatch")
+            }
+            guard inciteMsg.attributes["gold"] == "200" else {
+                throw TestError(message: "incite gold mismatch")
             }
         }
         while try await group.next() != nil {}

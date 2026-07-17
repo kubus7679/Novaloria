@@ -2215,6 +2215,55 @@ final class GameState {
         return true
     }
 
+    func inciteSettlement(
+        settlementId: String,
+        enemyPlayerId: String,
+        gold: Int
+    ) {
+        guard canInciteSelectedUnit,
+              let unitId = selectedUnitId,
+              let game = cachedGame else {
+            errorMessage = "Settlement kann nicht angestiftet werden."
+            return
+        }
+        guard !settlementId.isEmpty && !enemyPlayerId.isEmpty else {
+            errorMessage = "Settlement oder Feind ID fehlt."
+            return
+        }
+        errorMessage = nil
+
+        Task {
+            do {
+                let msg = ParsedMessage(
+                    tag: "incite",
+                    attributes: [
+                        "unit": unitId,
+                        "settlement": settlementId,
+                        "enemy": enemyPlayerId,
+                        "gold": String(gold),
+                    ],
+                    children: []
+                )
+                try await client?.send(message: msg)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    var canInciteSelectedUnit: Bool {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let unitId = selectedUnitId,
+              let unit = game.units[unitId],
+              let localPlayerId = resolveLocalPlayerId(),
+              unit.owner == localPlayerId else {
+            return false
+        }
+        return true
+    }
+
     func canAttackSelectedUnitMelee(onTile targetTileId: String) -> Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,
