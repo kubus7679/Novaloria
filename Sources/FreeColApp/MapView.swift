@@ -236,11 +236,11 @@ struct MapView: View {
                             // --- Settlement ---
                             if let settlementInfo = tile.settlement {
                                 let kind = settlementKind(for: settlementInfo, in: game)
-                                let settlementH: Double = tileH * 0.8
-                                let settlementW: Double = tileW * 0.55
+                                let settlementH: Double = tileH * 0.65
+                                let settlementW: Double = tileW * 0.42
                                 let settlementRect = CGRect(
                                     x: origin.x - settlementW / 2,
-                                    y: origin.y - settlementH * 0.75,
+                                    y: origin.y - settlementH * 0.68,
                                     width: settlementW,
                                     height: settlementH
                                 )
@@ -261,7 +261,7 @@ struct MapView: View {
                             if let units = data.unitsByTile[tile.id] {
                                 let count = units.count
                                 for (i, unit) in units.enumerated() {
-                                    let r: Double = max(6, tileH * 0.18)
+                                    let r: Double = max(5, tileH * 0.14)
                                     let spacing: Double = min(r * 2.5, tileW / Double(max(count, 1)))
                                     let startX = origin.x - spacing * Double(count - 1) / 2.0
                                     let ux = startX + spacing * Double(i)
@@ -282,11 +282,11 @@ struct MapView: View {
                                     if let nsImg = TileImageCache.shared.unitImage(forUnitType: unit.unitType) {
                                         let imgSize = nsImg.size
                                         let aspect = imgSize.width > 0 ? imgSize.height / imgSize.width : 1.0
-                                        let spriteW: Double = tileW * 0.5
+                                        let spriteW: Double = tileW * 0.34
                                         let spriteH: Double = spriteW * aspect
                                         let spriteRect = CGRect(
                                             x: ux - spriteW / 2,
-                                            y: uy - spriteH * 0.9,
+                                            y: uy - spriteH * 0.82,
                                             width: spriteW,
                                             height: spriteH
                                         )
