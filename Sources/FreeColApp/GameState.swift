@@ -242,8 +242,13 @@ final class GameState {
               isLikelyCarrier(carrier, in: game) else {
             return []
         }
+        let carrierTileId = resolveUnitTileId(carrier, in: game)
         return game.units.values
-            .filter { $0.location == carrier.id && $0.owner == carrier.owner }
+            .filter {
+                $0.id != carrier.id
+                && $0.owner == carrier.owner
+                && ($0.location == carrier.id || (carrierTileId != nil && $0.location == carrierTileId))
+            }
             .sorted { $0.id < $1.id }
     }
 

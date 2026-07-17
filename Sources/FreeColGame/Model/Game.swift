@@ -58,18 +58,10 @@ public final class Game: @unchecked Sendable {
                 players[player.id] = player
                 // Units in Europe / high seas appear as direct children of <player>
                 for playerChild in child.children where playerChild.tag == "unit" {
-                    let unit = try Unit(id: playerChild.attributes["id"] ?? UUID().uuidString,
-                                        attributes: playerChild.attributes,
-                                        children: playerChild.children,
-                                        game: self)
-                    units[unit.id] = unit
+                    try loadUnitTree(playerChild)
                 }
             case "unit":
-                let unit = try Unit(id: child.attributes["id"] ?? UUID().uuidString,
-                                    attributes: child.attributes,
-                                    children: child.children,
-                                    game: self)
-                units[unit.id] = unit
+                try loadUnitTree(child)
             case "colony", "indianSettlement":
                 let colony = try Colony(id: child.attributes["id"] ?? UUID().uuidString,
                                         attributes: child.attributes,
@@ -101,11 +93,7 @@ public final class Game: @unchecked Sendable {
                                     game: self)
                 tiles[tile.id] = tile
             case "unit":
-                let unit = try Unit(id: child.attributes["id"] ?? UUID().uuidString,
-                                    attributes: child.attributes,
-                                    children: child.children,
-                                    game: self)
-                units[unit.id] = unit
+                try loadUnitTree(child)
             case "colony", "indianSettlement":
                 let colony = try Colony(id: child.attributes["id"] ?? UUID().uuidString,
                                         attributes: child.attributes,
@@ -176,6 +164,9 @@ public final class Game: @unchecked Sendable {
     public func moveUnit(_ unitId: String, to destinationTileId: String) {
         guard var unit = units[unitId] else { return }
         unit.location = destinationTileId
+        if unit.movesLeft > 0 {
+            unit.movesLeft -= 1
+        }
         if unit.destination == destinationTileId {
             unit.destination = nil
         }
@@ -396,11 +387,7 @@ public final class Game: @unchecked Sendable {
                 for tileChild in child.children {
                     switch tileChild.tag {
                     case "unit":
-                        let unit = try Unit(id: tileChild.attributes["id"] ?? UUID().uuidString,
-                                            attributes: tileChild.attributes,
-                                            children: tileChild.children,
-                                            game: self)
-                        units[unit.id] = unit
+                        try loadUnitTree(tileChild)
                     case "colony", "indianSettlement":
                         let colony = try Colony(id: tileChild.attributes["id"] ?? UUID().uuidString,
                                                 attributes: tileChild.attributes,
@@ -433,6 +420,17 @@ public final class Game: @unchecked Sendable {
             }
         }
         return ids
+    }
+
+    private func loadUnitTree(_ parsed: ParsedMessage) throws {
+        let unit = try Unit(id: parsed.attributes["id"] ?? UUID().uuidString,
+                            attributes: parsed.attributes,
+                            children: parsed.children,
+                            game: self)
+        units[unit.id] = unit
+        for child in parsed.children where child.tag == "unit" {
+            try loadUnitTree(child)
+        }
     }
 
     public enum GameError: Error, CustomStringConvertible {
