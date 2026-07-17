@@ -2354,6 +2354,50 @@ final class GameState {
         return true
     }
 
+    // MARK: Phase 44 - NativeGift
+
+    func acceptGiftFromNativeSettlement(colonyId: String) {
+        guard canAcceptNativeGift,
+              let unitId = selectedUnitId else {
+            errorMessage = "Geschenk kann nicht angenommen werden."
+            return
+        }
+        guard !colonyId.isEmpty else {
+            errorMessage = "Kolonie ID erforderlich."
+            return
+        }
+        errorMessage = nil
+
+        Task {
+            do {
+                let msg = ParsedMessage(
+                    tag: "nativeGift",
+                    attributes: [
+                        "colony": colonyId,
+                        "unit": unitId,
+                    ],
+                    children: []
+                )
+                try await client?.send(message: msg)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    var canAcceptNativeGift: Bool {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let unitId = selectedUnitId,
+              let unit = game.units[unitId],
+              let localPlayerId = resolveLocalPlayerId(),
+              unit.owner == localPlayerId else {
+            return false
+        }
+        return true
+    }
+
     func canAttackSelectedUnitMelee(onTile targetTileId: String) -> Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,

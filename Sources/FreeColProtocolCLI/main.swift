@@ -566,6 +566,27 @@ test("DemandTributeMessage") {
     try assertEqual(parsed.direction, "SE")
 }
 
+test("NativeGiftMessage") {
+    let msg = NativeGiftMessage(
+        unit: "unit-colonist",
+        colony: "colony-boston"
+    )
+    try assertEqual(msg.unit, "unit-colonist")
+    try assertEqual(msg.colony, "colony-boston")
+    try assertEqual(msg.tag, "nativeGift")
+    
+    let (attrs, _) = msg.encode()
+    try assertEqual(attrs["unit"], "unit-colonist")
+    try assertEqual(attrs["colony"], "colony-boston")
+    
+    let parsed = try NativeGiftMessage(
+        attributes: ["colony": "colony-new-york", "unit": "u-scout"],
+        children: []
+    )
+    try assertEqual(parsed.unit, "u-scout")
+    try assertEqual(parsed.colony, "colony-new-york")
+}
+
 // MARK: - Integration tests (require network stack)
 
 func integrationTest(_ name: String, closure: @escaping () async throws -> Void) async {
@@ -2809,6 +2830,57 @@ await integrationTest("client sends demandTribute action") {
             }
             guard tributeMsg.attributes["direction"] == "N" else {
                 throw TestError(message: "demandTribute direction mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends nativeGift action") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-gift-native-1" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <map id="map-0" width="2" height="2">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-colonist" unitType="model.unit.freeColonist" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "nativeGift",
+                attributes: [
+                    "colony": "colony-salem",
+                    "unit": "unit-colonist"
+                ],
+                children: []
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let giftLine = try await server.nextLine()
+            let giftMsg = try XMLDecoder.decode(giftLine)
+
+            guard giftMsg.tag == "nativeGift" else {
+                throw TestError(message: "expected nativeGift, got \(giftMsg.tag)")
+            }
+            guard giftMsg.attributes["unit"] == "unit-colonist" else {
+                throw TestError(message: "nativeGift unit mismatch")
+            }
+            guard giftMsg.attributes["colony"] == "colony-salem" else {
+                throw TestError(message: "nativeGift colony mismatch")
             }
         }
         while try await group.next() != nil {}
