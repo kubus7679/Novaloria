@@ -2398,6 +2398,50 @@ final class GameState {
         return true
     }
 
+    // MARK: Phase 45 - SpySettlement
+
+    func spyOnNativeSettlement(settlementId: String) {
+        guard canSpyOnNativeSettlement,
+              let unitId = selectedUnitId else {
+            errorMessage = "Spionage ist nicht möglich."
+            return
+        }
+        guard !settlementId.isEmpty else {
+            errorMessage = "Settlement ID erforderlich."
+            return
+        }
+        errorMessage = nil
+
+        Task {
+            do {
+                let msg = ParsedMessage(
+                    tag: "spySettlement",
+                    attributes: [
+                        "settlement": settlementId,
+                        "unit": unitId,
+                    ],
+                    children: []
+                )
+                try await client?.send(message: msg)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    var canSpyOnNativeSettlement: Bool {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let unitId = selectedUnitId,
+              let unit = game.units[unitId],
+              let localPlayerId = resolveLocalPlayerId(),
+              unit.owner == localPlayerId else {
+            return false
+        }
+        return true
+    }
+
     func canAttackSelectedUnitMelee(onTile targetTileId: String) -> Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,
