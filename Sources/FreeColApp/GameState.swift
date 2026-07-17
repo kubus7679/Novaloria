@@ -231,6 +231,32 @@ final class GameState {
         return game.units[unitId]
     }
 
+    var selectedUnitIsCarrier: Bool {
+        guard let game = cachedGame, let unit = selectedUnit else { return false }
+        return isLikelyCarrier(unit, in: game)
+    }
+
+    var selectedUnitCargoUnits: [FreeColGame.Unit] {
+        guard let game = cachedGame,
+              let carrier = selectedUnit,
+              isLikelyCarrier(carrier, in: game) else {
+            return []
+        }
+        return game.units.values
+            .filter { $0.location == carrier.id && $0.owner == carrier.owner }
+            .sorted { $0.id < $1.id }
+    }
+
+    var selectedUnitCarrier: FreeColGame.Unit? {
+        guard let game = cachedGame,
+              let unit = selectedUnit,
+              let carrierId = unit.location,
+              let carrier = game.units[carrierId] else {
+            return nil
+        }
+        return carrier
+    }
+
     var selectedColony: Colony? {
         guard let game = cachedGame,
               let tileId = selectedTileId else {

@@ -102,6 +102,9 @@ struct GameView: View {
                                 Text("\(unit.movesLeft) MP")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
+                                Text(unitLocationLabel(unit, in: game))
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
                                 Text(unit.state.rawValue)
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
@@ -267,6 +270,11 @@ struct GameView: View {
                                 Text("Moves Left: \(selected.movesLeft)")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
+                                if let carrier = state.selectedUnitCarrier {
+                                    Text("Aboard: \(carrier.unitType ?? carrier.id)")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
 
                                 Button("Set Active") {
                                     state.setSelectedUnitState(.active)
@@ -297,6 +305,46 @@ struct GameView: View {
                                 .disabled(!state.canChangeSelectedUnitState(to: .skipped))
                             }
                             .padding(.vertical, 4)
+                        }
+
+                        if state.selectedUnitIsCarrier {
+                            GroupBox("Cargo") {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    if state.selectedUnitCargoUnits.isEmpty {
+                                        Text("No units aboard.")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    } else {
+                                        ForEach(state.selectedUnitCargoUnits, id: \.id) { unit in
+                                            HStack {
+                                                Button(unit.unitType ?? unit.id) {
+                                                    state.selectUnit(unit.id, onTile: state.selectedTileId)
+                                                }
+                                                .buttonStyle(.bordered)
+                                                Spacer()
+                                                Text("\(unit.movesLeft) MP")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.secondary)
+                                                Text(unit.state.rawValue)
+                                                    .font(.caption2)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                        }
+                                        if state.canDisembarkSelectedUnit {
+                                            Button("Disembark Selected Cargo") {
+                                                state.disembarkSelectedUnit()
+                                            }
+                                            .buttonStyle(.bordered)
+                                            .frame(maxWidth: .infinity)
+                                        } else {
+                                            Text("Select a cargo unit to disembark it.")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
                         }
 
                         GroupBox("Destination") {
@@ -506,6 +554,20 @@ struct GameView: View {
             }
             .padding()
         }
+    }
+
+    private func unitLocationLabel(_ unit: FreeColGame.Unit, in game: Game) -> String {
+        guard let location = unit.location else { return "?" }
+        if let carrier = game.units[location] {
+            return "Aboard \(carrier.unitType ?? carrier.id)"
+        }
+        if game.tiles[location] != nil {
+            return location
+        }
+        if game.colonies[location] != nil {
+            return "In colony"
+        }
+        return location
     }
 
     private func colorFor(player: Player) -> Color {
