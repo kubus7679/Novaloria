@@ -104,6 +104,21 @@ public final class GameStateManager: @unchecked Sendable {
             FreeColLogger.shared.debug("Player \(playerId) ready=\(readyValue)")
             return true
 
+        case "animateMove":
+            guard let unitId = parsed.attributes["unit"],
+                  let newTile = parsed.attributes["newTile"] else {
+                FreeColLogger.shared.debug("animateMove missing unit/newTile")
+                return false
+            }
+            game.moveUnit(unitId, to: newTile)
+            FreeColLogger.shared.debug("Applied animateMove unit=\(unitId) -> \(newTile)")
+            // Return false so upper layers can still forward animation cues to the UI.
+            return false
+
+        case "animateAttack":
+            // Animation/event only; no direct model mutation required here.
+            return false
+
         case "startGame":
             FreeColLogger.shared.info("Game started!")
             return false

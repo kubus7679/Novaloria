@@ -441,6 +441,14 @@ final class GameState {
 
     func applySessionMessage(_ parsed: ParsedMessage) {
         switch parsed.tag {
+        case "question":
+            if let payload = parsed.children.first {
+                applySessionMessage(payload)
+            }
+        case "reply", "multiple":
+            for child in parsed.children {
+                applySessionMessage(child)
+            }
         case "gameState":
             guard let rawState = parsed.attributes["state"],
                   let state = ServerState(rawValue: rawState) else {
