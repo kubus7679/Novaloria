@@ -608,6 +608,27 @@ test("SpySettlementMessage") {
     try assertEqual(parsed.settlement, "is-native-5")
 }
 
+test("ScoutIndianSettlementMessage") {
+    let msg = ScoutIndianSettlementMessage(
+        unit: "unit-scout",
+        direction: "NE"
+    )
+    try assertEqual(msg.unit, "unit-scout")
+    try assertEqual(msg.direction, "NE")
+    try assertEqual(msg.tag, "scoutIndianSettlement")
+    
+    let (attrs, _) = msg.encode()
+    try assertEqual(attrs["unit"], "unit-scout")
+    try assertEqual(attrs["direction"], "NE")
+    
+    let parsed = try ScoutIndianSettlementMessage(
+        attributes: ["direction": "SW", "unit": "u-explorer"],
+        children: []
+    )
+    try assertEqual(parsed.unit, "u-explorer")
+    try assertEqual(parsed.direction, "SW")
+}
+
 // MARK: - Integration tests (require network stack)
 
 func integrationTest(_ name: String, closure: @escaping () async throws -> Void) async {
@@ -2953,6 +2974,58 @@ await integrationTest("client sends spySettlement action") {
             }
             guard spyMsg.attributes["settlement"] == "is-mohawk-1" else {
                 throw TestError(message: "spySettlement settlement mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends scoutIndianSettlement action") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-scout-1" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <map id="map-0" width="3" height="3">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+        <tile id="tile-1" x="1" y="0" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-scout" unitType="model.unit.scout" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "scoutIndianSettlement",
+                attributes: [
+                    "direction": "E",
+                    "unit": "unit-scout"
+                ],
+                children: []
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let scoutLine = try await server.nextLine()
+            let scoutMsg = try XMLDecoder.decode(scoutLine)
+
+            guard scoutMsg.tag == "scoutIndianSettlement" else {
+                throw TestError(message: "expected scoutIndianSettlement, got \(scoutMsg.tag)")
+            }
+            guard scoutMsg.attributes["unit"] == "unit-scout" else {
+                throw TestError(message: "scoutIndianSettlement unit mismatch")
+            }
+            guard scoutMsg.attributes["direction"] == "E" else {
+                throw TestError(message: "scoutIndianSettlement direction mismatch")
             }
         }
         while try await group.next() != nil {}

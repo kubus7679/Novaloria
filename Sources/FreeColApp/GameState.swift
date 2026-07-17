@@ -2442,6 +2442,52 @@ final class GameState {
         return true
     }
 
+    // MARK: Phase 46 - ScoutIndianSettlement
+
+    func scoutIndianSettlement(direction: String) {
+        guard canScoutIndianSettlement,
+              let unitId = selectedUnitId else {
+            errorMessage = "Erkundung ist nicht möglich."
+            return
+        }
+        guard isValidDirection(direction) else {
+            errorMessage = "Ungültige Richtung."
+            return
+        }
+        errorMessage = nil
+
+        Task {
+            do {
+                let msg = ParsedMessage(
+                    tag: "scoutIndianSettlement",
+                    attributes: [
+                        "direction": direction,
+                        "unit": unitId,
+                    ],
+                    children: []
+                )
+                try await client?.send(message: msg)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    var canScoutIndianSettlement: Bool {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let unitId = selectedUnitId,
+              let unit = game.units[unitId],
+              let localPlayerId = resolveLocalPlayerId(),
+              unit.owner == localPlayerId,
+              unit.movesLeft > 0,
+              unit.state == .active else {
+            return false
+        }
+        return true
+    }
+
     func canAttackSelectedUnitMelee(onTile targetTileId: String) -> Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,
