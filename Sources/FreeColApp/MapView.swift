@@ -1,5 +1,6 @@
 import SwiftUI
 import FreeColGame
+import AppKit
 
 private let baseTileW: Double = 64
 private let baseTileH: Double = 32
@@ -39,6 +40,38 @@ private func hitTest(location: CGPoint, tiles: [Tile], tileW: Double, tileH: Dou
         }
     }
     return bestTile
+}
+
+private struct MapMouseCaptureView: NSViewRepresentable {
+    var onLeftClick: (CGPoint) -> Void
+    var onRightClick: (CGPoint) -> Void
+
+    func makeNSView(context: Context) -> ClickCaptureNSView {
+        let view = ClickCaptureNSView()
+        view.onLeftClick = onLeftClick
+        view.onRightClick = onRightClick
+        return view
+    }
+
+    func updateNSView(_ nsView: ClickCaptureNSView, context: Context) {
+        nsView.onLeftClick = onLeftClick
+        nsView.onRightClick = onRightClick
+    }
+}
+
+private final class ClickCaptureNSView: NSView {
+    var onLeftClick: ((CGPoint) -> Void)?
+    var onRightClick: ((CGPoint) -> Void)?
+
+    override var isFlipped: Bool { true }
+
+    override func mouseDown(with event: NSEvent) {
+        onLeftClick?(convert(event.locationInWindow, from: nil))
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        onRightClick?(convert(event.locationInWindow, from: nil))
+    }
 }
 
 private let tileColors: [String: Color] = [
@@ -340,11 +373,15 @@ struct MapView: View {
                     }
                     .frame(width: data.canvasSize.width, height: data.canvasSize.height)
                     .background(Color(white: 0.08))
-                    .gesture(
-                        SpatialTapGesture()
-                            .onEnded { value in
-                                handleTap(at: value.location, tiles: data.tiles, game: game)
+                    .overlay(
+                        MapMouseCaptureView(
+                            onLeftClick: { location in
+                                handleLeftClick(at: location, tiles: data.tiles, game: game)
+                            },
+                            onRightClick: { location in
+                                handleRightClick(at: location, tiles: data.tiles, game: game)
                             }
+                        )
                     )
                 }
             }
@@ -405,50 +442,38 @@ struct MapView: View {
         return .colony(size: 1)
     }
 
-    private func handleTap(at location: CGPoint, tiles: [Tile], game: Game) {
+    private func localUnit(onTile tileId: String, in game: Game) -> FreeColGame.Unit? {
+        guard let localPlayerId = state.localPlayerId else { return nil }
+        return game.units.values.first(where: {
+            $0.owner == localPlayerId && resolveUnitTileId($0, in: game) == tileId
+        })
+    }
+
+    private func handleLeftClick(at location: CGPoint, tiles: [Tile], game: Game) {
+        guard let tappedTile = hitTest(location: location, tiles: tiles, tileW: tileW, tileH: tileH) else { return }
+        if let unit = localUnit(onTile: tappedTile.id, in: game) {
+            state.selectUnit(unit.id, onTile: tappedTile.id)
+        } else {
+            state.selectUnit(nil, onTile: tappedTile.id)
+        }
+    }
+
+    private func handleRightClick(at location: CGPoint, tiles: [Tile], game: Game) {
         guard let tappedTile = hitTest(location: location, tiles: tiles, tileW: tileW, tileH: tileH) else { return }
 
-        if let selId = state.selectedUnitId,
-           let selectedUnit = game.units[selId] {
-            // If an embarked unit is selected and the carrier tile is tapped, disembark.
-            if state.canDisembarkSelectedUnit,
-               state.selectedTileId == tappedTile.id {
-                state.disembarkSelectedUnit()
-                return
-            }
-
-            // Tapping the same tile → deselect
-            if selectedUnit.location == tappedTile.id {
-                if state.canJoinSelectedColony {
-                    state.joinSelectedColony()
-                    return
-                }
-                if let carrierId = state.defaultEmbarkCarrierId,
-                   state.canEmbarkSelectedUnit(onCarrier: carrierId) {
-                    state.embarkSelectedUnit(onCarrier: carrierId)
-                    return
-                }
-                state.selectUnit(nil, onTile: nil)
-                return
-            }
-            // Tapping a different tile → move selected unit there
-            // Always keep tile focus in sync with the user's click.
-            state.selectUnit(selId, onTile: tappedTile.id)
-            if state.canAttackSelectedUnitMelee(onTile: tappedTile.id) {
-                state.attackSelectedUnitMelee(onTile: tappedTile.id)
-            } else if state.canAttackSelectedUnitRanged(onTile: tappedTile.id) {
-                state.attackSelectedUnitRanged(onTile: tappedTile.id)
-            } else if state.canMoveSelectedUnit(to: tappedTile.id) {
+        if let selectedUnitId = state.selectedUnitId {
+            // Keep current selected unit and update target tile.
+            state.selectUnit(selectedUnitId, onTile: tappedTile.id)
+            if state.canMoveSelectedUnit(to: tappedTile.id) {
                 state.moveSelectedUnit(to: tappedTile.id)
+            } else if state.canSetSelectedUnitDestination(to: tappedTile.id) {
+                state.setSelectedUnitDestination(to: tappedTile.id)
             }
             return
         }
 
-        // No unit selected: pick the first own unit on the tapped tile
-        if let localPlayerId = state.localPlayerId,
-           let unit = game.units.values.first(where: {
-               $0.owner == localPlayerId && resolveUnitTileId($0, in: game) == tappedTile.id
-           }) {
+        // If no unit is selected yet, right-clicking an own unit selects it.
+        if let unit = localUnit(onTile: tappedTile.id, in: game) {
             state.selectUnit(unit.id, onTile: tappedTile.id)
         } else {
             state.selectUnit(nil, onTile: tappedTile.id)

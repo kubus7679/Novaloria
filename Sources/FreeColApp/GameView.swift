@@ -99,6 +99,9 @@ struct GameView: View {
                                 Text(unit.unitType ?? "Unit")
                                     .font(.caption)
                                 Spacer()
+                                Text("\(unit.movesLeft) MP")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
                                 Text(unit.state.rawValue)
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
@@ -259,6 +262,9 @@ struct GameView: View {
                         GroupBox("Unit State") {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(selected.state.rawValue)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                Text("Moves Left: \(selected.movesLeft)")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
 
