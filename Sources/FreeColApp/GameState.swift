@@ -508,6 +508,7 @@ final class GameState {
     private func applyServerError(_ parsed: ParsedMessage) {
         clearPendingEndTurn()
         if let message = parsed.attributes["message"], !message.isEmpty {
+            reconcileFromServerErrorMessage(message)
             errorMessage = message
             return
         }
@@ -524,6 +525,35 @@ final class GameState {
             return
         }
         errorMessage = "Server error"
+    }
+
+    private func reconcileFromServerErrorMessage(_ message: String) {
+        // Keep local action gating in sync when the server rejects a move due to no moves left.
+        guard message.contains("MOVE_NO_MOVES"),
+              let unitId = extractObjectId(withPrefix: "unit:", in: message),
+              let game = cachedGame else {
+            return
+        }
+        let partial = ParsedMessage(
+            tag: "partial",
+            attributes: ["id": unitId, "movesLeft": "0"],
+            children: []
+        )
+        try? game.applyPartial(partial)
+        if selectedUnitId == unitId {
+            reconcileSelectionWithGame()
+            gameUpdateID += 1
+        }
+    }
+
+    private func extractObjectId(withPrefix prefix: String, in text: String) -> String? {
+        for rawToken in text.split(separator: " ") {
+            let token = rawToken.trimmingCharacters(in: CharacterSet(charactersIn: ":;,()[]{}"))
+            if token.hasPrefix(prefix) {
+                return String(token)
+            }
+        }
+        return nil
     }
 
     private func applyReadyMessage(_ parsed: ParsedMessage) {

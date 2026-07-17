@@ -432,15 +432,14 @@ struct MapView: View {
                 return
             }
             // Tapping a different tile → move selected unit there
+            // Always keep tile focus in sync with the user's click.
+            state.selectUnit(selId, onTile: tappedTile.id)
             if state.canAttackSelectedUnitMelee(onTile: tappedTile.id) {
                 state.attackSelectedUnitMelee(onTile: tappedTile.id)
             } else if state.canAttackSelectedUnitRanged(onTile: tappedTile.id) {
                 state.attackSelectedUnitRanged(onTile: tappedTile.id)
             } else if state.canMoveSelectedUnit(to: tappedTile.id) {
                 state.moveSelectedUnit(to: tappedTile.id)
-            } else {
-                // Keep tile focus for inspection when move is currently illegal.
-                state.selectUnit(selId, onTile: tappedTile.id)
             }
             return
         }
