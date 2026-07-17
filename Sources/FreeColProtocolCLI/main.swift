@@ -629,6 +629,31 @@ test("ScoutIndianSettlementMessage") {
     try assertEqual(parsed.direction, "SW")
 }
 
+test("ScoutSpeakToChiefMessage") {
+    let msg = ScoutSpeakToChiefMessage(
+        unit: "unit-scout",
+        result: "peace",
+        settlement: "is-iroquois-1"
+    )
+    try assertEqual(msg.unit, "unit-scout")
+    try assertEqual(msg.result, "peace")
+    try assertEqual(msg.settlement, "is-iroquois-1")
+    try assertEqual(msg.tag, "scoutSpeakToChief")
+    
+    let (attrs, _) = msg.encode()
+    try assertEqual(attrs["unit"], "unit-scout")
+    try assertEqual(attrs["result"], "peace")
+    try assertEqual(attrs["settlement"], "is-iroquois-1")
+    
+    let parsed = try ScoutSpeakToChiefMessage(
+        attributes: ["result": "trade", "settlement": "is-mohawk-5", "unit": "u-brave"],
+        children: []
+    )
+    try assertEqual(parsed.unit, "u-brave")
+    try assertEqual(parsed.result, "trade")
+    try assertEqual(parsed.settlement, "is-mohawk-5")
+}
+
 // MARK: - Integration tests (require network stack)
 
 func integrationTest(_ name: String, closure: @escaping () async throws -> Void) async {
@@ -3026,6 +3051,61 @@ await integrationTest("client sends scoutIndianSettlement action") {
             }
             guard scoutMsg.attributes["direction"] == "E" else {
                 throw TestError(message: "scoutIndianSettlement direction mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends scoutSpeakToChief action") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-chief-1" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <map id="map-0" width="2" height="2">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-scout" unitType="model.unit.scout" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "scoutSpeakToChief",
+                attributes: [
+                    "result": "alliance",
+                    "settlement": "is-iroquois-tribe",
+                    "unit": "unit-scout"
+                ],
+                children: []
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let chiefLine = try await server.nextLine()
+            let chiefMsg = try XMLDecoder.decode(chiefLine)
+
+            guard chiefMsg.tag == "scoutSpeakToChief" else {
+                throw TestError(message: "expected scoutSpeakToChief, got \(chiefMsg.tag)")
+            }
+            guard chiefMsg.attributes["unit"] == "unit-scout" else {
+                throw TestError(message: "scoutSpeakToChief unit mismatch")
+            }
+            guard chiefMsg.attributes["settlement"] == "is-iroquois-tribe" else {
+                throw TestError(message: "scoutSpeakToChief settlement mismatch")
+            }
+            guard chiefMsg.attributes["result"] == "alliance" else {
+                throw TestError(message: "scoutSpeakToChief result mismatch")
             }
         }
         while try await group.next() != nil {}

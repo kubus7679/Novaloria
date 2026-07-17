@@ -2488,6 +2488,51 @@ final class GameState {
         return true
     }
 
+    // MARK: Phase 47 - ScoutSpeakToChief
+
+    func scoutSpeakToChief(settlementId: String, result: String) {
+        guard canScoutSpeakToChief,
+              let unitId = selectedUnitId else {
+            errorMessage = "Gespräch mit Häuptling nicht möglich."
+            return
+        }
+        guard !settlementId.isEmpty && !result.isEmpty else {
+            errorMessage = "Settlement ID und Ergebnis erforderlich."
+            return
+        }
+        errorMessage = nil
+
+        Task {
+            do {
+                let msg = ParsedMessage(
+                    tag: "scoutSpeakToChief",
+                    attributes: [
+                        "result": result,
+                        "settlement": settlementId,
+                        "unit": unitId,
+                    ],
+                    children: []
+                )
+                try await client?.send(message: msg)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    var canScoutSpeakToChief: Bool {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let unitId = selectedUnitId,
+              let unit = game.units[unitId],
+              let localPlayerId = resolveLocalPlayerId(),
+              unit.owner == localPlayerId else {
+            return false
+        }
+        return true
+    }
+
     func canAttackSelectedUnitMelee(onTile targetTileId: String) -> Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,
