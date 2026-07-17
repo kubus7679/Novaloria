@@ -31,9 +31,11 @@ struct ColonyPanelView: View {
     @State private var teacherId: String = ""
     @State private var workLocationId: String = ""
     @State private var colonyNameInput: String
-    @State private var buildQueueInput: String = ""
+    @State private var buildQueueDraft: String = ""
+    @State private var buildQueueItems: [String] = []
     @State private var goodsTypeId: String = "model.goods.grain"
     @State private var goodsAmountInput: String = "10"
+    @State private var showAbandonConfirmation: Bool = false
 
     init(
         colony: Colony,
@@ -131,6 +133,43 @@ struct ColonyPanelView: View {
 
                 Divider()
 
+                Text("Production")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 4) {
+                    GridRow {
+                        Text("Established")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        Text("\(colony.established)")
+                            .font(.caption2)
+                    }
+                    GridRow {
+                        Text("Population")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        Text("\(colony.unitCount)")
+                            .font(.caption2)
+                    }
+                    GridRow {
+                        Text("Production Bonus")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        Text("\(colony.productionBonus)%")
+                            .font(.caption2)
+                    }
+                    GridRow {
+                        Text("Liberty / Immigration")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        Text("\(colony.liberty) / \(colony.immigration)")
+                            .font(.caption2)
+                    }
+                }
+
+                Divider()
+
                 Text("Units")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -142,12 +181,32 @@ struct ColonyPanelView: View {
                 } else {
                     ForEach(units, id: \.id) { unit in
                         HStack {
-                            Text(unit.unitType ?? unit.id)
-                                .font(.caption)
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 4) {
+                                    Text(unit.unitType ?? unit.id)
+                                        .font(.caption)
+                                    if selectedWorkerUnitId == unit.id {
+                                        Text("Selected")
+                                            .font(.caption2)
+                                            .padding(.horizontal, 4)
+                                            .padding(.vertical, 1)
+                                            .background(Color.accentColor.opacity(0.15))
+                                            .cornerRadius(4)
+                                    }
+                                }
+                                Text(unitWorkLabel(unit))
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
                             Spacer()
-                            Text(unit.state.rawValue)
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text(unit.state.rawValue)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                Text("\(unit.movesLeft) MP")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
                 }
@@ -164,7 +223,7 @@ struct ColonyPanelView: View {
                     onRenameColony(colonyNameInput)
                 }
                 .buttonStyle(.bordered)
-                .disabled(!canManage)
+                .disabled(!canManage || colonyNameInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || colonyNameInput.trimmingCharacters(in: .whitespacesAndNewlines).caseInsensitiveCompare(colony.name ?? "") == .orderedSame)
 
                 Button("Pay For Building") {
                     onPayForBuilding()
@@ -179,7 +238,7 @@ struct ColonyPanelView: View {
                 .disabled(!canManage)
 
                 Button("Abandon Colony") {
-                    onAbandonColony()
+                    showAbandonConfirmation = true
                 }
                 .buttonStyle(.bordered)
                 .disabled(!canManage || !canAbandonColony)
@@ -224,6 +283,22 @@ struct ColonyPanelView: View {
                 .buttonStyle(.bordered)
                 .disabled(!canManage || selectedWorkerUnitId == nil)
 
+                if let selectedWorkerUnitId,
+                   let selectedWorker = units.first(where: { $0.id == selectedWorkerUnitId }) {
+                    Divider()
+                    Text("Selected Worker")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text(selectedWorker.unitType ?? selectedWorker.id)
+                        .font(.caption)
+                    Text(unitWorkLabel(selectedWorker))
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    Text("Teacher: \(selectedWorker.teacher ?? "none")")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+
                 TextField("Work Location ID", text: $workLocationId)
                     .textFieldStyle(.roundedBorder)
                 Button("Work At Location") {
@@ -238,13 +313,62 @@ struct ColonyPanelView: View {
                 .buttonStyle(.bordered)
                 .disabled(!canManage)
 
-                TextField("Build queue IDs (comma-separated)", text: $buildQueueInput)
+                Text("Build Queue")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                TextField("Add buildable ID", text: $buildQueueDraft)
                     .textFieldStyle(.roundedBorder)
+
+                HStack {
+                    Button("Add") {
+                        addBuildQueueItem()
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(!canManage || buildQueueDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                    Button("Clear") {
+                        buildQueueItems.removeAll()
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(!canManage || buildQueueItems.isEmpty)
+                }
+
+                if buildQueueItems.isEmpty {
+                    Text("No build queue set.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                } else {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(Array(buildQueueItems.enumerated()), id: \.offset) { index, item in
+                            HStack {
+                                Text(item)
+                                    .font(.caption2)
+                                Spacer()
+                                Button("Up") {
+                                    moveBuildQueueItem(from: index, to: index - 1)
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(!canManage || index == 0)
+
+                                Button("Down") {
+                                    moveBuildQueueItem(from: index, to: index + 1)
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(!canManage || index == buildQueueItems.count - 1)
+
+                                Button("Remove") {
+                                    buildQueueItems.remove(at: index)
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(!canManage)
+                            }
+                        }
+                    }
+                }
+
                 Button("Set Build Queue") {
-                    let ids = buildQueueInput
-                        .split(separator: ",")
-                        .map { String($0) }
-                    onSetBuildQueue(ids)
+                    onSetBuildQueue(buildQueueItems)
                 }
                 .buttonStyle(.bordered)
                 .disabled(!canManage)
@@ -286,5 +410,50 @@ struct ColonyPanelView: View {
             }
             .padding(.vertical, 4)
         }
+        .confirmationDialog(
+            "Abandon this colony?",
+            isPresented: $showAbandonConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Abandon Colony", role: .destructive) {
+                onAbandonColony()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will remove the colony and cannot be undone.")
+        }
+    }
+
+    private func addBuildQueueItem() {
+        let trimmed = buildQueueDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        buildQueueItems.append(trimmed)
+        buildQueueDraft = ""
+    }
+
+    private func moveBuildQueueItem(from sourceIndex: Int, to targetIndex: Int) {
+        guard buildQueueItems.indices.contains(sourceIndex),
+              buildQueueItems.indices.contains(targetIndex) else {
+            return
+        }
+        let item = buildQueueItems.remove(at: sourceIndex)
+        buildQueueItems.insert(item, at: targetIndex)
+    }
+
+    private func unitWorkLabel(_ unit: FreeColGame.Unit) -> String {
+        var parts: [String] = []
+        if let workType = unit.workType, !workType.isEmpty {
+            parts.append("Work: \(workType)")
+        }
+        if let workImprovement = unit.workImprovementType, !workImprovement.isEmpty {
+            parts.append("Improvement: \(workImprovement)")
+        }
+        if let teacher = unit.teacher, !teacher.isEmpty {
+            parts.append("Teacher: \(teacher)")
+        }
+        if parts.isEmpty {
+            return "No work assignment"
+        }
+        return parts.joined(separator: " | ")
     }
 }

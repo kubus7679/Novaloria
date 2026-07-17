@@ -35,6 +35,21 @@ struct LoginView: View {
         return advertisedNations.isEmpty ? Self.fallbackNations : advertisedNations
     }
 
+    private var availableNationIds: [String] {
+        availableNations.map(\.id)
+    }
+
+    private func syncSelectedNation() {
+        let ids = availableNationIds
+        guard !ids.isEmpty else {
+            selectedNation = ""
+            return
+        }
+        if !ids.contains(selectedNation) {
+            selectedNation = ids[0]
+        }
+    }
+
     var body: some View {
         VStack(spacing: 12) {
             Text("FreeCol")
@@ -120,14 +135,12 @@ struct LoginView: View {
                     HStack {
                         Text("Nation:").frame(width: 50, alignment: .trailing)
                         Picker("Nation", selection: $selectedNation) {
-                            ForEach(availableNations, id: \ .id) { nation in
+                            ForEach(availableNations, id: \.id) { nation in
                                 Text(nation.name).tag(nation.id)
                             }
                         }
                         .onAppear {
-                            if selectedNation.isEmpty, let first = availableNations.first {
-                                selectedNation = first.id
-                            }
+                            syncSelectedNation()
                         }
                     }
                     HStack {
@@ -246,5 +259,8 @@ struct LoginView: View {
         .frame(width: 380)
         .frame(maxHeight: .infinity)
         .padding()
+        .onChange(of: availableNationIds) { _, _ in
+            syncSelectedNation()
+        }
     }
 }

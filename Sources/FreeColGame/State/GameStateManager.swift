@@ -127,6 +127,9 @@ public final class GameStateManager: @unchecked Sendable {
             FreeColLogger.shared.debug("GameState: \(parsed.attributes["state"] ?? "?")")
             return false
 
+        case "error":
+            return false
+
         default:
             FreeColLogger.shared.debug("Unhandled message: <\(parsed.tag)>")
             return false

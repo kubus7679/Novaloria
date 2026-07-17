@@ -17,6 +17,13 @@ struct GameView: View {
     @State private var chatMessageText: String = ""
     @State private var chatPrivateRecipientId: String = ""
     @State private var claimLandPrice: String = "100"
+    @State private var europeRecruitUnitType: String = "model.unit.freeColonist"
+    @State private var nativeSettlementId: String = ""
+    @State private var nativeEnemyPlayerId: String = "player-2"
+    @State private var nativeInciteGold: String = "100"
+    @State private var nativeChiefResult: String = "model.scout.attackResult.experience"
+    @State private var missionaryDirection: String = "N"
+    @State private var missionaryDenounce: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -87,6 +94,86 @@ struct GameView: View {
                         }
                     }
 
+                    if let localPlayer = state.localPlayer {
+                        GroupBox("Europe") {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 4) {
+                                    GridRow {
+                                        Text("Gold")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Text("\(localPlayer.gold)")
+                                            .font(.caption2)
+                                    }
+                                    GridRow {
+                                        Text("Tax")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Text("\(localPlayer.tax)%")
+                                            .font(.caption2)
+                                    }
+                                    GridRow {
+                                        Text("Immigration")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Text("\(localPlayer.immigration)")
+                                            .font(.caption2)
+                                    }
+                                    GridRow {
+                                        Text("Liberty")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Text("\(localPlayer.liberty)")
+                                            .font(.caption2)
+                                    }
+                                    GridRow {
+                                        Text("Score")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Text("\(localPlayer.score)")
+                                            .font(.caption2)
+                                    }
+                                }
+
+                                Divider()
+
+                                Text("Units in Europe / High Seas")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+
+                                if state.europeUnits.isEmpty {
+                                    Text("No units waiting in Europe.")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    ForEach(state.europeUnits, id: \.id) { unit in
+                                        HStack {
+                                            Text(unit.unitType ?? unit.id)
+                                                .font(.caption2)
+                                            Spacer()
+                                            Text(unit.state.rawValue)
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                }
+
+                                Divider()
+
+                                TextField("Unit type to train", text: $europeRecruitUnitType)
+                                    .textFieldStyle(.roundedBorder)
+
+                                Button("Train Unit in Europe") {
+                                    state.trainUnitInEurope(unitType: europeRecruitUnitType)
+                                }
+                                .buttonStyle(.bordered)
+                                .frame(maxWidth: .infinity)
+                                .disabled(europeRecruitUnitType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+
                     GroupBox("Units") {
                         ForEach(
                             game.units.values.filter { unit in
@@ -96,18 +183,28 @@ struct GameView: View {
                             id: \.id
                         ) { unit in
                             HStack {
-                                Text(unit.unitType ?? "Unit")
-                                    .font(.caption)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(unit.unitType ?? "Unit")
+                                        .font(.caption)
+                                    Text(unitLocationLabel(unit, in: game))
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                    let economyLabel = unitEconomyLabel(unit, in: game)
+                                    if !economyLabel.isEmpty {
+                                        Text(economyLabel)
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
                                 Spacer()
-                                Text("\(unit.movesLeft) MP")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                Text(unitLocationLabel(unit, in: game))
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                Text(unit.state.rawValue)
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
+                                VStack(alignment: .trailing, spacing: 2) {
+                                    Text("\(unit.movesLeft) MP")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                    Text(unit.state.rawValue)
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                         }
                     }
@@ -271,9 +368,16 @@ struct GameView: View {
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
                                 if let carrier = state.selectedUnitCarrier {
-                                    Text("Aboard: \(carrier.unitType ?? carrier.id)")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
+                                    HStack {
+                                        Text("Aboard: \(carrier.unitType ?? carrier.id)")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                        Button("Select Carrier") {
+                                            state.selectUnit(carrier.id, onTile: state.selectedTileId)
+                                        }
+                                        .buttonStyle(.bordered)
+                                    }
                                 }
 
                                 Button("Set Active") {
@@ -282,6 +386,13 @@ struct GameView: View {
                                 .buttonStyle(.bordered)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .disabled(!state.canChangeSelectedUnitState(to: .active))
+
+                                Button("Equip Missionary") {
+                                    state.equipSelectedUnitForRole("model.role.missionary", count: 1)
+                                }
+                                .buttonStyle(.bordered)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .disabled(!state.canEquipSelectedUnitForRole)
 
                                 Button("Fortify") {
                                     state.setSelectedUnitState(.fortifying)
@@ -303,6 +414,110 @@ struct GameView: View {
                                 .buttonStyle(.bordered)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .disabled(!state.canChangeSelectedUnitState(to: .skipped))
+                            }
+                            .padding(.vertical, 4)
+                        }
+
+                        GroupBox("Native") {
+                            VStack(alignment: .leading, spacing: 6) {
+                                TextField("Settlement ID", text: $nativeSettlementId)
+                                    .textFieldStyle(.roundedBorder)
+
+                                TextField("Chief result", text: $nativeChiefResult)
+                                    .textFieldStyle(.roundedBorder)
+
+                                HStack {
+                                    Button("Spy") {
+                                        state.spyOnNativeSettlement(settlementId: nativeSettlementId)
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .disabled(!state.canSpyOnNativeSettlement || nativeSettlementId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                                    Button("Gift") {
+                                        state.deliverGiftToSettlement(nativeSettlementId)
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .disabled(!state.canDeliverGiftWithSelectedUnit || nativeSettlementId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                                }
+
+                                HStack {
+                                    Button("Accept Gift") {
+                                        state.acceptGiftFromNativeSettlement(colonyId: nativeSettlementId)
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .disabled(!state.canAcceptNativeGift || nativeSettlementId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                                    Button("Incite") {
+                                        let gold = Int(nativeInciteGold) ?? 0
+                                        state.inciteSettlement(settlementId: nativeSettlementId, enemyPlayerId: nativeEnemyPlayerId, gold: gold)
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .disabled(!state.canInciteSelectedUnit || nativeSettlementId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || nativeEnemyPlayerId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                                }
+
+                                HStack {
+                                    Button("Demand N") { state.demandTributeFromSettlement(direction: "N") }
+                                    Button("NE") { state.demandTributeFromSettlement(direction: "NE") }
+                                    Button("E") { state.demandTributeFromSettlement(direction: "E") }
+                                    Button("SE") { state.demandTributeFromSettlement(direction: "SE") }
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(!state.canDemandTributeWithSelectedUnit)
+
+                                HStack {
+                                    Button("S") { state.demandTributeFromSettlement(direction: "S") }
+                                    Button("SW") { state.demandTributeFromSettlement(direction: "SW") }
+                                    Button("W") { state.demandTributeFromSettlement(direction: "W") }
+                                    Button("NW") { state.demandTributeFromSettlement(direction: "NW") }
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(!state.canDemandTributeWithSelectedUnit)
+
+                                HStack {
+                                    Button("Scout N") { state.scoutIndianSettlement(direction: "N") }
+                                    Button("NE") { state.scoutIndianSettlement(direction: "NE") }
+                                    Button("E") { state.scoutIndianSettlement(direction: "E") }
+                                    Button("SE") { state.scoutIndianSettlement(direction: "SE") }
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(!state.canScoutIndianSettlement)
+
+                                HStack {
+                                    Button("Scout S") { state.scoutIndianSettlement(direction: "S") }
+                                    Button("SW") { state.scoutIndianSettlement(direction: "SW") }
+                                    Button("W") { state.scoutIndianSettlement(direction: "W") }
+                                    Button("NW") { state.scoutIndianSettlement(direction: "NW") }
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(!state.canScoutIndianSettlement)
+
+                                Button("Speak to Chief") {
+                                    state.scoutSpeakToChief(settlementId: nativeSettlementId, result: nativeChiefResult)
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(!state.canScoutSpeakToChief || nativeSettlementId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || nativeChiefResult.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                                Divider()
+
+                                Text("Missionary")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+
+                                TextField("Direction", text: $missionaryDirection)
+                                    .textFieldStyle(.roundedBorder)
+
+                                Toggle("Denounce", isOn: $missionaryDenounce)
+
+                                Button("Missionary Action") {
+                                    state.sendMissionaryAction(direction: missionaryDirection, denounce: missionaryDenounce)
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(!state.canSendMissionaryAction || missionaryDirection.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                                TextField("Enemy player ID", text: $nativeEnemyPlayerId)
+                                    .textFieldStyle(.roundedBorder)
+                                TextField("Incite gold", text: $nativeInciteGold)
+                                    .textFieldStyle(.roundedBorder)
                             }
                             .padding(.vertical, 4)
                         }
@@ -568,6 +783,24 @@ struct GameView: View {
             return "In colony"
         }
         return location
+    }
+
+    private func unitEconomyLabel(_ unit: FreeColGame.Unit, in game: Game) -> String {
+        var parts: [String] = []
+        if let tradeRoute = unit.tradeRoute, !tradeRoute.isEmpty {
+            parts.append("Route: \(tradeRoute)")
+        }
+        if unit.currentStop > 0 || unit.tradeRoute != nil {
+            parts.append("Stop: \(unit.currentStop)")
+        }
+        if unit.treasureAmount > 0 {
+            parts.append("Treasure: \(unit.treasureAmount)")
+        }
+        if let carrierId = unit.location, game.units[carrierId] != nil {
+            let cargoCount = game.units.values.filter { $0.location == carrierId }.count
+            parts.append("Cargo: \(cargoCount)")
+        }
+        return parts.joined(separator: " | ")
     }
 
     private func colorFor(player: Player) -> Color {

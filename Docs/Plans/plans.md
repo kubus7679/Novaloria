@@ -4,6 +4,11 @@
 
 Implement the macOS client in this repository so it can connect to the Java FreeCol server in `freecol/`, authenticate, receive game state, and drive core gameplay actions from the SwiftUI app.
 
+## Reference Docs
+
+- [Gesamtuebersicht](./freecol-client-overview.md)
+- [Roadmap](./freecol-client-roadmap.md)
+
 ## Working Assumptions
 
 - The Java server source is available in the sibling `freecol/` directory and is the protocol reference.
@@ -66,8 +71,8 @@ Implement the macOS client in this repository so it can connect to the Java Free
 - Initial handshake handling now captures `vacantPlayers` sent immediately after `gameState`, while still allowing connect to complete when no vacant slots are advertised.
 - Login-state loading is routed through `GameStateManager` instead of being split between the client actor and the model layer.
 - Regression coverage for the current sync path is running through `swift run FreeColProtocolCLI`.
-- `Package.swift` registers `FreeColProtocolTests` as a SwiftPM test target, and `swift test` is now working in this environment (`11 tests, 0 failures`).
-- `swift run FreeColProtocolCLI` remains the active regression path and is green (`71 passed, 0 failed`), including env-gated real Java server checks: smoke (`REAL_SERVER_E2E=1`) and deep pregame/in-game probe (`REAL_SERVER_DEEP_E2E=1`).
+- `Package.swift` registers `FreeColProtocolTests` as a SwiftPM test target, and `swift test` is now working in this environment (`14 tests, 0 failures`).
+- `swift run FreeColProtocolCLI` remains the active regression path and is green (`100 passed, 0 failed`), including env-gated real Java server checks: smoke (`REAL_SERVER_E2E=1`) and deep pregame/in-game probe (`REAL_SERVER_DEEP_E2E=1`).
 - Phase-2 implementation started with Embark/Disembark/JoinColony action cluster (GameState action API + GameView controls + CLI regressions).
 - Phase-2 tactical unit-state actions (`changeState`: active/fortify/sentry) are implemented in app state and UI, with protocol regression coverage.
 - Phase-2 disband action (`disbandUnit`) is implemented with guard logic, in-game UI control, and protocol regression coverage.
@@ -83,6 +88,8 @@ Implement the macOS client in this repository so it can connect to the Java Free
 - Phase-7 colony worker egress action MVP (`putOutsideColony`) is implemented in state/UI with protocol regression coverage and validated.
 - Phase-8 colony worker work action MVP (`work`) is implemented in state/UI with protocol regression coverage and validated.
 - Phase-9 colony rename action MVP (`rename`) is implemented in state/UI with protocol regression coverage and validated.
+- Phase-6 save/load robustness now clears stale game state before loading a new snapshot, and lobby nation selection self-heals when the advertised nation list changes.
+- Embarked units are now blocked from direct map-move orders, and the server reject path maps `MOVE_NO_ACCESS_EMBARK` to a clear disembark-first message.
 - Phase-10 pay-for-building action MVP (`payForBuilding`) is implemented in state/UI with protocol regression coverage and validated.
 - Phase-11 abandon-colony action MVP (`abandonColony`) is implemented in state/UI with protocol regression coverage and validated.
 - Phase-12 set-goods-levels action MVP (`setGoodsLevels`) is implemented in state/UI with protocol regression coverage and validated.
@@ -372,7 +379,3 @@ Stabilize in-game turn progression so end-turn actions are only sent when legal 
 - [x] Added integration test for client-to-server action sending
 - [x] Verified all tests pass (79 passed, 0 failed)
 - Detailed plan saved in `Docs/Plans/phase40-new-region-name-plan.md`.
-
-
-
-

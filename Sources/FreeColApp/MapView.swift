@@ -135,6 +135,7 @@ struct MapView: View {
         let canvasSize: CGSize
         let playerColorById: [String: Color]
         let unitsByTile: [String: [FreeColGame.Unit]]
+        let visibleTileIds: Set<String>
     }
 
     private func renderData(for game: Game) -> RenderData? {
@@ -154,6 +155,12 @@ struct MapView: View {
         let playerColorById: [String: Color] = Dictionary(
             uniqueKeysWithValues: game.players.values.map { ($0.id, colorForPlayer($0)) }
         )
+        let visibleTileIds: Set<String>
+        if let localPlayerId = state.localPlayerId {
+            visibleTileIds = game.visibleTileIds(for: localPlayerId, radius: 1)
+        } else {
+            visibleTileIds = Set(tiles.map(\.id))
+        }
 
         // Build a tile-keyed unit map, resolving indirect locations:
         // - Unit directly on tile: location == tileId
@@ -192,7 +199,8 @@ struct MapView: View {
             tiles: tiles,
             canvasSize: CGSize(width: canvasW, height: canvasH),
             playerColorById: playerColorById,
-            unitsByTile: unitsByTile
+            unitsByTile: unitsByTile,
+            visibleTileIds: visibleTileIds
         )
     }
 
@@ -210,6 +218,7 @@ struct MapView: View {
                             var path = Path()
                             path.addLines(verts)
                             path.closeSubpath()
+                            let isVisible = data.visibleTileIds.contains(tile.id)
 
                             // --- Terrain fill ---
                             let tileRect = CGRect(
@@ -218,14 +227,22 @@ struct MapView: View {
                                 width: tileW,
                                 height: tileH
                             )
-                            if tile.id == state.selectedTileId {
-                                ctx.fill(path, with: .color(.yellow))
-                            } else if let nsImg = TileImageCache.shared.terrainImage(forType: tile.type) {
-                                var clipped = ctx
-                                clipped.clip(to: path)
-                                clipped.draw(Image(nsImage: nsImg), in: tileRect)
+                            if isVisible {
+                                if tile.id == state.selectedTileId {
+                                    ctx.fill(path, with: .color(.yellow))
+                                } else if let nsImg = TileImageCache.shared.terrainImage(forType: tile.type) {
+                                    var clipped = ctx
+                                    clipped.clip(to: path)
+                                    clipped.draw(Image(nsImage: nsImg), in: tileRect)
+                                } else {
+                                    ctx.fill(path, with: .color(colorForTile(tile.type)))
+                                }
                             } else {
-                                ctx.fill(path, with: .color(colorForTile(tile.type)))
+                                ctx.fill(path, with: .color(Color.black.opacity(0.78)))
+                                ctx.stroke(path, with: .color(.black.opacity(0.55)), lineWidth: 1)
+                                let fogLabel = Text("?").font(.system(size: max(10, tileW * 0.18), weight: .bold))
+                                ctx.draw(fogLabel, at: origin, anchor: .center)
+                                continue
                             }
 
                             // --- Border / owner outline ---

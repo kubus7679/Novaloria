@@ -81,6 +81,140 @@ test("XML escaping") {
     try assertEqual(xml, #"<chat message="a &lt; b &amp; c &gt; d"/>"#)
 }
 
+test("game pathfinding returns the first step on a shortest route") {
+    let game = Game()
+    let parsed = try XMLDecoder.decode("""
+    <game id="game-1">
+      <map id="map-1" width="4" height="2">
+        <tile id="tile-0-0" x="0" y="0" type="model.tile.plains"/>
+        <tile id="tile-1-0" x="1" y="0" type="model.tile.plains"/>
+        <tile id="tile-2-0" x="2" y="0" type="model.tile.plains"/>
+        <tile id="tile-3-0" x="3" y="0" type="model.tile.plains"/>
+      </map>
+    </game>
+    """)
+    try game.load(from: parsed)
+
+    let step = game.nextPathStep(from: "tile-0-0", to: "tile-3-0") { _, _ in true }
+    try assertEqual(step, "tile-1-0")
+}
+
+test("game visibility includes owned tiles and nearby exploration") {
+    let game = Game()
+    let parsed = try XMLDecoder.decode("""
+    <game id="game-1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch"/>
+      <map id="map-1" width="4" height="2">
+        <tile id="tile-0-0" x="0" y="0" type="model.tile.plains"/>
+        <tile id="tile-1-0" x="1" y="0" type="model.tile.plains"/>
+        <tile id="tile-2-0" x="2" y="0" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-1" owner="player-1" location="tile-0-0" unitType="model.unit.freeColonist"/>
+    </game>
+    """)
+    try game.load(from: parsed)
+
+    let visible = game.visibleTileIds(for: "player-1", radius: 1)
+    try assertEqual(visible.contains("tile-0-0"), true)
+    try assertEqual(visible.contains("tile-1-0"), true)
+    try assertEqual(visible.contains("tile-2-0"), false)
+}
+
+test("game selection recovery prefers same-tile or fallback local units") {
+    let game = Game()
+    let parsed = try XMLDecoder.decode("""
+    <game id="game-1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch"/>
+      <map id="map-1" width="4" height="2">
+        <tile id="tile-0-0" x="0" y="0" type="model.tile.plains"/>
+        <tile id="tile-1-0" x="1" y="0" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-1" owner="player-1" location="tile-0-0" unitType="model.unit.freeColonist" state="ACTIVE"/>
+      <unit id="unit-2" owner="player-1" location="tile-1-0" unitType="model.unit.pioneer" state="ACTIVE"/>
+    </game>
+    """)
+    try game.load(from: parsed)
+
+    let sameTileRecovery = game.recoverSelection(for: "player-1", preferredTileId: "tile-0-0")
+    try assertNotNil(sameTileRecovery)
+    try assertEqual(sameTileRecovery?.unitId, "unit-1")
+    try assertEqual(sameTileRecovery?.tileId, "tile-0-0")
+
+    let fallbackRecovery = game.recoverSelection(for: "player-1", preferredTileId: "tile-9-9")
+    try assertNotNil(fallbackRecovery)
+    try assertEqual(fallbackRecovery?.unitId, "unit-1")
+    try assertEqual(fallbackRecovery?.tileId, "tile-0-0")
+}
+
+test("game load clears stale state before applying a new snapshot") {
+    let game = Game()
+    try game.load(from: ParsedMessage(tag: "game", attributes: ["id": "game-old"], children: [
+        ParsedMessage(tag: "player", attributes: ["id": "player-old", "username": "Old"], children: []),
+        ParsedMessage(tag: "map", attributes: ["id": "map-old", "width": "1", "height": "1"], children: [
+            ParsedMessage(tag: "tile", attributes: ["id": "tile-old", "x": "0", "y": "0", "type": "model.tile.plains"], children: [])
+        ])
+    ]))
+
+    try game.load(from: ParsedMessage(tag: "game", attributes: ["id": "game-new", "turn": "7"], children: [
+        ParsedMessage(tag: "player", attributes: ["id": "player-new", "username": "New"], children: []),
+        ParsedMessage(tag: "map", attributes: ["id": "map-new", "width": "2", "height": "1"], children: [
+            ParsedMessage(tag: "tile", attributes: ["id": "tile-new", "x": "0", "y": "0", "type": "model.tile.grassland"], children: [])
+        ])
+    ]))
+
+    try assertEqual(game.id, "game-new")
+    try assertEqual(game.turn, Turn(7))
+    try assertEqual(game.players.keys.contains("player-old"), false)
+    try assertEqual(game.tiles.keys.contains("tile-old"), false)
+    try assertEqual(game.players.keys.contains("player-new"), true)
+    try assertEqual(game.tiles.keys.contains("tile-new"), true)
+}
+
+test("server reject mapper normalizes common reject messages") {
+    let buildReject = ParsedMessage(
+        tag: "error",
+        attributes: ["message": "Unit unit:5691 can not build colony."],
+        children: []
+    )
+    try assertEqual(
+        ServerRejectMapper.userFacingMessage(for: buildReject),
+        "Diese Einheit kann hier keine Kolonie gruenden."
+    )
+
+    let movesReject = ParsedMessage(
+        tag: "error",
+        attributes: ["message": "MOVE_NO_MOVES unit:5691"],
+        children: []
+    )
+    try assertEqual(
+        ServerRejectMapper.userFacingMessage(for: movesReject),
+        "Diese Einheit hat keine Bewegungspunkte mehr."
+    )
+    let embarkReject = ParsedMessage(
+        tag: "error",
+        attributes: ["message": "Illegal move for: unit:6201 type: MOVE_NO_ACCESS_EMBARK from: unit:6203 to: tile:3563"],
+        children: []
+    )
+    try assertEqual(
+        ServerRejectMapper.userFacingMessage(for: embarkReject),
+        "Diese Einheit ist eingeschifft; bitte zuerst ausschiffen."
+    )
+    try assertEqual(
+        ServerRejectMapper.rejectedObjectId(prefix: "unit:", in: "MOVE_NO_MOVES unit:5691"),
+        "unit:5691"
+    )
+
+    let templateReject = ParsedMessage(
+        tag: "error",
+        attributes: [:],
+        children: [ParsedMessage(tag: "stringTemplate", attributes: ["id": "server.reject"], children: [])]
+    )
+    try assertEqual(
+        ServerRejectMapper.userFacingMessage(for: templateReject),
+        "Server hat die Aktion abgelehnt."
+    )
+}
+
 test("attribute encoding preserves values") {
     let xml = #"<move unit="unit-3" direction="north"/>"#
     let parsed = try XMLDecoder.decode(xml)
@@ -2598,6 +2732,57 @@ await integrationTest("client sends equipForRole action") {
             }
             guard equipMsg.attributes["count"] == "1" else {
                 throw TestError(message: "equipForRole count mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends missionary action") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-missionary-1" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <map id="map-0" width="2" height="2">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-1" unitType="model.unit.missionary" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "missionary",
+                attributes: ["unit": "unit-1", "direction": "N", "denounce": "true"],
+                children: []
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let missionaryLine = try await server.nextLine()
+            let missionaryMsg = try XMLDecoder.decode(missionaryLine)
+
+            guard missionaryMsg.tag == "missionary" else {
+                throw TestError(message: "expected missionary, got \(missionaryMsg.tag)")
+            }
+            guard missionaryMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "missionary unit mismatch")
+            }
+            guard missionaryMsg.attributes["direction"] == "N" else {
+                throw TestError(message: "missionary direction mismatch")
+            }
+            guard missionaryMsg.attributes["denounce"] == "true" else {
+                throw TestError(message: "missionary denounce mismatch")
             }
         }
         while try await group.next() != nil {}

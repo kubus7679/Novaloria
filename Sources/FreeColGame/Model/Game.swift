@@ -38,6 +38,7 @@ public final class Game: @unchecked Sendable {
         guard parsed.tag == "game" else {
             throw GameError.invalidTag(parsed.tag)
         }
+        clear()
         id = parsed.attributes["id"] ?? "0"
         turn = Turn(parsed.attributes.int("turn", default: 1))
         currentPlayerId = parsed.attributes["currentPlayer"]
@@ -261,6 +262,127 @@ public final class Game: @unchecked Sendable {
         units[unitId] = unit
     }
 
+    /// Return the first tile on a shortest route between two tiles.
+    public func nextPathStep(
+        from startTileId: String,
+        to destinationTileId: String,
+        canTraverse: (String, String) -> Bool
+    ) -> String? {
+        guard startTileId != destinationTileId,
+              tiles[startTileId] != nil,
+              tiles[destinationTileId] != nil else {
+            return nil
+        }
+
+        var queue: [String] = [startTileId]
+        var head = 0
+        var cameFrom: [String: String] = [:]
+        var visited: Set<String> = [startTileId]
+
+        while head < queue.count {
+            let current = queue[head]
+            head += 1
+
+            if current == destinationTileId {
+                break
+            }
+
+            for neighbor in neighboringTileIds(from: current) where !visited.contains(neighbor) {
+                guard canTraverse(current, neighbor) else {
+                    continue
+                }
+                visited.insert(neighbor)
+                cameFrom[neighbor] = current
+                queue.append(neighbor)
+            }
+        }
+
+        guard visited.contains(destinationTileId) else {
+            return nil
+        }
+
+        var step = destinationTileId
+        while let previous = cameFrom[step], previous != startTileId {
+            step = previous
+        }
+        return step
+    }
+
+    /// Return tiles that should be visible for a player using a small local heuristic.
+    public func visibleTileIds(for playerId: String, radius: Int = 1) -> Set<String> {
+        guard radius >= 0 else { return [] }
+
+        var sources: Set<String> = []
+        for tile in tiles.values where tile.owner == playerId {
+            sources.insert(tile.id)
+        }
+        for colony in colonies.values where colony.owner == playerId {
+            if let tileId = colony.tileId {
+                sources.insert(tileId)
+            }
+        }
+        for unit in units.values where unit.owner == playerId {
+            if let tileId = resolvedTileId(for: unit) {
+                sources.insert(tileId)
+            }
+        }
+
+        var visible: Set<String> = []
+        for source in sources {
+            var frontier: Set<String> = [source]
+            visible.insert(source)
+            guard radius > 0 else { continue }
+
+            for _ in 0..<radius {
+                var nextFrontier: Set<String> = []
+                for tileId in frontier {
+                    for neighbor in neighboringTileIds(from: tileId) {
+                        if visible.insert(neighbor).inserted {
+                            nextFrontier.insert(neighbor)
+                        }
+                    }
+                }
+                frontier = nextFrontier
+                if frontier.isEmpty {
+                    break
+                }
+            }
+        }
+        return visible
+    }
+
+    /// Recover a sensible selection for a local player after the previously selected unit vanished.
+    public func recoverSelection(
+        for playerId: String,
+        preferredTileId: String? = nil
+    ) -> (unitId: String, tileId: String)? {
+        if let preferredTileId,
+           let unit = localUnit(on: preferredTileId, ownedBy: playerId) {
+            return (unit.id, preferredTileId)
+        }
+        if let unit = firstActiveUnit(ownedBy: playerId),
+           let tileId = resolvedTileId(for: unit) {
+            return (unit.id, tileId)
+        }
+        return nil
+    }
+
+    /// Return the first active unit owned by a player, sorted by id.
+    public func firstActiveUnit(ownedBy playerId: String) -> Unit? {
+        units.values
+            .filter { $0.owner == playerId && $0.state == .active }
+            .sorted { $0.id < $1.id }
+            .first
+    }
+
+    /// Return the local unit on a given tile, if any.
+    public func localUnit(on tileId: String, ownedBy playerId: String) -> Unit? {
+        units.values
+            .filter { $0.owner == playerId && resolvedTileId(for: $0) == tileId }
+            .sorted { $0.id < $1.id }
+            .first
+    }
+
     /// Set or clear a unit trade route locally (simulation without a server).
     public func setUnitTradeRoute(unitId: String, tradeRouteId: String?) {
         guard var unit = units[unitId] else { return }
@@ -414,6 +536,41 @@ public final class Game: @unchecked Sendable {
                 }
             }
         }
+    }
+
+    private func neighboringTileIds(from tileId: String) -> [String] {
+        guard let tile = tiles[tileId] else {
+            return []
+        }
+
+        let deltas: [(Int, Int)] = tile.y.isMultiple(of: 2)
+            ? [(0, -2), (0, -1), (1, 0), (0, 1), (0, 2), (-1, 1), (-1, 0), (-1, -1)]
+            : [(0, -2), (1, -1), (1, 0), (1, 1), (0, 2), (0, 1), (-1, 0), (0, -1)]
+
+        return deltas.compactMap { dx, dy in
+            tiles.values.first(where: { $0.x == tile.x + dx && $0.y == tile.y + dy })?.id
+        }
+    }
+
+    private func resolvedTileId(for unit: Unit, visited: inout Set<String>) -> String? {
+        guard visited.insert(unit.id).inserted else { return nil }
+        guard let location = unit.location else { return nil }
+
+        if tiles[location] != nil {
+            return location
+        }
+        if let carrier = units[location] {
+            return resolvedTileId(for: carrier, visited: &visited)
+        }
+        if let colony = colonies[location] {
+            return colony.tileId
+        }
+        return nil
+    }
+
+    public func resolvedTileId(for unit: Unit) -> String? {
+        var visited: Set<String> = []
+        return resolvedTileId(for: unit, visited: &visited)
     }
 
     private func extractRemoveIds(_ parsed: ParsedMessage) -> [String] {
