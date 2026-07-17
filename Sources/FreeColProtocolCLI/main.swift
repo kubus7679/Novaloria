@@ -461,6 +461,40 @@ test("NewLandNameMessage") {
     try assertEqual(parsed.newLandName, "Nova Terra")
 }
 
+test("NewRegionNameMessage") {
+    let msg = NewRegionNameMessage(
+        unit: "unit-explorer",
+        newRegionName: "Pacific Region",
+        tile: "tile-42",
+        region: "region-5"
+    )
+    try assertEqual(msg.unit, "unit-explorer")
+    try assertEqual(msg.newRegionName, "Pacific Region")
+    try assertEqual(msg.tile, "tile-42")
+    try assertEqual(msg.region, "region-5")
+    try assertEqual(msg.tag, "newRegionName")
+    
+    let (attrs, _) = msg.encode()
+    try assertEqual(attrs["unit"], "unit-explorer")
+    try assertEqual(attrs["newRegionName"], "Pacific Region")
+    try assertEqual(attrs["tile"], "tile-42")
+    try assertEqual(attrs["region"], "region-5")
+    
+    let parsed = try NewRegionNameMessage(
+        attributes: [
+            "unit": "u-caravel",
+            "newRegionName": "Atlantic Zone",
+            "tile": "tile-99",
+            "region": "region-3"
+        ],
+        children: []
+    )
+    try assertEqual(parsed.unit, "u-caravel")
+    try assertEqual(parsed.newRegionName, "Atlantic Zone")
+    try assertEqual(parsed.tile, "tile-99")
+    try assertEqual(parsed.region, "region-3")
+}
+
 // MARK: - Integration tests (require network stack)
 
 func integrationTest(_ name: String, closure: @escaping () async throws -> Void) async {
@@ -2481,6 +2515,66 @@ await integrationTest("client sends newLandName action") {
             }
             guard nameMsg.attributes["newLandName"] == "New Amsterdam" else {
                 throw TestError(message: "newLandName name mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends newRegionName action") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-newregion-1" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <map id="map-0" width="3" height="3">
+        <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+        <tile id="tile-1" x="1" y="0" type="model.tile.plains"/>
+      </map>
+      <unit id="unit-1" unitType="model.unit.caravel" owner="player-1" location="tile-0" movesLeft="3" state="ACTIVE"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(
+                tag: "newRegionName",
+                attributes: [
+                    "unit": "unit-1",
+                    "region": "region-5",
+                    "tile": "tile-1",
+                    "newRegionName": "Pacific Zone"
+                ],
+                children: []
+            ))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let regionLine = try await server.nextLine()
+            let regionMsg = try XMLDecoder.decode(regionLine)
+
+            guard regionMsg.tag == "newRegionName" else {
+                throw TestError(message: "expected newRegionName, got \(regionMsg.tag)")
+            }
+            guard regionMsg.attributes["unit"] == "unit-1" else {
+                throw TestError(message: "newRegionName unit mismatch")
+            }
+            guard regionMsg.attributes["region"] == "region-5" else {
+                throw TestError(message: "newRegionName region mismatch")
+            }
+            guard regionMsg.attributes["tile"] == "tile-1" else {
+                throw TestError(message: "newRegionName tile mismatch")
+            }
+            guard regionMsg.attributes["newRegionName"] == "Pacific Zone" else {
+                throw TestError(message: "newRegionName name mismatch")
             }
         }
         while try await group.next() != nil {}

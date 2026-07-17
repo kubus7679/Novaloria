@@ -2161,6 +2161,60 @@ final class GameState {
         return true
     }
 
+    func nameNewRegionWithSelectedUnit(
+        regionId: String,
+        tileId: String,
+        regionName: String
+    ) {
+        let trimmedName = regionName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            errorMessage = "Bitte einen Namen eingeben."
+            return
+        }
+        guard canNameNewRegionWithSelectedUnit,
+              let unitId = selectedUnitId,
+              let game = cachedGame else {
+            errorMessage = "Neue Region kann nicht benannt werden."
+            return
+        }
+        guard !regionId.isEmpty && !tileId.isEmpty else {
+            errorMessage = "Region oder Kachel ID fehlt."
+            return
+        }
+        errorMessage = nil
+
+        Task {
+            do {
+                let msg = ParsedMessage(
+                    tag: "newRegionName",
+                    attributes: [
+                        "unit": unitId,
+                        "region": regionId,
+                        "tile": tileId,
+                        "newRegionName": trimmedName,
+                    ],
+                    children: []
+                )
+                try await client?.send(message: msg)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    var canNameNewRegionWithSelectedUnit: Bool {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let unitId = selectedUnitId,
+              let unit = game.units[unitId],
+              let localPlayerId = resolveLocalPlayerId(),
+              unit.owner == localPlayerId else {
+            return false
+        }
+        return true
+    }
+
     func canAttackSelectedUnitMelee(onTile targetTileId: String) -> Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,
