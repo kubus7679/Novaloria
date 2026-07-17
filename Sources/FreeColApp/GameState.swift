@@ -2533,6 +2533,51 @@ final class GameState {
         return true
     }
 
+    // MARK: Phase 48 - Diplomacy
+
+    func sendDiplomacyMessage(otherId: String) {
+        guard canSendDiplomacy else {
+            errorMessage = "Diplomatie nicht möglich."
+            return
+        }
+        guard !otherId.isEmpty else {
+            errorMessage = "Spieler ID erforderlich."
+            return
+        }
+        guard let localPlayerId = resolveLocalPlayerId() else {
+            errorMessage = "Lokaler Spieler nicht gefunden."
+            return
+        }
+        errorMessage = nil
+
+        Task {
+            do {
+                let msg = ParsedMessage(
+                    tag: "diplomacy",
+                    attributes: [
+                        "otherId": otherId,
+                        "ourId": localPlayerId,
+                    ],
+                    children: []
+                )
+                try await client?.send(message: msg)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    var canSendDiplomacy: Bool {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let localPlayerId = resolveLocalPlayerId(),
+              game.players[localPlayerId] != nil else {
+            return false
+        }
+        return true
+    }
+
     func canAttackSelectedUnitMelee(onTile targetTileId: String) -> Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,

@@ -654,6 +654,27 @@ test("ScoutSpeakToChiefMessage") {
     try assertEqual(parsed.settlement, "is-mohawk-5")
 }
 
+test("DiplomacyMessage") {
+    let msg = DiplomacyMessage(
+        ourId: "player-dutch",
+        otherId: "player-french"
+    )
+    try assertEqual(msg.ourId, "player-dutch")
+    try assertEqual(msg.otherId, "player-french")
+    try assertEqual(msg.tag, "diplomacy")
+    
+    let (attrs, _) = msg.encode()
+    try assertEqual(attrs["ourId"], "player-dutch")
+    try assertEqual(attrs["otherId"], "player-french")
+    
+    let parsed = try DiplomacyMessage(
+        attributes: ["otherId": "player-spanish", "ourId": "player-english"],
+        children: []
+    )
+    try assertEqual(parsed.ourId, "player-english")
+    try assertEqual(parsed.otherId, "player-spanish")
+}
+
 // MARK: - Integration tests (require network stack)
 
 func integrationTest(_ name: String, closure: @escaping () async throws -> Void) async {
@@ -3109,6 +3130,57 @@ await integrationTest("client sends scoutSpeakToChief action") {
             }
         }
         while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
+await integrationTest("client sends diplomacy action") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-diplo-1" turn="1">
+     <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+     <player id="player-2" username="Bob" nationId="model.nation.french" gold="400"/>
+     <map id="map-0" width="2" height="2">
+       <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+     </map>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+       group.addTask {
+           try await client.connect()
+           _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+           try await client.send(message: ParsedMessage(
+               tag: "diplomacy",
+               attributes: [
+                   "otherId": "player-2",
+                   "ourId": "player-1"
+               ],
+               children: []
+           ))
+           await client.disconnect()
+       }
+       group.addTask {
+           try await server.doHandshake(gameResponse: gameXML)
+
+           let diploLine = try await server.nextLine()
+           let diploMsg = try XMLDecoder.decode(diploLine)
+
+           guard diploMsg.tag == "diplomacy" else {
+               throw TestError(message: "expected diplomacy, got \(diploMsg.tag)")
+           }
+           guard diploMsg.attributes["ourId"] == "player-1" else {
+               throw TestError(message: "diplomacy ourId mismatch")
+           }
+           guard diploMsg.attributes["otherId"] == "player-2" else {
+               throw TestError(message: "diplomacy otherId mismatch")
+           }
+       }
+       while try await group.next() != nil {}
     }
 
     await server.stop()
