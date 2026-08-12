@@ -3,6 +3,15 @@ import FreeColProtocol
 import FreeColGame
 import FreeColClient
 
+private enum MarketTradeError: Error, CustomStringConvertible {
+    case message(String)
+    var description: String {
+        switch self {
+        case .message(let text): return text
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class GameState {
@@ -59,9 +68,40 @@ final class GameState {
     private var localColorValue: String?
     private var isEndingTurn: Bool = false
     private var pendingEndTurnTurn: Int?
+    var incomingChatLog: [String] = []
+    var isGameEnded: Bool = false
     var mapAnimationCue: MapAnimationCue?
     private var mapAnimationCueToken: Int = 0
     private var didAutoFocusInitialUnit: Bool = false
+
+    // MARK: - UI state (Java-client parity)
+
+    var showMapGrid: Bool = true
+    var showFogOfWar: Bool = true
+    var showEuropePanel: Bool = false
+    var showColonyPanel: Bool = false
+    var showDebugPanel: Bool = false
+    var requestedMapScrollTileId: String?
+
+    // Purchases tracking (client-side, like the Java client's purchases summary)
+    var purchasesRecruits: Int = 0
+    var purchasesTrained: Int = 0
+    var purchasesTotal: Int = 0
+    var salesTotal: Int = 0
+    var purchasesNetProfit: Int { salesTotal - purchasesTotal }
+
+    func requestMapScroll(to tileId: String) {
+        requestedMapScrollTileId = tileId
+    }
+
+    func toggleMapGrid() { showMapGrid.toggle() }
+    func toggleFogOfWar() { showFogOfWar.toggle() }
+    func openEuropePanel() { showEuropePanel = true }
+    func closeEuropePanel() { showEuropePanel = false }
+    func openColonyPanel() { showColonyPanel = true }
+    func closeColonyPanel() { showColonyPanel = false }
+    func openDebugPanel() { showDebugPanel = true }
+    func closeDebugPanel() { showDebugPanel = false }
 
     var isLocalPlayerAdmin: Bool {
         guard let game = cachedGame,
@@ -102,8 +142,22 @@ final class GameState {
             .sorted { $0.id < $1.id }
     }
 
+    var europeCarrierUnits: [FreeColGame.Unit] {
+        let shipKeywords = ["caravel", "galleon", "frigate", "merchantman", "pinnace", "fluyt", "boat"]
+        let carriers = europeUnits.filter { unit in
+            guard let type = unit.unitType?.lowercased() else { return false }
+            return shipKeywords.contains(where: type.contains)
+        }
+        return carriers.isEmpty ? europeUnits : carriers
+    }
+
+    var localPlayerMarketData: [MarketData] {
+        guard let market = localPlayer?.market else { return [] }
+        return market.data.values.sorted { ($0.goodsType ?? "") < ($1.goodsType ?? "") }
+    }
+
     var canEndTurn: Bool {
-        phase == .inGame && isLocalPlayersTurn && !isEndingTurn
+        phase == .inGame && isLocalPlayersTurn && !isEndingTurn && !isGameEnded
     }
 
     var canBuildSelectedColony: Bool {
@@ -528,9 +582,37 @@ final class GameState {
             applyAnimateMoveMessage(parsed)
         case "animateAttack":
             applyAnimateAttackMessage(parsed)
+        case "chat":
+            applyChatMessage(parsed)
+        case "gameEnded":
+            isGameEnded = true
+            let winner = parsed.attributes["winner"] ?? "unknown"
+            statusMessage = "Game ended. Winner: \(winner)"
+        case "fountainOfYouth":
+            statusMessage = "Fountain of youth: a party of immigrants joins you."
+        case "indianDemand":
+            statusMessage = "Native demand received (details pending)."
+        case "lootCargo":
+            statusMessage = "Loot available after the battle (details pending)."
+        case "logout":
+            if parsed.attributes["player"] == resolveLocalPlayerId() {
+                statusMessage = "Your session has ended."
+            }
         default:
             break
         }
+    }
+
+    private func applyChatMessage(_ parsed: ParsedMessage) {
+        let sender = parsed.attributes["sender"] ?? "?"
+        let message = parsed.attributes["message"] ?? ""
+        let senderName = cachedGame?.players[sender]?.name ?? sender
+        incomingChatLog.append("\(senderName): \(message)")
+        if incomingChatLog.count > 8 {
+            incomingChatLog.removeFirst(incomingChatLog.count - 8)
+        }
+        statusMessage = "Chat: \(senderName): \(message)"
+        errorMessage = nil
     }
 
     private func applyAnimateMoveMessage(_ parsed: ParsedMessage) {
@@ -684,6 +766,8 @@ final class GameState {
         localColorValue = nil
         isEndingTurn = false
         pendingEndTurnTurn = nil
+        incomingChatLog = []
+        isGameEnded = false
         mapAnimationCue = nil
         mapAnimationCueToken += 1
         didAutoFocusInitialUnit = false
@@ -717,6 +801,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+
 
         Task {
             do {
@@ -801,6 +886,11 @@ final class GameState {
             errorMessage = "Lokaler Spieler konnte nicht bestimmt werden."
             return
         }
+        guard let player = cachedGame?.players[playerId],
+              let nationId = player.nationId else {
+            errorMessage = "Nation des Spielers konnte nicht bestimmt werden."
+            return
+        }
 
         errorMessage = nil
         let previousColorValue = localColorValue
@@ -810,7 +900,10 @@ final class GameState {
             do {
                 let msg = ParsedMessage(
                     tag: "setColor",
-                    attributes: ["player": playerId, "value": trimmedColorValue],
+                    attributes: [
+                        "nation": nationId,
+                        "color": Self.rgbValue(fromHexCSS: trimmedColorValue) ?? trimmedColorValue,
+                    ],
                     children: []
                 )
                 try await client?.send(message: msg)
@@ -819,6 +912,20 @@ final class GameState {
                 errorMessage = error.localizedDescription
             }
         }
+    }
+
+    /// Convert a "#RRGGBB" CSS-style color to the signed RGB int the Java server expects.
+    static func rgbValue(fromHexCSS hex: String) -> String? {
+        var value = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        if value.hasPrefix("#") {
+            value.removeFirst()
+        }
+        guard value.count == 6,
+              let rgb = Int(value, radix: 16) else {
+            return nil
+        }
+        let signed = Int32(truncatingIfNeeded: rgb)
+        return String(signed)
     }
 
     func updateSingleGameOption(id optionId: String, value optionValue: String) {
@@ -835,6 +942,7 @@ final class GameState {
         }
 
         errorMessage = nil
+
 
         Task {
             do {
@@ -870,6 +978,7 @@ final class GameState {
 
         errorMessage = nil
 
+
         Task {
             do {
                 let optionChild = ParsedMessage(
@@ -899,6 +1008,7 @@ final class GameState {
 
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -917,6 +1027,7 @@ final class GameState {
         guard phase == .inGame else { return }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(tag: "continue", attributes: [:], children: [])
@@ -931,6 +1042,7 @@ final class GameState {
         guard phase == .inGame else { return }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(tag: "retire", attributes: [:], children: [])
@@ -944,6 +1056,7 @@ final class GameState {
     func enterRevengeMode() {
         guard phase == .inGame else { return }
         errorMessage = nil
+
 
         Task {
             do {
@@ -961,6 +1074,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+
 
         Task {
             do {
@@ -986,6 +1100,7 @@ final class GameState {
 
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -1009,6 +1124,7 @@ final class GameState {
 
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -1025,18 +1141,24 @@ final class GameState {
 
     func setLocalPlayerAvailable() {
         guard phase == .inGame else { return }
-        guard let playerId = resolveLocalPlayerId() else {
+        guard let playerId = resolveLocalPlayerId(),
+              let player = cachedGame?.players[playerId],
+              let nationId = player.nationId else {
             errorMessage = "Lokaler Spieler konnte nicht bestimmt werden."
             return
         }
 
         errorMessage = nil
 
+        // Match the Java client: toggle the nation availability state.
+        let current = cachedGame?.nationStates[nationId] ?? "AVAILABLE"
+        let nextState = current == "NOT_AVAILABLE" ? "AVAILABLE" : "NOT_AVAILABLE"
+
         Task {
             do {
                 let msg = ParsedMessage(
                     tag: "setAvailable",
-                    attributes: ["player": playerId],
+                    attributes: ["nation": nationId, "state": nextState],
                     children: []
                 )
                 try await client?.send(message: msg)
@@ -1064,6 +1186,7 @@ final class GameState {
         }
 
         errorMessage = nil
+
 
         Task {
             do {
@@ -1094,6 +1217,7 @@ final class GameState {
 
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -1123,6 +1247,7 @@ final class GameState {
 
         errorMessage = nil
 
+
         Task {
             do {
                 var attributes: [String: String] = [
@@ -1148,6 +1273,7 @@ final class GameState {
         }
 
         errorMessage = nil
+
 
         Task {
             do {
@@ -1177,6 +1303,7 @@ final class GameState {
         }
 
         errorMessage = nil
+
 
         Task {
             do {
@@ -1330,6 +1457,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -1418,6 +1546,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -1446,6 +1575,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -1473,6 +1603,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+
 
         Task {
             do {
@@ -1519,6 +1650,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -1545,6 +1677,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+
 
         Task {
             do {
@@ -1589,6 +1722,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -1615,6 +1749,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+
 
         Task {
             do {
@@ -1656,6 +1791,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -1682,6 +1818,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+
 
         Task {
             do {
@@ -1779,6 +1916,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -1811,6 +1949,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -1836,6 +1975,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+
 
         Task {
             do {
@@ -1870,6 +2010,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -1897,6 +2038,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -1922,6 +2064,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+
 
         Task {
             do {
@@ -1949,6 +2092,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 var attrs: [String: String] = [
@@ -1974,6 +2118,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+
 
         Task {
             do {
@@ -2006,6 +2151,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+
 
         Task {
             do {
@@ -2047,6 +2193,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -2073,6 +2220,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -2095,6 +2243,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+
 
         Task {
             do {
@@ -2123,6 +2272,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -2149,6 +2299,15 @@ final class GameState {
             return
         }
         errorMessage = nil
+
+        // Client-side purchases tracking (like the Java client's purchases summary)
+        let price = localPlayer?.europe?.price(for: trimmed) ?? 0
+        if trimmed.localizedCaseInsensitiveContains("colonist") {
+            purchasesRecruits += 1
+        } else {
+            purchasesTrained += 1
+        }
+        purchasesTotal += price
 
         Task {
             do {
@@ -2181,6 +2340,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+
 
         Task {
             do {
@@ -2218,6 +2378,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -2236,6 +2397,102 @@ final class GameState {
         }
     }
 
+    func buyGoodsInEurope(goodsTypeId: String, amount: Int, carrierId: String) {
+        do {
+            let (europeId, typeId, carrier) = try marketTradeContext(goodsTypeId: goodsTypeId, amount: amount, carrierId: carrierId)
+            errorMessage = nil
+            let price = marketDataPrice(for: typeId)
+            purchasesTotal += amount * price
+
+            Task {
+                do {
+                    let msg = ParsedMessage(
+                        tag: "loadGoods",
+                        attributes: [
+                            "location": europeId,
+                            "type": typeId,
+                            "amount": String(amount),
+                            "carrier": carrier.id,
+                        ],
+                        children: []
+                    )
+                    try await client?.send(message: msg)
+                } catch {
+                    errorMessage = error.localizedDescription
+                }
+            }
+        } catch let MarketTradeError.message(text) {
+            errorMessage = text
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func sellGoodsInEurope(goodsTypeId: String, amount: Int, carrierId: String) {
+        do {
+            let (_, typeId, carrier) = try marketTradeContext(goodsTypeId: goodsTypeId, amount: amount, carrierId: carrierId)
+            errorMessage = nil
+            let price = marketDataPrice(for: typeId)
+            salesTotal += amount * price
+
+            Task {
+                do {
+                    let msg = ParsedMessage(
+                        tag: "unloadGoods",
+                        attributes: [
+                            "type": typeId,
+                            "amount": String(amount),
+                            "carrier": carrier.id,
+                        ],
+                        children: []
+                    )
+                    try await client?.send(message: msg)
+                } catch {
+                    errorMessage = error.localizedDescription
+                }
+            }
+        } catch let MarketTradeError.message(text) {
+            errorMessage = text
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func marketDataPrice(for goodsTypeId: String) -> Int {
+        guard let market = localPlayer?.market else { return 0 }
+        return market.entry(for: goodsTypeId)?.initialPrice ?? 0
+    }
+
+    private func marketTradeContext(goodsTypeId: String,
+                                    amount: Int,
+                                    carrierId: String) throws -> (europeId: String, typeId: String, carrier: FreeColGame.Unit) {
+        let typeId = goodsTypeId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard phase == .inGame else {
+            throw MarketTradeError.message("Handel in Europa nicht moeglich.")
+        }
+        guard isLocalPlayersTurn else {
+            throw MarketTradeError.message("Nicht dein Zug.")
+        }
+        guard !typeId.isEmpty else {
+            throw MarketTradeError.message("Bitte einen Goods Type angeben.")
+        }
+        guard amount > 0 else {
+            throw MarketTradeError.message("Menge muss groesser als 0 sein.")
+        }
+        guard let game = cachedGame,
+              let localPlayerId = resolveLocalPlayerId(),
+              let player = game.players[localPlayerId],
+              let europeId = player.europe?.id else {
+            throw MarketTradeError.message("Europa-Informationen fehlen.")
+        }
+        guard let carrier = game.units[carrierId],
+              carrier.owner == localPlayerId,
+              resolveUnitTileId(carrier, in: game) == nil else {
+            throw MarketTradeError.message("Traeger nicht in Europa.")
+        }
+        return (europeId, typeId, carrier)
+    }
+
     func equipSelectedUnitForRole(_ roleId: String, count: Int) {
         guard canEquipSelectedUnitForRole,
               let unitId = selectedUnitId,
@@ -2244,6 +2501,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+
 
         Task {
             do {
@@ -2274,6 +2532,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+
 
         Task {
             do {
@@ -2332,6 +2591,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -2377,6 +2637,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+
 
         Task {
             do {
@@ -2430,6 +2691,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -2479,6 +2741,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -2525,6 +2788,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -2568,6 +2832,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+
 
         Task {
             do {
@@ -2615,6 +2880,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -2659,6 +2925,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -2702,6 +2969,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+
 
         Task {
             do {
@@ -2748,6 +3016,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+
 
         Task {
             do {
@@ -2796,6 +3065,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+
 
         Task {
             do {
@@ -2880,6 +3150,7 @@ final class GameState {
         }
         errorMessage = nil
 
+
         Task {
             do {
                 let msg = ParsedMessage(
@@ -2907,6 +3178,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+
 
         Task {
             do {

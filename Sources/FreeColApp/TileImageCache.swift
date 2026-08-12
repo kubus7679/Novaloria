@@ -14,6 +14,14 @@ final class TileImageCache {
         return loadImage(named: name, folder: "terrain")
     }
 
+    /// Returns one of the 4 cloud textures for fog-of-war.
+    /// The variant is chosen deterministically from tile coordinates
+    /// to mimic the Java client's staggered cloud pattern.
+    func cloudImage(forX x: Int, y: Int) -> NSImage? {
+        let variant = (x * 7 + y * 13) % 4
+        return loadImage(named: "clouds\(variant)", folder: "terrain")
+    }
+
     func unitImage(forUnitType unitType: String?) -> NSImage? {
         guard let unitType else { return nil }
         // "model.unit.freeColonist" → "freeColonist"
@@ -23,6 +31,11 @@ final class TileImageCache {
 
     func settlementImage(for settlement: SettlementKind) -> NSImage? {
         return loadImage(named: settlement.imageName, folder: "settlements")
+    }
+
+    /// Order-button icons from the Java client (wait/sentry/fortify/build/disband/done).
+    func orderButtonImage(named name: String) -> NSImage? {
+        return loadImage(named: name, folder: "order-buttons")
     }
 
     // MARK: - Private

@@ -23,6 +23,7 @@ let package = Package(
                 .copy("Resources/terrain"),
                 .copy("Resources/units"),
                 .copy("Resources/settlements"),
+                .copy("Resources/order-buttons"),
             ]
         ),
         .testTarget(name: "FreeColProtocolTests", dependencies: ["FreeColProtocol"]),

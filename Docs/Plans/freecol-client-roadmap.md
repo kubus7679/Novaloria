@@ -15,7 +15,7 @@
 ## Phase 3: Europe and economy
 
 - [x] Europe screen / recruit / immigration.
-- Market buy/sell flows.
+- [x] Market buy/sell flows.
 - [x] Treasure, trade routes, and cargo/economy polish.
 
 ## Phase 4: Diplomacy and native gameplay
@@ -38,9 +38,9 @@
 
 ## Phase 7: Java-client parity pass
 
-- Compare remaining dialogs and actions against the Java client.
-- Fill in missing message handlers.
-- Remove temporary debug output and tighten UX.
+- [x] Compare remaining dialogs and actions against the Java client.
+- [x] Fill in missing message handlers.
+- [x] Remove temporary debug output and tighten UX.
 
 ## Suggested order
 

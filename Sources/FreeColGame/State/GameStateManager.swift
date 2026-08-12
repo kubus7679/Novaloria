@@ -104,6 +104,27 @@ public final class GameStateManager: @unchecked Sendable {
             FreeColLogger.shared.debug("Player \(playerId) ready=\(readyValue)")
             return true
 
+        case "setStance":
+            guard game.players[parsed.attributes["first"] ?? ""] != nil else {
+                FreeColLogger.shared.debug("setStance for unknown player")
+                return false
+            }
+            try game.applySetStance(attributes: parsed.attributes)
+            FreeColLogger.shared.debug("Applied setStance")
+            return true
+
+        case "setAI", "setDead", "setNation", "setNationType", "setColor", "setAvailable":
+            try game.applyPlayerChange(tag: parsed.tag, attributes: parsed.attributes)
+            FreeColLogger.shared.debug("Applied <\(parsed.tag)>")
+            return true
+
+        case "logout":
+            if let playerId = parsed.attributes["player"] {
+                game.removePlayer(playerId)
+                FreeColLogger.shared.info("Player logged out: \(playerId)")
+            }
+            return true
+
         case "animateMove":
             guard let unitId = parsed.attributes["unit"],
                   let newTile = parsed.attributes["newTile"] else {

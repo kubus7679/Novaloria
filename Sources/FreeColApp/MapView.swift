@@ -5,6 +5,20 @@ import AppKit
 private let baseTileW: Double = 64
 private let baseTileH: Double = 32
 
+// MARK: - Viewport reporting for the minimap
+
+struct MapViewportInfo: Equatable {
+    var canvasSize: CGSize
+    var visibleRect: CGRect
+}
+
+struct MapViewportKey: PreferenceKey {
+    static var defaultValue: MapViewportInfo?
+    static func reduce(value: inout MapViewportInfo?, nextValue: () -> MapViewportInfo?) {
+        if let nv = nextValue() { value = nv }
+    }
+}
+
 private func tileOrigin(x: Int, y: Int, tileW: Double, tileH: Double) -> CGPoint {
     let colW = tileW / 2
     let rowH = tileH / 2
@@ -42,7 +56,7 @@ private func hitTest(location: CGPoint, tiles: [Tile], tileW: Double, tileH: Dou
     return bestTile
 }
 
-private struct MapMouseCaptureView: NSViewRepresentable {
+struct MapMouseCaptureView: NSViewRepresentable {
     var onLeftClick: (CGPoint) -> Void
     var onRightClick: (CGPoint) -> Void
 
@@ -59,7 +73,7 @@ private struct MapMouseCaptureView: NSViewRepresentable {
     }
 }
 
-private final class ClickCaptureNSView: NSView {
+final class ClickCaptureNSView: NSView {
     var onLeftClick: ((CGPoint) -> Void)?
     var onRightClick: ((CGPoint) -> Void)?
 
@@ -182,19 +196,6 @@ struct MapView: View {
             }
         }
 
-        // Debug: log unit placement summary
-        let totalUnits = game.units.count
-        let placedUnits = unitsByTile.values.reduce(0) { $0 + $1.count }
-        if totalUnits > 0 {
-            print("[MapView] units in game: \(totalUnits), placed on map: \(placedUnits)")
-            for unit in game.units.values.prefix(3) {
-                print("[MapView]   unit \(unit.id) type=\(unit.unitType ?? "nil") loc=\(unit.location ?? "nil")")
-            }
-            if let sampleTileId = tiles.first?.id {
-                print("[MapView]   sample tileId=\(sampleTileId)")
-            }
-        }
-
         return RenderData(
             tiles: tiles,
             canvasSize: CGSize(width: canvasW, height: canvasH),
@@ -208,9 +209,10 @@ struct MapView: View {
         if let game = state.game, let data = renderData(for: game) {
             VStack(spacing: 0) {
                 zoomControls
-                ScrollViewReader { proxy in
-                    ScrollView([.horizontal, .vertical]) {
-                        ZStack(alignment: .topLeading) {
+                GeometryReader { outer in
+                    ScrollViewReader { proxy in
+                        ScrollView([.horizontal, .vertical]) {
+                            ZStack(alignment: .topLeading) {
                             Canvas { ctx, _ in
                         for tile in data.tiles {
                             let origin = tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
@@ -238,10 +240,14 @@ struct MapView: View {
                                     ctx.fill(path, with: .color(colorForTile(tile.type)))
                                 }
                             } else {
-                                ctx.fill(path, with: .color(Color.black.opacity(0.78)))
-                                ctx.stroke(path, with: .color(.black.opacity(0.55)), lineWidth: 1)
-                                let fogLabel = Text("?").font(.system(size: max(10, tileW * 0.18), weight: .bold))
-                                ctx.draw(fogLabel, at: origin, anchor: .center)
+                                // Fog of war – draw original cloud texture
+                                ctx.fill(path, with: .color(Color.black.opacity(0.78))) // dark base
+                                // Choose variant based on tile coordinates
+                                if let cloudImg = TileImageCache.shared.cloudImage(forX: tile.x, y: tile.y) {
+                                    var clipped = ctx
+                                    clipped.clip(to: path)
+                                    clipped.draw(Image(nsImage: cloudImg), in: tileRect)
+                                }
                                 continue
                             }
 
@@ -252,7 +258,13 @@ struct MapView: View {
                                 ctx.stroke(path, with: .color(.black.opacity(0.25)), lineWidth: 0.5)
                             }
 
-                            // --- Settlement ---
+                            // --- Colony label ---
+                            if let colony = game.colonies.values.first(where: { $0.tileId == tile.id }) {
+                                let labelText = "\(colony.name ?? "?") (\(colony.unitCount))"
+                                let label = Text(labelText).font(.system(size: max(8, tileW * 0.12)))
+                                    .foregroundColor(.white)
+                                ctx.draw(label, at: origin, anchor: .center)
+                            }
                             if let settlementInfo = tile.settlement {
                                 let kind = settlementKind(for: settlementInfo, in: game)
                                 let settlementH: Double = tileH * 0.65
@@ -412,6 +424,20 @@ struct MapView: View {
                         }
                         .frame(width: data.canvasSize.width, height: data.canvasSize.height)
                     }
+                    .background(GeometryReader { inner in
+                        Color.clear.preference(
+                            key: MapViewportKey.self,
+                            value: MapViewportInfo(
+                                canvasSize: data.canvasSize,
+                                visibleRect: CGRect(
+                                    x: -inner.frame(in: .named("mapScroll")).minX,
+                                    y: -inner.frame(in: .named("mapScroll")).minY,
+                                    width: outer.size.width,
+                                    height: outer.size.height
+                                )
+                            )
+                        )
+                    })
                     .onAppear {
                         if let tileId = state.selectedTileId {
                             proxy.scrollTo(tileId, anchor: .center)
@@ -422,8 +448,16 @@ struct MapView: View {
                             proxy.scrollTo(tileId, anchor: .center)
                         }
                     }
+                    .onChange(of: state.requestedMapScrollTileId) { _, newValue in
+                        if let tileId = newValue {
+                            proxy.scrollTo(tileId, anchor: .center)
+                            state.requestedMapScrollTileId = nil
+                        }
+                    }
+                    .coordinateSpace(name: "mapScroll")
                 }
             }
+        }
         } else {
             Text("No map loaded")
                 .foregroundColor(.secondary)

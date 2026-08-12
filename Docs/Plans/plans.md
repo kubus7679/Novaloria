@@ -117,6 +117,9 @@ Implement the macOS client in this repository so it can connect to the Java Free
 - Phase-34 chat action MVP (`chat`) is implemented in state/UI with protocol regression coverage and validated.
 - Phase-35 set-dead action MVP (`setDead`) is implemented in state/UI with protocol regression coverage and validated.
 - Phase-36 claim-land action MVP (`claimLand`) is implemented in state/UI with protocol regression coverage and validated.
+- Phase-37 equip-for-role action MVP (`equipForRole`), Phase-38 learn-skill (`learnSkill`), Phase-39 new-land-name (`newLandName`), Phase-40 new-region-name (`newRegionName`) are implemented in state/UI with protocol regression coverage and validated.
+- Phase-41 market buy/sell MVP (buy = `loadGoods` with Europe location, sell = `unloadGoods`) is implemented in state/UI with Europe/Market model parsing and protocol regression coverage and validated.
+- Phase-7 parity pass (server-driven change handlers): `setStance`/`setAI`/`setDead`/`setNation`/`setNationType`/`setColor`/`setAvailable`/`logout` model+manager handlers (top-level and nested in `<update>`), `Player.stances` + `<stance>` parsing, inbound `chat` log, `gameEnded`, status placeholders for `fountainOfYouth`/`indianDemand`/`lootCargo`; outbound parity fixes for `setColor` (nation+RGB) and `setAvailable` (nation+state); MapView/LoginView debug-UI cleanup — validated (113 CLI / 14 swift tests green).
 
 ## Next Implementation Plan (Pre-Game Ready And Launch)
 
@@ -379,3 +382,25 @@ Stabilize in-game turn progression so end-turn actions are only sent when legal 
 - [x] Added integration test for client-to-server action sending
 - [x] Verified all tests pass (79 passed, 0 failed)
 - Detailed plan saved in `Docs/Plans/phase40-new-region-name-plan.md`.
+
+## Next Implementation Plan (Phase 41 Market Buy/Sell Action MVP)
+
+- [x] Verified the Java server routes buy/sell through `loadGoods`/`unloadGoods` with the Europe location id (`freecol/` InGameController buyGoods/sellGoods delegation).
+- [x] Parsed `<europe>` and `<market>`/`<marketData>` player children into `Europe`, `Market`, `MarketData` models (Europe location id + reference prices).
+- [x] Implemented `buyGoodsInEurope` / `sellGoodsInEurope` actions in GameState (loadGoods with Europe location / unloadGoods).
+- [x] Exposed market board, carrier picker, and buy/sell controls in the Europe section of GameView.
+- [x] Added model-parse, GameStateManager-update, and client-to-server integration regressions in FreeColProtocolCLI.
+- [x] Verified validation commands pass.
+- Detailed plan saved in `Docs/Plans/phase41-market-buy-sell-plan.md`.
+
+## Next Implementation Plan (Phase 7 Java-Client Parity Pass)
+
+- [x] Gap analysis: 31 receive-path candidates; 11 high-impact handlers implemented (see `Docs/Plans/phase7-parity-pass-plan.md`).
+- [x] Verified Java wire shapes for change records (`setStance` first/second/stance, `setAI` player/ai, `setColor` nation/color-RGB, `setAvailable` nation/state, ...).
+- [x] `Player.stances` dict + `<stance>` child parsing; `Game` nationStates/nationColors maps; nested change-record application in `applyUpdate`.
+- [x] GameStateManager top-level handlers: `setStance`, `setAI`, `setDead`, `setNation`, `setNationType`, `setColor`, `setAvailable`, `logout`.
+- [x] Inbound `chat` log, `gameEnded` (turn actions blocked), `logout` status, `fountainOfYouth`/`indianDemand`/`lootCargo` status placeholders in GameState/UI.
+- [x] Outbound parity fixes: `setColor` (`nation` + RGB int), `setAvailable` (`nation` + `state` toggle); CLI tests updated.
+- [x] Debug/UX cleanup: MapView per-render prints removed, LoginView DEBUG line removed.
+- [x] CLI regressions (8 new: model/GMS unit tests + inbound loop integration test) and validation passed.
+- Detailed plan saved in `Docs/Plans/phase7-parity-pass-plan.md`.

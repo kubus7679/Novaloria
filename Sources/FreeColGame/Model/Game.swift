@@ -15,6 +15,8 @@ public final class Game: @unchecked Sendable {
     public internal(set) var tiles: [String: Tile] = [:]
     public internal(set) var units: [String: Unit] = [:]
     public internal(set) var colonies: [String: Colony] = [:]
+    public internal(set) var nationStates: [String: String] = [:]
+    public internal(set) var nationColors: [String: String] = [:]
 
     public init() {}
 
@@ -31,6 +33,8 @@ public final class Game: @unchecked Sendable {
         tiles.removeAll()
         units.removeAll()
         colonies.removeAll()
+        nationStates.removeAll()
+        nationColors.removeAll()
     }
 
     /// Deserialize the full game from a `<game>` ParsedMessage (as received in login reply).
@@ -103,6 +107,26 @@ public final class Game: @unchecked Sendable {
                 colonies[colony.id] = colony
             case "game":
                 try load(from: child)
+            case "addPlayer":
+                // Change records and nested payloads may carry player additions.
+                for playerChild in child.children where playerChild.tag == "player" {
+                    let player = try Player(id: playerChild.attributes["id"] ?? UUID().uuidString,
+                                            attributes: playerChild.attributes,
+                                            children: playerChild.children,
+                                            game: self)
+                    players[player.id] = player
+                }
+            case "remove":
+                try applyRemove(child)
+            case "partial":
+                try applyPartial(child)
+            case "setStance":
+                try applySetStance(attributes: child.attributes)
+            case "setAI", "setDead", "setNation", "setNationType", "setColor", "setAvailable":
+                try applyPlayerChange(tag: child.tag, attributes: child.attributes)
+            case "attribute", "featureChange", "multiple", "update", "error":
+                // ChangeSet bookkeeping records with no direct model surface.
+                FreeColLogger.shared.debug("Ignoring nested change record <\(child.tag)> in update")
             default:
                 break
             }
@@ -156,6 +180,78 @@ public final class Game: @unchecked Sendable {
                     units[unitId] = unit
                 }
             }
+        }
+    }
+
+    // MARK: - Server-driven player changes
+
+    /// Apply a `<setStance first=".." second=".." stance=".."/>` record to the first player's stance map.
+    public func applySetStance(attributes: Attributes) throws {
+        guard let firstId = attributes["first"] else { return }
+        let stanceValue = attributes["stance"] ?? ""
+        let stance = Stance(rawValue: stanceValue)
+        if let secondId = attributes["second"] {
+            guard var first = players[firstId] else {
+                FreeColLogger.shared.debug("setStance for unknown player: \(firstId)")
+                return
+            }
+            if let stance {
+                first.stances[secondId] = stance
+            } else {
+                first.stances.removeValue(forKey: secondId)
+            }
+            players[firstId] = first
+        }
+    }
+
+    /// Apply a change-record for tags that map directly onto player fields.
+    public func applyPlayerChange(tag: String, attributes: Attributes) throws {
+        let playerId = attributes["player"]
+        switch tag {
+        case "setAI":
+            guard let playerId else { return }
+            if var player = players[playerId] {
+                player.ai = attributes.bool("ai", default: false)
+                players[playerId] = player
+            }
+        case "setDead":
+            guard let playerId else { return }
+            players.removeValue(forKey: playerId)
+            removePlayerOwnedState(playerId)
+        case "setNation":
+            guard let playerId, let nationId = attributes["value"] else { return }
+            if var player = players[playerId] {
+                player.nationId = nationId
+                players[playerId] = player
+            }
+        case "setNationType":
+            guard let playerId, let nationTypeId = attributes["value"] else { return }
+            if var player = players[playerId] {
+                player.nationType = nationTypeId
+                players[playerId] = player
+            }
+        case "setColor":
+            if let nationId = attributes["nation"] ?? attributes["player"] {
+                nationColors[nationId] = attributes["color"]
+            }
+        case "setAvailable":
+            if let nationId = attributes["nation"] ?? attributes["player"] {
+                nationStates[nationId] = attributes["state"] ?? attributes["available"]
+            }
+        default:
+            break
+        }
+    }
+
+    /// Remove a player locally (logout / death / removal broadcast).
+    public func removePlayer(_ playerId: String) {
+        players.removeValue(forKey: playerId)
+        removePlayerOwnedState(playerId)
+    }
+
+    private func removePlayerOwnedState(_ playerId: String) {
+        for unitId in units.keys where units[unitId]?.owner == playerId {
+            units.removeValue(forKey: unitId)
         }
     }
 

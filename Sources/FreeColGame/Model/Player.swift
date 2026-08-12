@@ -32,12 +32,34 @@ public struct Player: GameObject, PartiallyUpdatable, Identifiable {
     public var liberty: Int = 0
     public var score: Int = 0
     public var newLandName: String?
+    public var europe: Europe?
+    public var market: Market?
+    public var stances: [String: Stance] = [:]
 
     public var publicId: String { id }
 
     public init(id: String, attributes: Attributes, children: [ParsedMessage], game: Game) throws {
         self.id = id
         applyPartial(attributes: attributes)
+        for child in children {
+            switch child.tag {
+            case "europe":
+                europe = Europe(id: child.attributes["id"] ?? "\(id)-europe",
+                                attributes: child.attributes,
+                                children: child.children)
+            case "market":
+                market = Market(attributes: child.attributes, children: child.children)
+            case "stance":
+                // Stance map entries are serialized as <stance player=".." value=".."/> children.
+                if let otherPlayerId = child.attributes["player"],
+                   let v = child.attributes["value"],
+                   let stance = Stance(rawValue: v) {
+                    stances[otherPlayerId] = stance
+                }
+            default:
+                break
+            }
+        }
     }
 
     public mutating func applyPartial(attributes: Attributes) {

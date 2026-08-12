@@ -528,6 +528,170 @@ test("Unit parses state enum") {
     try assertEqual(unit.state, .sailing)
 }
 
+test("Player parses europe and market children") {
+    let player = try Player(id: "player-1", attributes: [
+        "id": "player-1", "username": "Alice", "gold": "500", "tax": "10"
+    ], children: [
+        ParsedMessage(tag: "europe", attributes: ["id": "europe:42", "owner": "player-1", "recruitPrice": "800"], children: []),
+        ParsedMessage(tag: "market", attributes: ["owner": "player-1"], children: [
+            ParsedMessage(tag: "marketData", attributes: [
+                "goods-type": "model.goods.food",
+                "amount": "200",
+                "initialPrice": "10",
+                "traded": "true",
+            ], children: []),
+            ParsedMessage(tag: "marketData", attributes: [
+                "goods-type": "model.goods.tools",
+                "amount": "50",
+                "initialPrice": "16",
+            ], children: []),
+        ]),
+    ], game: Game())
+    try assertEqual(player.europe?.id, "europe:42")
+    try assertEqual(player.market?.data.count, 2)
+    try assertEqual(player.market?.entry(for: "model.goods.food")?.initialPrice, 10)
+    try assertEqual(player.market?.entry(for: "model.goods.food")?.traded, true)
+    try assertEqual(player.market?.entry(for: "model.goods.tools")?.amount, 50)
+}
+
+test("game load parses europe and market from player XML") {
+    let game = Game()
+    let parsed = try XMLDecoder.decode("""
+    <game id="game-1">
+      <player id="player-1" username="Alice" gold="500" tax="10">
+        <europe id="europe:7" owner="player-1" recruitPrice="800"/>
+        <market owner="player-1">
+          <marketData goods-type="model.goods.food" amount="150" initialPrice="12"/>
+        </market>
+      </player>
+    </game>
+    """)
+    try game.load(from: parsed)
+    try assertEqual(game.players["player-1"]?.europe?.id, "europe:7")
+    try assertEqual(game.players["player-1"]?.market?.entry(for: "model.goods.food")?.initialPrice, 12)
+}
+
+test("GameStateManager applies player update with europe and market") {
+    let mgr = GameStateManager()
+    let update = try XMLDecoder.decode("""
+    <update>
+      <player id="player-1" username="Alice" gold="300" tax="5">
+        <europe id="europe:9" owner="player-1"/>
+        <market owner="player-1">
+          <marketData goods-type="model.goods.food" amount="100" initialPrice="11"/>
+        </market>
+      </player>
+    </update>
+    """)
+    let handled = try mgr.process(update)
+    try assertEqual(handled, true)
+    try assertEqual(mgr.game.players["player-1"]?.gold, 300)
+    try assertEqual(mgr.game.players["player-1"]?.europe?.id, "europe:9")
+    try assertEqual(mgr.game.players["player-1"]?.market?.data.count, 1)
+}
+
+test("game load parses stance children from player XML") {
+    let game = Game()
+    let parsed = try XMLDecoder.decode("""
+    <game id="game-1">
+      <player id="player-1" username="Alice">
+        <stance player="player-2" value="WAR"/>
+        <stance player="player-3" value="PEACE"/>
+      </player>
+    </game>
+    """)
+    try game.load(from: parsed)
+    try assertEqual(game.players["player-1"]?.stances["player-2"], .war)
+    try assertEqual(game.players["player-1"]?.stances["player-3"], .peace)
+}
+
+test("GameStateManager processes setStance") {
+    let mgr = GameStateManager()
+    try mgr.process(ParsedMessage(tag: "addPlayer", attributes: [:], children: [
+        ParsedMessage(tag: "player", attributes: [
+            "id": "player-1", "username": "Alice", "nationId": "model.nation.dutch"
+        ], children: []),
+        ParsedMessage(tag: "player", attributes: [
+            "id": "player-2", "username": "Bob", "nationId": "model.nation.french"
+        ], children: []),
+    ]))
+    let handled = try mgr.process(ParsedMessage(
+        tag: "setStance",
+        attributes: ["first": "player-1", "second": "player-2", "stance": "WAR"],
+        children: []
+    ))
+    try assertEqual(handled, true)
+    try assertEqual(mgr.game.players["player-1"]?.stances["player-2"], .war)
+}
+
+test("GameStateManager processes setAI and setDead") {
+    let mgr = GameStateManager()
+    try mgr.process(ParsedMessage(tag: "addPlayer", attributes: [:], children: [
+        ParsedMessage(tag: "player", attributes: [
+            "id": "player-1", "username": "Alice", "nationId": "model.nation.dutch"
+        ], children: []),
+    ]))
+    _ = try mgr.process(ParsedMessage(tag: "setAI", attributes: ["player": "player-1", "ai": "true"], children: []))
+    try assertEqual(mgr.game.players["player-1"]?.ai, true)
+    let handled = try mgr.process(ParsedMessage(tag: "setDead", attributes: ["player": "player-1"], children: []))
+    try assertEqual(handled, true)
+    try assertEqual(mgr.game.players.keys.contains("player-1"), false)
+}
+
+test("GameStateManager processes setNation and setNationType") {
+    let mgr = GameStateManager()
+    try mgr.process(ParsedMessage(tag: "addPlayer", attributes: [:], children: [
+        ParsedMessage(tag: "player", attributes: [
+            "id": "player-1", "username": "Alice", "nationId": "model.nation.dutch"
+        ], children: []),
+    ]))
+    _ = try mgr.process(ParsedMessage(tag: "setNation", attributes: ["player": "player-1", "value": "model.nation.french"], children: []))
+    try assertEqual(mgr.game.players["player-1"]?.nationId, "model.nation.french")
+    _ = try mgr.process(ParsedMessage(tag: "setNationType", attributes: ["player": "player-1", "value": "model.nationType.libertarian"], children: []))
+    try assertEqual(mgr.game.players["player-1"]?.nationType, "model.nationType.libertarian")
+}
+
+test("GameStateManager processes setColor and setAvailable") {
+    let mgr = GameStateManager()
+    _ = try mgr.process(ParsedMessage(tag: "setColor", attributes: ["nation": "model.nation.dutch", "color": "3368601"], children: []))
+    try assertEqual(mgr.game.nationColors["model.nation.dutch"], "3368601")
+    _ = try mgr.process(ParsedMessage(tag: "setAvailable", attributes: ["nation": "model.nation.dutch", "state": "NOT_AVAILABLE"], children: []))
+    try assertEqual(mgr.game.nationStates["model.nation.dutch"], "NOT_AVAILABLE")
+}
+
+test("GameStateManager processes logout") {
+    let mgr = GameStateManager()
+    try mgr.process(ParsedMessage(tag: "addPlayer", attributes: [:], children: [
+        ParsedMessage(tag: "player", attributes: [
+            "id": "player-1", "username": "Alice", "nationId": "model.nation.dutch"
+        ], children: []),
+    ]))
+    let handled = try mgr.process(ParsedMessage(tag: "logout", attributes: ["player": "player-1", "reason": "done"], children: []))
+    try assertEqual(handled, true)
+    try assertEqual(mgr.game.players.count, 0)
+}
+
+test("game update applies nested change records") {
+    let game = Game()
+    try game.load(from: try XMLDecoder.decode("""
+    <game id="game-1">
+      <player id="player-1" username="Alice" gold="500"/>
+      <player id="player-2" username="Bob" gold="400"/>
+    </game>
+    """))
+    let update = try XMLDecoder.decode("""
+    <update>
+      <setStance first="player-1" second="player-2" stance="WAR"/>
+      <setDead player="player-2"/>
+      <partial id="player-1" gold="700"/>
+    </update>
+    """)
+    try game.applyUpdate(update)
+    try assertEqual(game.players["player-1"]?.stances["player-2"], .war)
+    try assertEqual(game.players.keys.contains("player-2"), false)
+    try assertEqual(game.players["player-1"]?.gold, 700)
+}
+
 test("EquipForRoleMessage") {
     let msg = EquipForRoleMessage(
         role: "model.role.missionary",
@@ -1254,7 +1418,7 @@ await integrationTest("client sends setColor message") {
         group.addTask {
             try await client.connect()
             _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
-            try await client.send(message: ParsedMessage(tag: "setColor", attributes: ["player": "player-1", "value": "#336699"], children: []))
+            try await client.send(message: ParsedMessage(tag: "setColor", attributes: ["nation": "model.nation.dutch", "color": "3368601"], children: []))
             await client.disconnect()
         }
         group.addTask {
@@ -1265,11 +1429,11 @@ await integrationTest("client sends setColor message") {
             guard msg.tag == "setColor" else {
                 throw TestError(message: "expected setColor, got \(msg.tag)")
             }
-            guard msg.attributes["player"] == "player-1" else {
-                throw TestError(message: "setColor player mismatch")
+            guard msg.attributes["nation"] == "model.nation.dutch" else {
+                throw TestError(message: "setColor nation mismatch")
             }
-            guard msg.attributes["value"] == "#336699" else {
-                throw TestError(message: "setColor value mismatch")
+            guard msg.attributes["color"] == "3368601" else {
+                throw TestError(message: "setColor color mismatch")
             }
         }
         while try await group.next() != nil {}
@@ -1652,7 +1816,7 @@ await integrationTest("client sends setAvailable message") {
             _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
             try await client.send(message: ParsedMessage(
                 tag: "setAvailable",
-                attributes: ["player": "player-1"],
+                attributes: ["nation": "model.nation.dutch", "state": "NOT_AVAILABLE"],
                 children: []
             ))
             await client.disconnect()
@@ -1665,8 +1829,11 @@ await integrationTest("client sends setAvailable message") {
             guard msg.tag == "setAvailable" else {
                 throw TestError(message: "expected setAvailable, got \(msg.tag)")
             }
-            guard msg.attributes["player"] == "player-1" else {
-                throw TestError(message: "setAvailable player mismatch")
+            guard msg.attributes["nation"] == "model.nation.dutch" else {
+                throw TestError(message: "setAvailable nation mismatch")
+            }
+            guard msg.attributes["state"] == "NOT_AVAILABLE" else {
+                throw TestError(message: "setAvailable state mismatch")
             }
         }
         while try await group.next() != nil {}
@@ -2627,6 +2794,79 @@ await integrationTest("client sends goods load/unload messages") {
     await server.stop()
 }
 
+await integrationTest("client sends market buy/sell messages against Europe location") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-42" turn="1" currentPlayer="player-1" clientUserName="Alice">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500" tax="10">
+        <europe id="europe:0" owner="player-1" recruitPrice="800"/>
+        <market owner="player-1">
+          <marketData goods-type="model.goods.food" amount="200" initialPrice="12"/>
+          <marketData goods-type="model.goods.tools" amount="80" initialPrice="16"/>
+        </market>
+      </player>
+      <map id="map-0" width="1" height="1">
+        <tile id="tile-0" x="0" y="0" type="model.tile.ocean" highSeas="true" moveToEurope="true"/>
+      </map>
+      <unit id="unit-caravel" unitType="model.unit.caravel" owner="player-1" location="europe:0" movesLeft="6" state="ACTIVE"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            try await client.send(message: ParsedMessage(tag: "loadGoods", attributes: ["location": "europe:0", "type": "model.goods.food", "amount": "15", "carrier": "unit-caravel"], children: []))
+            try await client.send(message: ParsedMessage(tag: "unloadGoods", attributes: ["type": "model.goods.tools", "amount": "5", "carrier": "unit-caravel"], children: []))
+            await client.disconnect()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let buyLine = try await server.nextLine()
+            let sellLine = try await server.nextLine()
+
+            let buyMsg = try XMLDecoder.decode(buyLine)
+            let sellMsg = try XMLDecoder.decode(sellLine)
+
+            guard buyMsg.tag == "loadGoods" else {
+                throw TestError(message: "expected loadGoods, got \(buyMsg.tag)")
+            }
+            guard buyMsg.attributes["location"] == "europe:0" else {
+                throw TestError(message: "buy goods location mismatch")
+            }
+            guard buyMsg.attributes["type"] == "model.goods.food" else {
+                throw TestError(message: "buy goods type mismatch")
+            }
+            guard buyMsg.attributes["amount"] == "15" else {
+                throw TestError(message: "buy goods amount mismatch")
+            }
+            guard buyMsg.attributes["carrier"] == "unit-caravel" else {
+                throw TestError(message: "buy goods carrier mismatch")
+            }
+
+            guard sellMsg.tag == "unloadGoods" else {
+                throw TestError(message: "expected unloadGoods, got \(sellMsg.tag)")
+            }
+            guard sellMsg.attributes["type"] == "model.goods.tools" else {
+                throw TestError(message: "sell goods type mismatch")
+            }
+            guard sellMsg.attributes["amount"] == "5" else {
+                throw TestError(message: "sell goods amount mismatch")
+            }
+            guard sellMsg.attributes["carrier"] == "unit-caravel" else {
+                throw TestError(message: "sell goods carrier mismatch")
+            }
+        }
+        while try await group.next() != nil {}
+    }
+
+    await server.stop()
+}
+
 await integrationTest("client sends combat action messages") {
     let server = MockServer()
     let port = await server.port
@@ -3461,6 +3701,53 @@ await integrationTest("message loop processes question payload and replies") {
     let current = await client.game.currentPlayerId
     guard current == "player-2" else {
         throw TestError(message: "question payload was not applied")
+    }
+}
+
+await integrationTest("message loop applies inbound stance/ai/chat/logout") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-43" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <player id="player-2" username="Bob" nationId="model.nation.french" gold="400"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            await client.startMessageLoop()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            try await Task.sleep(nanoseconds: 200_000_000)
+            await server.send("<setStance first=\"player-1\" second=\"player-2\" stance=\"WAR\"/>")
+            await server.send("<setAI player=\"player-1\" ai=\"true\"/>")
+            await server.send("<chat sender=\"player-2\" message=\"Hello there\"/>")
+            await server.send("<logout player=\"player-2\" reason=\"done\"/>")
+            await server.flush()
+
+            try await Task.sleep(nanoseconds: 300_000_000)
+            await server.stop()
+        }
+        try await Task.sleep(nanoseconds: 5_000_000_000)
+        group.cancelAll()
+    }
+
+    let game = await client.game
+    let stance = game.players["player-1"]?.stances["player-2"]
+    guard stance == .war else {
+        throw TestError(message: "inbound setStance was not applied")
+    }
+    guard game.players["player-1"]?.ai == true else {
+        throw TestError(message: "inbound setAI was not applied")
+    }
+    guard !game.players.keys.contains("player-2") else {
+        throw TestError(message: "inbound logout did not remove the player")
     }
 }
 

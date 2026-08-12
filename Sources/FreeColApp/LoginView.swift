@@ -56,10 +56,6 @@ struct LoginView: View {
                 .font(.largeTitle)
                 .padding(.top, 20)
 
-            Text("DEBUG phase=\(state.phase.description) serverState=\(state.serverState?.rawValue ?? "nil")")
-                .font(.caption)
-                .foregroundColor(.orange)
-
             if case .lobby = state.phase {
                 VStack(spacing: 6) {
                     Text("Logged in, waiting for game start…")
