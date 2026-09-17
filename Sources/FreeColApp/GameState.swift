@@ -513,6 +513,15 @@ final class GameState {
         return market.data.values.sorted { ($0.goodsType ?? "") < ($1.goodsType ?? "") }
     }
 
+    /// Derived buy/sale prices for one goods type (Java `MarketData.price()`).
+    func marketPrices(for goodsTypeId: String?) -> (costToBuy: Int, paidForSale: Int) {
+        guard let game = cachedGame,
+              let entry = localPlayer?.market?.entry(for: goodsTypeId) else {
+            return (0, 0)
+        }
+        return MarketPricing.prices(for: entry, specification: game.specification)
+    }
+
     // MARK: - Trade routes
 
     var localPlayerTradeRoutes: [TradeRoute] {
@@ -806,6 +815,35 @@ final class GameState {
             return false
         }
         return colony.owner == localPlayerId
+    }
+
+    /// Custom-house export settings for the selected colony, sorted by goods.
+    var selectedColonyExportData: [ColonyExportData] {
+        guard let colony = selectedColony else { return [] }
+        return colony.exportData.values.sorted { $0.goodsType < $1.goodsType }
+    }
+
+    /// Goods types a colony worker can produce/refine.
+    var selectedColonyWorkTypeCandidates: [(id: String, label: String)] {
+        guard let specification = cachedGame?.specification else { return [] }
+        return specification.goodsTypes.values
+            .map { (id: $0.id, label: goodsDisplayName($0.id)) }
+            .sorted { $0.label < $1.label }
+    }
+
+    /// Work locations a colony worker can be assigned to (tiles + buildings).
+    var selectedColonyWorkLocationCandidates: [(id: String, label: String)] {
+        guard let colony = selectedColony else { return [] }
+        var candidates: [(id: String, label: String)] = []
+        for building in colony.buildings {
+            let id = building.buildingType ?? building.id
+            candidates.append((id: building.id, label: buildingDisplayName(id)))
+        }
+        for tile in colony.workTiles {
+            let label = tile.tileId.map { "Tile \($0)" } ?? "Tile \(tile.id)"
+            candidates.append((id: tile.id, label: label))
+        }
+        return candidates.sorted { $0.label < $1.label }
     }
 
     /// Building types the colony can start building now (spec-known, not yet
@@ -3709,29 +3747,6 @@ final class GameState {
         }
     }
 
-    func rearrangeSelectedColony() {
-        guard canManageSelectedColony,
-              let colony = selectedColony else {
-            errorMessage = "Kolonie kann nicht neu sortiert werden."
-            return
-        }
-        errorMessage = nil
-
-
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "rearrangeColony",
-                    attributes: ["colony": colony.id, "xLength": "0"],
-                    children: []
-                )
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-        }
-    }
-
     func setSelectedColonyBuildQueue(_ buildableIds: [String]) {
         let sanitized = buildableIds
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -3790,30 +3805,61 @@ final class GameState {
         }
     }
 
-    func setSelectedColonyWorkerWorkLocation(_ workLocationId: String) {
+    /// Assign the selected colony worker to a work location. If another worker
+    /// already occupies the target, the two are swapped. Uses `rearrangeColony`
+    /// so the server can resolve capacity and swaps atomically.
+    func assignSelectedColonyWorker(to workLocationId: String) {
         let trimmed = workLocationId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            errorMessage = "Bitte eine Work Location ID eingeben."
+            errorMessage = "Bitte eine Work Location auswaehlen."
             return
         }
         guard canManageSelectedColony,
+              let colony = selectedColony,
+              let game = cachedGame,
               let unitId = selectedColonyWorkerUnitId,
-              let game = cachedGame else {
+              let unit = game.units[unitId] else {
             errorMessage = "Work-Zuweisung nicht moeglich."
+            return
+        }
+        guard unit.location != trimmed else {
+            errorMessage = "Einheit arbeitet bereits dort."
             return
         }
         errorMessage = nil
 
+        // Build the arrangement list: the target's occupant (if any) swaps to
+        // the unit's previous location, then the unit moves to the target.
+        var arrangements: [(unit: String, loc: String, work: String?, role: String?, count: Int)] = []
+        let previousLocation = unit.location ?? colony.tileId ?? colony.id
+        if let occupant = selectedColonyUnits.first(where: {
+            $0.id != unitId && $0.location == trimmed
+        }) {
+            arrangements.append((
+                unit: occupant.id,
+                loc: previousLocation,
+                work: occupant.workType,
+                role: occupant.role ?? "model.role.default",
+                count: occupant.roleCount
+            ))
+        }
+        arrangements.append((
+            unit: unitId,
+            loc: trimmed,
+            work: unit.workType,
+            role: unit.role ?? "model.role.default",
+            count: unit.roleCount
+        ))
 
         Task {
             do {
-                let msg = ParsedMessage(
-                    tag: "work",
-                    attributes: ["unit": unitId, "workLocation": trimmed],
-                    children: []
-                )
+                let msg = Self.rearrangeColonyMessage(colonyId: colony.id,
+                                                      arrangements: arrangements)
                 if server != nil {
-                    game.setUnitWorkLocation(unitId: unitId, workLocationId: trimmed)
+                    for arrangement in arrangements {
+                        game.setUnitWorkLocation(unitId: arrangement.unit,
+                                                 workLocationId: arrangement.loc)
+                    }
                     gameUpdateID += 1
                 }
                 try await client?.send(message: msg)
@@ -3821,6 +3867,27 @@ final class GameState {
                 errorMessage = error.localizedDescription
             }
         }
+    }
+
+    /// Build a `rearrangeColony` message from worker arrangements.
+    nonisolated static func rearrangeColonyMessage(
+        colonyId: String,
+        arrangements: [(unit: String, loc: String, work: String?, role: String?, count: Int)]
+    ) -> ParsedMessage {
+        var attributes: [String: String] = [
+            "colony": colonyId,
+            "xLength": String(arrangements.count),
+        ]
+        for (index, arrangement) in arrangements.enumerated() {
+            attributes["x\(index)unit"] = arrangement.unit
+            attributes["x\(index)loc"] = arrangement.loc
+            if let work = arrangement.work, !work.isEmpty {
+                attributes["x\(index)work"] = work
+            }
+            attributes["x\(index)role"] = arrangement.role ?? "model.role.default"
+            attributes["x\(index)count"] = String(arrangement.count)
+        }
+        return ParsedMessage(tag: "rearrangeColony", attributes: attributes, children: [])
     }
 
     func renameSelectedColony(to newName: String) {
@@ -3916,27 +3983,57 @@ final class GameState {
         }
     }
 
-    func setSelectedColonyGoodsLevels() {
+    /// Set the custom-house export settings for one goods type.
+    func setSelectedColonyGoodsLevel(_ data: ColonyExportData) {
         guard canManageSelectedColony,
               let colony = selectedColony else {
             errorMessage = "Goods-Levels koennen nicht gesetzt werden."
             return
         }
+        guard !data.goodsType.isEmpty else {
+            errorMessage = "Goods Type erforderlich."
+            return
+        }
         errorMessage = nil
-
 
         Task {
             do {
-                let msg = ParsedMessage(
-                    tag: "setGoodsLevels",
-                    attributes: ["colony": colony.id],
-                    children: []
-                )
+                let msg = Self.exportDataMessage(colonyId: colony.id, data: data)
+                if server != nil {
+                    selectedColonyExportDataApplyLocal(data)
+                }
                 try await client?.send(message: msg)
             } catch {
                 errorMessage = error.localizedDescription
             }
         }
+    }
+
+    /// Build a `setGoodsLevels` message carrying a single `<exportData>` child.
+    nonisolated static func exportDataMessage(colonyId: String,
+                                              data: ColonyExportData) -> ParsedMessage {
+        let exportChild = ParsedMessage(
+            tag: "exportData",
+            attributes: [
+                "id": data.goodsType,
+                "exported": data.exported ? "true" : "false",
+                "highLevel": String(data.highLevel),
+                "lowLevel": String(data.lowLevel),
+                "importLevel": String(data.importLevel),
+                "exportLevel": String(data.exportLevel),
+            ],
+            children: []
+        )
+        return ParsedMessage(tag: "setGoodsLevels",
+                             attributes: ["colony": colonyId],
+                             children: [exportChild])
+    }
+
+    private func selectedColonyExportDataApplyLocal(_ data: ColonyExportData) {
+        guard var colony = selectedColony else { return }
+        colony.exportData[data.goodsType] = data
+        cachedGame?.replaceColony(colony)
+        gameUpdateID += 1
     }
 
     func trainUnitInEurope(unitType: String) {
@@ -4053,7 +4150,7 @@ final class GameState {
         do {
             let (europeId, typeId, carrier) = try marketTradeContext(goodsTypeId: goodsTypeId, amount: amount, carrierId: carrierId)
             errorMessage = nil
-            let price = marketDataPrice(for: typeId)
+            let price = marketPrice(for: typeId, sell: false)
             purchasesTotal += amount * price
 
             Task {
@@ -4084,7 +4181,7 @@ final class GameState {
         do {
             let (_, typeId, carrier) = try marketTradeContext(goodsTypeId: goodsTypeId, amount: amount, carrierId: carrierId)
             errorMessage = nil
-            let price = marketDataPrice(for: typeId)
+            let price = marketPrice(for: typeId, sell: true)
             salesTotal += amount * price
 
             Task {
@@ -4110,9 +4207,49 @@ final class GameState {
         }
     }
 
-    private func marketDataPrice(for goodsTypeId: String) -> Int {
-        guard let market = localPlayer?.market else { return 0 }
-        return market.entry(for: goodsTypeId)?.initialPrice ?? 0
+    /// Buy price (`costToBuy`) or sale price (`paidForSale`) for one goods type.
+    private func marketPrice(for goodsTypeId: String, sell: Bool) -> Int {
+        let prices = marketPrices(for: goodsTypeId)
+        return sell ? prices.paidForSale : prices.costToBuy
+    }
+
+    /// Arrears owed for a goods type (0 when not boycotted).
+    func arrears(for goodsTypeId: String?) -> Int {
+        localPlayer?.market?.entry(for: goodsTypeId)?.arrears ?? 0
+    }
+
+    func canPayArrears(for goodsTypeId: String?) -> Bool {
+        guard phase == .inGame, isLocalPlayersTurn,
+              let goodsTypeId, !goodsTypeId.isEmpty,
+              let gold = localPlayer?.gold else { return false }
+        let owed = arrears(for: goodsTypeId)
+        return owed > 0 && gold >= owed
+    }
+
+    /// Pay the tax arrears to lift a boycott on one goods type.
+    func payArrears(goodsTypeId: String) {
+        let trimmed = goodsTypeId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            errorMessage = "Bitte einen Goods Type angeben."
+            return
+        }
+        guard canPayArrears(for: trimmed) else {
+            errorMessage = "Rueckstaende koennen nicht bezahlt werden."
+            return
+        }
+        errorMessage = nil
+        Task {
+            do {
+                let msg = ParsedMessage(
+                    tag: "payArrears",
+                    attributes: ["goodsType": trimmed],
+                    children: []
+                )
+                try await client?.send(message: msg)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 
     private func marketTradeContext(goodsTypeId: String,

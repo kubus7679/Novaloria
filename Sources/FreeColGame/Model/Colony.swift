@@ -12,6 +12,52 @@ public struct ColonyBuilding: Sendable, Identifiable {
     }
 }
 
+/// Custom-house export/import settings for one goods type (`<exportData>`).
+public struct ColonyExportData: Sendable, Identifiable {
+    public var id: String { goodsType }
+    public var goodsType: String
+    public var exported: Bool
+    public var importLevel: Int
+    public var exportLevel: Int
+    public var highLevel: Int
+    public var lowLevel: Int
+
+    public init(goodsType: String,
+                exported: Bool,
+                importLevel: Int,
+                exportLevel: Int,
+                highLevel: Int,
+                lowLevel: Int) {
+        self.goodsType = goodsType
+        self.exported = exported
+        self.importLevel = importLevel
+        self.exportLevel = exportLevel
+        self.highLevel = highLevel
+        self.lowLevel = lowLevel
+    }
+}
+
+/// A work location inside a colony (a colony tile or a building), used to
+/// address worker assignments in `work`/`rearrangeColony`.
+public struct ColonyWorkLocation: Sendable, Identifiable {
+    public enum Kind: String, Sendable {
+        case colonyTile
+        case building
+    }
+
+    public var id: String
+    public var kind: Kind
+    public var tileId: String?
+    public var buildingType: String?
+
+    public init(id: String, kind: Kind, tileId: String? = nil, buildingType: String? = nil) {
+        self.id = id
+        self.kind = kind
+        self.tileId = tileId
+        self.buildingType = buildingType
+    }
+}
+
 public struct Colony: GameObject, PartiallyUpdatable, Identifiable {
     public var id: String
     public var name: String?
@@ -32,6 +78,10 @@ public struct Colony: GameObject, PartiallyUpdatable, Identifiable {
     public var buildings: [ColonyBuilding] = []
     /// Stored goods, keyed by goods type id (from `<goodsContainer>`).
     public var goods: [String: Int] = [:]
+    /// Custom-house export/import settings, keyed by goods type id.
+    public var exportData: [String: ColonyExportData] = [:]
+    /// Colony tile work locations (buildings are tracked in `buildings`).
+    public var workTiles: [ColonyWorkLocation] = []
 
     public init(id: String, attributes: Attributes, children: [ParsedMessage], game: Game) throws {
         self.id = id
@@ -53,6 +103,26 @@ public struct Colony: GameObject, PartiallyUpdatable, Identifiable {
                         }
                     }
                 }
+            case "exportData":
+                if let goodsType = child.attributes["id"] {
+                    exportData[goodsType] = ColonyExportData(
+                        goodsType: goodsType,
+                        exported: child.attributes.bool("exported", default: false),
+                        importLevel: child.attributes.int("importLevel", default: -1),
+                        exportLevel: child.attributes.int("exportLevel", default: 50),
+                        highLevel: child.attributes.int("highLevel", default: 90),
+                        lowLevel: child.attributes.int("lowLevel", default: 10)
+                    )
+                }
+            case "colonyTile":
+                let tileId = child.attributes["workTile"]
+                    ?? child.attributes["tile"]
+                    ?? child.attributes["work-tile"]
+                workTiles.append(ColonyWorkLocation(
+                    id: child.attributes["id"] ?? tileId ?? "",
+                    kind: .colonyTile,
+                    tileId: tileId
+                ))
             default:
                 break
             }

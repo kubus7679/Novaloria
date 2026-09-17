@@ -2892,8 +2892,18 @@ await integrationTest("client sends colony action messages") {
             try await client.send(message: ParsedMessage(tag: "work", attributes: ["unit": "unit-1", "workLocation": "tile-0"], children: []))
             try await client.send(message: ParsedMessage(tag: "rename", attributes: ["name": "Beta", "nameable": "colony-1"], children: []))
             try await client.send(message: ParsedMessage(tag: "payForBuilding", attributes: ["colony": "colony-1"], children: []))
-            try await client.send(message: ParsedMessage(tag: "setGoodsLevels", attributes: ["colony": "colony-1"], children: []))
-            try await client.send(message: ParsedMessage(tag: "rearrangeColony", attributes: ["colony": "colony-1", "xLength": "0"], children: []))
+            try await client.send(message: ParsedMessage(tag: "setGoodsLevels", attributes: ["colony": "colony-1"], children: [
+                ParsedMessage(tag: "exportData", attributes: [
+                    "id": "model.goods.sugar", "exported": "true",
+                    "highLevel": "90", "lowLevel": "10",
+                    "importLevel": "-1", "exportLevel": "50",
+                ], children: []),
+            ]))
+            try await client.send(message: ParsedMessage(tag: "rearrangeColony", attributes: [
+                "colony": "colony-1", "xLength": "1",
+                "x0unit": "unit-1", "x0loc": "tile-0",
+                "x0role": "model.role.default", "x0count": "0",
+            ], children: []))
             try await client.send(message: ParsedMessage(tag: "setBuildQueue", attributes: ["colony": "colony-1", "xLength": "2", "x0": "model.building.carpenterHouse", "x1": "model.unit.artillery"], children: []))
             try await client.send(message: ParsedMessage(tag: "putOutsideColony", attributes: ["unit": "unit-1"], children: []))
             try await client.send(message: ParsedMessage(tag: "abandonColony", attributes: ["colony": "colony-1"], children: []))
@@ -2998,6 +3008,15 @@ await integrationTest("client sends colony action messages") {
             guard goodsLevelsMsg.attributes["colony"] == "colony-1" else {
                 throw TestError(message: "setGoodsLevels colony mismatch")
             }
+            guard let exportChild = goodsLevelsMsg.children.first,
+                  exportChild.tag == "exportData" else {
+                throw TestError(message: "setGoodsLevels missing exportData child")
+            }
+            guard exportChild.attributes["id"] == "model.goods.sugar",
+                  exportChild.attributes["exported"] == "true",
+                  exportChild.attributes["exportLevel"] == "50" else {
+                throw TestError(message: "exportData payload mismatch")
+            }
 
             guard rearrangeMsg.tag == "rearrangeColony" else {
                 throw TestError(message: "expected rearrangeColony, got \(rearrangeMsg.tag)")
@@ -3005,8 +3024,13 @@ await integrationTest("client sends colony action messages") {
             guard rearrangeMsg.attributes["colony"] == "colony-1" else {
                 throw TestError(message: "rearrangeColony colony mismatch")
             }
-            guard rearrangeMsg.attributes["xLength"] == "0" else {
+            guard rearrangeMsg.attributes["xLength"] == "1" else {
                 throw TestError(message: "rearrangeColony xLength mismatch")
+            }
+            guard rearrangeMsg.attributes["x0unit"] == "unit-1",
+                  rearrangeMsg.attributes["x0loc"] == "tile-0",
+                  rearrangeMsg.attributes["x0role"] == "model.role.default" else {
+                throw TestError(message: "rearrangeColony arrangement mismatch")
             }
 
             guard queueMsg.tag == "setBuildQueue" else {

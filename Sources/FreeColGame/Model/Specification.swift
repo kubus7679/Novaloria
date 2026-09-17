@@ -43,17 +43,41 @@ public struct GoodsTypeInfo: @unchecked Sendable {
     public var isFood: Bool
     public var isBuildingMaterial: Bool
     public var isTradeGoods: Bool
+    /// Whether goods of this type can be stored/traded (`storable`, default true).
+    public var isStorable: Bool
+    /// New-world goods participate in the market price clamp work-around.
+    public var isNewWorldGoods: Bool
+    /// Market reference amount from the `<market>` child.
+    public var marketInitialAmount: Int
+    /// Market reference price from the `<market>` child.
+    public var marketInitialPrice: Int
+    /// Buy/sell spread from the `<market>` child.
+    public var priceDifference: Int
+    /// Goods type this one is refined from (`made-from`), used by the price work-around.
+    public var madeFrom: String?
 
     public init(id: String,
                 name: String?,
                 isFood: Bool,
                 isBuildingMaterial: Bool,
-                isTradeGoods: Bool) {
+                isTradeGoods: Bool,
+                isStorable: Bool = true,
+                isNewWorldGoods: Bool = false,
+                marketInitialAmount: Int = 0,
+                marketInitialPrice: Int = 1,
+                priceDifference: Int = 1,
+                madeFrom: String? = nil) {
         self.id = id
         self.name = name
         self.isFood = isFood
         self.isBuildingMaterial = isBuildingMaterial
         self.isTradeGoods = isTradeGoods
+        self.isStorable = isStorable
+        self.isNewWorldGoods = isNewWorldGoods
+        self.marketInitialAmount = marketInitialAmount
+        self.marketInitialPrice = marketInitialPrice
+        self.priceDifference = priceDifference
+        self.madeFrom = madeFrom
     }
 }
 
@@ -266,12 +290,21 @@ public final class Specification: @unchecked Sendable {
     private func collectGoodsTypes(from node: ParsedMessage) {
         for child in node.children {
             if child.tag == "goods-type", let goodsId = child.attributes["id"] {
+                let market = child.children.first { $0.tag == "market" }
                 goodsTypes[goodsId] = GoodsTypeInfo(
                     id: goodsId,
                     name: child.attributes["name"],
-                    isFood: child.attributes.bool("food", default: false),
+                    isFood: child.attributes.bool("is-food",
+                                                  default: child.attributes.bool("food", default: false)),
                     isBuildingMaterial: child.attributes.bool("buildingMaterial", default: false),
-                    isTradeGoods: child.attributes.bool("tradeGoods", default: false)
+                    isTradeGoods: child.attributes.bool("trade-goods",
+                                                        default: child.attributes.bool("tradeGoods", default: false)),
+                    isStorable: child.attributes.bool("storable", default: true),
+                    isNewWorldGoods: child.attributes.bool("new-world-goods", default: false),
+                    marketInitialAmount: market?.attributes.int("initial-amount") ?? 0,
+                    marketInitialPrice: market?.attributes.int("initial-price") ?? 1,
+                    priceDifference: market?.attributes.int("price-difference") ?? 1,
+                    madeFrom: child.attributes["made-from"]
                 )
             }
             collectGoodsTypes(from: child)

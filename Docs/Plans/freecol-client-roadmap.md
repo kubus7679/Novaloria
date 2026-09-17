@@ -96,7 +96,7 @@
 - [x] **54 Inbound blockers** — `chooseFoundingFather` in-game dialog,
       `setDead` defeat/revenge, local `logout`, `gameEnded` victory screen,
       `incite`/`spySettlement`/`scoutSpeakToChief` prompts, lobby option echo.
-- [ ] **55 Colony economy** — export-data/warehouse levels, real
+- [x] **55 Colony economy** — export-data/warehouse levels, real
       `rearrangeColony`, worker pickers, market buy/sell prices, `payArrears`.
 - [ ] **56 Map/unit orders** — `moveTo`, clear orders, next-unit cycle,
       end-turn dialog, tile popup, map pioneer improvements.

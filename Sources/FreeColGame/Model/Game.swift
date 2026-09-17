@@ -279,6 +279,11 @@ public final class Game: @unchecked Sendable {
         }
     }
 
+    /// Store a locally-updated colony (value type) back into the model.
+    public func replaceColony(_ colony: Colony) {
+        colonies[colony.id] = colony
+    }
+
     /// Merge the server's authoritative option echo into the local mirror.
     public func mergeOptions(_ options: [String: String]) {
         for (key, value) in options {

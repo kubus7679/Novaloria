@@ -96,9 +96,10 @@ struct EuropePanelView: View {
                         .foregroundColor(.secondary)
                 } else {
                     HStack(spacing: 0) {
-                        Text("Goods").frame(width: 110, alignment: .leading)
-                        Text("Price").frame(width: 60, alignment: .trailing)
-                        Text("In stock").frame(width: 70, alignment: .trailing)
+                        Text("Goods").frame(width: 100, alignment: .leading)
+                        Text("Buy").frame(width: 46, alignment: .trailing)
+                        Text("Sell").frame(width: 46, alignment: .trailing)
+                        Text("Stock").frame(width: 56, alignment: .trailing)
                         Spacer()
                     }
                     .font(.caption2.bold())
@@ -107,19 +108,32 @@ struct EuropePanelView: View {
                     ScrollView {
                         VStack(spacing: 3) {
                             ForEach(marketData) { entry in
+                                let prices = state.marketPrices(for: entry.goodsType)
                                 HStack(spacing: 0) {
                                     Text(goodsLabel(entry.goodsType))
-                                        .frame(width: 110, alignment: .leading)
+                                        .frame(width: 100, alignment: .leading)
                                         .font(.caption)
-                                    Text("\(entry.initialPrice) G")
-                                        .frame(width: 60, alignment: .trailing)
+                                    Text("\(prices.costToBuy)")
+                                        .frame(width: 46, alignment: .trailing)
+                                        .font(.caption)
+                                        .foregroundColor(.orange)
+                                    Text("\(prices.paidForSale)")
+                                        .frame(width: 46, alignment: .trailing)
                                         .font(.caption)
                                         .foregroundColor(.yellow)
                                     Text("\(entry.amount)")
-                                        .frame(width: 70, alignment: .trailing)
+                                        .frame(width: 56, alignment: .trailing)
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                     Spacer()
+                                    if entry.arrears > 0 {
+                                        Button("Pay \(entry.arrears)") {
+                                            state.payArrears(goodsTypeId: entry.goodsType ?? "")
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                        .disabled(!state.canPayArrears(for: entry.goodsType))
+                                    }
                                     Button("Sell") {
                                         selectedGoodsType = entry.goodsType ?? ""
                                     }

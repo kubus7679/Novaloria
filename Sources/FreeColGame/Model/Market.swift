@@ -75,6 +75,60 @@ public struct MarketData: Identifiable {
     }
 }
 
+/// Client-side market price calculation, mirroring `MarketData.price()` in the
+/// Java client. The server only serializes `amount` + `initialPrice`; the buy
+/// and sale prices are derived from the goods-type market reference values.
+public enum MarketPricing {
+    public static let minimumPrice = 1
+    public static let maximumPrice = 19
+
+    /// Returns `(costToBuy, paidForSale)` for a market entry.
+    ///
+    /// This reproduces the first-pass of `MarketData.price()` (the clamping
+    /// history is server-side state the client does not track).
+    public static func prices(amount: Int,
+                              initialPrice: Int,
+                              info: GoodsTypeInfo?) -> (costToBuy: Int, paidForSale: Int) {
+        guard let info, info.isStorable else { return (0, 0) }
+        let referenceAmount = info.marketInitialAmount > 0
+            ? info.marketInitialAmount
+            : info.marketInitialPrice
+        let effectiveAmount = amount > 0 ? amount : 1
+        let diff = info.priceDifference
+        let amountPrice = Double(initialPrice) * (Double(referenceAmount) / Double(effectiveAmount))
+        var salePrice = Int(amountPrice.rounded())
+        var buyPrice = salePrice + diff
+
+        // Work-around to limit prices of new-world goods and their products.
+        let isNewWorld = info.isNewWorldGoods
+            || (info.madeFrom.flatMap { $0.contains("newWorld") } ?? false)
+        if salePrice > initialPrice + 2, isNewWorld {
+            salePrice = initialPrice + 2
+            buyPrice = salePrice + diff
+        }
+
+        // Clamp extremes.
+        if buyPrice > maximumPrice {
+            buyPrice = maximumPrice
+            salePrice = buyPrice - diff
+        } else if salePrice < minimumPrice {
+            salePrice = minimumPrice
+            buyPrice = salePrice + diff
+        }
+
+        return (buyPrice, salePrice)
+    }
+
+    /// Prices for a market data entry using the specification.
+    public static func prices(for entry: MarketData,
+                              specification: Specification?) -> (costToBuy: Int, paidForSale: Int) {
+        let info = specification?.goodsTypes[entry.goodsType ?? ""]
+        return prices(amount: entry.amount,
+                      initialPrice: entry.initialPrice,
+                      info: info)
+    }
+}
+
 /// Player market with prices, as published in `<market>` children of `<player>`.
 public struct Market {
     public var owner: String?

@@ -9,18 +9,15 @@ abgearbeitet. Die bestehenden `[x]`-Markierungen in `plans.md` und
 
 ## Phase 54 — Inbound-Blocker ✅ (siehe `phase54-inbound-blockers-plan.md`)
 
-## Phase 55 — Kolonie-Ökonomie (offen, P0/P1)
+## Phase 55 — Kolonie-Ökonomie ✅ (siehe `phase55-colony-economy-plan.md`)
 
-- [ ] Kolonie-`<exportData>` parsen und `setGoodsLevels` mit ExportData-Child
-      senden; Warehouse-Dialog (Export/Import-Level pro Ware). Aktuell sendet
-      `setSelectedColonyGoodsLevels` nur `colony=` → Server-No-op.
-- [ ] Kolonie-`<workLocation>` parsen; `rearrangeColony` mit echter
-      Arrangement-Liste (aktuell `xLength=0`).
-- [ ] Roh-ID-Felder in `ColonyPanelView` (`WorkType ID`, `Teacher ID`,
-      `Work Location ID`) durch Picker ersetzen.
-- [ ] Marktpreise: `costToBuy`/`paidForSale` aus `amount`+`initialPrice`
-      berechnen statt `initialPrice` für beide Richtungen.
-- [ ] `payArrears` (Boykott-Aufhebung) verdrahten.
+- [x] `<exportData>` geparst; `setGoodsLevels` sendet ExportData-Child;
+      `WarehouseSheet` mit Export-Toggle und Levels pro Ware.
+- [x] `<colonyTile>`-Arbeitsplätze geparst; `rearrangeColony` mit echter
+      Arrangement-Liste inkl. Besetzer-Tausch.
+- [x] Roh-ID-Felder durch Picker ersetzt (Work Type, Teacher, Work Location).
+- [x] Marktpreise `costToBuy`/`paidForSale` via `MarketPricing` berechnet.
+- [x] `payArrears` verdrahtet.
 
 ## Phase 56 — Karte/Einheiten-Orders (offen, P1)
 

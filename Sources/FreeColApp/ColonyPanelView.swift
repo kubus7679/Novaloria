@@ -15,10 +15,12 @@ struct ColonyPanelView: View {
     let onWorkAtLocation: (String) -> Void
     let onRenameColony: (String) -> Void
     let onPayForBuilding: () -> Void
-    let onSetGoodsLevels: () -> Void
+    let onSetGoodsLevel: (ColonyExportData) -> Void
+    let exportData: [ColonyExportData]
+    let workLocationCandidates: [(id: String, label: String)]
+    let workTypeCandidates: [(id: String, label: String)]
     let onAbandonColony: () -> Void
     let canAbandonColony: Bool
-    let onRearrangeColony: () -> Void
     let onSetBuildQueue: ([String]) -> Void
     let onPutOutsideColony: () -> Void
     let canPutOutsideColony: Bool
@@ -46,6 +48,7 @@ struct ColonyPanelView: View {
     @State private var goodsTypeId: String = "model.goods.grain"
     @State private var goodsAmountInput: String = "10"
     @State private var showAbandonConfirmation: Bool = false
+    @State private var showWarehouse: Bool = false
 
     init(
         colony: Colony,
@@ -61,10 +64,12 @@ struct ColonyPanelView: View {
         onWorkAtLocation: @escaping (String) -> Void,
         onRenameColony: @escaping (String) -> Void,
         onPayForBuilding: @escaping () -> Void,
-        onSetGoodsLevels: @escaping () -> Void,
+        onSetGoodsLevel: @escaping (ColonyExportData) -> Void,
+        exportData: [ColonyExportData] = [],
+        workLocationCandidates: [(id: String, label: String)] = [],
+        workTypeCandidates: [(id: String, label: String)] = [],
         onAbandonColony: @escaping () -> Void,
         canAbandonColony: Bool,
-        onRearrangeColony: @escaping () -> Void,
         onSetBuildQueue: @escaping ([String]) -> Void,
         onPutOutsideColony: @escaping () -> Void,
         canPutOutsideColony: Bool,
@@ -95,10 +100,12 @@ struct ColonyPanelView: View {
         self.onWorkAtLocation = onWorkAtLocation
         self.onRenameColony = onRenameColony
         self.onPayForBuilding = onPayForBuilding
-        self.onSetGoodsLevels = onSetGoodsLevels
+        self.onSetGoodsLevel = onSetGoodsLevel
+        self.exportData = exportData
+        self.workLocationCandidates = workLocationCandidates
+        self.workTypeCandidates = workTypeCandidates
         self.onAbandonColony = onAbandonColony
         self.canAbandonColony = canAbandonColony
-        self.onRearrangeColony = onRearrangeColony
         self.onSetBuildQueue = onSetBuildQueue
         self.onPutOutsideColony = onPutOutsideColony
         self.canPutOutsideColony = canPutOutsideColony
@@ -263,8 +270,8 @@ struct ColonyPanelView: View {
                 .buttonStyle(.bordered)
                 .disabled(!canManage)
 
-                Button("Set Goods Levels") {
-                    onSetGoodsLevels()
+                Button("Warehouse…") {
+                    showWarehouse = true
                 }
                 .buttonStyle(.bordered)
                 .disabled(!canManage)
@@ -279,13 +286,17 @@ struct ColonyPanelView: View {
                     .font(.caption2)
                     .foregroundColor(.secondary)
 
-                TextField("WorkType ID", text: $workTypeId)
-                    .textFieldStyle(.roundedBorder)
+                Picker("Work Type", selection: $workTypeId) {
+                    ForEach(workTypeCandidates, id: \.id) { candidate in
+                        Text(candidate.label).tag(candidate.id)
+                    }
+                }
+                .disabled(!canManage || selectedWorkerUnitId == nil)
                 Button("Change Work Type") {
                     onChangeWorkType(workTypeId)
                 }
                 .buttonStyle(.bordered)
-                .disabled(!canManage || selectedWorkerUnitId == nil)
+                .disabled(!canManage || selectedWorkerUnitId == nil || workTypeId.isEmpty)
 
                 TextField("Work Improvement Type ID", text: $workImprovementTypeId)
                     .textFieldStyle(.roundedBorder)
@@ -301,13 +312,18 @@ struct ColonyPanelView: View {
                 .buttonStyle(.bordered)
                 .disabled(!canManage || selectedWorkerUnitId == nil)
 
-                TextField("Teacher ID", text: $teacherId)
-                    .textFieldStyle(.roundedBorder)
+                Picker("Teacher", selection: $teacherId) {
+                    Text("None").tag("")
+                    ForEach(units.filter { $0.id != selectedWorkerUnitId }, id: \.id) { candidate in
+                        Text(candidate.unitType ?? candidate.id).tag(candidate.id)
+                    }
+                }
+                .disabled(!canManage || selectedWorkerUnitId == nil)
                 Button("Assign Teacher") {
                     onAssignTeacher(teacherId)
                 }
                 .buttonStyle(.bordered)
-                .disabled(!canManage || selectedWorkerUnitId == nil)
+                .disabled(!canManage || selectedWorkerUnitId == nil || teacherId.isEmpty)
 
                 Button("Clear Teacher") {
                     onClearTeacher()
@@ -331,19 +347,23 @@ struct ColonyPanelView: View {
                         .foregroundColor(.secondary)
                 }
 
-                TextField("Work Location ID", text: $workLocationId)
-                    .textFieldStyle(.roundedBorder)
-                Button("Work At Location") {
-                    onWorkAtLocation(workLocationId)
+                if workLocationCandidates.isEmpty {
+                    Text("Keine Arbeitsplaetze verfügbar.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                } else {
+                    Picker("Work Location", selection: $workLocationId) {
+                        ForEach(workLocationCandidates, id: \.id) { candidate in
+                            Text(candidate.label).tag(candidate.id)
+                        }
+                    }
+                    .disabled(!canManage || selectedWorkerUnitId == nil)
+                    Button("Assign Worker") {
+                        onWorkAtLocation(workLocationId)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(!canManage || selectedWorkerUnitId == nil || workLocationId.isEmpty)
                 }
-                .buttonStyle(.bordered)
-                .disabled(!canManage || selectedWorkerUnitId == nil)
-
-                Button("Rearrange Colony") {
-                    onRearrangeColony()
-                }
-                .buttonStyle(.bordered)
-                .disabled(!canManage)
 
                 if buildTargetLabel != nil || !storedGoods.isEmpty {
                     Divider()
@@ -555,6 +575,17 @@ struct ColonyPanelView: View {
         } message: {
             Text("This will remove the colony and cannot be undone.")
         }
+        .sheet(isPresented: $showWarehouse) {
+            WarehouseSheet(exportData: exportData, onApply: onSetGoodsLevel)
+        }
+        .onAppear {
+            if workTypeId.isEmpty, let first = workTypeCandidates.first {
+                workTypeId = first.id
+            }
+            if workLocationId.isEmpty, let first = workLocationCandidates.first {
+                workLocationId = first.id
+            }
+        }
         .onChange(of: colony.buildQueue) { _, newQueue in
             // Keep the draft in sync with server-driven queue changes.
             buildQueueItems = newQueue
@@ -591,5 +622,112 @@ struct ColonyPanelView: View {
             return "No work assignment"
         }
         return parts.joined(separator: " | ")
+    }
+}
+
+/// Custom-house export/import settings for one colony (Java `WarehouseDialog`).
+private struct WarehouseSheet: View {
+    let exportData: [ColonyExportData]
+    let onApply: (ColonyExportData) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var drafts: [String: ColonyExportData] = [:]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Warehouse")
+                .font(.title3.bold())
+            Text("Custom-house export and import levels per goods type.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            if exportData.isEmpty {
+                Text("No export settings received from the server.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(exportData) { entry in
+                            if let binding = draftBinding(for: entry.goodsType) {
+                                row(binding)
+                                Divider()
+                            }
+                        }
+                    }
+                }
+                .frame(maxHeight: 340)
+            }
+
+            HStack {
+                Spacer()
+                Button("Close") { dismiss() }
+                    .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(16)
+        .frame(width: 480)
+        .onAppear {
+            drafts = Dictionary(uniqueKeysWithValues: exportData.map { ($0.goodsType, $0) })
+        }
+    }
+
+    private func draftBinding(for goodsType: String) -> Binding<ColonyExportData>? {
+        guard drafts[goodsType] != nil else { return nil }
+        return Binding(
+            get: { drafts[goodsType] ?? ColonyExportData(goodsType: goodsType,
+                                                         exported: false,
+                                                         importLevel: -1,
+                                                         exportLevel: 50,
+                                                         highLevel: 90,
+                                                         lowLevel: 10) },
+            set: { drafts[goodsType] = $0 }
+        )
+    }
+
+    @ViewBuilder
+    private func row(_ binding: Binding<ColonyExportData>) -> some View {
+        let entry = binding.wrappedValue
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(goodsLabel(entry.goodsType))
+                    .font(.caption.bold())
+                Spacer()
+                Toggle("Export", isOn: binding.exported)
+                    .toggleStyle(.checkbox)
+                    .font(.caption)
+                Button("Apply") { onApply(binding.wrappedValue) }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            }
+            HStack(spacing: 12) {
+                stepper("Import", value: binding.importLevel, range: -1...999)
+                stepper("Export", value: binding.exportLevel, range: 0...999)
+                stepper("Low", value: binding.lowLevel, range: 0...999)
+                stepper("High", value: binding.highLevel, range: 0...999)
+            }
+        }
+    }
+
+    private func stepper(_ title: String,
+                         value: Binding<Int>,
+                         range: ClosedRange<Int>) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+            HStack(spacing: 4) {
+                Text("\(value.wrappedValue)")
+                    .font(.caption)
+                    .frame(minWidth: 24, alignment: .trailing)
+                Stepper("", value: value, in: range)
+                    .labelsHidden()
+            }
+        }
+    }
+
+    private func goodsLabel(_ id: String) -> String {
+        guard let range = id.range(of: "model.goods.") else { return id }
+        return String(id[range.upperBound...])
     }
 }

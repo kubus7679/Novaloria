@@ -118,7 +118,7 @@ struct GameView: View {
                         state.clearTeacherForSelectedColonyWorker()
                     },
                     onWorkAtLocation: { workLocationId in
-                        state.setSelectedColonyWorkerWorkLocation(workLocationId)
+                        state.assignSelectedColonyWorker(to: workLocationId)
                     },
                     onRenameColony: { newName in
                         state.renameSelectedColony(to: newName)
@@ -126,16 +126,16 @@ struct GameView: View {
                     onPayForBuilding: {
                         state.payForSelectedColonyBuilding()
                     },
-                    onSetGoodsLevels: {
-                        state.setSelectedColonyGoodsLevels()
+                    onSetGoodsLevel: { data in
+                        state.setSelectedColonyGoodsLevel(data)
                     },
+                    exportData: state.selectedColonyExportData,
+                    workLocationCandidates: state.selectedColonyWorkLocationCandidates,
+                    workTypeCandidates: state.selectedColonyWorkTypeCandidates,
                     onAbandonColony: {
                         state.abandonSelectedColony()
                     },
                     canAbandonColony: state.canAbandonSelectedColony,
-                    onRearrangeColony: {
-                        state.rearrangeSelectedColony()
-                    },
                     onSetBuildQueue: { queueIds in
                         state.setSelectedColonyBuildQueue(queueIds)
                     },

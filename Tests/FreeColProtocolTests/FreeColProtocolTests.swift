@@ -1015,4 +1015,113 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(game.optionValues["model.option.giftToAllies"], "false")
         XCTAssertEqual(game.optionValues["model.option.trade"], "true")
     }
+
+    // MARK: Phase 55 - colony economy
+
+    private func pricingSpecification() throws -> Specification {
+        let parsed = try XMLDecoder.decode("""
+        <freecol-specification id="spec">
+          <goods-type id="model.goods.sugar" storable="true" new-world-goods="true">
+            <market initial-amount="1500" initial-price="2" price-difference="2"/>
+          </goods-type>
+          <goods-type id="model.goods.rum" storable="true" made-from="model.goods.sugar">
+            <market initial-amount="1000" initial-price="4" price-difference="2"/>
+          </goods-type>
+        </freecol-specification>
+        """)
+        return Specification(parsed: parsed)
+    }
+
+    func testMarketPricingFromAmountAndInitialPrice() throws {
+        let spec = try pricingSpecification()
+        let sugar = try XCTUnwrap(spec.goodsTypes["model.goods.sugar"])
+
+        // At the reference amount the sale price equals the initial price.
+        let atReference = MarketPricing.prices(amount: 1500, initialPrice: 2, info: sugar)
+        XCTAssertEqual(atReference.paidForSale, 2)
+        XCTAssertEqual(atReference.costToBuy, 4)
+
+        // Oversupply lowers the sale price.
+        let oversupplied = MarketPricing.prices(amount: 3000, initialPrice: 2, info: sugar)
+        XCTAssertEqual(oversupplied.paidForSale, 1)
+        XCTAssertEqual(oversupplied.costToBuy, 3)
+    }
+
+    func testMarketPricingNewWorldClamp() throws {
+        let spec = try pricingSpecification()
+        let sugar = try XCTUnwrap(spec.goodsTypes["model.goods.sugar"])
+        // Scarcity would drive the raw price to 20, but new-world goods clamp
+        // to initialPrice + 2.
+        let scarce = MarketPricing.prices(amount: 150, initialPrice: 2, info: sugar)
+        XCTAssertEqual(scarce.paidForSale, 4)
+        XCTAssertEqual(scarce.costToBuy, 6)
+    }
+
+    func testColonyExportDataAndWorkTilesParsing() throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1">
+          <player id="player-1" username="Alice"/>
+          <colony id="colony-1" name="Boston" owner="player-1" tile="tile-0-0" unitCount="2">
+            <exportData id="model.goods.sugar" exported="true" importLevel="-1"
+                        exportLevel="50" highLevel="90" lowLevel="10"/>
+            <colonyTile id="ct-1" workTile="tile-1-0"/>
+            <building id="b-1" buildingType="model.building.carpenterHouse"/>
+            <goodsContainer><storedGoods><goods type="model.goods.sugar" amount="42"/></storedGoods></goodsContainer>
+          </colony>
+        </game>
+        """)
+        try game.load(from: parsed)
+        let colony = try XCTUnwrap(game.colonies["colony-1"])
+
+        let sugar = try XCTUnwrap(colony.exportData["model.goods.sugar"])
+        XCTAssertTrue(sugar.exported)
+        XCTAssertEqual(sugar.exportLevel, 50)
+        XCTAssertEqual(sugar.highLevel, 90)
+        XCTAssertEqual(sugar.lowLevel, 10)
+
+        XCTAssertEqual(colony.workTiles.map(\.id), ["ct-1"])
+        XCTAssertEqual(colony.workTiles.first?.tileId, "tile-1-0")
+        XCTAssertEqual(colony.goods["model.goods.sugar"], 42)
+    }
+
+    func testExportDataMessageShape() {
+        let data = ColonyExportData(goodsType: "model.goods.sugar",
+                                    exported: true,
+                                    importLevel: -1,
+                                    exportLevel: 50,
+                                    highLevel: 90,
+                                    lowLevel: 10)
+        let message = GameState.exportDataMessage(colonyId: "colony-1", data: data)
+        XCTAssertEqual(message.tag, "setGoodsLevels")
+        XCTAssertEqual(message.attributes["colony"], "colony-1")
+        let child = message.children.first
+        XCTAssertEqual(child?.tag, "exportData")
+        XCTAssertEqual(child?.attributes["id"], "model.goods.sugar")
+        XCTAssertEqual(child?.attributes["exported"], "true")
+        XCTAssertEqual(child?.attributes["exportLevel"], "50")
+        XCTAssertEqual(child?.attributes["importLevel"], "-1")
+    }
+
+    func testRearrangeColonyMessageShape() {
+        let message = GameState.rearrangeColonyMessage(
+            colonyId: "colony-1",
+            arrangements: [
+                (unit: "unit-1", loc: "ct-1", work: nil, role: nil, count: 0),
+                (unit: "unit-2", loc: "colony-1", work: "model.goods.grain",
+                 role: "model.role.default", count: 1),
+            ]
+        )
+        XCTAssertEqual(message.tag, "rearrangeColony")
+        XCTAssertEqual(message.attributes["colony"], "colony-1")
+        XCTAssertEqual(message.attributes["xLength"], "2")
+        XCTAssertEqual(message.attributes["x0unit"], "unit-1")
+        XCTAssertEqual(message.attributes["x0loc"], "ct-1")
+        XCTAssertNil(message.attributes["x0work"])
+        XCTAssertEqual(message.attributes["x0role"], "model.role.default")
+        XCTAssertEqual(message.attributes["x0count"], "0")
+        XCTAssertEqual(message.attributes["x1unit"], "unit-2")
+        XCTAssertEqual(message.attributes["x1work"], "model.goods.grain")
+        XCTAssertEqual(message.attributes["x1count"], "1")
+    }
 }

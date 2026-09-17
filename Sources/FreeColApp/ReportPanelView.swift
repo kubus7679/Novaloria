@@ -240,13 +240,17 @@ struct ReportPanelView: View {
                 let rows = market.data.values
                     .sorted { ($0.goodsType ?? "") < ($1.goodsType ?? "") }
                     .map { entry in
-                        [
+                        let prices = state.marketPrices(for: entry.goodsType)
+                        return [
                             shortName(entry.goodsType, prefix: "model.goods."),
                             "\(entry.amount)",
-                            "\(entry.initialPrice)"
+                            "\(prices.costToBuy)",
+                            "\(prices.paidForSale)",
+                            "\(entry.arrears)"
                         ]
                     }
-                table(headers: ["Goods", "In stock", "Price"], widths: [200, 90, 70], rows: rows)
+                table(headers: ["Goods", "In stock", "Buy", "Sell", "Arrears"],
+                      widths: [160, 70, 50, 50, 70], rows: rows)
             } else {
                 empty("No market data.")
             }

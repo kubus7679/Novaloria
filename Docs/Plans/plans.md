@@ -614,10 +614,20 @@ Restlücken in `Docs/Plans/playability-roadmap-54-57.md`.
 - [x] Regressionen: 43 XCTest / 130 CLI grün.
 - Detailed plan saved in `Docs/Plans/phase54-inbound-blockers-plan.md`.
 
-## Offene Arbeit (Phasen 55–57)
+## Phase 55 — Kolonie-Ökonomie (Spielbarkeit)
 
-- [ ] **55 Kolonie-Ökonomie**: `<exportData>`/Warehouse-Levels, echtes
-      `rearrangeColony`, Worker-Picker, Marktpreise, `payArrears`.
+- [x] `<exportData>` geparst; `setGoodsLevels` mit ExportData-Child;
+      `WarehouseSheet` (Export-Toggle + Import/Export/Low/High pro Ware).
+- [x] `<colonyTile>`-Arbeitsplätze geparst; echtes `rearrangeColony` mit
+      Besetzer-Tausch (`assignSelectedColonyWorker`).
+- [x] Worker-Picker statt Roh-IDs (Work Type, Teacher, Work Location).
+- [x] Marktpreise `costToBuy`/`paidForSale` (`MarketPricing`), Buy/Sell-Spalten.
+- [x] `payArrears` (Boykott-Aufhebung) verdrahtet.
+- [x] Regressionen: 48 XCTest / 130 CLI grün.
+- Detailed plan saved in `Docs/Plans/phase55-colony-economy-plan.md`.
+
+## Offene Arbeit (Phasen 56–57)
+
 - [ ] **56 Karte/Einheiten**: `moveTo`, Clear Orders/Next-Unit/EndTurn-Dialog,
       TilePopup, Pionier-Improvements auf der Karte.
 - [ ] **57 Founding Fathers & Reports**: FF-Daten/Congress-Report, fehlende
