@@ -78,6 +78,8 @@ public struct Player: GameObject, PartiallyUpdatable, Identifiable {
     public var tension: [String: Int] = [:]
     /// Players whose missions are banned.
     public var bannedMissions: Set<String> = []
+    /// Abilities granted/removed via `featureChange`, keyed by ability id.
+    public var abilities: [String: Bool] = [:]
 
     public var publicId: String { id }
 

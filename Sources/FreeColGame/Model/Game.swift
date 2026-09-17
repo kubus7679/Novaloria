@@ -21,6 +21,8 @@ public final class Game: @unchecked Sendable {
     /// Client-side mirror of the server's authoritative game/map-generator
     /// options, keyed by option id (`updateGameOptions` echo).
     public internal(set) var optionValues: [String: String] = [:]
+    /// Known Seven Cities of Gold names (`<cibola>`).
+    public internal(set) var cibolaCities: [String] = []
 
     /// Lazily built (x,y) → tile-id index for cheap neighbour lookups.
     private var coordIndex: [TileCoord: String]?
@@ -49,6 +51,7 @@ public final class Game: @unchecked Sendable {
         nationStates.removeAll()
         nationColors.removeAll()
         optionValues.removeAll()
+        cibolaCities.removeAll()
         coordIndex = nil
     }
 
@@ -90,8 +93,18 @@ public final class Game: @unchecked Sendable {
                 colonies[colony.id] = colony
             case "tradeRoute":
                 try loadTradeRoute(child)
-            case "cibola", "nationOptions", "areas":
-                break // not yet handled
+            case "nationOptions":
+                for option in child.children where option.tag == "nationOption" {
+                    if let nationId = option.attributes["id"] {
+                        nationStates[nationId] = option.attributes["state"]
+                    }
+                }
+            case "cibola":
+                if let cityName = child.attributes["id"] {
+                    cibolaCities.append(cityName)
+                }
+            case "areas":
+                break // Area groupings are not modelled client-side.
             default:
                 break
             }
@@ -152,7 +165,9 @@ public final class Game: @unchecked Sendable {
                 try applySetStance(attributes: child.attributes)
             case "setAI", "setDead", "setNation", "setNationType", "setColor", "setAvailable":
                 try applyPlayerChange(tag: child.tag, attributes: child.attributes)
-            case "attribute", "featureChange", "multiple", "update", "error":
+            case "featureChange":
+                applyFeatureChange(child)
+            case "attribute", "multiple", "update", "error":
                 // ChangeSet bookkeeping records with no direct model surface.
                 FreeColLogger.shared.debug("Ignoring nested change record <\(child.tag)> in update")
             default:
@@ -294,6 +309,39 @@ public final class Game: @unchecked Sendable {
     /// Store a locally-updated colony (value type) back into the model.
     public func replaceColony(_ colony: Colony) {
         colonies[colony.id] = colony
+    }
+
+    /// Apply a `<featureChange>` record. Abilities and model messages are
+    /// tracked on players; other feature kinds are acknowledged but not
+    /// modelled (no modifier/history engine client-side).
+    public func applyFeatureChange(_ parsed: ParsedMessage) {
+        guard let objectId = parsed.attributes["id"] else { return }
+        let add = parsed.attributes.bool("add", default: true)
+        guard var player = players[objectId] else {
+            FreeColLogger.shared.debug("featureChange for unsupported object \(objectId)")
+            return
+        }
+        for child in parsed.children {
+            switch child.tag {
+            case "ability":
+                if let abilityId = child.attributes["id"] {
+                    player.abilities[abilityId] = add
+                }
+            case "modelMessage":
+                if add {
+                    player.modelMessages.append(ModelMessage(
+                        id: child.attributes["id"] ?? "",
+                        source: child.attributes["source"],
+                        display: child.attributes["display"],
+                        messageType: child.attributes["messageType"],
+                        hasBeenDisplayed: child.attributes.bool("hasBeenDisplayed", default: false)
+                    ))
+                }
+            default:
+                break
+            }
+        }
+        players[objectId] = player
     }
 
     /// Merge the server's authoritative option echo into the local mirror.

@@ -668,10 +668,18 @@ Restlücken in `Docs/Plans/playability-roadmap-54-57.md`.
 - [x] Regressionen: 62 XCTest / 130 CLI grün.
 - Detailed plan saved in `Docs/Plans/phase59-europe-depth-plan.md`.
 
-## Offene Arbeit (Backlog 60–61)
+## Phase 60 — Model-Tiefe (Backlog)
 
-- [ ] **60 Model-Tiefe**, **61 Meta** — siehe
-      `Docs/Plans/playability-roadmap-54-57.md`.
+- [x] Tile-Ressourcen/Lost-City geparst + Info-Anzeige.
+- [x] `<nationOptions>`/`<cibola>` beim Laden angewendet.
+- [x] `featureChange` (Fähigkeiten/ModelMessages) verdrahtet.
+- [x] Regressionen: 65 XCTest / 130 CLI grün.
+- Detailed plan saved in `Docs/Plans/phase60-model-depth-plan.md`.
+
+## Offene Arbeit (Backlog 61)
+
+- [ ] **61 Meta** (Save/Load via embedded Server, Meta-Server-Browser,
+      Lobby-Optionsbaum) — siehe `Docs/Plans/playability-roadmap-54-57.md`.
 - Backlog (58–61): Diplomatie/Native-Tiefe, Europe-Tiefe, Model-Tiefe,
   Meta (Save/Load via embedded Server) — siehe
   `Docs/Plans/playability-roadmap-54-57.md`.

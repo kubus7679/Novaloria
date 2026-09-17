@@ -164,6 +164,21 @@ struct InfoPanelView: View {
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
+            if !tile.resources.isEmpty {
+                Text("Resources: \(tile.resources.map { "\($0.displayName) (\($0.quantity))" }.joined(separator: ", "))")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            if !tile.improvements.isEmpty {
+                Text("Improvements: \(tile.improvements.compactMap { $0.type.map { short($0, prefix: "model.improvement.") } }.joined(separator: ", "))")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            if let lostCityName = tile.lostCityName {
+                Text("Lost city: \(short(lostCityName, prefix: "nameCache."))")
+                    .font(.caption2)
+                    .foregroundColor(.orange)
+            }
             if let settlementId = tile.settlement,
                let settlement = state.game?.colonies[settlementId] {
                 Text("Settlement: \(settlement.name ?? settlementId)")

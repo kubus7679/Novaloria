@@ -59,6 +59,11 @@ public final class GameStateManager: @unchecked Sendable {
             FreeColLogger.shared.debug("Applied update")
             return containsDecisionPrompt(parsed) ? false : true
 
+        case "featureChange":
+            game.applyFeatureChange(parsed)
+            FreeColLogger.shared.debug("Applied featureChange")
+            return true
+
         case "partial":
             try game.applyPartial(parsed)
             FreeColLogger.shared.debug("Applied partial update")

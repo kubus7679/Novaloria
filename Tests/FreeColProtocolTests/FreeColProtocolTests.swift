@@ -1519,4 +1519,70 @@ final class FreeColProtocolTests: XCTestCase {
         state.recordMarketSnapshot()
         XCTAssertEqual(state.marketPriceHistory["model.goods.sugar"], [2])
     }
+
+    // MARK: Phase 60 - model depth
+
+    func testTileResourcesAndLostCityParsing() throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1">
+          <player id="player-1" username="Alice"/>
+          <map id="map-1" width="2" height="1">
+            <tile id="tile-0-0" x="0" y="0" type="model.tile.hills">
+              <tileItemContainer>
+                <resource id="res-1" type="model.resource.minerals" quantity="3"/>
+                <lostCityRumour id="lcr-1" type="RUINS" name="nameCache.cibola1"/>
+              </tileItemContainer>
+            </tile>
+          </map>
+        </game>
+        """)
+        try game.load(from: parsed)
+        let tile = try XCTUnwrap(game.tiles["tile-0-0"])
+        XCTAssertEqual(tile.resources.first?.type, "model.resource.minerals")
+        XCTAssertEqual(tile.resources.first?.quantity, 3)
+        XCTAssertEqual(tile.resources.first?.displayName, "minerals")
+        XCTAssertEqual(tile.lostCityRumourType, "RUINS")
+        XCTAssertEqual(tile.lostCityName, "nameCache.cibola1")
+    }
+
+    func testNationOptionsAndCibolaParsing() throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1">
+          <cibola id="nameCache.cibola1"/>
+          <cibola id="nameCache.cibola2"/>
+          <nationOptions nationalAdvantages="SELECTABLE">
+            <nationOption id="model.nation.dutch" state="AVAILABLE"/>
+            <nationOption id="model.nation.french" state="NOT_AVAILABLE"/>
+          </nationOptions>
+        </game>
+        """)
+        try game.load(from: parsed)
+        XCTAssertEqual(game.cibolaCities, ["nameCache.cibola1", "nameCache.cibola2"])
+        XCTAssertEqual(game.nationStates["model.nation.dutch"], "AVAILABLE")
+        XCTAssertEqual(game.nationStates["model.nation.french"], "NOT_AVAILABLE")
+    }
+
+    func testFeatureChangeAppliesAbilitiesAndMessages() throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1">
+          <player id="player-1" username="Alice"/>
+        </game>
+        """)
+        try game.load(from: parsed)
+
+        let change = try XMLDecoder.decode("""
+        <featureChange id="player-1" add="true">
+          <ability id="model.ability.navalUnit" value="true"/>
+          <modelMessage id="model.message.gainedAbility" messageType="DEFAULT"/>
+        </featureChange>
+        """)
+        game.applyFeatureChange(change)
+
+        let player = try XCTUnwrap(game.players["player-1"])
+        XCTAssertEqual(player.abilities["model.ability.navalUnit"], true)
+        XCTAssertTrue(player.modelMessages.contains { $0.id == "model.message.gainedAbility" })
+    }
 }

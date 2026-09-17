@@ -18,6 +18,24 @@ public struct TileImprovement: Sendable, Identifiable {
     }
 }
 
+/// A natural resource present on a tile (`<resource>`).
+public struct TileResource: Sendable, Identifiable {
+    public var id: String
+    public var type: String?
+    public var quantity: Int
+
+    public init(id: String, type: String?, quantity: Int) {
+        self.id = id
+        self.type = type
+        self.quantity = quantity
+    }
+
+    public var displayName: String {
+        guard let type else { return id }
+        return type.split(separator: ".").last.map(String.init) ?? type
+    }
+}
+
 public struct Tile: GameObject, Identifiable {
     public var id: String
     public var x: Int = 0
@@ -33,6 +51,11 @@ public struct Tile: GameObject, Identifiable {
     public var unitIds: [String] = []
     /// Improvements on the tile (roads, plowed, cleared forest, ...).
     public var improvements: [TileImprovement] = []
+    /// Natural resources on the tile.
+    public var resources: [TileResource] = []
+    /// Lost city rumour present on the tile, if any.
+    public var lostCityRumourType: String?
+    public var lostCityName: String?
 
     public init(id: String, attributes: Attributes, children: [ParsedMessage], game: Game) throws {
         self.id = id
@@ -51,14 +74,28 @@ public struct Tile: GameObject, Identifiable {
             case "colony", "indianSettlement":
                 settlement = child.attributes["id"]
             case "tileItemContainer":
-                for item in child.children where item.tag == "tileImprovement" {
-                    improvements.append(TileImprovement(
-                        id: item.attributes["id"] ?? "",
-                        type: item.attributes["type"],
-                        turns: item.attributes.int("turns"),
-                        magnitude: item.attributes.int("magnitude"),
-                        virtual: item.attributes.bool("virtual", default: false)
-                    ))
+                for item in child.children {
+                    switch item.tag {
+                    case "tileImprovement":
+                        improvements.append(TileImprovement(
+                            id: item.attributes["id"] ?? "",
+                            type: item.attributes["type"],
+                            turns: item.attributes.int("turns"),
+                            magnitude: item.attributes.int("magnitude"),
+                            virtual: item.attributes.bool("virtual", default: false)
+                        ))
+                    case "resource":
+                        resources.append(TileResource(
+                            id: item.attributes["id"] ?? "",
+                            type: item.attributes["type"],
+                            quantity: item.attributes.int("quantity")
+                        ))
+                    case "lostCityRumour":
+                        lostCityRumourType = item.attributes["type"]
+                        lostCityName = item.attributes["name"] ?? item.attributes["id"]
+                    default:
+                        break
+                    }
                 }
             default:
                 break

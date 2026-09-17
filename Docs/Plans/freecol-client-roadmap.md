@@ -106,7 +106,9 @@
       details, ask/learn skill, pre-combat confirm, tension/mission bans.
 - [x] **59 Europe depth** — purchase units, recruit slots, cargo/dump,
       market price history.
-- Backlog: 60 model depth, 61 meta (save/load via embedded server).
+- [x] **60 Model depth** — featureChange abilities/messages, tile resources,
+      lost city, nation options, Cibola.
+- Backlog: 61 meta (save/load via embedded server).
 
 ## Suggested order
 
