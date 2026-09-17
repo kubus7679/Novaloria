@@ -37,11 +37,19 @@ struct OrderButtonBar: View {
                 state.disbandSelectedUnit()
             }, enabled: state.canDisbandSelectedUnit)
 
+            orderButton(name: "Clear", imageName: nil, symbol: "xmark.circle", action: {
+                state.clearSelectedUnitOrders()
+            }, enabled: state.canClearSelectedUnitOrders)
+
+            orderButton(name: "Next", imageName: nil, symbol: "arrow.right.circle", action: {
+                state.selectNextUnit()
+            }, enabled: !state.selectableLocalUnits.isEmpty)
+
             Divider()
                 .frame(height: 26)
 
             orderButton(name: "End Turn", imageName: "done", symbol: "checkmark.circle", action: {
-                state.endTurn()
+                state.requestEndTurn()
             }, enabled: state.canEndTurn,
                highlighted: state.canEndTurn && !state.hasUnmovedLocalUnits)
         }

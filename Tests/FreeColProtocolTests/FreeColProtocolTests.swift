@@ -1124,4 +1124,107 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(message.attributes["x1work"], "model.goods.grain")
         XCTAssertEqual(message.attributes["x1count"], "1")
     }
+
+    // MARK: Phase 56 - map and unit orders
+
+    func testTileImprovementsAndUnitWorkLeftParsing() throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1">
+          <player id="player-1" username="Alice"/>
+          <map id="map-1" width="2" height="1">
+            <tile id="tile-0-0" x="0" y="0" type="model.tile.plains">
+              <tileItemContainer>
+                <tileImprovement id="imp-1" type="model.improvement.plow" turns="2" magnitude="1"/>
+              </tileItemContainer>
+            </tile>
+          </map>
+          <unit id="unit-1" owner="player-1" location="tile-0-0"
+                workImprovementType="model.improvement.plow" workLeft="3"/>
+        </game>
+        """)
+        try game.load(from: parsed)
+        let tile = try XCTUnwrap(game.tiles["tile-0-0"])
+        XCTAssertEqual(tile.improvements.map(\.id), ["imp-1"])
+        XCTAssertEqual(tile.improvements.first?.type, "model.improvement.plow")
+        XCTAssertEqual(tile.improvements.first?.turns, 2)
+
+        let unit = try XCTUnwrap(game.units["unit-1"])
+        XCTAssertEqual(unit.workLeft, 3)
+        XCTAssertEqual(unit.workImprovementType, "model.improvement.plow")
+    }
+
+    func testSpecificationParsesImprovementTypes() throws {
+        let parsed = try XMLDecoder.decode("""
+        <freecol-specification id="spec">
+          <tile-improvement-type id="model.improvement.plow"
+                                 required-role="model.role.pioneer" add-work-turns="2"/>
+          <tile-improvement-type id="model.improvement.river" natural="true"/>
+        </freecol-specification>
+        """)
+        let spec = Specification(parsed: parsed)
+        XCTAssertEqual(spec.improvementTypes["model.improvement.plow"]?.requiredRole,
+                       "model.role.pioneer")
+        XCTAssertEqual(spec.improvementTypes["model.improvement.plow"]?.addWorkTurns, 2)
+        XCTAssertEqual(spec.improvementTypes["model.improvement.river"]?.isNatural, true)
+    }
+
+    func testMoveToMessageShape() {
+        let message = GameState.moveToMessage(unitId: "unit-1",
+                                              destinationId: "model.europe.player-1")
+        XCTAssertEqual(message.tag, "moveTo")
+        XCTAssertEqual(message.attributes["unit"], "unit-1")
+        XCTAssertEqual(message.attributes["destination"], "model.europe.player-1")
+    }
+
+    @MainActor
+    func testUnitCyclingAndOrderClearing() async throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1" clientUserName="Alice">
+          <player id="player-1" username="Alice" gold="500"/>
+          <player id="player-2" username="Bob"/>
+          <map id="map-1" width="2" height="1">
+            <tile id="tile-0-0" x="0" y="0" type="model.tile.plains"/>
+            <tile id="tile-1-0" x="1" y="0" type="model.tile.plains"/>
+          </map>
+          <unit id="unit-1" owner="player-1" unitType="model.unit.freeColonist"
+                location="tile-0-0" movesLeft="3" state="ACTIVE"/>
+          <unit id="unit-2" owner="player-1" unitType="model.unit.freeColonist"
+                location="tile-1-0" movesLeft="0" state="SENTRY" destination="tile-0-0"/>
+          <unit id="unit-3" owner="player-2" unitType="model.unit.freeColonist"
+                location="tile-0-0" movesLeft="3" state="ACTIVE"/>
+        </game>
+        """)
+        try game.load(from: parsed)
+
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+
+        // Only local units are cycled.
+        XCTAssertEqual(state.selectableLocalUnits.map(\.id), ["unit-1", "unit-2"])
+        state.selectNextUnit()
+        XCTAssertEqual(state.selectedUnitId, "unit-1")
+        state.selectNextUnit()
+        XCTAssertEqual(state.selectedUnitId, "unit-2")
+        state.selectNextUnit()
+        XCTAssertEqual(state.selectedUnitId, "unit-1")
+        state.selectPreviousUnit()
+        XCTAssertEqual(state.selectedUnitId, "unit-2")
+
+        // Only unit-1 is active with moves left on the map.
+        XCTAssertEqual(state.unitsAwaitingOrders.map(\.id), ["unit-1"])
+
+        // unit-2 has a destination and is not active: orders are clearable.
+        state.selectUnit("unit-2", onTile: "tile-1-0")
+        XCTAssertTrue(state.canClearSelectedUnitOrders)
+        state.clearSelectedUnitOrders()
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(state.statusMessage, "Orders cleared.")
+
+        // unit-1 is active without a destination: nothing to clear.
+        state.selectUnit("unit-1", onTile: "tile-0-0")
+        XCTAssertFalse(state.canClearSelectedUnitOrders)
+    }
 }

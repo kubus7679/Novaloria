@@ -640,22 +640,18 @@ struct MapView: View {
     private func handleRightClick(at location: CGPoint, tiles: [Tile], game: Game) {
         guard let tappedTile = hitTest(location: location, tiles: tiles, tileW: tileW, tileH: tileH) else { return }
 
-        if let selectedUnitId = state.selectedUnitId {
-            // Keep current selected unit and update target tile.
-            state.selectUnit(selectedUnitId, onTile: tappedTile.id)
-            if state.canMoveSelectedUnit(to: tappedTile.id) {
-                state.moveSelectedUnit(to: tappedTile.id)
-            } else if state.canMoveSelectedUnitTo(destinationTileId: tappedTile.id) {
-                state.moveSelectedUnitTo(destinationTileId: tappedTile.id)
-            }
-            return
-        }
-
-        // If no unit is selected yet, right-clicking an own unit selects it.
-        if let unit = localUnits(onTile: tappedTile.id, in: game).first {
+        if state.selectedUnitId == nil,
+           let unit = localUnits(onTile: tappedTile.id, in: game).first {
+            // Right-clicking an own unit without a selection selects it first.
             state.selectUnit(unit.id, onTile: tappedTile.id)
+        } else if let selectedUnitId = state.selectedUnitId {
+            // Keep the selected unit but retarget the tile for the popup.
+            state.selectUnit(selectedUnitId, onTile: tappedTile.id)
         } else {
             state.selectUnit(nil, onTile: tappedTile.id)
         }
+
+        // Java shows a TilePopup on right-click; movement is an entry in it.
+        state.openTileActions(tappedTile.id)
     }
 }

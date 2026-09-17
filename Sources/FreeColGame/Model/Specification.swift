@@ -81,6 +81,31 @@ public struct GoodsTypeInfo: @unchecked Sendable {
     }
 }
 
+/// Parsed subset of a `<tile-improvement-type>` definition (pioneer work).
+public struct ImprovementTypeInfo: @unchecked Sendable {
+    public var id: String
+    /// Role required to make the improvement (`model.role.pioneer`), if any.
+    public var requiredRole: String?
+    /// Extra work turns added to the tile type cost.
+    public var addWorkTurns: Int
+    /// Natural improvements (e.g. rivers) cannot be built by pioneers.
+    public var isNatural: Bool
+
+    public init(id: String,
+                requiredRole: String?,
+                addWorkTurns: Int,
+                isNatural: Bool) {
+        self.id = id
+        self.requiredRole = requiredRole
+        self.addWorkTurns = addWorkTurns
+        self.isNatural = isNatural
+    }
+
+    public var displayName: String {
+        id.split(separator: ".").last.map(String.init) ?? id
+    }
+}
+
 /// Parsed subset of a `<building-type>` definition from the server specification.
 public struct BuildingTypeInfo: @unchecked Sendable {
     public var id: String
@@ -150,6 +175,8 @@ public final class Specification: @unchecked Sendable {
     public private(set) var buildingTypes: [String: BuildingTypeInfo] = [:]
     /// Tile type definitions keyed by id (`model.tile.*`).
     public private(set) var tileTypes: [String: TileTypeInfo] = [:]
+    /// Pioneer improvement definitions keyed by id (`model.improvement.*`).
+    public private(set) var improvementTypes: [String: ImprovementTypeInfo] = [:]
 
     public init(parsed: ParsedMessage) {
         id = parsed.attributes["id"]
@@ -159,6 +186,7 @@ public final class Specification: @unchecked Sendable {
         collectGoodsTypes(from: parsed)
         collectBuildingTypes(from: parsed)
         collectTileTypes(from: parsed)
+        collectImprovementTypes(from: parsed)
         resolveUnitTypeTraits()
     }
 
@@ -308,6 +336,20 @@ public final class Specification: @unchecked Sendable {
                 )
             }
             collectGoodsTypes(from: child)
+        }
+    }
+
+    private func collectImprovementTypes(from node: ParsedMessage) {
+        for child in node.children {
+            if child.tag == "tile-improvement-type", let improvementId = child.attributes["id"] {
+                improvementTypes[improvementId] = ImprovementTypeInfo(
+                    id: improvementId,
+                    requiredRole: child.attributes["required-role"],
+                    addWorkTurns: child.attributes.int("add-work-turns"),
+                    isNatural: child.attributes.bool("natural", default: false)
+                )
+            }
+            collectImprovementTypes(from: child)
         }
     }
 

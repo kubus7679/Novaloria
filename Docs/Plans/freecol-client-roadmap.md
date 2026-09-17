@@ -98,7 +98,7 @@
       `incite`/`spySettlement`/`scoutSpeakToChief` prompts, lobby option echo.
 - [x] **55 Colony economy** — export-data/warehouse levels, real
       `rearrangeColony`, worker pickers, market buy/sell prices, `payArrears`.
-- [ ] **56 Map/unit orders** — `moveTo`, clear orders, next-unit cycle,
+- [x] **56 Map/unit orders** — `moveTo`, clear orders, next-unit cycle,
       end-turn dialog, tile popup, map pioneer improvements.
 - [ ] **57 Founding Fathers & reports** — FF data/Congress report, missing
       reports, `modelMessage` event log, score/summary requests, Colopedia.

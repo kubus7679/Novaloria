@@ -34,6 +34,8 @@ public struct Unit: GameObject, PartiallyUpdatable, Identifiable {
     public var student: String?
     public var teacher: String?
     public var workImprovementType: String?
+    /// Remaining work turns for a pioneer improvement or high-seas sail.
+    public var workLeft: Int = 0
 
     public init(id: String, attributes: Attributes, children: [ParsedMessage], game: Game) throws {
         self.id = id
@@ -59,5 +61,6 @@ public struct Unit: GameObject, PartiallyUpdatable, Identifiable {
         if let v = attributes["student"] { student = v }
         if let v = attributes["teacher"] { teacher = v }
         if let v = attributes["workImprovementType"] { workImprovementType = v }
+        workLeft = attributes.int("workLeft", default: workLeft)
     }
 }

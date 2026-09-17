@@ -626,10 +626,20 @@ Restlücken in `Docs/Plans/playability-roadmap-54-57.md`.
 - [x] Regressionen: 48 XCTest / 130 CLI grün.
 - Detailed plan saved in `Docs/Plans/phase55-colony-economy-plan.md`.
 
-## Offene Arbeit (Phasen 56–57)
+## Phase 56 — Karte/Einheiten-Orders (Spielbarkeit)
 
-- [ ] **56 Karte/Einheiten**: `moveTo`, Clear Orders/Next-Unit/EndTurn-Dialog,
-      TilePopup, Pionier-Improvements auf der Karte.
+- [x] Rechtsklick-`TilePopup` (`TilePopupView`) mit Move/Destination/Clear
+      Orders/Fortify/Sentry/Skip/Go To Europe/Pionier/Build Colony.
+- [x] Clear Orders, Next-/Previous-Unit-Zyklus, End-Turn-Dialog mit
+      unversorgten Einheiten (`requestEndTurn`).
+- [x] „Go To Europe" via `moveTo` (Server-High-Seas-Routing).
+- [x] Pionier-Improvements auf der Karte (`changeWorkImprovementType`),
+      `Unit.workLeft` und `<tileImprovement>`/Spec-Improvement-Typen geparst.
+- [x] Regressionen: 52 XCTest / 130 CLI grün.
+- Detailed plan saved in `Docs/Plans/phase56-map-unit-orders-plan.md`.
+
+## Offene Arbeit (Phase 57)
+
 - [ ] **57 Founding Fathers & Reports**: FF-Daten/Congress-Report, fehlende
       Reports, `modelMessage`-Event-Log, Score/Summary-Requests, Colopedia.
 - Backlog (58–61): Diplomatie/Native-Tiefe, Europe-Tiefe, Model-Tiefe,

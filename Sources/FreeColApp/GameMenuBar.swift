@@ -31,7 +31,7 @@ struct GameMenuBar: View {
 
     private var gameMenu: some View {
         Menu("Game") {
-            Button("End Turn") { state.endTurn() }
+            Button("End Turn") { state.requestEndTurn() }
                 .disabled(!state.canEndTurn)
             Divider()
             Button("Chat…") { onChat() }
@@ -101,6 +101,19 @@ struct GameMenuBar: View {
             .disabled(!state.canSetDestinationToSelectedTile)
             Button("Clear Destination") { state.clearSelectedUnitDestination() }
                 .disabled(!state.canClearSelectedUnitDestination)
+            Button("Clear Orders") { state.clearSelectedUnitOrders() }
+                .disabled(!state.canClearSelectedUnitOrders)
+            Button("Go To Europe") { state.sendSelectedUnitToEurope() }
+                .disabled(!state.canSendSelectedUnitToEurope)
+            Divider()
+            Button("Next Unit") { state.selectNextUnit() }
+                .disabled(state.selectableLocalUnits.isEmpty)
+            Button("Previous Unit") { state.selectPreviousUnit() }
+                .disabled(state.selectableLocalUnits.isEmpty)
+            Button("Next Unit Needing Orders") {
+                state.selectAdjacentUnit(forward: true, onlyAwaitingOrders: true)
+            }
+            .disabled(state.unitsAwaitingOrders.isEmpty)
             Divider()
             Button("Trade Routes…") { onTradeRoutes() }
                 .disabled(!state.canManageTradeRoutes)

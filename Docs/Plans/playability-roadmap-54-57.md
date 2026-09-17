@@ -19,14 +19,13 @@ abgearbeitet. Die bestehenden `[x]`-Markierungen in `plans.md` und
 - [x] Marktpreise `costToBuy`/`paidForSale` via `MarketPricing` berechnet.
 - [x] `payArrears` verdrahtet.
 
-## Phase 56 — Karte/Einheiten-Orders (offen, P1)
+## Phase 56 — Karte/Einheiten-Orders ✅ (siehe `phase56-map-unit-orders-plan.md`)
 
-- [ ] `moveTo` (Server-Pathfinding) senden statt händischer Einzelschritte.
-- [ ] „Clear Orders", Next-Unit-Zyklus, EndTurn-Dialog mit unversorgten
-      Einheiten.
-- [ ] Rechtsklick-`TilePopup` (Kontextmenü) — hinter dem NSView-Capture.
-- [ ] Pionier-Improvement auf Kartenkacheln (`changeWorkImprovementType` außerhalb
-      der Kolonie); Unit-`<workImprovement>`/`workLeft` parsen.
+- [x] Rechtsklick-`TilePopup` als Overlay-Kontextmenü.
+- [x] „Clear Orders", Next-/Previous-Unit-Zyklus, End-Turn-Dialog.
+- [x] „Go To Europe" via `moveTo` (Server-High-Seas-Routing).
+- [x] Pionier-Improvement auf Kartenkacheln; `workLeft`/`<tileImprovement>`
+      und Spec-Improvement-Typen geparst.
 
 ## Phase 57 — Founding Fathers & Reports (offen, P1)
 

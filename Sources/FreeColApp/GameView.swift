@@ -199,6 +199,12 @@ struct GameView: View {
         .sheet(isPresented: $showTradeRoutes) {
             TradeRoutePanelView()
         }
+        .sheet(isPresented: Binding(
+            get: { state.showEndTurnDialog },
+            set: { if !$0 { state.dismissEndTurnDialog() } }
+        )) {
+            endTurnDialog
+        }
         .onChange(of: state.pendingServerDecision?.type) { _, newType in
             showNativeTrade = (newType == .nativeTrade)
             showDiplomacy = (newType == .diplomacy)
@@ -232,6 +238,55 @@ struct GameView: View {
                 victoryOverlay
             }
         }
+        .overlay(alignment: .topTrailing) {
+            if let tileId = state.tileActionTileId {
+                TilePopupView(tileId: tileId)
+                    .padding(.trailing, 12)
+                    .padding(.top, 72)
+            }
+        }
+    }
+
+    private var endTurnDialog: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("End Turn?")
+                .font(.title3.bold())
+            Text("These units still have orders left:")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(state.unitsAwaitingOrders) { unit in
+                        Button {
+                            let tileId = unit.location.flatMap {
+                                state.game?.tiles[$0] != nil ? $0 : nil
+                            }
+                            state.selectUnit(unit.id, onTile: tileId)
+                            state.dismissEndTurnDialog()
+                        } label: {
+                            HStack {
+                                Text(shortUnitName(unit.unitType) ?? unit.id)
+                                    .font(.caption)
+                                Spacer()
+                                Text("MP \(unit.movesLeft)")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .frame(maxHeight: 220)
+            HStack {
+                Spacer()
+                Button("Cancel") { state.dismissEndTurnDialog() }
+                Button("End Turn Anyway") { state.confirmEndTurn() }
+                    .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(16)
+        .frame(width: 360)
     }
 
     private var defeatOverlay: some View {
@@ -533,6 +588,11 @@ struct GameView: View {
     private func shortName(_ value: String?, prefix: String) -> String {
         guard let value else { return "?" }
         return value.hasPrefix(prefix) ? String(value.dropFirst(prefix.count)) : value
+    }
+
+    private func shortUnitName(_ value: String?) -> String? {
+        guard let value else { return nil }
+        return value.split(separator: ".").last.map(String.init) ?? value
     }
 
     private var independenceSheet: some View {

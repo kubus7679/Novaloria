@@ -2919,6 +2919,27 @@ final class GameState {
         }
     }
 
+    /// Set while the end-turn confirmation dialog lists units without orders.
+    var showEndTurnDialog: Bool = false
+
+    /// End the turn, prompting first when units still have orders left.
+    func requestEndTurn() {
+        if unitsAwaitingOrders.isEmpty {
+            endTurn()
+        } else {
+            showEndTurnDialog = true
+        }
+    }
+
+    func confirmEndTurn() {
+        showEndTurnDialog = false
+        endTurn()
+    }
+
+    func dismissEndTurnDialog() {
+        showEndTurnDialog = false
+    }
+
     func endTurn() {
         guard phase == .inGame else {
             errorMessage = "Aktion nur im laufenden Spiel verfuegbar."
@@ -2963,6 +2984,24 @@ final class GameState {
     func selectUnit(_ unitId: String?, onTile tileId: String?) {
         selectedUnitId = unitId
         selectedTileId = tileId
+    }
+
+    // MARK: Phase 56 - tile popup
+
+    /// Tile whose context menu (Java `TilePopup`) is currently shown.
+    var tileActionTileId: String?
+
+    func openTileActions(_ tileId: String) {
+        tileActionTileId = tileId
+    }
+
+    func closeTileActions() {
+        tileActionTileId = nil
+    }
+
+    var tileActionTile: Tile? {
+        guard let tileActionTileId else { return nil }
+        return cachedGame?.tiles[tileActionTileId]
     }
 
     func moveSelectedUnit(to destinationTileId: String) {
@@ -3291,6 +3330,200 @@ final class GameState {
                 )
                 if server != nil {
                     game.setUnitDestination(unitId: unitId, destinationId: nil)
+                    gameUpdateID += 1
+                }
+                try await client?.send(message: msg)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    // MARK: Phase 56 - unit orders
+
+    /// True when the selected unit has any orders that can be cleared.
+    var canClearSelectedUnitOrders: Bool {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let unitId = selectedUnitId,
+              let unit = game.units[unitId],
+              let localPlayerId = resolveLocalPlayerId(),
+              unit.owner == localPlayerId else {
+            return false
+        }
+        return unit.destination != nil || unit.state != .active
+    }
+
+    /// Clear goto orders and make the selected unit active again.
+    func clearSelectedUnitOrders() {
+        guard canClearSelectedUnitOrders,
+              let unitId = selectedUnitId,
+              let game = cachedGame else {
+            errorMessage = "Keine Befehle zum Loeschen."
+            return
+        }
+        errorMessage = nil
+        Task {
+            do {
+                if game.units[unitId]?.destination != nil {
+                    try await client?.send(message: ParsedMessage(
+                        tag: "setDestination", attributes: ["unit": unitId], children: []))
+                    if server != nil {
+                        game.setUnitDestination(unitId: unitId, destinationId: nil)
+                    }
+                }
+                if game.units[unitId]?.state != .active {
+                    try await client?.send(message: ParsedMessage(
+                        tag: "changeState",
+                        attributes: ["unit": unitId, "state": UnitState.active.rawValue],
+                        children: []))
+                    if server != nil {
+                        game.changeUnitState(unitId: unitId, state: .active)
+                    }
+                }
+                if server != nil {
+                    reconcileSelectionWithGame()
+                    gameUpdateID += 1
+                }
+                statusMessage = "Orders cleared."
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    /// Local units that still have movement or are active this turn.
+    var selectableLocalUnits: [FreeColGame.Unit] {
+        guard let game = cachedGame,
+              let localPlayerId = resolveLocalPlayerId() else { return [] }
+        return game.units.values
+            .filter { $0.owner == localPlayerId }
+            .sorted { $0.id < $1.id }
+    }
+
+    /// Units the player has not given an order to yet (Java `EndTurnDialog`).
+    var unitsAwaitingOrders: [FreeColGame.Unit] {
+        guard let game = cachedGame else { return [] }
+        return selectableLocalUnits.filter {
+            $0.movesLeft > 0 && $0.state == .active && game.resolvedTileId(for: $0) != nil
+        }
+    }
+
+    /// Cycle to the next (`forward`) or previous local unit.
+    func selectAdjacentUnit(forward: Bool, onlyAwaitingOrders: Bool = false) {
+        let units = onlyAwaitingOrders ? unitsAwaitingOrders : selectableLocalUnits
+        guard !units.isEmpty, let game = cachedGame else { return }
+        let target: FreeColGame.Unit
+        if let currentId = selectedUnitId, let index = units.firstIndex(where: { $0.id == currentId }) {
+            let offset = forward ? 1 : units.count - 1
+            target = units[(index + offset) % units.count]
+        } else {
+            target = units[0]
+        }
+        let tileId = target.location.flatMap { game.tiles[$0] != nil ? $0 : nil }
+        selectUnit(target.id, onTile: tileId)
+    }
+
+    func selectNextUnit() { selectAdjacentUnit(forward: true) }
+    func selectPreviousUnit() { selectAdjacentUnit(forward: false) }
+
+    /// A naval unit on a tile can be sent to Europe via server high-seas routing.
+    var canSendSelectedUnitToEurope: Bool {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let unitId = selectedUnitId,
+              let unit = game.units[unitId],
+              let localPlayerId = resolveLocalPlayerId(),
+              unit.owner == localPlayerId,
+              isNavalUnit(unit),
+              let tileId = resolveUnitTileId(unit, in: game),
+              game.tiles[tileId] != nil,
+              localPlayer?.europe?.id != nil else {
+            return false
+        }
+        return true
+    }
+
+    /// Send the selected ship to Europe using the server `moveTo` routing.
+    func sendSelectedUnitToEurope() {
+        guard canSendSelectedUnitToEurope,
+              let unitId = selectedUnitId,
+              let game = cachedGame,
+              let europeId = localPlayer?.europe?.id else {
+            errorMessage = "Reise nach Europa nicht moeglich."
+            return
+        }
+        errorMessage = nil
+        Task {
+            do {
+                let msg = Self.moveToMessage(unitId: unitId, destinationId: europeId)
+                if server != nil {
+                    game.setUnitDestination(unitId: unitId, destinationId: europeId)
+                    gameUpdateID += 1
+                }
+                try await client?.send(message: msg)
+                statusMessage = "Segelt nach Europa."
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    /// Build a `moveTo` message (server-side high-seas routing).
+    nonisolated static func moveToMessage(unitId: String, destinationId: String) -> ParsedMessage {
+        ParsedMessage(tag: "moveTo",
+                      attributes: ["unit": unitId, "destination": destinationId],
+                      children: [])
+    }
+
+    /// Pioneer improvements the selected unit could build.
+    var selectedUnitImprovementCandidates: [(id: String, label: String)] {
+        guard let specification = cachedGame?.specification else { return [] }
+        return specification.improvementTypes.values
+            .filter { !$0.isNatural }
+            .map { (id: $0.id, label: $0.displayName) }
+            .sorted { $0.label < $1.label }
+    }
+
+    var canChangeSelectedUnitWorkImprovement: Bool {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let unitId = selectedUnitId,
+              let unit = game.units[unitId],
+              let localPlayerId = resolveLocalPlayerId(),
+              unit.owner == localPlayerId,
+              unit.movesLeft > 0 else {
+            return false
+        }
+        return resolveUnitTileId(unit, in: game) != nil
+    }
+
+    /// Order the selected pioneer to build a tile improvement on its tile.
+    func changeSelectedUnitWorkImprovement(_ improvementTypeId: String) {
+        let trimmed = improvementTypeId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            errorMessage = "Bitte einen Improvement-Typ waehlen."
+            return
+        }
+        guard canChangeSelectedUnitWorkImprovement,
+              let unitId = selectedUnitId,
+              let game = cachedGame else {
+            errorMessage = "Verbesserung nicht moeglich."
+            return
+        }
+        errorMessage = nil
+        Task {
+            do {
+                let msg = ParsedMessage(
+                    tag: "changeWorkImprovementType",
+                    attributes: ["unit": unitId, "improvementType": trimmed],
+                    children: []
+                )
+                if server != nil {
+                    game.changeUnitWorkImprovementType(unitId: unitId, improvementTypeId: trimmed)
                     gameUpdateID += 1
                 }
                 try await client?.send(message: msg)
