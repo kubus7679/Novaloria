@@ -577,6 +577,26 @@ final class GameState {
         }
     }
 
+    /// Client-side recorded market sale-price history per goods type.
+    var marketPriceHistory: [String: [Int]] = [:]
+
+    /// Append a market price point whenever a sale price changes.
+    func recordMarketSnapshot() {
+        guard phase == .inGame,
+              let game = cachedGame else { return }
+        for entry in localPlayerMarketData {
+            guard let goodsType = entry.goodsType else { continue }
+            let price = MarketPricing.prices(for: entry, specification: game.specification).paidForSale
+            var series = marketPriceHistory[goodsType] ?? []
+            guard series.last != price else { continue }
+            series.append(price)
+            if series.count > 60 {
+                series.removeFirst(series.count - 60)
+            }
+            marketPriceHistory[goodsType] = series
+        }
+    }
+
     /// Derived buy/sale prices for one goods type (Java `MarketData.price()`).
     func marketPrices(for goodsTypeId: String?) -> (costToBuy: Int, paidForSale: Int) {
         guard let game = cachedGame,
@@ -2500,6 +2520,7 @@ final class GameState {
         isEndingTurn = false
         pendingEndTurnTurn = nil
         incomingChatLog = []
+        marketPriceHistory = [:]
         isGameEnded = false
         isVictorious = false
         isDefeated = false
@@ -3718,6 +3739,57 @@ final class GameState {
         }
     }
 
+    // MARK: Phase 59 - Europe / cargo
+
+    /// Goods carried by the selected carrier, with display names.
+    var selectedUnitCargoGoods: [(id: String, label: String, amount: Int)] {
+        guard let unit = selectedUnit else { return [] }
+        return unit.goods
+            .filter { $0.value > 0 }
+            .map { (id: $0.key, label: goodsDisplayName($0.key), amount: $0.value) }
+            .sorted { $0.label < $1.label }
+    }
+
+    /// Dump (or unload) cargo from the selected carrier overboard.
+    func dumpSelectedUnitCargo(typeId: String, amount: Int) {
+        let trimmed = typeId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, amount > 0 else {
+            errorMessage = "Ungültige Fracht."
+            return
+        }
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let carrier = selectedUnit,
+              let localPlayerId = resolveLocalPlayerId(),
+              carrier.owner == localPlayerId,
+              isCarrierUnit(carrier),
+              (carrier.goods[trimmed] ?? 0) >= amount else {
+            errorMessage = "Fracht kann nicht abgeworfen werden."
+            return
+        }
+        errorMessage = nil
+        Task {
+            do {
+                let msg = ParsedMessage(
+                    tag: "unloadGoods",
+                    attributes: ["type": trimmed,
+                                 "amount": String(amount),
+                                 "carrier": carrier.id],
+                    children: []
+                )
+                if server != nil {
+                    game.removeUnitGoods(unitId: carrier.id, typeId: trimmed, amount: amount)
+                    gameUpdateID += 1
+                }
+                try await client?.send(message: msg)
+                statusMessage = "Fracht abgeworfen."
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
     func canAssignSelectedUnitTradeRoute(_ tradeRouteId: String) -> Bool {
         let trimmed = tradeRouteId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty,
@@ -4469,11 +4541,7 @@ final class GameState {
 
         // Client-side purchases tracking (like the Java client's purchases summary)
         let price = localPlayer?.europe?.price(for: trimmed) ?? 0
-        if trimmed.localizedCaseInsensitiveContains("colonist") {
-            purchasesRecruits += 1
-        } else {
-            purchasesTrained += 1
-        }
+        purchasesTrained += 1
         purchasesTotal += price
 
         Task {
@@ -4481,6 +4549,53 @@ final class GameState {
                 let msg = ParsedMessage(
                     tag: "trainUnitInEurope",
                     attributes: ["unitType": trimmed],
+                    children: []
+                )
+                try await client?.send(message: msg)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    /// Purchasable unit types in Europe (from `<unitPrice>`), sorted by price.
+    var purchasableEuropeUnits: [(unitType: String, label: String, price: Int)] {
+        guard let europe = localPlayer?.europe else { return [] }
+        return europe.unitPrices
+            .map { (unitType: $0.key,
+                    label: unitDisplayName($0.key),
+                    price: $0.value) }
+            .sorted { $0.price < $1.price }
+    }
+
+    func unitDisplayName(_ typeId: String) -> String {
+        if let name = cachedGame?.specification?.unitTypes[typeId]?.displayName, !name.isEmpty {
+            return name
+        }
+        return typeId.split(separator: ".").last.map(String.init) ?? typeId
+    }
+
+    /// Recruit an emigrant from a Europe slot (1-based; 0 picks at random).
+    func recruitUnitInEurope(slot: Int) {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              localPlayer != nil else {
+            errorMessage = "Rekrutierung nicht möglich."
+            return
+        }
+        guard slot >= 0 else {
+            errorMessage = "Ungültiger Slot."
+            return
+        }
+        errorMessage = nil
+        let price = localPlayer?.europe?.recruitPrice ?? 0
+        purchasesRecruits += 1
+        purchasesTotal += price
+        Task {
+            do {
+                let msg = ParsedMessage(
+                    tag: "emigrateUnit",
+                    attributes: ["slot": String(slot)],
                     children: []
                 )
                 try await client?.send(message: msg)
@@ -5828,6 +5943,7 @@ private final class ClientBridge: ClientDelegate {
         Task { @MainActor in
             gs.applySessionMessage(parsed)
             gs.syncAfterModelUpdate()
+            gs.recordMarketSnapshot()
             gs.gameUpdateID += 1
         }
     }
@@ -5844,6 +5960,7 @@ private final class ClientBridge: ClientDelegate {
         guard let gs = gameState else { return }
         Task { @MainActor in
             gs.syncAfterModelUpdate()
+            gs.recordMarketSnapshot()
             gs.gameUpdateID += 1
         }
     }

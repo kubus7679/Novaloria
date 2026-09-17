@@ -36,10 +36,21 @@ public struct Unit: GameObject, PartiallyUpdatable, Identifiable {
     public var workImprovementType: String?
     /// Remaining work turns for a pioneer improvement or high-seas sail.
     public var workLeft: Int = 0
+    /// Goods carried by a carrier, keyed by goods type id (`<goodsContainer>`).
+    public var goods: [String: Int] = [:]
 
     public init(id: String, attributes: Attributes, children: [ParsedMessage], game: Game) throws {
         self.id = id
         applyPartial(attributes: attributes)
+        for child in children where child.tag == "goodsContainer" {
+            for storage in child.children where storage.tag == "storedGoods" {
+                for goodsNode in storage.children where goodsNode.tag == "goods" {
+                    if let type = goodsNode.attributes["type"] {
+                        goods[type] = goodsNode.attributes.int("amount")
+                    }
+                }
+            }
+        }
     }
 
     public mutating func applyPartial(attributes: Attributes) {

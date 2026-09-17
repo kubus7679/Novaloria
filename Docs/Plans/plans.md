@@ -660,9 +660,17 @@ Restlücken in `Docs/Plans/playability-roadmap-54-57.md`.
 - [x] Regressionen: 59 XCTest / 130 CLI grün.
 - Detailed plan saved in `Docs/Plans/phase58-diplomacy-native-depth-plan.md`.
 
-## Offene Arbeit (Backlog 59–61)
+## Phase 59 — Europe-Tiefe (Backlog)
 
-- [ ] **59 Europe-Tiefe**, **60 Model-Tiefe**, **61 Meta** — siehe
+- [x] „Purchase Units" aus `<unitPrice>`; Rekrutierung über `emigrateUnit`-Slots.
+- [x] Einheiten-Fracht (`<goodsContainer>`) + Dump-Cargo.
+- [x] Marktverlauf (`recordMarketSnapshot`) mit Sparkline im Europe-Panel.
+- [x] Regressionen: 62 XCTest / 130 CLI grün.
+- Detailed plan saved in `Docs/Plans/phase59-europe-depth-plan.md`.
+
+## Offene Arbeit (Backlog 60–61)
+
+- [ ] **60 Model-Tiefe**, **61 Meta** — siehe
       `Docs/Plans/playability-roadmap-54-57.md`.
 - Backlog (58–61): Diplomatie/Native-Tiefe, Europe-Tiefe, Model-Tiefe,
   Meta (Save/Load via embedded Server) — siehe

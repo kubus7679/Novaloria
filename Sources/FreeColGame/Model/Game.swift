@@ -279,6 +279,18 @@ public final class Game: @unchecked Sendable {
         }
     }
 
+    /// Remove carried goods from a unit (local mirror of a dump/unload).
+    public func removeUnitGoods(unitId: String, typeId: String, amount: Int) {
+        guard var unit = units[unitId] else { return }
+        let remaining = max(0, (unit.goods[typeId] ?? 0) - amount)
+        if remaining == 0 {
+            unit.goods.removeValue(forKey: typeId)
+        } else {
+            unit.goods[typeId] = remaining
+        }
+        units[unitId] = unit
+    }
+
     /// Store a locally-updated colony (value type) back into the model.
     public func replaceColony(_ colony: Colony) {
         colonies[colony.id] = colony

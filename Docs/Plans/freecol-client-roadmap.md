@@ -104,8 +104,9 @@
       reports, `modelMessage` event log, score/summary requests, Colopedia.
 - [x] **58 Diplomacy/Native depth** — active diplomacy, native settlement
       details, ask/learn skill, pre-combat confirm, tension/mission bans.
-- Backlog: 59 Europe depth, 60 model depth,
-  61 meta (save/load via embedded server).
+- [x] **59 Europe depth** — purchase units, recruit slots, cargo/dump,
+      market price history.
+- Backlog: 60 model depth, 61 meta (save/load via embedded server).
 
 ## Suggested order
 

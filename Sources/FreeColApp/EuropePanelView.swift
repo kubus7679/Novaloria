@@ -26,7 +26,9 @@ struct EuropePanelView: View {
 
             if let local = state.localPlayer {
                 recruitSection(local)
+                purchaseSection(local)
                 marketSection(local)
+                marketHistorySection
                 purchasesSummary(local)
                 shipsSection(local)
             } else {
@@ -50,7 +52,7 @@ struct EuropePanelView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                     } else {
-                        ForEach(europe.recruitable) { recruit in
+                        ForEach(Array(europe.recruitable.enumerated()), id: \.offset) { index, recruit in
                             HStack {
                                 if let nsImg = TileImageCache.shared.unitImage(forUnitType: recruit.unitType) {
                                     Image(nsImage: nsImg)
@@ -64,14 +66,13 @@ struct EuropePanelView: View {
                                 Text(unitLabel(recruit.unitType))
                                     .font(.caption)
                                 Spacer()
-                                Text("\(europe.price(for: recruit.unitType)) G")
+                                Text("\(europe.recruitPrice) G")
                                     .font(.caption)
                                     .foregroundColor(.yellow)
-                                Button(recruit.number > 1 ? "Train (x\(recruit.number))" : "Train") {
-                                    state.trainUnitInEurope(unitType: recruit.unitType ?? "")
+                                Button(recruit.number > 1 ? "Recruit (x\(recruit.number))" : "Recruit") {
+                                    state.recruitUnitInEurope(slot: index + 1)
                                 }
                                 .buttonStyle(.bordered)
-                                .disabled(recruit.unitType == nil)
                             }
                         }
                     }
@@ -81,6 +82,65 @@ struct EuropePanelView: View {
                 }
             }
             .padding(.vertical, 4)
+        }
+    }
+
+    // MARK: - Market history
+
+    private var marketHistorySection: some View {
+        GroupBox("Market History") {
+            let series = state.marketPriceHistory[selectedGoodsType] ?? []
+            if selectedGoodsType.isEmpty || series.isEmpty {
+                Text("Wähle eine Ware und handle, um den Preisverlauf zu sehen.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(goodsLabel(selectedGoodsType))
+                            .font(.caption.bold())
+                        Spacer()
+                        Text("Last: \(series.last ?? 0) G · Min \(series.min() ?? 0) · Max \(series.max() ?? 0)")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    PriceSparkline(values: series)
+                        .frame(height: 48)
+                }
+                .padding(.vertical, 4)
+            }
+        }
+    }
+
+    // MARK: - Purchase
+
+    private func purchaseSection(_ local: Player) -> some View {
+        let purchasable = state.purchasableEuropeUnits
+        return GroupBox("Purchase Units") {
+            if purchasable.isEmpty {
+                Text("Keine kaufbaren Einheiten verfügbar.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(purchasable, id: \.unitType) { unit in
+                        HStack {
+                            Text(unit.label)
+                                .font(.caption)
+                            Spacer()
+                            Text("\(unit.price) G")
+                                .font(.caption)
+                                .foregroundColor(local.gold >= unit.price ? .yellow : .red)
+                            Button("Buy") {
+                                state.trainUnitInEurope(unitType: unit.unitType)
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(local.gold < unit.price)
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+            }
         }
     }
 
@@ -284,5 +344,41 @@ struct EuropePanelView: View {
             return String(goodsType.dropFirst("model.goods.".count))
         }
         return goodsType
+    }
+}
+
+/// A minimal step sparkline for recorded market prices.
+private struct PriceSparkline: View {
+    let values: [Int]
+
+    var body: some View {
+        GeometryReader { geo in
+            let points = normalizedPoints(in: geo.size)
+            ZStack {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.black.opacity(0.15))
+                if points.count > 1 {
+                    Path { path in
+                        path.move(to: points[0])
+                        for point in points.dropFirst() {
+                            path.addLine(to: point)
+                        }
+                    }
+                    .stroke(Color.yellow, lineWidth: 1.5)
+                }
+            }
+        }
+    }
+
+    private func normalizedPoints(in size: CGSize) -> [CGPoint] {
+        guard values.count > 1 else { return [] }
+        let minValue = values.min() ?? 0
+        let maxValue = values.max() ?? 1
+        let span = max(1, maxValue - minValue)
+        return values.enumerated().map { index, value in
+            let x = size.width * CGFloat(index) / CGFloat(values.count - 1)
+            let y = size.height * (1 - CGFloat(value - minValue) / CGFloat(span))
+            return CGPoint(x: x, y: y)
+        }
     }
 }

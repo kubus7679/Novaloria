@@ -34,6 +34,12 @@ public struct UnitTypeInfo: @unchecked Sendable {
         self.extendsId = extendsId
         self.abilities = abilities
     }
+
+    public var displayName: String {
+        let tail = id.split(separator: ".").last.map(String.init) ?? id
+        guard let first = tail.first else { return id }
+        return first.uppercased() + tail.dropFirst()
+    }
 }
 
 /// Parsed subset of a `<goods-type>` definition from the server specification.

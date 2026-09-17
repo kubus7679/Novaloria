@@ -1425,4 +1425,98 @@ final class FreeColProtocolTests: XCTestCase {
         state.dismissPendingAttack()
         XCTAssertFalse(state.showAttackConfirmation)
     }
+
+    // MARK: Phase 59 - Europe depth
+
+    func testUnitCarriedGoodsParsingAndRemoval() throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1">
+          <player id="player-1" username="Alice"/>
+          <unit id="unit-1" owner="player-1" unitType="model.unit.merchantman">
+            <goodsContainer>
+              <storedGoods>
+                <goods type="model.goods.rum" amount="40"/>
+                <goods type="model.goods.tobacco" amount="25"/>
+              </storedGoods>
+            </goodsContainer>
+          </unit>
+        </game>
+        """)
+        try game.load(from: parsed)
+        let unit = try XCTUnwrap(game.units["unit-1"])
+        XCTAssertEqual(unit.goods["model.goods.rum"], 40)
+        XCTAssertEqual(unit.goods["model.goods.tobacco"], 25)
+
+        game.removeUnitGoods(unitId: "unit-1", typeId: "model.goods.rum", amount: 15)
+        XCTAssertEqual(game.units["unit-1"]?.goods["model.goods.rum"], 25)
+        game.removeUnitGoods(unitId: "unit-1", typeId: "model.goods.rum", amount: 25)
+        XCTAssertNil(game.units["unit-1"]?.goods["model.goods.rum"])
+    }
+
+    @MainActor
+    func testEuropePurchasableUnitsAndRecruitTracking() async throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1" clientUserName="Alice">
+          <player id="player-1" username="Alice" gold="1000">
+            <europe id="player-1-europe" owner="player-1" recruitPrice="120">
+              <recruit id="model.unit.freeColonist" role="model.role.default" number="2"/>
+              <unitPrice unitType="model.unit.artillery" price="500"/>
+              <unitPrice unitType="model.unit.frigate" price="1200"/>
+            </europe>
+          </player>
+          <freecol-specification id="spec">
+            <unit-type id="model.unit.artillery"/>
+            <unit-type id="model.unit.frigate"/>
+          </freecol-specification>
+        </game>
+        """)
+        try game.load(from: parsed)
+
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+
+        XCTAssertEqual(state.purchasableEuropeUnits.map(\.unitType),
+                       ["model.unit.artillery", "model.unit.frigate"])
+        XCTAssertEqual(state.purchasableEuropeUnits.first?.price, 500)
+        XCTAssertEqual(state.unitDisplayName("model.unit.artillery"), "Artillery")
+
+        state.recruitUnitInEurope(slot: 1)
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(state.purchasesRecruits, 1)
+        XCTAssertEqual(state.purchasesTotal, 120)
+    }
+
+    @MainActor
+    func testMarketPriceHistoryRecording() async throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1" clientUserName="Alice">
+          <player id="player-1" username="Alice">
+            <market owner="player-1">
+              <marketData goods-type="model.goods.sugar" amount="1500" initialPrice="2"/>
+            </market>
+          </player>
+          <freecol-specification id="spec">
+            <goods-type id="model.goods.sugar" storable="true">
+              <market initial-amount="1500" initial-price="2" price-difference="2"/>
+            </goods-type>
+          </freecol-specification>
+        </game>
+        """)
+        try game.load(from: parsed)
+
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+
+        state.recordMarketSnapshot()
+        XCTAssertEqual(state.marketPriceHistory["model.goods.sugar"], [2])
+
+        // The same price is not recorded twice.
+        state.recordMarketSnapshot()
+        XCTAssertEqual(state.marketPriceHistory["model.goods.sugar"], [2])
+    }
 }

@@ -45,8 +45,8 @@ Backlog siehe unten (58–61).
 - **58** Diplomatie/Native-Tiefe ✅: aktive Diplomatie (PROPOSE_TRADE),
   IndianSettlement-Details, `askSkill`/`learnSkill`-UI, PreCombat-Bestätigung,
   `tension`/`bannedMissions`. Siehe `phase58-diplomacy-native-depth-plan.md`.
-- **59** Europe-Tiefe: `PurchasePanel`, Dock/Cargo/Dump, Auswanderungs-Auswahl,
-  Transaktions-Log/Preisgraph.
+- **59** Europe-Tiefe ✅: `PurchasePanel`, Rekrutierungs-Slots, Cargo/Dump,
+  Marktverlauf. Siehe `phase59-europe-depth-plan.md`.
 - **60** Model-Tiefe: `featureChange` (Fähigkeiten/Modifier/History),
   Einheiten-`goodsContainer`, Tile-`tileItemContainer` (Ressourcen/Lost-City),
   NationOptions/Areas/Cibola.

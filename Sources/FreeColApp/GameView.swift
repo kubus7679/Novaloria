@@ -803,6 +803,18 @@ struct GameView: View {
                         }
                     }
 
+                    if !state.selectedUnitCargoGoods.isEmpty {
+                        Text("Carried Goods")
+                            .font(.caption.bold())
+                        ForEach(state.selectedUnitCargoGoods, id: \.id) { item in
+                            Button("Dump \(item.label) x\(item.amount)") {
+                                state.dumpSelectedUnitCargo(typeId: item.id, amount: item.amount)
+                            }
+                            .buttonStyle(.bordered)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+
                     if let target = state.nativeTradeTargetsForSelectedUnit.first {
                         Menu("Native Settlement: \(target.name)") {
                             Button("Trade…") {
