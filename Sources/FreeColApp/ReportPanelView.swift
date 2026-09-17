@@ -309,13 +309,14 @@ struct ReportPanelView: View {
                     empty("No other European powers.")
                 } else {
                     table(
-                        headers: ["Player", "Nation", "Stance", "Gold", "Score"],
-                        widths: [140, 150, 100, 70, 60],
+                        headers: ["Player", "Nation", "Stance", "Tension", "Gold", "Score"],
+                        widths: [130, 140, 100, 70, 70, 60],
                         rows: others.map { player in
                             [
                                 player.name ?? "?",
                                 shortName(player.nationId, prefix: "model.nation."),
                                 local?.stances[player.id]?.rawValue ?? "UNCONTACTED",
+                                "\(local?.tension[player.id] ?? 0)",
                                 "\(player.gold)",
                                 "\(player.score)"
                             ]
@@ -387,6 +388,11 @@ struct ReportPanelView: View {
                 }
                 if !settlements.isEmpty {
                     Text("Known settlements: \(settlements.count)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                if let local = state.localPlayer, !local.bannedMissions.isEmpty {
+                    Text("Missions banned by: \(local.bannedMissions.map { game.players[$0]?.name ?? $0 }.sorted().joined(separator: ", "))")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

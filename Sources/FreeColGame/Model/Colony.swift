@@ -82,6 +82,15 @@ public struct Colony: GameObject, PartiallyUpdatable, Identifiable {
     public var exportData: [String: ColonyExportData] = [:]
     /// Colony tile work locations (buildings are tracked in `buildings`).
     public var workTiles: [ColonyWorkLocation] = []
+    // Native settlement details (present for `<indianSettlement>` objects).
+    /// Skill a free colonist can learn here.
+    public var learnableSkill: String?
+    /// Goods the settlement wants to buy.
+    public var wantedGoods: [String] = []
+    /// The player this settlement hates most.
+    public var mostHated: String?
+    /// Alarm level per player id.
+    public var alarm: [String: Int] = [:]
 
     public init(id: String, attributes: Attributes, children: [ParsedMessage], game: Game) throws {
         self.id = id
@@ -123,6 +132,10 @@ public struct Colony: GameObject, PartiallyUpdatable, Identifiable {
                     kind: .colonyTile,
                     tileId: tileId
                 ))
+            case "alarm":
+                if let playerId = child.attributes["player"] {
+                    alarm[playerId] = child.attributes.int("value")
+                }
             default:
                 break
             }
@@ -140,5 +153,8 @@ public struct Colony: GameObject, PartiallyUpdatable, Identifiable {
         immigration = attributes.int("immigration", default: immigration)
         productionBonus = attributes.int("productionBonus", default: productionBonus)
         unitCount = attributes.int("unitCount", default: unitCount)
+        if let v = attributes["learnableSkill"] { learnableSkill = v }
+        if let v = attributes["mostHated"] { mostHated = v }
+        wantedGoods = (0..<3).compactMap { attributes["wantedGoods\($0)"] }
     }
 }

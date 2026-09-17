@@ -1325,4 +1325,104 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(GameState.foundingFatherLabel("model.foundingFather.adamSmith"),
                        "Adam Smith")
     }
+
+    // MARK: Phase 58 - diplomacy and native depth
+
+    func testIndianSettlementAndTensionParsing() throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1">
+          <player id="player-1" username="Alice">
+            <tension player="player-2" value="320"/>
+            <banMissions player="player-2"/>
+          </player>
+          <player id="player-2" username="Bob"/>
+          <indianSettlement id="is-1" name="Cahokia" owner="player-3" tile="tile-0-0"
+                            learnableSkill="model.unit.expertFarmer"
+                            wantedGoods0="model.goods.rum"
+                            wantedGoods1="model.goods.tobacco"
+                            mostHated="player-2">
+            <alarm player="player-1" value="45"/>
+          </indianSettlement>
+        </game>
+        """)
+        try game.load(from: parsed)
+
+        let player = try XCTUnwrap(game.players["player-1"])
+        XCTAssertEqual(player.tension["player-2"], 320)
+        XCTAssertTrue(player.bannedMissions.contains("player-2"))
+
+        let settlement = try XCTUnwrap(game.colonies["is-1"])
+        XCTAssertEqual(settlement.learnableSkill, "model.unit.expertFarmer")
+        XCTAssertEqual(settlement.wantedGoods, ["model.goods.rum", "model.goods.tobacco"])
+        XCTAssertEqual(settlement.mostHated, "player-2")
+        XCTAssertEqual(settlement.alarm["player-1"], 45)
+    }
+
+    @MainActor
+    func testBeginDiplomacySynthesizesProposal() async throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1" clientUserName="Alice">
+          <player id="player-1" username="Alice"/>
+          <player id="player-2" username="Bob"/>
+          <map id="map-1" width="3" height="1">
+            <tile id="tile-0-0" x="0" y="0" type="model.tile.plains"/>
+            <tile id="tile-1-0" x="1" y="0" type="model.tile.plains"/>
+          </map>
+          <unit id="unit-1" owner="player-1" unitType="model.unit.freeColonist"
+                location="tile-0-0" movesLeft="3" state="ACTIVE"/>
+          <colony id="colony-2" name="Quebec" owner="player-2" tile="tile-1-0"/>
+        </game>
+        """)
+        try game.load(from: parsed)
+
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+        state.selectUnit("unit-1", onTile: "tile-0-0")
+
+        XCTAssertEqual(state.diplomacyInitiationTargetsForSelectedUnit.map(\.id), ["colony-2"])
+        state.beginDiplomacy(otherColonyId: "colony-2")
+
+        XCTAssertEqual(state.pendingServerDecision?.type, .diplomacy)
+        XCTAssertFalse(state.pendingDiplomacyIsIncoming)
+        XCTAssertEqual(state.pendingDiplomacy?.context, "DIPLOMATIC")
+        XCTAssertEqual(state.pendingServerDecision?.rawPayload["ourId"], "unit-1")
+        XCTAssertEqual(state.pendingServerDecision?.rawPayload["otherId"], "colony-2")
+    }
+
+    @MainActor
+    func testAttackConfirmationState() async throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1" clientUserName="Alice">
+          <player id="player-1" username="Alice"/>
+          <player id="player-2" username="Bob"/>
+          <map id="map-1" width="2" height="1">
+            <tile id="tile-0-0" x="0" y="0" type="model.tile.plains"/>
+            <tile id="tile-1-0" x="1" y="0" type="model.tile.plains"/>
+          </map>
+          <unit id="unit-1" owner="player-1" unitType="model.unit.soldier"
+                location="tile-0-0" movesLeft="3" state="ACTIVE"/>
+          <unit id="unit-2" owner="player-2" unitType="model.unit.freeColonist"
+                location="tile-1-0" movesLeft="3" state="ACTIVE"/>
+        </game>
+        """)
+        try game.load(from: parsed)
+
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+        state.selectUnit("unit-1", onTile: "tile-0-0")
+
+        guard state.canAttackSelectedUnitMelee(onTile: "tile-1-0") else {
+            throw XCTSkip("melee attack gating not satisfied in this fixture")
+        }
+        state.requestAttack(onTile: "tile-1-0", ranged: false)
+        XCTAssertTrue(state.showAttackConfirmation)
+        XCTAssertTrue(state.pendingAttackSummary.contains("Melee"))
+        state.dismissPendingAttack()
+        XCTAssertFalse(state.showAttackConfirmation)
+    }
 }

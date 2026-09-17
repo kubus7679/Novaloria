@@ -74,6 +74,10 @@ public struct Player: GameObject, PartiallyUpdatable, Identifiable {
     public var currentFather: String?
     /// Server model messages (event log / turn report).
     public var modelMessages: [ModelMessage] = []
+    /// Tension (0-1000) toward other players, keyed by player id.
+    public var tension: [String: Int] = [:]
+    /// Players whose missions are banned.
+    public var bannedMissions: Set<String> = []
 
     public var publicId: String { id }
 
@@ -114,6 +118,14 @@ public struct Player: GameObject, PartiallyUpdatable, Identifiable {
                     messageType: child.attributes["messageType"],
                     hasBeenDisplayed: child.attributes.bool("hasBeenDisplayed", default: false)
                 ))
+            case "tension":
+                if let playerId = child.attributes["player"] {
+                    tension[playerId] = child.attributes.int("value")
+                }
+            case "banMissions":
+                if let playerId = child.attributes["player"] {
+                    bannedMissions.insert(playerId)
+                }
             default:
                 break
             }

@@ -205,6 +205,19 @@ struct GameView: View {
         )) {
             endTurnDialog
         }
+        .confirmationDialog(
+            "Confirm Attack",
+            isPresented: Binding(
+                get: { state.showAttackConfirmation },
+                set: { if !$0 { state.dismissPendingAttack() } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Attack", role: .destructive) { state.confirmPendingAttack() }
+            Button("Cancel", role: .cancel) { state.dismissPendingAttack() }
+        } message: {
+            Text(state.pendingAttackSummary)
+        }
         .onChange(of: state.pendingServerDecision?.type) { _, newType in
             showNativeTrade = (newType == .nativeTrade)
             showDiplomacy = (newType == .diplomacy)
@@ -739,14 +752,14 @@ struct GameView: View {
                     if let targetTileId = state.selectedTileId,
                        state.canAttackSelectedUnitMelee(onTile: targetTileId) || state.canAttackSelectedUnitRanged(onTile: targetTileId) {
                         Button("Attack (Melee)") {
-                            state.attackSelectedUnitMelee(onTile: targetTileId)
+                            state.requestAttack(onTile: targetTileId, ranged: false)
                         }
                         .buttonStyle(.bordered)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .disabled(!state.canAttackSelectedUnitMelee(onTile: targetTileId))
 
                         Button("Attack (Ranged)") {
-                            state.attackSelectedUnitRanged(onTile: targetTileId)
+                            state.requestAttack(onTile: targetTileId, ranged: true)
                         }
                         .buttonStyle(.bordered)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -823,6 +836,22 @@ struct GameView: View {
                             .disabled(!state.canScoutIndianSettlement
                                       || state.directionToAdjacentSettlement(target.settlementId) == nil)
 
+                            Button("Ask Skill") {
+                                if let direction = state.directionToAdjacentSettlement(target.settlementId) {
+                                    state.askSkillAtSelectedUnit(direction: direction)
+                                }
+                            }
+                            .disabled(!state.canAskSkillAtSelectedUnit
+                                      || state.directionToAdjacentSettlement(target.settlementId) == nil)
+
+                            Button("Learn Skill") {
+                                if let direction = state.directionToAdjacentSettlement(target.settlementId) {
+                                    state.learnSkillAtSelectedUnit(direction: direction)
+                                }
+                            }
+                            .disabled(!state.canLearnSkillAtSelectedUnit
+                                      || state.directionToAdjacentSettlement(target.settlementId) == nil)
+
                             Menu("Incite…") {
                                 ForEach(state.diplomacyVictimOptions(), id: \.id) { victim in
                                     Button(victim.label) {
@@ -833,6 +862,18 @@ struct GameView: View {
                                 }
                             }
                             .disabled(!state.canInciteSelectedUnit)
+                        }
+                        .font(.caption)
+                        .fixedSize()
+                    }
+
+                    if !state.diplomacyInitiationTargetsForSelectedUnit.isEmpty {
+                        Menu("Diplomacy…") {
+                            ForEach(state.diplomacyInitiationTargetsForSelectedUnit, id: \.id) { target in
+                                Button(target.label) {
+                                    state.beginDiplomacy(otherColonyId: target.id)
+                                }
+                            }
                         }
                         .font(.caption)
                         .fixedSize()

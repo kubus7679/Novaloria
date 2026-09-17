@@ -42,9 +42,9 @@ Backlog siehe unten (58–61).
 
 ## Backlog (nach Spielbarkeit)
 
-- **58** Diplomatie/Native-Tiefe: aktive Diplomatie einleiten, IndianSettlement-
-  Panel, `askSkill`/`learnSkill`-UI, FirstContact/NativeDemand/Monarch/PreCombat-
-  Dialoge, `tension`/`bannedMissions`.
+- **58** Diplomatie/Native-Tiefe ✅: aktive Diplomatie (PROPOSE_TRADE),
+  IndianSettlement-Details, `askSkill`/`learnSkill`-UI, PreCombat-Bestätigung,
+  `tension`/`bannedMissions`. Siehe `phase58-diplomacy-native-depth-plan.md`.
 - **59** Europe-Tiefe: `PurchasePanel`, Dock/Cargo/Dump, Auswanderungs-Auswahl,
   Transaktions-Log/Preisgraph.
 - **60** Model-Tiefe: `featureChange` (Fähigkeiten/Modifier/History),

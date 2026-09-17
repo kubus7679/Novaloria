@@ -24,10 +24,15 @@ struct DiplomacyView: View {
                 Text("Diplomacy")
                     .font(.title2.bold())
                 Spacer()
-                Button("Reject") { state.rejectDiplomacy() }
-                    .buttonStyle(.bordered)
-                Button("Accept") { state.acceptDiplomacy() }
-                    .buttonStyle(.borderedProminent)
+                if state.pendingDiplomacyIsIncoming {
+                    Button("Reject") { state.rejectDiplomacy() }
+                        .buttonStyle(.bordered)
+                    Button("Accept") { state.acceptDiplomacy() }
+                        .buttonStyle(.borderedProminent)
+                } else {
+                    Button("Close") { state.clearPendingDecision() }
+                        .buttonStyle(.bordered)
+                }
             }
 
             if let proposal = state.pendingDiplomacy {

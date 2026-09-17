@@ -649,10 +649,21 @@ Restlücken in `Docs/Plans/playability-roadmap-54-57.md`.
 - [x] Regressionen: 56 XCTest / 130 CLI grün.
 - Detailed plan saved in `Docs/Plans/phase57-founding-fathers-reports-plan.md`.
 
-## Offene Arbeit (Backlog 58–61)
+## Phase 58 — Diplomatie/Native-Tiefe (Backlog)
 
-- [ ] **58 Diplomatie/Native-Tiefe**, **59 Europe-Tiefe**, **60 Model-Tiefe**,
-      **61 Meta** — siehe `Docs/Plans/playability-roadmap-54-57.md`.
+- [x] Aktive Diplomatie über synthetisiertes `PROPOSE_TRADE`
+      (`beginDiplomacy`), ungültiges leeres `<diplomacy>` entfernt.
+- [x] IndianSettlement-Details (`learnableSkill`/`wantedGoods`/`mostHated`/
+      `alarm`) + `askSkill`/`learnSkill`-UI.
+- [x] PreCombat-Bestätigung (`requestAttack`).
+- [x] `tension`/`bannedMissions` geparst + in Reports angezeigt.
+- [x] Regressionen: 59 XCTest / 130 CLI grün.
+- Detailed plan saved in `Docs/Plans/phase58-diplomacy-native-depth-plan.md`.
+
+## Offene Arbeit (Backlog 59–61)
+
+- [ ] **59 Europe-Tiefe**, **60 Model-Tiefe**, **61 Meta** — siehe
+      `Docs/Plans/playability-roadmap-54-57.md`.
 - Backlog (58–61): Diplomatie/Native-Tiefe, Europe-Tiefe, Model-Tiefe,
   Meta (Save/Load via embedded Server) — siehe
   `Docs/Plans/playability-roadmap-54-57.md`.

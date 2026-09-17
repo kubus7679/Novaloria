@@ -102,7 +102,9 @@
       end-turn dialog, tile popup, map pioneer improvements.
 - [x] **57 Founding Fathers & reports** — FF data/Congress report, missing
       reports, `modelMessage` event log, score/summary requests, Colopedia.
-- Backlog: 58 Diplomacy/Native depth, 59 Europe depth, 60 model depth,
+- [x] **58 Diplomacy/Native depth** — active diplomacy, native settlement
+      details, ask/learn skill, pre-combat confirm, tension/mission bans.
+- Backlog: 59 Europe depth, 60 model depth,
   61 meta (save/load via embedded server).
 
 ## Suggested order

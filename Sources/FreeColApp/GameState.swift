@@ -2301,6 +2301,12 @@ final class GameState {
         }
     }
 
+    /// True when the pending diplomacy proposal came from another player.
+    var pendingDiplomacyIsIncoming: Bool {
+        guard let proposal = pendingDiplomacy else { return false }
+        return proposal.sender != resolveLocalPlayerId()
+    }
+
     /// Draft clauses pre-populated from the pending proposal.
     var pendingDiplomacyDrafts: [DiplomaticClauseDraft] {
         guard let decision = pendingServerDecision,
@@ -3050,6 +3056,56 @@ final class GameState {
 
     /// Set while the end-turn confirmation dialog lists units without orders.
     var showEndTurnDialog: Bool = false
+
+    /// Pending combat confirmation (Java `PreCombatDialog`).
+    var showAttackConfirmation: Bool = false
+    private var pendingAttackTileId: String?
+    private var pendingAttackRanged: Bool = false
+
+    /// Ask for confirmation before attacking the given tile.
+    func requestAttack(onTile tileId: String, ranged: Bool) {
+        let allowed = ranged
+            ? canAttackSelectedUnitRanged(onTile: tileId)
+            : canAttackSelectedUnitMelee(onTile: tileId)
+        guard allowed else {
+            errorMessage = "Angriff nicht möglich."
+            return
+        }
+        pendingAttackTileId = tileId
+        pendingAttackRanged = ranged
+        showAttackConfirmation = true
+    }
+
+    func confirmPendingAttack() {
+        guard let tileId = pendingAttackTileId else { return }
+        let ranged = pendingAttackRanged
+        dismissPendingAttack()
+        if ranged {
+            attackSelectedUnitRanged(onTile: tileId)
+        } else {
+            attackSelectedUnitMelee(onTile: tileId)
+        }
+    }
+
+    func dismissPendingAttack() {
+        showAttackConfirmation = false
+        pendingAttackTileId = nil
+        pendingAttackRanged = false
+    }
+
+    /// Short summary of the pending attack for the dialog.
+    var pendingAttackSummary: String {
+        guard let tileId = pendingAttackTileId,
+              let game = cachedGame,
+              let unit = selectedUnit else { return "" }
+        let defender = game.units.values.first {
+            game.resolvedTileId(for: $0) == tileId && $0.owner != unit.owner
+        }
+        let attacker = unit.unitType.flatMap { $0.split(separator: ".").last.map(String.init) } ?? unit.id
+        let target = defender?.unitType.flatMap { $0.split(separator: ".").last.map(String.init) } ?? tileId
+        let kind = pendingAttackRanged ? "Ranged" : "Melee"
+        return "\(kind): \(attacker) → \(target)"
+    }
 
     /// End the turn, prompting first when units still have orders left.
     func requestEndTurn() {
@@ -4773,6 +4829,38 @@ final class GameState {
         return true
     }
 
+    /// Refresh a native settlement's learnable skill from the server.
+    func askSkillAtSelectedUnit(direction: String) {
+        guard canAskSkillAtSelectedUnit,
+              let unitId = selectedUnitId else {
+            errorMessage = "Fähigkeit kann nicht erfragt werden."
+            return
+        }
+        errorMessage = nil
+        Task {
+            do {
+                let msg = ParsedMessage(
+                    tag: "askSkill",
+                    attributes: ["unit": unitId, "direction": direction],
+                    children: []
+                )
+                let reply = try await client?.ask(message: msg)
+                if let reply, server == nil, let payload = reply.children.first {
+                    // Remote server: apply the refreshed settlement payload.
+                    try? cachedGame?.applyUpdate(payload)
+                    gameUpdateID += 1
+                }
+                statusMessage = "Skill erfragt."
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    var canAskSkillAtSelectedUnit: Bool {
+        canLearnSkillAtSelectedUnit
+    }
+
     func nameNewLandWithSelectedUnit(_ landName: String) {
         let trimmedName = landName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else {
@@ -5200,37 +5288,65 @@ final class GameState {
 
     // MARK: Phase 48 - Diplomacy
 
-    func sendDiplomacyMessage(otherId: String) {
-        guard canSendDiplomacy else {
+    /// Adjacent foreign colonies the selected unit could negotiate with.
+    var diplomacyInitiationTargetsForSelectedUnit: [(id: String, label: String)] {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let unit = selectedUnit,
+              let unitTileId = resolveUnitTileId(unit, in: game),
+              let unitTile = game.tiles[unitTileId],
+              let localPlayerId = resolveLocalPlayerId() else { return [] }
+        return game.colonies.values.compactMap { colony in
+            guard let ownerId = colony.owner,
+                  ownerId != localPlayerId,
+                  game.players[ownerId]?.playerType == .european,
+                  let colonyTileId = colony.tileId,
+                  let colonyTile = game.tiles[colonyTileId] else { return nil }
+            let dx = abs(colonyTile.x - unitTile.x)
+            let dy = abs(colonyTile.y - unitTile.y)
+            guard dx <= 1, dy <= 1, !(dx == 0 && dy == 0) else { return nil }
+            let ownerName = game.players[ownerId]?.name ?? ownerId
+            return (id: colony.id, label: "\(colony.name ?? colony.id) (\(ownerName))")
+        }
+    }
+
+    /// Open a diplomacy session with a foreign colony using the selected unit.
+    /// Synthesizes a PROPOSE_TRADE so the counter-proposal builder can compose
+    /// the opening offer.
+    func beginDiplomacy(otherColonyId: String) {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let unitId = selectedUnitId,
+              let other = game.colonies[otherColonyId],
+              let otherOwner = other.owner,
+              let ourId = resolveLocalPlayerId() else {
             errorMessage = "Diplomatie nicht möglich."
             return
         }
-        guard !otherId.isEmpty else {
-            errorMessage = "Spieler ID erforderlich."
-            return
-        }
-        guard let localPlayerId = resolveLocalPlayerId() else {
-            errorMessage = "Lokaler Spieler nicht gefunden."
+        guard diplomacyInitiationTargetsForSelectedUnit.contains(where: { $0.id == otherColonyId }) else {
+            errorMessage = "Keine angrenzende fremde Kolonie."
             return
         }
         errorMessage = nil
-
-
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "diplomacy",
-                    attributes: [
-                        "otherId": otherId,
-                        "ourId": localPlayerId,
-                    ],
-                    children: []
-                )
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-        }
+        let tradeNode = ParsedMessage(
+            tag: "diplomaticTrade",
+            attributes: [
+                "context": "DIPLOMATIC",
+                "sender": ourId,
+                "recipient": otherOwner,
+                "status": "PROPOSE_TRADE",
+                "version": "1",
+            ],
+            children: []
+        )
+        pendingServerDecision = PendingServerDecision(
+            type: .diplomacy,
+            rawPayload: ["ourId": unitId, "otherId": otherColonyId],
+            children: [tradeNode]
+        )
+        statusMessage = "Diplomatie eröffnet."
     }
 
     var canSendDiplomacy: Bool {

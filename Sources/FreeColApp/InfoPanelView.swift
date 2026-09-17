@@ -164,11 +164,37 @@ struct InfoPanelView: View {
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
-            if let settlementId = tile.settlement {
-                let name = state.game?.colonies[settlementId]?.name ?? settlementId
-                Text("Settlement: \(name)")
+            if let settlementId = tile.settlement,
+               let settlement = state.game?.colonies[settlementId] {
+                Text("Settlement: \(settlement.name ?? settlementId)")
                     .font(.caption2)
                     .foregroundColor(.secondary)
+                if settlement.learnableSkill != nil
+                    || !settlement.wantedGoods.isEmpty
+                    || settlement.mostHated != nil {
+                    VStack(alignment: .leading, spacing: 2) {
+                        if let skill = settlement.learnableSkill {
+                            Text("Skill: \(short(skill, prefix: "model.unit."))")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        if !settlement.wantedGoods.isEmpty {
+                            Text("Wants: \(settlement.wantedGoods.map { short($0, prefix: "model.goods.") }.joined(separator: ", "))")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        if let hated = settlement.mostHated {
+                            Text("Most hated: \(state.game?.players[hated]?.name ?? hated)")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        if let localId = state.localPlayerId, let alarm = settlement.alarm[localId] {
+                            Text("Alarm: \(alarm)")
+                                .font(.caption2)
+                                .foregroundColor(alarm > 50 ? .red : .secondary)
+                        }
+                    }
+                }
             }
             let units = units(on: tile.id)
             if !units.isEmpty {
