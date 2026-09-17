@@ -16,6 +16,37 @@ public enum Stance: String {
     case alliance = "ALLIANCE"
 }
 
+/// A server model message (event log / turn report entry).
+public struct ModelMessage: Sendable, Identifiable {
+    public var id: String
+    public var source: String?
+    public var display: String?
+    public var messageType: String?
+    public var hasBeenDisplayed: Bool
+
+    public init(id: String,
+                source: String?,
+                display: String?,
+                messageType: String?,
+                hasBeenDisplayed: Bool) {
+        self.id = id
+        self.source = source
+        self.display = display
+        self.messageType = messageType
+        self.hasBeenDisplayed = hasBeenDisplayed
+    }
+
+    /// Best-effort label: the message key with any `model.message.` prefix removed.
+    public var label: String {
+        if let display, !display.isEmpty { return display }
+        var text = id
+        if let range = text.range(of: "model.message.") {
+            text = String(text[range.upperBound...])
+        }
+        return text
+    }
+}
+
 public struct Player: GameObject, PartiallyUpdatable, Identifiable {
     public var id: String
     public var name: String?
@@ -35,6 +66,14 @@ public struct Player: GameObject, PartiallyUpdatable, Identifiable {
     public var europe: Europe?
     public var market: Market?
     public var stances: [String: Stance] = [:]
+    /// Founding fathers already in the Continental Congress.
+    public var foundingFathers: [String] = []
+    /// Founding fathers currently offered for election.
+    public var offeredFathers: [String] = []
+    /// The father currently being elected (progress state).
+    public var currentFather: String?
+    /// Server model messages (event log / turn report).
+    public var modelMessages: [ModelMessage] = []
 
     public var publicId: String { id }
 
@@ -63,6 +102,18 @@ public struct Player: GameObject, PartiallyUpdatable, Identifiable {
                                                game: game) {
                     game.addTradeRoute(route)
                 }
+            case "foundingFathers":
+                foundingFathers = Player.listValues(child)
+            case "offeredFathers":
+                offeredFathers = Player.listValues(child)
+            case "modelMessage":
+                modelMessages.append(ModelMessage(
+                    id: child.attributes["id"] ?? "",
+                    source: child.attributes["source"],
+                    display: child.attributes["display"],
+                    messageType: child.attributes["messageType"],
+                    hasBeenDisplayed: child.attributes.bool("hasBeenDisplayed", default: false)
+                ))
             default:
                 break
             }
@@ -84,5 +135,19 @@ public struct Player: GameObject, PartiallyUpdatable, Identifiable {
         liberty = attributes.int("liberty", default: liberty)
         score = attributes.int("score", default: score)
         if let v = attributes["newLandName"] { newLandName = v }
+        if let v = attributes["currentFather"] { currentFather = v }
+    }
+
+    /// Read a `<... xLength="n" x0="a" x1="b"/>` list element into an array.
+    static func listValues(_ node: ParsedMessage) -> [String] {
+        let count = node.attributes.int("xLength", default: 0)
+        guard count > 0 else { return [] }
+        var values: [String] = []
+        for index in 0..<count {
+            if let value = node.attributes["x\(index)"] {
+                values.append(value)
+            }
+        }
+        return values
     }
 }

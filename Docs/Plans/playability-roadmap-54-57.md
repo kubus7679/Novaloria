@@ -27,15 +27,18 @@ abgearbeitet. Die bestehenden `[x]`-Markierungen in `plans.md` und
 - [x] Pionier-Improvement auf Kartenkacheln; `workLeft`/`<tileImprovement>`
       und Spec-Improvement-Typen geparst.
 
-## Phase 57 — Founding Fathers & Reports (offen, P1)
+## Phase 57 — Founding Fathers & Reports ✅ (siehe `phase57-founding-fathers-reports-plan.md`)
 
-- [ ] FF-Daten parsen (`foundingFathers`, `offeredFathers`, `currentFather`);
+- [x] FF-Daten geparst (`foundingFathers`, `offeredFathers`, `currentFather`);
       Continental-Congress-Report.
-- [ ] Fehlende Reports: Labour (+Detail), Religious, Production, Education,
-      Requirements, History.
-- [ ] `modelMessage` parsen + Event-Log/Turn-Report (statt 8-Zeilen-Chat-Puffer).
-- [ ] `highScores`/`nationSummary` Request-Actions.
-- [ ] Colopedia um Terrain/Gebäude/Fathers/Nations erweitern.
+- [x] Reports: Labour, Religious, Production, Education, Requirements, History.
+- [x] `modelMessage` geparst + Event-Log/Turn-Report.
+- [x] `highScores`/`nationSummary` Request-Actions.
+- [x] Colopedia um Terrain/Gebäude/Improvements/Fathers/Nations erweitert.
+
+## Playability-Phasen 54–57 abgeschlossen
+
+Backlog siehe unten (58–61).
 
 ## Backlog (nach Spielbarkeit)
 

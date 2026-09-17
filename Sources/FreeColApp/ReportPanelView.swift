@@ -16,6 +16,13 @@ enum ReportKind: String, CaseIterable, Identifiable {
     case turn
     case highScores
     case financial
+    case continentalCongress
+    case labour
+    case religious
+    case production
+    case education
+    case requirements
+    case history
 
     var id: String { rawValue }
 
@@ -33,6 +40,13 @@ enum ReportKind: String, CaseIterable, Identifiable {
         case .turn: return "Turn"
         case .highScores: return "High Scores"
         case .financial: return "Financial"
+        case .continentalCongress: return "Continental Congress"
+        case .labour: return "Labour"
+        case .religious: return "Religious"
+        case .production: return "Production"
+        case .education: return "Education"
+        case .requirements: return "Requirements"
+        case .history: return "History"
         }
     }
 }
@@ -43,6 +57,7 @@ struct ReportPanelView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var selected: ReportKind = .colonies
+    @State private var summaryPlayerId: String = ""
 
     var body: some View {
         HStack(spacing: 0) {
@@ -104,6 +119,13 @@ struct ReportPanelView: View {
         case .turn: turnReport
         case .highScores: highScoresReport
         case .financial: financialReport
+        case .continentalCongress: continentalCongressReport
+        case .labour: labourReport
+        case .religious: religiousReport
+        case .production: productionReport
+        case .education: educationReport
+        case .requirements: requirementsReport
+        case .history: historyReport
         }
     }
 
@@ -282,22 +304,58 @@ struct ReportPanelView: View {
             .sorted { ($0.name ?? "") < ($1.name ?? "") }
         let local = game.players[localPlayerId]
         return AnyView(GroupBox {
-            if others.isEmpty {
-                empty("No other European powers.")
-            } else {
-                table(
-                    headers: ["Player", "Nation", "Stance", "Gold", "Score"],
-                    widths: [140, 150, 100, 70, 60],
-                    rows: others.map { player in
-                        [
-                            player.name ?? "?",
-                            shortName(player.nationId, prefix: "model.nation."),
-                            local?.stances[player.id]?.rawValue ?? "UNCONTACTED",
-                            "\(player.gold)",
-                            "\(player.score)"
-                        ]
+            VStack(alignment: .leading, spacing: 10) {
+                if others.isEmpty {
+                    empty("No other European powers.")
+                } else {
+                    table(
+                        headers: ["Player", "Nation", "Stance", "Gold", "Score"],
+                        widths: [140, 150, 100, 70, 60],
+                        rows: others.map { player in
+                            [
+                                player.name ?? "?",
+                                shortName(player.nationId, prefix: "model.nation."),
+                                local?.stances[player.id]?.rawValue ?? "UNCONTACTED",
+                                "\(player.gold)",
+                                "\(player.score)"
+                            ]
+                        }
+                    )
+                }
+
+                Divider()
+                Text("Nation Summary")
+                    .font(.caption.bold())
+                HStack {
+                    Picker("Player", selection: $summaryPlayerId) {
+                        Text("Select…").tag("")
+                        ForEach(others) { player in
+                            Text(player.name ?? player.id).tag(player.id)
+                        }
                     }
-                )
+                    .labelsHidden()
+                    .frame(width: 200)
+                    Button("Request") { state.requestNationSummary(playerId: summaryPlayerId) }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .disabled(summaryPlayerId.isEmpty)
+                }
+                if let summary = state.nationSummaryReport {
+                    let attrs = summary.attributes
+                    table(
+                        headers: ["Settlements", "Units", "Military", "Naval", "Gold", "SoL", "Fathers"],
+                        widths: [80, 60, 70, 60, 60, 50, 60],
+                        rows: [[
+                            attrs["numberOfSettlements"] ?? "?",
+                            attrs["numberOfUnits"] ?? "?",
+                            attrs["militaryStrength"] ?? "?",
+                            attrs["navalStrength"] ?? "?",
+                            attrs["gold"] ?? "?",
+                            attrs["SoL"] ?? "?",
+                            attrs["foundingFathers"] ?? "?"
+                        ]]
+                    )
+                }
             }
         })
     }
@@ -363,6 +421,18 @@ struct ReportPanelView: View {
                         row("Your tax", "\(local.tax)%")
                         row("Your score", "\(local.score)")
                     }
+                    let messages = state.localPlayerModelMessages
+                    if !messages.isEmpty {
+                        Divider()
+                        Text("Events")
+                            .font(.caption.bold())
+                        ForEach(Array(messages.suffix(8).reversed().enumerated()),
+                                id: \.offset) { _, message in
+                            Text("• \(message.label)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
                 }
             } else {
                 empty("No game.")
@@ -372,6 +442,12 @@ struct ReportPanelView: View {
 
     private var highScoresReport: some View {
         GroupBox {
+            HStack {
+                Spacer()
+                Button("Request from Server") { state.requestHighScores() }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            }
             if let report = state.highScoresReport {
                 let entries = report.children.filter { $0.tag == "highScore" }
                 if entries.isEmpty {
@@ -393,6 +469,178 @@ struct ReportPanelView: View {
                 }
             } else {
                 empty("No high scores available.")
+            }
+        }
+    }
+
+    private var continentalCongressReport: some View {
+        let fathers = state.localPlayerFoundingFathers
+        let offered = state.localPlayerOfferedFathers
+        let current = state.localPlayerCurrentFather
+        return GroupBox {
+            VStack(alignment: .leading, spacing: 8) {
+                if let current {
+                    row("In progress", state.foundingFatherDisplayName(current))
+                }
+                if fathers.isEmpty && offered.isEmpty && current == nil {
+                    empty("No founding fathers yet.")
+                } else {
+                    if !fathers.isEmpty {
+                        Text("In Congress (\(fathers.count))")
+                            .font(.caption.bold())
+                        table(headers: ["Founding Father"], widths: [260],
+                              rows: fathers.map { [state.foundingFatherDisplayName($0)] })
+                    }
+                    if !offered.isEmpty {
+                        Text("Offered")
+                            .font(.caption.bold())
+                        table(headers: ["Founding Father"], widths: [260],
+                              rows: offered.map { [state.foundingFatherDisplayName($0)] })
+                    }
+                }
+            }
+        }
+    }
+
+    private var labourReport: some View {
+        let colonies = state.localColonies
+        return GroupBox {
+            if colonies.isEmpty {
+                empty("No colonies.")
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(colonies) { colony in
+                        let workers = state.colonyWorkerUnits(colony)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(colony.name ?? colony.id) (\(workers.count))")
+                                .font(.caption.bold())
+                            if workers.isEmpty {
+                                empty("No workers.")
+                            } else {
+                                table(headers: ["Unit", "Work", "Location"],
+                                      widths: [140, 120, 150],
+                                      rows: workers.map { unit in
+                                          [
+                                            unit.unitType.map { shortName($0, prefix: "model.unit.") } ?? unit.id,
+                                            unit.workType.map { shortName($0, prefix: "model.goods.") } ?? "—",
+                                            unit.location ?? "—"
+                                          ]
+                                      })
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var religiousReport: some View {
+        let missionaries = state.missionaryUnits
+        let settlements = state.game?.colonies.values.filter {
+            $0.settlementType?.lowercased().contains("indian") == true
+        } ?? []
+        return GroupBox {
+            VStack(alignment: .leading, spacing: 8) {
+                row("Missionaries", "\(missionaries.count)")
+                row("Native settlements", "\(settlements.count)")
+                if missionaries.isEmpty {
+                    empty("No missionaries.")
+                } else {
+                    table(headers: ["Unit", "Location"], widths: [180, 160],
+                          rows: missionaries.map {
+                              [$0.unitType.map { shortName($0, prefix: "model.unit.") } ?? $0.id,
+                               $0.location ?? "—"]
+                          })
+                }
+            }
+        }
+    }
+
+    private var productionReport: some View {
+        let colonies = state.localColonies
+        return GroupBox {
+            if colonies.isEmpty {
+                empty("No colonies.")
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(colonies) { colony in
+                        let production = state.colonyProductionSummary(colony)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(colony.name ?? colony.id)
+                                .font(.caption.bold())
+                            if production.isEmpty {
+                                empty("No estimated production.")
+                            } else {
+                                table(headers: ["Goods", "Per turn"],
+                                      widths: [180, 80],
+                                      rows: production.map { [$0.label, "\($0.amount)"] })
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var educationReport: some View {
+        let assignments = state.educationAssignments
+        return GroupBox {
+            if assignments.isEmpty {
+                empty("No education in progress.")
+            } else {
+                table(headers: ["Student", "Teacher", "Colony"],
+                      widths: [150, 150, 140],
+                      rows: assignments.map { unit in
+                          [
+                            unit.unitType.map { shortName($0, prefix: "model.unit.") } ?? unit.id,
+                            unit.teacher.map { shortName($0, prefix: "model.unit.") } ?? "—",
+                            unit.location ?? "—"
+                          ]
+                      })
+            }
+        }
+    }
+
+    private var requirementsReport: some View {
+        let colonies = state.localColonies
+        return GroupBox {
+            if colonies.isEmpty {
+                empty("No colonies.")
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(colonies) { colony in
+                        if let requirements = state.colonyBuildRequirements(colony) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(colony.name ?? colony.id) → \(requirements.target)")
+                                    .font(.caption.bold())
+                                if requirements.items.isEmpty {
+                                    empty("No material requirements.")
+                                } else {
+                                    table(headers: ["Goods", "Stored", "Required"],
+                                          widths: [160, 70, 80],
+                                          rows: requirements.items.map {
+                                              [$0.label, "\($0.stored)", "\($0.required)"]
+                                          })
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var historyReport: some View {
+        let messages = state.localPlayerModelMessages
+        return GroupBox {
+            if messages.isEmpty {
+                empty("No events recorded.")
+            } else {
+                table(headers: ["Event", "Source", "Type"],
+                      widths: [220, 120, 100],
+                      rows: messages.reversed().map {
+                          [$0.label, $0.source ?? "—", $0.messageType ?? "—"]
+                      })
             }
         }
     }

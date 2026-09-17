@@ -1227,4 +1227,102 @@ final class FreeColProtocolTests: XCTestCase {
         state.selectUnit("unit-1", onTile: "tile-0-0")
         XCTAssertFalse(state.canClearSelectedUnitOrders)
     }
+
+    // MARK: Phase 57 - founding fathers and reports
+
+    func testFoundingFatherAndModelMessageParsing() throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1">
+          <player id="player-1" username="Alice" currentFather="model.foundingFather.adamSmith">
+            <foundingFathers xLength="2" x0="model.foundingFather.baronVonSteuben"
+                             x1="model.foundingFather.casimiroDeEspinosa"/>
+            <offeredFathers xLength="1" x0="model.foundingFather.henryHudson"/>
+            <modelMessage id="model.message.independence" source="player-1"
+                          messageType="DEFAULT" hasBeenDisplayed="false"/>
+          </player>
+        </game>
+        """)
+        try game.load(from: parsed)
+        let player = try XCTUnwrap(game.players["player-1"])
+        XCTAssertEqual(player.currentFather, "model.foundingFather.adamSmith")
+        XCTAssertEqual(player.foundingFathers,
+                       ["model.foundingFather.baronVonSteuben",
+                        "model.foundingFather.casimiroDeEspinosa"])
+        XCTAssertEqual(player.offeredFathers, ["model.foundingFather.henryHudson"])
+        XCTAssertEqual(player.modelMessages.count, 1)
+        XCTAssertEqual(player.modelMessages.first?.messageType, "DEFAULT")
+        XCTAssertEqual(player.modelMessages.first?.label, "independence")
+    }
+
+    @MainActor
+    func testReportHelpersForColonies() async throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1" clientUserName="Alice">
+          <player id="player-1" username="Alice"/>
+          <player id="player-2" username="Bob"/>
+          <colony id="colony-1" name="Boston" owner="player-1" tile="tile-0-0" unitCount="3">
+            <building id="b-1" buildingType="model.building.carpenterHouse"/>
+            <buildQueueItem id="model.building.warehouse"/>
+          </colony>
+          <unit id="unit-1" owner="player-1" unitType="model.unit.freeColonist"
+                location="b-1" workType="model.goods.lumber"/>
+          <unit id="unit-2" owner="player-1" unitType="model.unit.freeColonist"
+                location="colony-1" teacher="unit-3"/>
+          <unit id="unit-3" owner="player-1" unitType="model.unit.expertTeacher"
+                location="colony-1" role="model.role.missionary"/>
+          <unit id="unit-4" owner="player-2" unitType="model.unit.freeColonist"
+                location="colony-1"/>
+        </game>
+        """)
+        try game.load(from: parsed)
+
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+
+        let colony = try XCTUnwrap(game.colonies["colony-1"])
+        XCTAssertEqual(state.localColonies.map(\.id), ["colony-1"])
+        // Only local workers inside the colony or on its buildings.
+        XCTAssertEqual(state.colonyWorkerUnits(colony).map(\.id), ["unit-1", "unit-2", "unit-3"])
+        XCTAssertEqual(state.educationAssignments.map(\.id), ["unit-2"])
+        XCTAssertTrue(state.missionaryUnits.contains { $0.id == "unit-3" })
+    }
+
+    @MainActor
+    func testColonyBuildRequirementsHelper() async throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1" clientUserName="Alice">
+          <player id="player-1" username="Alice"/>
+          <colony id="colony-1" name="Boston" owner="player-1" tile="tile-0-0" unitCount="3">
+            <buildQueueItem id="model.building.warehouse"/>
+            <goodsContainer><storedGoods><goods type="model.goods.lumber" amount="12"/></storedGoods></goodsContainer>
+          </colony>
+          <freecol-specification id="spec">
+            <building-type id="model.building.warehouse">
+              <required-goods id="model.goods.lumber" value="60"/>
+            </building-type>
+          </freecol-specification>
+        </game>
+        """)
+        try game.load(from: parsed)
+        let colony = try XCTUnwrap(game.colonies["colony-1"])
+
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+
+        let requirements = try XCTUnwrap(state.colonyBuildRequirements(colony))
+        XCTAssertEqual(requirements.target, "Warehouse")
+        XCTAssertEqual(requirements.items.first?.id, "model.goods.lumber")
+        XCTAssertEqual(requirements.items.first?.required, 60)
+        XCTAssertEqual(requirements.items.first?.stored, 12)
+    }
+
+    func testFoundingFatherDisplayName() {
+        XCTAssertEqual(GameState.foundingFatherLabel("model.foundingFather.adamSmith"),
+                       "Adam Smith")
+    }
 }

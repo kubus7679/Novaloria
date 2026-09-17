@@ -638,10 +638,21 @@ Restlücken in `Docs/Plans/playability-roadmap-54-57.md`.
 - [x] Regressionen: 52 XCTest / 130 CLI grün.
 - Detailed plan saved in `Docs/Plans/phase56-map-unit-orders-plan.md`.
 
-## Offene Arbeit (Phase 57)
+## Phase 57 — Founding Fathers & Reports (Spielbarkeit)
 
-- [ ] **57 Founding Fathers & Reports**: FF-Daten/Congress-Report, fehlende
-      Reports, `modelMessage`-Event-Log, Score/Summary-Requests, Colopedia.
+- [x] FF-Daten (`foundingFathers`/`offeredFathers`/`currentFather`) +
+      Continental-Congress-Report.
+- [x] Reports: Labour, Religious, Production, Education, Requirements, History.
+- [x] `modelMessage`-Parsing + Event-Log (Turn-/History-Report).
+- [x] `highScores`/`nationSummary` Request-Actions.
+- [x] Colopedia um Terrain/Gebäude/Improvements/Fathers/Nations erweitert.
+- [x] Regressionen: 56 XCTest / 130 CLI grün.
+- Detailed plan saved in `Docs/Plans/phase57-founding-fathers-reports-plan.md`.
+
+## Offene Arbeit (Backlog 58–61)
+
+- [ ] **58 Diplomatie/Native-Tiefe**, **59 Europe-Tiefe**, **60 Model-Tiefe**,
+      **61 Meta** — siehe `Docs/Plans/playability-roadmap-54-57.md`.
 - Backlog (58–61): Diplomatie/Native-Tiefe, Europe-Tiefe, Model-Tiefe,
   Meta (Save/Load via embedded Server) — siehe
   `Docs/Plans/playability-roadmap-54-57.md`.

@@ -341,7 +341,7 @@ final class GameState {
     }
 
     /// Turns a founding-father id (`model.foundingFather.adamSmith`) into a label.
-    static func foundingFatherLabel(_ id: String) -> String {
+    nonisolated static func foundingFatherLabel(_ id: String) -> String {
         var name = id
         if let range = name.range(of: "model.foundingFather.") {
             name = String(name[range.upperBound...])
@@ -511,6 +511,70 @@ final class GameState {
     var localPlayerMarketData: [MarketData] {
         guard let market = localPlayer?.market else { return [] }
         return market.data.values.sorted { ($0.goodsType ?? "") < ($1.goodsType ?? "") }
+    }
+
+    // MARK: Phase 57 - founding fathers, reports, event log
+
+    /// Founding fathers already in the local player's congress.
+    var localPlayerFoundingFathers: [String] {
+        localPlayer?.foundingFathers ?? []
+    }
+
+    /// Founding fathers currently offered to the local player.
+    var localPlayerOfferedFathers: [String] {
+        localPlayer?.offeredFathers ?? []
+    }
+
+    /// The father the local player is currently electing.
+    var localPlayerCurrentFather: String? {
+        localPlayer?.currentFather
+    }
+
+    /// Server model messages for the local player (event log / turn report).
+    var localPlayerModelMessages: [ModelMessage] {
+        localPlayer?.modelMessages ?? []
+    }
+
+    func foundingFatherDisplayName(_ id: String?) -> String {
+        guard let id else { return "—" }
+        return Self.foundingFatherLabel(id)
+    }
+
+    /// Ask the server for the high-score table (`HighScoresMessage`).
+    func requestHighScores(key: String = "model.option.score") {
+        guard phase == .inGame || phase == .lobby else { return }
+        Task {
+            do {
+                let msg = ParsedMessage(tag: "highScores", attributes: ["key": key], children: [])
+                let reply = try await client?.ask(message: msg)
+                if let reply, let payload = reply.children.first {
+                    highScoresReport = payload
+                }
+                statusMessage = "High scores requested."
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    /// Ask the server for a nation summary for one player.
+    func requestNationSummary(playerId: String) {
+        guard !playerId.isEmpty else { return }
+        Task {
+            do {
+                let msg = ParsedMessage(tag: "nationSummary",
+                                        attributes: ["player": playerId],
+                                        children: [])
+                let reply = try await client?.ask(message: msg)
+                if let reply, let payload = reply.children.first {
+                    // The reply wraps the summary; unwrap the inner <nationSummary>.
+                    nationSummaryReport = payload.children.first { $0.tag == "nationSummary" } ?? payload
+                }
+                statusMessage = "Nation summary requested."
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 
     /// Derived buy/sale prices for one goods type (Java `MarketData.price()`).
@@ -1008,6 +1072,71 @@ final class GameState {
         return totals
             .filter { $0.value != 0 }
             .map { (id: $0.key, amount: $0.value) }
+    }
+
+    // MARK: Phase 57 - report helpers
+
+    /// Colonies owned by the local player, sorted by name.
+    var localColonies: [Colony] {
+        guard let game = cachedGame,
+              let localPlayerId = resolveLocalPlayerId() else { return [] }
+        return game.colonies.values
+            .filter { $0.owner == localPlayerId }
+            .sorted { ($0.name ?? "") < ($1.name ?? "") }
+    }
+
+    /// Workers (units) assigned to a colony, either inside it or on a work location.
+    func colonyWorkerUnits(_ colony: Colony) -> [FreeColGame.Unit] {
+        guard let game = cachedGame,
+              let localPlayerId = resolveLocalPlayerId() else { return [] }
+        let workLocationIds = Set(colony.buildings.map(\.id) + colony.workTiles.map(\.id))
+        return game.units.values
+            .filter { unit in
+                guard unit.owner == localPlayerId else { return false }
+                if unit.location == colony.id { return true }
+                if let location = unit.location, workLocationIds.contains(location) { return true }
+                return false
+            }
+            .sorted { $0.id < $1.id }
+    }
+
+    /// Net production estimate for a colony, with display names.
+    func colonyProductionSummary(_ colony: Colony) -> [(id: String, label: String, amount: Int)] {
+        guard let specification = cachedGame?.specification else { return [] }
+        return Self.estimatedProduction(colony: colony,
+                                        specification: specification,
+                                        centerTileType: centerTileType(of: colony))
+            .map { (id: $0.id, label: goodsDisplayName($0.id), amount: $0.amount) }
+            .sorted { $0.label < $1.label }
+    }
+
+    /// Required vs. stored construction goods for a colony's current build target.
+    func colonyBuildRequirements(_ colony: Colony) -> (target: String, items: [(id: String, label: String, required: Int, stored: Int)])? {
+        guard let first = colony.buildQueue.first,
+              let info = cachedGame?.specification?.buildingTypes[first] else {
+            return nil
+        }
+        let items = info.requiredGoods
+            .map { (id: $0.key,
+                    label: goodsDisplayName($0.key),
+                    required: $0.value,
+                    stored: colony.goods[$0.key] ?? 0) }
+            .sorted { $0.label < $1.label }
+        return (buildingDisplayName(first), items)
+    }
+
+    /// Units with an education assignment (student/teacher).
+    var educationAssignments: [FreeColGame.Unit] {
+        selectableLocalUnits.filter { unit in
+            (unit.teacher?.isEmpty == false) || (unit.student?.isEmpty == false)
+        }
+    }
+
+    /// Units with a missionary role.
+    var missionaryUnits: [FreeColGame.Unit] {
+        selectableLocalUnits.filter {
+            UnitTypeTraits.isMissionary(unitType: $0.unitType, role: $0.role)
+        }
     }
 
     /// Estimated net production of the selected colony, with display names.

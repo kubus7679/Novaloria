@@ -100,7 +100,7 @@
       `rearrangeColony`, worker pickers, market buy/sell prices, `payArrears`.
 - [x] **56 Map/unit orders** — `moveTo`, clear orders, next-unit cycle,
       end-turn dialog, tile popup, map pioneer improvements.
-- [ ] **57 Founding Fathers & reports** — FF data/Congress report, missing
+- [x] **57 Founding Fathers & reports** — FF data/Congress report, missing
       reports, `modelMessage` event log, score/summary requests, Colopedia.
 - Backlog: 58 Diplomacy/Native depth, 59 Europe depth, 60 model depth,
   61 meta (save/load via embedded server).
