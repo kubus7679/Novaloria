@@ -77,6 +77,7 @@ public actor FreeColClient {
     public func startMessageLoop() async {
         FreeColLogger.shared.info("Starting message loop...")
         FreeColLogger.shared.info("Question wrapper handling enabled")
+        await connection.setDispatching(true)
         do {
             while true {
                 let line = try await connection.nextLine()
@@ -84,6 +85,21 @@ public actor FreeColClient {
 
                 if parsed.tag == "question" {
                     try await handleQuestion(parsed)
+                    continue
+                }
+
+                if parsed.tag == "reply" {
+                    // A reply to one of our `ask` requests carries the resulting
+                    // ChangeSet. Apply it, then release the waiting continuation.
+                    for child in parsed.children where child.tag != "error" {
+                        let childHandled = try stateManager.process(child)
+                        if !childHandled {
+                            delegate?.clientDidReceiveGameState(child)
+                        } else {
+                            delegate?.clientDidUpdate()
+                        }
+                    }
+                    await connection.resolveReply(parsed)
                     continue
                 }
 

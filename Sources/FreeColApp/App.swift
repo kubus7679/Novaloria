@@ -21,7 +21,7 @@ struct FreeColApp: App {
                 }
             }
             .environment(gameState)
-            .frame(minWidth: 500, minHeight: 400)
+            .frame(minWidth: 520, minHeight: 620)
             .onAppear {
                 if CommandLine.arguments.contains("--auto-local-game"), gameState.phase == .disconnected {
                     gameState.startLocal(userName: "Alice", nationId: "model.nation.dutch")

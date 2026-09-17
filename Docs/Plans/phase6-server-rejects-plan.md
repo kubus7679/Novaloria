@@ -15,7 +15,8 @@ Normalize common server reject responses into clearer UI messages and keep local
 1. [x] Add a shared reject-message mapper in `FreeColClient`.
 2. [x] Use the mapper from `GameState` error handling.
 3. [x] Add CLI regressions for common reject cases.
-4. [ ] Consider additional message-specific reconciliation if more reject shapes appear.
+4. [x] Extended message-specific mappings (not-your-turn, amphibious, native
+   trade/hostile), including regressions (Phase 53).
 5. [x] Validate with build + tests.
 
 ## Validation

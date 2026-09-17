@@ -167,15 +167,15 @@ These are sent as `<question>` and the server replies with `<reply>`. All contai
 | `TrainUnitInEuropeMessage` | `trainUnitInEurope` | `unitType` |
 | `EmigrateUnitMessage` | `emigrateUnit` | `slot` |
 | `PayArrearsMessage` | `payArrears` | `unit`, `goodsType` |
-| `FountainOfYouthMessage` | `fountainOfYouth` | — |
+| `FountainOfYouthMessage` | `fountainOfYouth` | S→C notification: `migrants` (reply via `emigrateUnit`) |
 
 #### Diplomacy & Natives
 | Message | Tag | Key Attributes |
 |---|---|---|
-| `DiplomacyMessage` | `diplomacy` | `ourUnit`, `otherUnit`, `action` |
-| `FirstContactMessage` | `firstContact` | `player`, `otherPlayer` |
-| `IndianDemandMessage` | `indianDemand` | `unit`, `settlement`, `type`, `amount` |
-| `NativeTradeMessage` | `nativeTrade` | `unit`, `settlement`, `action` |
+| `DiplomacyMessage` | `diplomacy` | `ourId`, `otherId`; child `<diplomaticTrade context= sender= recipient= status= version=>` with clause children (`goldTradeItem`, `goodsTradeItem`, `colonyTradeItem`, `unitTradeItem`, `stanceTradeItem`, `inciteTradeItem`) |
+| `FirstContactMessage` | `firstContact` | `player`, `other`, `tile`, `camps`; reply adds `result` (`"true"`/`"false"`) |
+| `IndianDemandMessage` | `indianDemand` | `unit`, `colony`, `type`, `amount`; reply adds `result` (`indian_demand_accept`/`indian_demand_reject`) |
+| `NativeTradeMessage` | `nativeTrade` | `action` (`OPEN`/`CLOSE`/`BUY`/`SELL`/`GIFT` + `ACK_*`/`NAK_*`); child `<nativeTrade unit= settlement= buy= sell= gift= count=>` with `<settlementToUnit>`/`<unitToSettlement>` wrappers of `<nativeTradeItem price= haggleCount=><goods .../></nativeTradeItem>` |
 | `NativeGiftMessage` | `nativeGift` | `unit`, `settlement`, children: `<goods>` |
 | `MissionaryMessage` | `missionary` | `unit`, `settlement`, `action` |
 | `ScoutIndianSettlementMessage` | `scoutIndianSettlement` | `unit`, `settlement` |
@@ -219,9 +219,11 @@ These are sent as `<question>` and the server replies with `<reply>`. All contai
 | `ChatMessage` | `chat` | `sender`, `message`, `private` (boolean) |
 | `HighScoresMessage` | `highScores` | Children: `<highScore>` entries |
 | `NationSummaryMessage` | `nationSummary` | `player`, children with summary data |
-| `LootCargoMessage` | `lootCargo` | `unit`, `defender`, children: `<goods>` |
-| `NewLandNameMessage` | `newLandName` | `name` |
-| `NewRegionNameMessage` | `newRegionName` | `region`, `name` |
+| `LootCargoMessage` | `lootCargo` | `winner`, `loser`, children: `<goods type= amount=>` |
+| `MonarchActionMessage` | `monarchAction` | `action` (enum, down-cased), `monarch`, `tax`; reply adds `result` (`"true"`/`"false"`). S→C offer + C→S answer, current-player only |
+| `NewLandNameMessage` | `newLandName` | `unit`, `newLandName` (inbound carries the default name) |
+| `NewRegionNameMessage` | `newRegionName` | `region`, `tile`, `unit`, `newRegionName` (inbound carries the default name) |
+| `CloseMessage` | `close` | `panel` (server closes a timed-out popup) |
 | `NewTradeRouteMessage` | `newTradeRoute` | Children: `<tradeRoute>` |
 | `UpdateTradeRouteMessage` | `updateTradeRoute` | Children: `<tradeRoute>` |
 | `DeleteTradeRouteMessage` | `deleteTradeRoute` | `tradeRoute` |

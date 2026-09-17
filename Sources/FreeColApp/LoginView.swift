@@ -12,9 +12,10 @@ struct LoginView: View {
 
     @Environment(GameState.self) private var state
 
-    @State private var host: String = "localhost"
-    @State private var portString: String = "3541"
-    @State private var userName: String = "Alice"
+    // Persisted so reconnect after a disconnect keeps the last used values.
+    @AppStorage("freecol.host") private var host: String = "localhost"
+    @AppStorage("freecol.port") private var portString: String = "3541"
+    @AppStorage("freecol.userName") private var userName: String = "Alice"
     @State private var selectedNation: String = ""
     @State private var nationTypeId: String = "model.nationType.default"
     @State private var playerColorValue: String = "#336699"
@@ -50,39 +51,58 @@ struct LoginView: View {
         }
     }
 
+    private var isLobby: Bool { state.phase == .lobby }
+
+    private func fieldLabel(_ text: String) -> some View {
+        Text(text)
+            .frame(width: 58, alignment: .trailing)
+            .fixedSize()
+    }
+
+    private func applyButton(_ title: String,
+                             disabled: Bool,
+                             action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .fixedSize()
+            .disabled(disabled)
+    }
+
     var body: some View {
-        VStack(spacing: 12) {
-            Text("FreeCol")
-                .font(.largeTitle)
-                .padding(.top, 20)
+        ScrollView(.vertical) {
+            VStack(spacing: 12) {
+                Text("FreeCol")
+                    .font(.largeTitle)
+                    .padding(.top, 20)
 
-            if case .lobby = state.phase {
-                VStack(spacing: 6) {
-                    Text("Logged in, waiting for game start…")
-                        .foregroundColor(.secondary)
-                    Text(state.isReadyToStart ? "Status: Ready" : "Status: Not ready")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text(state.isLocalPlayerAdmin ? "Rolle: Admin" : "Rolle: Spieler")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                if case .lobby = state.phase {
+                    VStack(spacing: 6) {
+                        Text("Logged in, waiting for game start…")
+                            .foregroundColor(.secondary)
+                        Text(state.isReadyToStart ? "Status: Ready" : "Status: Not ready")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(state.isLocalPlayerAdmin ? "Rolle: Admin" : "Rolle: Spieler")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
-            }
 
-            if let err = state.errorMessage {
-                Text(err)
-                    .foregroundColor(.red)
-                    .font(.callout)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            }
+                if let err = state.errorMessage {
+                    Text(err)
+                        .foregroundColor(.red)
+                        .font(.callout)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
 
-            if case .connecting = state.phase {
-                ProgressView(state.statusMessage)
-                    .padding()
-            }
+                if case .connecting = state.phase {
+                    ProgressView(state.statusMessage)
+                        .padding()
+                }
 
-            GroupBox("Server") {
+                GroupBox("Server") {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Text("Host:").frame(width: 50, alignment: .trailing)
@@ -124,12 +144,12 @@ struct LoginView: View {
             GroupBox("Player") {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("Name:").frame(width: 50, alignment: .trailing)
+                        fieldLabel("Name:")
                         TextField("Player", text: $userName)
                             .textFieldStyle(.roundedBorder)
                     }
                     HStack {
-                        Text("Nation:").frame(width: 50, alignment: .trailing)
+                        fieldLabel("Nation:")
                         Picker("Nation", selection: $selectedNation) {
                             ForEach(availableNations, id: \.id) { nation in
                                 Text(nation.name).tag(nation.id)
@@ -138,92 +158,91 @@ struct LoginView: View {
                         .onAppear {
                             syncSelectedNation()
                         }
+                        if isLobby {
+                            applyButton("Apply Nation", disabled: selectedNation.isEmpty) {
+                                state.setLocalPlayerNation(selectedNation)
+                            }
+                        }
                     }
                     HStack {
-                        Text("Type:").frame(width: 50, alignment: .trailing)
+                        fieldLabel("Type:")
                         TextField("model.nationType.default", text: $nationTypeId)
                             .textFieldStyle(.roundedBorder)
+                        if isLobby {
+                            applyButton("Apply Type",
+                                        disabled: nationTypeId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
+                                state.setLocalPlayerNationType(nationTypeId)
+                            }
+                        }
                     }
                     HStack {
-                        Text("Color:").frame(width: 50, alignment: .trailing)
+                        fieldLabel("Color:")
                         TextField("#336699", text: $playerColorValue)
                             .textFieldStyle(.roundedBorder)
+                        if isLobby {
+                            applyButton("Apply Color",
+                                        disabled: playerColorValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
+                                state.setLocalPlayerColor(playerColorValue)
+                            }
+                        }
                     }
                     HStack {
-                        Text("Opt ID:").frame(width: 50, alignment: .trailing)
+                        fieldLabel("Opt:")
                         TextField("model.option.startingMoney", text: $gameOptionId)
                             .textFieldStyle(.roundedBorder)
-                    }
-                    HStack {
-                        Text("Opt Val:").frame(width: 50, alignment: .trailing)
                         TextField("3000", text: $gameOptionValue)
                             .textFieldStyle(.roundedBorder)
+                            .frame(width: 70)
+                        if isLobby {
+                            applyButton("Apply",
+                                        disabled: gameOptionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                            || gameOptionValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
+                                state.updateSingleGameOption(id: gameOptionId, value: gameOptionValue)
+                            }
+                        }
                     }
                     HStack {
-                        Text("Map ID:").frame(width: 50, alignment: .trailing)
+                        fieldLabel("Map:")
                         TextField("model.option.mapWidth", text: $mapOptionId)
                             .textFieldStyle(.roundedBorder)
-                    }
-                    HStack {
-                        Text("Map Val:").frame(width: 50, alignment: .trailing)
                         TextField("80", text: $mapOptionValue)
                             .textFieldStyle(.roundedBorder)
+                            .frame(width: 70)
+                        if isLobby {
+                            applyButton("Apply",
+                                        disabled: mapOptionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                            || mapOptionValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
+                                state.updateSingleMapGeneratorOption(id: mapOptionId, value: mapOptionValue)
+                            }
+                        }
                     }
                     HStack {
-                        Text("Father:").frame(width: 50, alignment: .trailing)
+                        fieldLabel("Father:")
                         TextField("model.foundingFather.adamSmith", text: $foundingFatherId)
                             .textFieldStyle(.roundedBorder)
+                        if isLobby {
+                            applyButton("Choose",
+                                        disabled: foundingFatherId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
+                                state.chooseFoundingFather(foundingFatherId)
+                            }
+                        }
                     }
-                    HStack {
-                        Spacer()
-                        if state.phase == .login, !selectedNation.isEmpty {
+
+                    if state.phase == .login, !selectedNation.isEmpty {
+                        HStack {
+                            Spacer()
                             Button("Login") {
                                 state.login(userName: userName, nationId: selectedNation)
                             }
                             .buttonStyle(.borderedProminent)
-                        } else if state.phase == .lobby {
-                            Button("Apply Nation") {
-                                state.setLocalPlayerNation(selectedNation)
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(selectedNation.isEmpty)
+                            Spacer()
+                        }
+                    }
 
-                            Button("Apply Nation Type") {
-                                state.setLocalPlayerNationType(nationTypeId)
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(nationTypeId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-
-                            Button("Apply Color") {
-                                state.setLocalPlayerColor(playerColorValue)
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(playerColorValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-
-                            Button("Apply Game Option") {
-                                state.updateSingleGameOption(id: gameOptionId, value: gameOptionValue)
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(
-                                gameOptionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                || gameOptionValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            )
-
-                            Button("Apply Map Option") {
-                                state.updateSingleMapGeneratorOption(id: mapOptionId, value: mapOptionValue)
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(
-                                mapOptionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                || mapOptionValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            )
-
-                            Button("Choose Father") {
-                                state.chooseFoundingFather(foundingFatherId)
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(foundingFatherId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-
+                    // Ready / Start Game centered below the option fields.
+                    if isLobby {
+                        HStack {
+                            Spacer()
                             Button(state.isReadyToStart ? "Unready" : "Ready") {
                                 state.setReady(!state.isReadyToStart)
                             }
@@ -234,9 +253,10 @@ struct LoginView: View {
                             }
                             .buttonStyle(.borderedProminent)
                             .disabled(!state.isLocalPlayerAdmin)
+                            Spacer()
                         }
                     }
-                    if state.phase == .lobby, !state.isLocalPlayerAdmin {
+                    if isLobby, !state.isLocalPlayerAdmin {
                         Text("Nur der Admin kann das Spiel starten.")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -246,15 +266,16 @@ struct LoginView: View {
             }
 
 
-            Spacer()
-
             Text("FreeColClient \(AppVersion.displayString)")
                 .font(.caption2)
                 .foregroundColor(Color(white: 0.45))
+                .padding(.top, 8)
+                .padding(.bottom, 12)
+            }
+            .frame(width: 460)
+            .padding()
         }
-        .frame(width: 380)
-        .frame(maxHeight: .infinity)
-        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onChange(of: availableNationIds) { _, _ in
             syncSelectedNation()
         }

@@ -9,6 +9,7 @@ struct MiniMapView: View {
     var viewport: MapViewportInfo?
 
     private let minimapWidth: Double = 160
+    private let maxMiniHeight: Double = 120
 
     private struct MiniData {
         let tiles: [Tile]
@@ -33,12 +34,19 @@ struct MiniMapView: View {
                         path.addLines(verts)
                         path.closeSubpath()
 
+                        let explored = tile.type != nil
                         let isVisible = data.visibleTileIds.contains(tile.id)
+                        let showFog = state.showFogOfWar
 
                         // Settlement marker (70% diamond) in owner color.
                         let ownerColor = tile.owner.flatMap { data.playerColors[$0] }
 
-                        if isVisible {
+                        if !explored {
+                            ctx.fill(path, with: .color(Color(white: 0.15)))
+                            if let ownerColor {
+                                ctx.fill(path, with: .color(ownerColor.opacity(0.45)))
+                            }
+                        } else {
                             ctx.fill(path, with: .color(miniColor(for: tile.type)))
                             if data.colonyTiles.contains(tile.id) {
                                 var colonyPath = Path()
@@ -52,7 +60,7 @@ struct MiniMapView: View {
                                 colonyPath.closeSubpath()
                                 ctx.fill(colonyPath, with: .color(ownerColor ?? .white))
                                 ctx.stroke(colonyPath, with: .color(.black), lineWidth: 1)
-                            } else if let units = data.unitsByTile[tile.id], let ownerColor {
+                            } else if (isVisible || !showFog), let units = data.unitsByTile[tile.id], let ownerColor {
                                 // Half-size unit diamond in owner color.
                                 var unitPath = Path()
                                 unitPath.addLines([
@@ -65,10 +73,8 @@ struct MiniMapView: View {
                                 ctx.fill(unitPath, with: .color(ownerColor))
                                 ctx.stroke(unitPath, with: .color(.black), lineWidth: 0.6)
                             }
-                        } else {
-                            ctx.fill(path, with: .color(Color(white: 0.15)))
-                            if let ownerColor {
-                                ctx.fill(path, with: .color(ownerColor.opacity(0.45)))
+                            if !isVisible && showFog {
+                                ctx.fill(path, with: .color(.black.opacity(0.35)))
                             }
                         }
                     }
@@ -93,14 +99,13 @@ struct MiniMapView: View {
                 }
                 .frame(width: minimapWidth, height: minimapHeight(for: data))
                 .background(Color.black.opacity(0.4))
-
-                MapMouseCaptureView(
-                    onLeftClick: { location in
-                        handleClick(at: location, data: data)
-                    },
-                    onRightClick: { _ in }
+                .contentShape(Rectangle())
+                .gesture(
+                    SpatialTapGesture()
+                        .onEnded { value in
+                            handleClick(at: value.location, data: data)
+                        }
                 )
-                .frame(width: minimapWidth, height: minimapHeight(for: data))
             }
             .border(Color.gray.opacity(0.6), width: 1)
         } else {
@@ -123,7 +128,9 @@ struct MiniMapView: View {
         let rowH = 16.0
         let canvasW = Double(maxCol + 2) * colW + 64
         let canvasH = Double(maxRow + 1) * rowH + 32
-        let scale = minimapWidth / canvasW
+        // Aspect-fit: fit both the width and the height so the whole map is
+        // visible and the viewport rectangle stays inside the minimap.
+        let scale = min(minimapWidth / canvasW, maxMiniHeight / canvasH)
 
         let playerColors: [String: Color] = Dictionary(
             uniqueKeysWithValues: game.players.values.map { ($0.id, randomColor(for: $0.id)) }
@@ -142,7 +149,7 @@ struct MiniMapView: View {
 
         let visibleTileIds: Set<String>
         if let localPlayerId = state.localPlayerId {
-            visibleTileIds = game.visibleTileIds(for: localPlayerId, radius: 1)
+            visibleTileIds = game.visibleTileIds(for: localPlayerId)
         } else {
             visibleTileIds = Set(tiles.map(\.id))
         }

@@ -25,14 +25,24 @@ struct ColonyPanelView: View {
     let selectedCarrierId: String?
     let onLoadGoods: (String, Int) -> Void
     let onUnloadGoods: (String, Int) -> Void
+    let buildableCandidates: [(id: String, label: String)]
+    let buildings: [(id: String, label: String)]
+    let currentBuildQueue: [String]
+    let buildingLabel: (String) -> String
+    let storedGoods: [(id: String, label: String, amount: Int)]
+    let buildTargetLabel: String?
+    let buildRequirements: [(id: String, label: String, required: Int, stored: Int)]
+    let buildETATurns: Int?
+    let estimatedBuildPerTurn: Int
+    let estimatedProduction: [(id: String, label: String, amount: Int)]
 
     @State private var workTypeId: String = "model.goods.grain"
     @State private var workImprovementTypeId: String = "model.improvement.plow"
     @State private var teacherId: String = ""
     @State private var workLocationId: String = ""
     @State private var colonyNameInput: String
-    @State private var buildQueueDraft: String = ""
     @State private var buildQueueItems: [String] = []
+    @State private var selectedBuildableId: String = ""
     @State private var goodsTypeId: String = "model.goods.grain"
     @State private var goodsAmountInput: String = "10"
     @State private var showAbandonConfirmation: Bool = false
@@ -60,7 +70,17 @@ struct ColonyPanelView: View {
         canPutOutsideColony: Bool,
         selectedCarrierId: String?,
         onLoadGoods: @escaping (String, Int) -> Void,
-        onUnloadGoods: @escaping (String, Int) -> Void
+        onUnloadGoods: @escaping (String, Int) -> Void,
+        buildableCandidates: [(id: String, label: String)] = [],
+        buildings: [(id: String, label: String)] = [],
+        currentBuildQueue: [String] = [],
+        buildingLabel: @escaping (String) -> String = { $0 },
+        storedGoods: [(id: String, label: String, amount: Int)] = [],
+        buildTargetLabel: String? = nil,
+        buildRequirements: [(id: String, label: String, required: Int, stored: Int)] = [],
+        buildETATurns: Int? = nil,
+        estimatedBuildPerTurn: Int = 0,
+        estimatedProduction: [(id: String, label: String, amount: Int)] = []
     ) {
         self.colony = colony
         self.ownerName = ownerName
@@ -85,7 +105,19 @@ struct ColonyPanelView: View {
         self.selectedCarrierId = selectedCarrierId
         self.onLoadGoods = onLoadGoods
         self.onUnloadGoods = onUnloadGoods
+        self.buildableCandidates = buildableCandidates
+        self.buildings = buildings
+        self.currentBuildQueue = currentBuildQueue
+        self.buildingLabel = buildingLabel
+        self.storedGoods = storedGoods
+        self.buildTargetLabel = buildTargetLabel
+        self.buildRequirements = buildRequirements
+        self.buildETATurns = buildETATurns
+        self.estimatedBuildPerTurn = estimatedBuildPerTurn
+        self.estimatedProduction = estimatedProduction
         _colonyNameInput = State(initialValue: colony.name ?? "")
+        _buildQueueItems = State(initialValue: currentBuildQueue)
+        _selectedBuildableId = State(initialValue: buildableCandidates.first?.id ?? "")
     }
 
     var body: some View {
@@ -313,25 +345,118 @@ struct ColonyPanelView: View {
                 .buttonStyle(.bordered)
                 .disabled(!canManage)
 
+                if buildTargetLabel != nil || !storedGoods.isEmpty {
+                    Divider()
+
+                    Text("Production Estimate")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    if let target = buildTargetLabel {
+                        Text("Building: \(target)")
+                            .font(.caption2)
+                        ForEach(buildRequirements, id: \.id) { requirement in
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack {
+                                    Text(requirement.label)
+                                        .font(.caption2)
+                                    Spacer()
+                                    Text("\(requirement.stored)/\(requirement.required)")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                                ProgressView(value: requirement.required > 0
+                                             ? min(1.0, Double(requirement.stored) / Double(requirement.required))
+                                             : 1.0)
+                                    .frame(width: 180)
+                            }
+                        }
+                        HStack {
+                            Text("Estimated output")
+                                .font(.caption2)
+                            Spacer()
+                            Text(estimatedBuildPerTurn > 0 ? "\(estimatedBuildPerTurn)/turn" : "—")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        if let eta = buildETATurns {
+                            Text(eta == 0 ? "Ready next turn" : "≈ \(eta) turn(s) remaining")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    if !storedGoods.isEmpty {
+                        Text("Stored Goods")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        ForEach(storedGoods, id: \.id) { item in
+                            HStack {
+                                Text(item.label)
+                                    .font(.caption2)
+                                Spacer()
+                                Text("\(item.amount)")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+
+                    if !estimatedProduction.isEmpty {
+                        Text("Per-turn (estimated)")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        ForEach(estimatedProduction, id: \.id) { item in
+                            HStack {
+                                Text(item.label)
+                                    .font(.caption2)
+                                Spacer()
+                                Text(item.amount >= 0 ? "+\(item.amount)" : "\(item.amount)")
+                                    .font(.caption2)
+                                    .foregroundColor(item.amount >= 0 ? .green : .red)
+                            }
+                        }
+                    }
+                }
+
+                Text("Buildings")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                if buildings.isEmpty {
+                    Text("No buildings reported.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                } else {
+                    ForEach(buildings, id: \.id) { building in
+                        Text(building.label)
+                            .font(.caption2)
+                    }
+                }
+
                 Text("Build Queue")
                     .font(.caption)
                     .foregroundColor(.secondary)
 
-                TextField("Add buildable ID", text: $buildQueueDraft)
-                    .textFieldStyle(.roundedBorder)
+                if buildableCandidates.isEmpty {
+                    Text("No buildable options available.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                } else {
+                    HStack {
+                        Picker("Buildable", selection: $selectedBuildableId) {
+                            ForEach(buildableCandidates, id: \.id) { candidate in
+                                Text(candidate.label).tag(candidate.id)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(maxWidth: 220)
 
-                HStack {
-                    Button("Add") {
-                        addBuildQueueItem()
+                        Button("Add") {
+                            addBuildQueueItem()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!canManage || selectedBuildableId.isEmpty)
                     }
-                    .buttonStyle(.bordered)
-                    .disabled(!canManage || buildQueueDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-
-                    Button("Clear") {
-                        buildQueueItems.removeAll()
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(!canManage || buildQueueItems.isEmpty)
                 }
 
                 if buildQueueItems.isEmpty {
@@ -342,7 +467,7 @@ struct ColonyPanelView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         ForEach(Array(buildQueueItems.enumerated()), id: \.offset) { index, item in
                             HStack {
-                                Text(item)
+                                Text(buildingLabel(item))
                                     .font(.caption2)
                                 Spacer()
                                 Button("Up") {
@@ -367,11 +492,19 @@ struct ColonyPanelView: View {
                     }
                 }
 
-                Button("Set Build Queue") {
-                    onSetBuildQueue(buildQueueItems)
+                HStack {
+                    Button("Set Build Queue") {
+                        onSetBuildQueue(buildQueueItems)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(!canManage)
+
+                    Button("Reset") {
+                        buildQueueItems = currentBuildQueue
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(!canManage || buildQueueItems == currentBuildQueue)
                 }
-                .buttonStyle(.bordered)
-                .disabled(!canManage)
 
                 Button("Put Outside Colony") {
                     onPutOutsideColony()
@@ -422,13 +555,16 @@ struct ColonyPanelView: View {
         } message: {
             Text("This will remove the colony and cannot be undone.")
         }
+        .onChange(of: colony.buildQueue) { _, newQueue in
+            // Keep the draft in sync with server-driven queue changes.
+            buildQueueItems = newQueue
+        }
     }
 
     private func addBuildQueueItem() {
-        let trimmed = buildQueueDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        let trimmed = selectedBuildableId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !buildQueueItems.contains(trimmed) else { return }
         buildQueueItems.append(trimmed)
-        buildQueueDraft = ""
     }
 
     private func moveBuildQueueItem(from sourceIndex: Int, to targetIndex: Int) {

@@ -9,6 +9,7 @@ public actor Connection {
     private let stream: AsyncStream<String>
     private var nextReplyId = 0
     private var pending: [Int: CheckedContinuation<ParsedMessage, Error>] = [:]
+    private var isDispatching = false
     private var receiveBuffer = ""
 
     public init(host: String = "localhost", port: Int = 3541) {
@@ -107,6 +108,13 @@ public actor Connection {
         }
     }
 
+    /// Mark whether a central message loop is consuming incoming lines.
+    /// When true, `ask` relies on the loop to route `<reply>` messages
+    /// instead of reading lines itself (which would race with the loop).
+    public func setDispatching(_ value: Bool) {
+        isDispatching = value
+    }
+
     public func ask(message: ParsedMessage, timeout: TimeInterval = 30) async throws -> ParsedMessage {
         let replyId = nextReplyId
         nextReplyId += 1
@@ -118,6 +126,25 @@ public actor Connection {
         )
 
         FreeColLogger.shared.info("Asking <\(message.tag)> (replyId=\(replyId))")
+
+        if isDispatching {
+            // The message loop owns the receive stream. Register a pending
+            // continuation and let it resolve the matching <reply>.
+            return try await withCheckedThrowingContinuation { (cont: CheckedContinuation<ParsedMessage, Error>) in
+                pending[replyId] = cont
+                Task {
+                    do {
+                        try await self.send(message: question)
+                    } catch {
+                        await self.failPending(replyId, error: error)
+                    }
+                }
+                Task {
+                    try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                    await self.failPending(replyId, error: FreeColProtocolError.timeout)
+                }
+            }
+        }
 
         return try await withThrowingTaskGroup(of: ParsedMessage.self) { group in
             group.addTask {
@@ -152,6 +179,34 @@ public actor Connection {
             group.cancelAll()
             return result
         }
+    }
+
+    /// Resolve a pending `ask` continuation if `parsed` is its `<reply>`.
+    /// Returns true when a waiter was released.
+    @discardableResult
+    public func resolveReply(_ parsed: ParsedMessage) -> Bool {
+        guard parsed.tag == "reply",
+              let raw = parsed.attributes["networkReplyId"],
+              let id = Int(raw),
+              let cont = pending.removeValue(forKey: id) else {
+            return false
+        }
+        if let errorChild = parsed.children.first, errorChild.tag == "error" {
+            let msg = errorChild.attributes["message"]
+                ?? errorChild.children.first?.attributes["id"]
+                ?? "Unknown error"
+            FreeColLogger.shared.error("Server error reply: \(msg)")
+            cont.resume(throwing: FreeColProtocolError.serverError(msg))
+        } else {
+            FreeColLogger.shared.info("Routed reply for \(id)")
+            cont.resume(returning: parsed)
+        }
+        return true
+    }
+
+    private func failPending(_ replyId: Int, error: Error) {
+        guard let cont = pending.removeValue(forKey: replyId) else { return }
+        cont.resume(throwing: error)
     }
 
     public func nextLine() async throws -> String {

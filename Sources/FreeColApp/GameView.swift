@@ -8,6 +8,20 @@ struct GameView: View {
     @State private var colonyName: String = "New Amsterdam"
     @State private var lastColonyTileId: String?
     @State private var mapViewport: MapViewportInfo?
+    @State private var selectedLootTypes: Set<String> = []
+    @State private var namePromptText: String = ""
+    @State private var showReports = false
+    @State private var showNativeTrade = false
+    @State private var showDiplomacy = false
+    @State private var showChat = false
+    @State private var showPreferences = false
+    @State private var showColopedia = false
+    @State private var showIndependence = false
+    @State private var independenceCountry = "United States"
+    @State private var independenceNation = "America"
+    @State private var showFindSettlement = false
+    @State private var findSettlementQuery = ""
+    @State private var showTradeRoutes = false
 
     var body: some View {
         ZStack {
@@ -24,6 +38,12 @@ struct GameView: View {
             OrderButtonBar()
                 .padding(.bottom, 8)
         }
+        .overlay(alignment: .top) {
+            if let pending = state.pendingServerDecision {
+                pendingDecisionView(for: pending)
+                    .padding(.top, 8)
+            }
+        }
         .overlay(alignment: .bottomLeading) {
             MiniMapView(viewport: mapViewport)
                 .frame(width: 160)
@@ -33,11 +53,25 @@ struct GameView: View {
             InfoPanelView()
                 .padding(8)
         }
+        .overlay(alignment: .top) {
+            if let err = state.errorMessage, !err.isEmpty {
+                Text(err)
+                    .font(.caption)
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.red.opacity(0.85))
+                    .cornerRadius(8)
+                    .padding(.top, 40)
+                    .onTapGesture { state.errorMessage = nil }
+            }
+        }
         .overlay(alignment: .topTrailing) {
             if state.selectedUnit != nil {
                 unitQuickActions
                     .padding(.trailing, 8)
-                    .padding(.top, 4)
+                    .padding(.top, 44)
             }
         }
         .sheet(isPresented: Binding(
@@ -115,7 +149,17 @@ struct GameView: View {
                     },
                     onUnloadGoods: { typeId, amount in
                         state.unloadGoodsFromSelectedCarrier(typeId: typeId, amount: amount)
-                    }
+                    },
+                    buildableCandidates: state.selectedColonyBuildableCandidates,
+                    buildings: state.selectedColonyBuildings,
+                    currentBuildQueue: state.selectedColonyBuildQueue,
+                    buildingLabel: { state.buildingDisplayName($0) },
+                    storedGoods: state.selectedColonyStoredGoods,
+                    buildTargetLabel: state.selectedColonyBuildTarget?.label,
+                    buildRequirements: state.selectedColonyBuildRequirements,
+                    buildETATurns: state.selectedColonyEstimatedBuildTurns,
+                    estimatedBuildPerTurn: state.selectedColonyEstimatedBuildPerTurn,
+                    estimatedProduction: state.selectedColonyEstimatedProduction
                 )
                 }
             }
@@ -127,6 +171,40 @@ struct GameView: View {
         )) {
             DebugControlsView()
                 .frame(minWidth: 380, minHeight: 500)
+        }
+        .sheet(isPresented: $showReports) {
+            ReportPanelView()
+        }
+        .sheet(isPresented: $showNativeTrade) {
+            NativeTradeView()
+        }
+        .sheet(isPresented: $showDiplomacy) {
+            DiplomacyView()
+        }
+        .sheet(isPresented: $showChat) {
+            ChatPanelView()
+        }
+        .sheet(isPresented: $showPreferences) {
+            PreferencesView()
+        }
+        .sheet(isPresented: $showColopedia) {
+            ColopediaView()
+        }
+        .sheet(isPresented: $showIndependence) {
+            independenceSheet
+        }
+        .sheet(isPresented: $showFindSettlement) {
+            findSettlementSheet
+        }
+        .sheet(isPresented: $showTradeRoutes) {
+            TradeRoutePanelView()
+        }
+        .onChange(of: state.pendingServerDecision?.type) { _, newType in
+            showNativeTrade = (newType == .nativeTrade)
+            showDiplomacy = (newType == .diplomacy)
+            if newType == .newLandName || newType == .newRegionName {
+                namePromptText = state.pendingTextPrompt?.defaultText ?? ""
+            }
         }
         .onChange(of: state.selectedColony?.tileId) { _, newValue in
             // Clicking a colony tile on the map opens the colony panel (Java behaviour).
@@ -147,10 +225,79 @@ struct GameView: View {
                 Button("Disconnect") { state.disconnect() }
             }
         }
+        .overlay {
+            if state.isDefeated {
+                defeatOverlay
+            } else if state.isVictorious {
+                victoryOverlay
+            }
+        }
+    }
+
+    private var defeatOverlay: some View {
+        VStack(spacing: 14) {
+            Text("Defeated")
+                .font(.largeTitle.bold())
+                .foregroundColor(.white)
+            Text("Your nation has been eliminated.")
+                .foregroundColor(.white)
+            HStack(spacing: 12) {
+                if !state.isUndead {
+                    Button("Enter Revenge Mode") {
+                        state.enterRevengeModeFromDefeat()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                Button("Disconnect") { state.disconnect() }
+                    .buttonStyle(.bordered)
+            }
+        }
+        .padding(28)
+        .background(Color.black.opacity(0.88))
+        .cornerRadius(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
+    }
+
+    private var victoryOverlay: some View {
+        VStack(spacing: 14) {
+            Text("Victory!")
+                .font(.largeTitle.bold())
+                .foregroundColor(.white)
+            Text(state.gameEndedHighScore
+                 ? "You won the game with a high score."
+                 : "You won the game!")
+                .foregroundColor(.white)
+            HStack(spacing: 12) {
+                Button("Continue Playing") {
+                    state.continueAfterVictory()
+                }
+                .buttonStyle(.borderedProminent)
+                Button("Retire") {
+                    state.retireAfterVictory()
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(28)
+        .background(Color.black.opacity(0.88))
+        .cornerRadius(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
     }
 
     private var topBar: some View {
         HStack(spacing: 12) {
+            GameMenuBar(
+                onChat: { showChat = true },
+                onReports: { showReports = true },
+                onPreferences: { showPreferences = true },
+                onColopedia: { showColopedia = true },
+                onIndependence: { showIndependence = true },
+                onFindSettlement: { showFindSettlement = true },
+                onTradeRoutes: { showTradeRoutes = true }
+            )
+            Divider().frame(height: 18)
             if let game = state.game {
                 let turnInfo = yearSeason(for: game.turn.number)
                 Text("Turn \(game.turn.number)")
@@ -176,21 +323,290 @@ struct GameView: View {
                     .foregroundColor(state.isLocalPlayersTurn ? .green : .secondary)
             }
             Spacer()
+            if state.highScoresReport != nil || state.nationSummaryReport != nil {
+                Button("Reports") { showReports = true }
+                    .font(.caption)
+            }
             if !state.statusMessage.isEmpty {
                 Text(state.statusMessage)
                     .foregroundColor(.secondary)
                     .font(.caption)
             }
-            if let err = state.errorMessage, !err.isEmpty {
-                Text(err)
-                    .foregroundColor(.red)
-                    .font(.caption)
-                    .lineLimit(1)
-            }
         }
         .padding(.horizontal)
         .padding(.vertical, 6)
         .background(Color(NSColor.controlBackgroundColor).opacity(0.92))
+    }
+
+    @ViewBuilder
+    private func pendingDecisionView(for pending: GameState.PendingServerDecision) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(state.pendingDecisionTitle)
+                .font(.caption.bold())
+                .foregroundColor(.white)
+            Text(state.pendingDecisionSummary)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+
+            switch pending.type {
+            case .indianDemand:
+                HStack(spacing: 8) {
+                    Button("Accept") { state.acceptPendingDecision() }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!state.canRespondToPendingDecision())
+                    Button("Decline") { state.declinePendingDecision() }
+                        .buttonStyle(.bordered)
+                        .disabled(!state.canRespondToPendingDecision())
+                }
+            case .lootCargo:
+                lootDecisionControls()
+            case .fountainOfYouth:
+                emigrantDecisionControls()
+            case .firstContact:
+                HStack(spacing: 8) {
+                    Button("Make Contact") { state.acceptFirstContact() }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!state.canRespondToPendingDecision())
+                    Button("Decline") { state.declineFirstContact() }
+                        .buttonStyle(.bordered)
+                        .disabled(!state.canRespondToPendingDecision())
+                }
+            case .monarchAction:
+                HStack(spacing: 8) {
+                    Button("Accept") { state.answerMonarch(accept: true) }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!state.canRespondToPendingDecision())
+                    Button("Decline") { state.answerMonarch(accept: false) }
+                        .buttonStyle(.bordered)
+                        .disabled(!state.canRespondToPendingDecision())
+                }
+            case .newLandName, .newRegionName:
+                nameDecisionControls()
+            case .nativeTrade:
+                HStack(spacing: 8) {
+                    Button("Open Trade") { showNativeTrade = true }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!state.canRespondToPendingDecision())
+                    Button("Close") { state.closeNativeTrade() }
+                        .buttonStyle(.bordered)
+                }
+            case .diplomacy:
+                HStack(spacing: 8) {
+                    Button("Review") { showDiplomacy = true }
+                        .buttonStyle(.borderedProminent)
+                    Button("Reject") { state.rejectDiplomacy() }
+                        .buttonStyle(.bordered)
+                }
+            case .foundingFather:
+                foundingFatherDecisionControls()
+            case .scoutReport:
+                Button("OK") { state.acknowledgePendingDecision() }
+                    .buttonStyle(.borderedProminent)
+            case .incite:
+                HStack(spacing: 8) {
+                    Button("Confirm") { state.confirmPendingIncite() }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!state.canRespondToPendingDecision())
+                    Button("Decline") { state.declinePendingIncite() }
+                        .buttonStyle(.bordered)
+                }
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: 300)
+        .background(Color.black.opacity(0.68))
+        .cornerRadius(10)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.gray.opacity(0.5), lineWidth: 1)
+        )
+    }
+
+    @ViewBuilder
+    private func foundingFatherDecisionControls() -> some View {
+        let options = state.pendingFoundingFathers
+        if options.isEmpty {
+            Text("No candidates available.")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        } else {
+            ForEach(options) { option in
+                Button {
+                    state.choosePendingFoundingFather(option.fatherId)
+                } label: {
+                    Text("\(option.label) (\(option.typeKey.capitalized))")
+                        .font(.caption2)
+                }
+                .buttonStyle(.bordered)
+                .disabled(!state.canRespondToPendingDecision())
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func lootDecisionControls() -> some View {
+        let options = state.pendingLootOptions
+        if options.isEmpty {
+            Text("No cargo available.")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+            Button("Loot nothing") { state.lootPendingCargo(selected: []) }
+                .buttonStyle(.bordered)
+        } else {
+            ForEach(options) { option in
+                Toggle(isOn: Binding(
+                    get: { selectedLootTypes.contains(option.type) },
+                    set: { isOn in
+                        if isOn { selectedLootTypes.insert(option.type) }
+                        else { selectedLootTypes.remove(option.type) }
+                    }
+                )) {
+                    Text("\(shortName(option.type, prefix: "model.goods.")) x\(option.amount)")
+                        .font(.caption2)
+                        .foregroundColor(.white)
+                }
+                .toggleStyle(.checkbox)
+            }
+            HStack(spacing: 8) {
+                Button("Take selected") {
+                    state.lootPendingCargo(selected: options.filter { selectedLootTypes.contains($0.type) })
+                    selectedLootTypes.removeAll()
+                }
+                .buttonStyle(.borderedProminent)
+                Button("Take none") {
+                    state.lootPendingCargo(selected: [])
+                    selectedLootTypes.removeAll()
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func emigrantDecisionControls() -> some View {
+        let options = state.pendingEmigrantOptions
+        if options.isEmpty {
+            Text("No emigrants available.")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        } else {
+            ForEach(options) { option in
+                Button {
+                    state.emigratePendingMigrant(slot: option.slot)
+                } label: {
+                    Text("Place \(shortName(option.unitType, prefix: "model.unit."))")
+                        .font(.caption2)
+                }
+                .buttonStyle(.bordered)
+                .disabled(!state.canRespondToPendingDecision())
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func nameDecisionControls() -> some View {
+        let defaultText = state.pendingTextPrompt?.defaultText ?? ""
+        VStack(alignment: .leading, spacing: 6) {
+            TextField("Name", text: $namePromptText)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 220)
+                .onAppear { namePromptText = defaultText }
+                .onChange(of: defaultText) { _, newValue in namePromptText = newValue }
+            HStack(spacing: 8) {
+                Button("Confirm") {
+                    guard let type = state.pendingServerDecision?.type else { return }
+                    if type == .newLandName {
+                        state.submitNewLandName(namePromptText)
+                    } else {
+                        state.submitNewRegionName(namePromptText)
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(
+                    !state.canRespondToPendingDecision() ||
+                        namePromptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                )
+            }
+        }
+    }
+
+    private func shortName(_ value: String?, prefix: String) -> String {
+        guard let value else { return "?" }
+        return value.hasPrefix(prefix) ? String(value.dropFirst(prefix.count)) : value
+    }
+
+    private var independenceSheet: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Declare Independence")
+                .font(.title3.bold())
+            HStack {
+                Text("Country:")
+                    .frame(width: 70, alignment: .trailing)
+                TextField("Country", text: $independenceCountry)
+                    .textFieldStyle(.roundedBorder)
+            }
+            HStack {
+                Text("Nation:")
+                    .frame(width: 70, alignment: .trailing)
+                TextField("Nation", text: $independenceNation)
+                    .textFieldStyle(.roundedBorder)
+            }
+            HStack {
+                Spacer()
+                Button("Cancel") { showIndependence = false }
+                Button("Declare") {
+                    state.declareIndependence(countryName: independenceCountry,
+                                              nationName: independenceNation)
+                    showIndependence = false
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(independenceCountry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(16)
+        .frame(width: 380)
+    }
+
+    private var findSettlementSheet: some View {
+        let colonies = (state.game.map { Array($0.colonies.values) } ?? [])
+            .sorted { ($0.name ?? "") < ($1.name ?? "") }
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("Find Settlement")
+                .font(.title3.bold())
+            TextField("Search", text: $findSettlementQuery)
+                .textFieldStyle(.roundedBorder)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(colonies.filter {
+                        findSettlementQuery.isEmpty
+                            || ($0.name ?? "").localizedCaseInsensitiveContains(findSettlementQuery)
+                    }) { colony in
+                        Button {
+                            if let tileId = colony.tileId {
+                                state.requestMapScroll(to: tileId)
+                            }
+                            showFindSettlement = false
+                        } label: {
+                            HStack {
+                                Text(colony.name ?? "?")
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                Text(state.game?.players[colony.owner ?? ""]?.name ?? "")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            HStack {
+                Spacer()
+                Button("Close") { showFindSettlement = false }
+            }
+        }
+        .padding(16)
+        .frame(minWidth: 380, minHeight: 320)
     }
 
     /// Compact floating action card for the selected unit (Java quick-actions equivalent).
@@ -214,6 +630,10 @@ struct GameView: View {
                     if state.canBuildSelectedColony {
                         TextField("Colony name", text: $colonyName)
                             .textFieldStyle(.roundedBorder)
+                            .onAppear { colonyName = state.suggestedColonyName }
+                            .onChange(of: state.selectedUnitId) { _, _ in
+                                colonyName = state.suggestedColonyName
+                            }
                         Button("Build Colony") {
                             state.buildColony(name: colonyName)
                         }
@@ -295,6 +715,68 @@ struct GameView: View {
                     .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .disabled(!state.canEquipSelectedUnitForRole)
+
+                    if !state.selectedUnitCargoUnits.isEmpty {
+                        Text("Cargo")
+                            .font(.caption.bold())
+                        ForEach(state.selectedUnitCargoUnits, id: \.id) { cargo in
+                            Button("Select \(cargo.unitType ?? cargo.id)") {
+                                let tileId = state.selectedUnit?.location
+                                state.selectUnit(cargo.id,
+                                                 onTile: tileId.flatMap { state.game?.tiles[$0] != nil ? $0 : nil })
+                            }
+                            .buttonStyle(.bordered)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+
+                    if let target = state.nativeTradeTargetsForSelectedUnit.first {
+                        Menu("Native Settlement: \(target.name)") {
+                            Button("Trade…") {
+                                state.openNativeTradeWithSelectedUnit(settlementId: target.settlementId)
+                            }
+                            .disabled(!state.canOpenNativeTrade)
+
+                            Button("Deliver Gift") {
+                                state.deliverGiftToSettlement(target.settlementId)
+                            }
+                            .disabled(!state.canDeliverGiftWithSelectedUnit)
+
+                            Button("Demand Tribute") {
+                                if let direction = state.directionToAdjacentSettlement(target.settlementId) {
+                                    state.demandTributeFromSettlement(direction: direction)
+                                }
+                            }
+                            .disabled(!state.canDemandTributeWithSelectedUnit
+                                      || state.directionToAdjacentSettlement(target.settlementId) == nil)
+
+                            Button("Spy") {
+                                state.spyOnNativeSettlement(settlementId: target.settlementId)
+                            }
+                            .disabled(!state.canSpyOnNativeSettlement)
+
+                            Button("Scout Settlement") {
+                                if let direction = state.directionToAdjacentSettlement(target.settlementId) {
+                                    state.scoutIndianSettlement(direction: direction)
+                                }
+                            }
+                            .disabled(!state.canScoutIndianSettlement
+                                      || state.directionToAdjacentSettlement(target.settlementId) == nil)
+
+                            Menu("Incite…") {
+                                ForEach(state.diplomacyVictimOptions(), id: \.id) { victim in
+                                    Button(victim.label) {
+                                        state.inciteSettlement(settlementId: target.settlementId,
+                                                               enemyPlayerId: victim.id,
+                                                               gold: 0)
+                                    }
+                                }
+                            }
+                            .disabled(!state.canInciteSelectedUnit)
+                        }
+                        .font(.caption)
+                        .fixedSize()
+                    }
                 }
             }
             .padding(8)

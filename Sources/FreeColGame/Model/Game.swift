@@ -15,8 +15,20 @@ public final class Game: @unchecked Sendable {
     public internal(set) var tiles: [String: Tile] = [:]
     public internal(set) var units: [String: Unit] = [:]
     public internal(set) var colonies: [String: Colony] = [:]
+    public internal(set) var tradeRoutes: [String: TradeRoute] = [:]
     public internal(set) var nationStates: [String: String] = [:]
     public internal(set) var nationColors: [String: String] = [:]
+    /// Client-side mirror of the server's authoritative game/map-generator
+    /// options, keyed by option id (`updateGameOptions` echo).
+    public internal(set) var optionValues: [String: String] = [:]
+
+    /// Lazily built (x,y) → tile-id index for cheap neighbour lookups.
+    private var coordIndex: [TileCoord: String]?
+
+    private struct TileCoord: Hashable {
+        let x: Int
+        let y: Int
+    }
 
     public init() {}
 
@@ -33,8 +45,11 @@ public final class Game: @unchecked Sendable {
         tiles.removeAll()
         units.removeAll()
         colonies.removeAll()
+        tradeRoutes.removeAll()
         nationStates.removeAll()
         nationColors.removeAll()
+        optionValues.removeAll()
+        coordIndex = nil
     }
 
     /// Deserialize the full game from a `<game>` ParsedMessage (as received in login reply).
@@ -73,6 +88,8 @@ public final class Game: @unchecked Sendable {
                                         children: child.children,
                                         game: self)
                 colonies[colony.id] = colony
+            case "tradeRoute":
+                try loadTradeRoute(child)
             case "cibola", "nationOptions", "areas":
                 break // not yet handled
             default:
@@ -97,6 +114,7 @@ public final class Game: @unchecked Sendable {
                                     children: child.children,
                                     game: self)
                 tiles[tile.id] = tile
+                coordIndex = nil
             case "unit":
                 try loadUnitTree(child)
             case "colony", "indianSettlement":
@@ -105,6 +123,8 @@ public final class Game: @unchecked Sendable {
                                         children: child.children,
                                         game: self)
                 colonies[colony.id] = colony
+            case "tradeRoute":
+                try loadTradeRoute(child)
             case "game":
                 try load(from: child)
             case "addPlayer":
@@ -120,6 +140,14 @@ public final class Game: @unchecked Sendable {
                 try applyRemove(child)
             case "partial":
                 try applyPartial(child)
+            case "newTradeRoute", "updateTradeRoute":
+                for routeChild in child.children where routeChild.tag == "tradeRoute" {
+                    try loadTradeRoute(routeChild)
+                }
+            case "deleteTradeRoute":
+                if let routeId = child.attributes["tradeRoute"] {
+                    removeTradeRoute(routeId)
+                }
             case "setStance":
                 try applySetStance(attributes: child.attributes)
             case "setAI", "setDead", "setNation", "setNationType", "setColor", "setAvailable":
@@ -147,9 +175,15 @@ public final class Game: @unchecked Sendable {
         } else if var colony = colonies[objectId] {
             colony.applyPartial(attributes: attrs)
             colonies[objectId] = colony
+        } else if var route = tradeRoutes[objectId] {
+            route.applyPartial(attributes: attrs)
+            tradeRoutes[objectId] = route
         } else if objectId.hasPrefix("tile") {
-            if let existing = tiles[objectId] {
-                tiles[objectId] = existing
+            if var tile = tiles[objectId] {
+                if let type = attrs["type"] { tile.type = type }
+                if let owner = attrs["owner"] { tile.owner = owner }
+                if let region = attrs["region"] { tile.region = region }
+                tiles[objectId] = tile
             }
         }
     }
@@ -157,10 +191,12 @@ public final class Game: @unchecked Sendable {
     /// Apply a `<remove>` message.
     public func applyRemove(_ parsed: ParsedMessage) throws {
         let ids = extractRemoveIds(parsed)
+        coordIndex = nil
         for objectId in ids {
             players.removeValue(forKey: objectId)
             units.removeValue(forKey: objectId)
             colonies.removeValue(forKey: objectId)
+            tradeRoutes.removeValue(forKey: objectId)
             tiles.removeValue(forKey: objectId)
 
             // Defensive cleanup: clear dangling references on remaining units.
@@ -243,6 +279,13 @@ public final class Game: @unchecked Sendable {
         }
     }
 
+    /// Merge the server's authoritative option echo into the local mirror.
+    public func mergeOptions(_ options: [String: String]) {
+        for (key, value) in options {
+            optionValues[key] = value
+        }
+    }
+
     /// Remove a player locally (logout / death / removal broadcast).
     public func removePlayer(_ playerId: String) {
         players.removeValue(forKey: playerId)
@@ -252,6 +295,9 @@ public final class Game: @unchecked Sendable {
     private func removePlayerOwnedState(_ playerId: String) {
         for unitId in units.keys where units[unitId]?.owner == playerId {
             units.removeValue(forKey: unitId)
+        }
+        for routeId in tradeRoutes.keys where tradeRoutes[routeId]?.owner == playerId {
+            tradeRoutes.removeValue(forKey: routeId)
         }
     }
 
@@ -404,47 +450,64 @@ public final class Game: @unchecked Sendable {
         return step
     }
 
-    /// Return tiles that should be visible for a player using a small local heuristic.
-    public func visibleTileIds(for playerId: String, radius: Int = 1) -> Set<String> {
-        guard radius >= 0 else { return [] }
+    /// True when the server has revealed this tile to the player (Java parity:
+    /// explored tiles carry a `type`, unexplored tiles do not).
+    public func isExplored(tileId: String) -> Bool {
+        tiles[tileId]?.type != nil
+    }
 
-        var sources: Set<String> = []
-        for tile in tiles.values where tile.owner == playerId {
-            sources.insert(tile.id)
+    /// All tiles the local player has explored so far.
+    public func exploredTileIds() -> Set<String> {
+        var explored: Set<String> = []
+        explored.reserveCapacity(tiles.count)
+        for tile in tiles.values where tile.type != nil {
+            explored.insert(tile.id)
+        }
+        return explored
+    }
+
+    /// Line-of-sight radius for a unit (spec `line-of-sight`, name fallback).
+    public func sightRadius(for unit: Unit) -> Int {
+        max(0, specification?.lineOfSight(forUnitType: unit.unitType)
+            ?? Specification.fallbackLineOfSight(forUnitType: unit.unitType))
+    }
+
+    /// Return tiles currently visible for a player (Java `Player.getVisibleTileSet`).
+    public func visibleTileIds(for playerId: String) -> Set<String> {
+        var visible: Set<String> = []
+
+        for unit in units.values where unit.owner == playerId {
+            guard let tileId = resolvedTileId(for: unit) else { continue }
+            expandVisibility(from: tileId, radius: sightRadius(for: unit), into: &visible)
         }
         for colony in colonies.values where colony.owner == playerId {
             if let tileId = colony.tileId {
-                sources.insert(tileId)
+                expandVisibility(from: tileId, radius: 1, into: &visible)
             }
         }
-        for unit in units.values where unit.owner == playerId {
-            if let tileId = resolvedTileId(for: unit) {
-                sources.insert(tileId)
-            }
-        }
-
-        var visible: Set<String> = []
-        for source in sources {
-            var frontier: Set<String> = [source]
-            visible.insert(source)
-            guard radius > 0 else { continue }
-
-            for _ in 0..<radius {
-                var nextFrontier: Set<String> = []
-                for tileId in frontier {
-                    for neighbor in neighboringTileIds(from: tileId) {
-                        if visible.insert(neighbor).inserted {
-                            nextFrontier.insert(neighbor)
-                        }
-                    }
-                }
-                frontier = nextFrontier
-                if frontier.isEmpty {
-                    break
-                }
-            }
+        for tile in tiles.values where tile.owner == playerId {
+            expandVisibility(from: tile.id, radius: 1, into: &visible)
         }
         return visible
+    }
+
+    /// Flood `radius` steps out from a tile into the visible set.
+    private func expandVisibility(from source: String, radius: Int, into visible: inout Set<String>) {
+        guard radius >= 0 else { return }
+        visible.insert(source)
+        guard radius > 0 else { return }
+
+        var frontier: Set<String> = [source]
+        for _ in 0..<radius {
+            var nextFrontier: Set<String> = []
+            for tileId in frontier {
+                for neighbor in neighboringTileIds(from: tileId) where visible.insert(neighbor).inserted {
+                    nextFrontier.insert(neighbor)
+                }
+            }
+            frontier = nextFrontier
+            if frontier.isEmpty { break }
+        }
     }
 
     /// Recover a sensible selection for a local player after the previously selected unit vanished.
@@ -484,6 +547,35 @@ public final class Game: @unchecked Sendable {
         guard var unit = units[unitId] else { return }
         unit.tradeRoute = tradeRouteId
         units[unitId] = unit
+    }
+
+    // MARK: - Trade routes
+
+    /// Parse and store a `<tradeRoute>` object.
+    public func loadTradeRoute(_ parsed: ParsedMessage) throws {
+        let route = try TradeRoute(id: parsed.attributes["id"] ?? UUID().uuidString,
+                                   attributes: parsed.attributes,
+                                   children: parsed.children,
+                                   game: self)
+        tradeRoutes[route.id] = route
+    }
+
+    public func addTradeRoute(_ route: TradeRoute) {
+        tradeRoutes[route.id] = route
+    }
+
+    public func removeTradeRoute(_ tradeRouteId: String) {
+        tradeRoutes.removeValue(forKey: tradeRouteId)
+        for unitId in units.keys where units[unitId]?.tradeRoute == tradeRouteId {
+            units[unitId]?.tradeRoute = nil
+        }
+    }
+
+    /// Trade routes owned by a player, sorted by name.
+    public func tradeRoutes(forPlayer playerId: String) -> [TradeRoute] {
+        tradeRoutes.values
+            .filter { $0.owner == playerId }
+            .sorted { ($0.name ?? "") < ($1.name ?? "") }
     }
 
     /// Set a unit current stop index locally (simulation without a server).
@@ -595,6 +687,7 @@ public final class Game: @unchecked Sendable {
     }
 
     private func loadMap(_ parsed: ParsedMessage) throws {
+        coordIndex = nil
         map = try GameMap(id: parsed.attributes["id"] ?? "map:0",
                            attributes: parsed.attributes,
                            children: parsed.children,
@@ -634,17 +727,35 @@ public final class Game: @unchecked Sendable {
         }
     }
 
+    /// Build (or reuse) the (x,y) → tile-id index.
+    private func tileIndex() -> [TileCoord: String] {
+        if let coordIndex { return coordIndex }
+        var index: [TileCoord: String] = [:]
+        index.reserveCapacity(tiles.count)
+        for tile in tiles.values {
+            index[TileCoord(x: tile.x, y: tile.y)] = tile.id
+        }
+        coordIndex = index
+        return index
+    }
+
+    /// Public accessor for the directly adjacent tile ids (for founding rules etc.).
+    public func neighborTileIds(of tileId: String) -> [String] {
+        neighboringTileIds(from: tileId)
+    }
+
     private func neighboringTileIds(from tileId: String) -> [String] {
         guard let tile = tiles[tileId] else {
             return []
         }
+        let index = tileIndex()
 
         let deltas: [(Int, Int)] = tile.y.isMultiple(of: 2)
             ? [(0, -2), (0, -1), (1, 0), (0, 1), (0, 2), (-1, 1), (-1, 0), (-1, -1)]
             : [(0, -2), (1, -1), (1, 0), (1, 1), (0, 2), (0, 1), (-1, 0), (0, -1)]
 
         return deltas.compactMap { dx, dy in
-            tiles.values.first(where: { $0.x == tile.x + dx && $0.y == tile.y + dy })?.id
+            index[TileCoord(x: tile.x + dx, y: tile.y + dy)]
         }
     }
 

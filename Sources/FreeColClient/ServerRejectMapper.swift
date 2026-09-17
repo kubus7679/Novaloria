@@ -49,6 +49,21 @@ public enum ServerRejectMapper {
         if normalized.contains("not enough gold") {
             return "Nicht genug Gold."
         }
+        if normalized.contains("move_no_amphibious") {
+            return "Diese Einheit kann nicht über Wasser gehen."
+        }
+        if normalized.contains("not your turn") || normalized.contains("it is not") {
+            return "Du bist gerade nicht am Zug."
+        }
+        if normalized.contains("native trade") || normalized.contains("can not trade") {
+            return "Handel nicht möglich."
+        }
+        if normalized.contains("too much haggling") || normalized.contains("nak_haggle") {
+            return "Der Händler bricht das Feilschen ab."
+        }
+        if normalized.contains("hostile") {
+            return "Die Siedlung ist feindlich gesinnt."
+        }
         return message
     }
 

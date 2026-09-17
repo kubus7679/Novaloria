@@ -26,6 +26,9 @@ let package = Package(
                 .copy("Resources/order-buttons"),
             ]
         ),
-        .testTarget(name: "FreeColProtocolTests", dependencies: ["FreeColProtocol"]),
+        .testTarget(
+            name: "FreeColProtocolTests",
+            dependencies: ["FreeColProtocol", "FreeColGame", "FreeColApp"]
+        ),
     ]
 )

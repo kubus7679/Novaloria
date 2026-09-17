@@ -42,18 +42,22 @@ public final class GameStateManager: @unchecked Sendable {
                     handledAny = true
                 }
             }
-            return handledAny
+            // Decision responses must reach the UI layer to clear pending state.
+            return containsDecisionPrompt(parsed) ? false : handledAny
 
         case "multiple":
             for child in parsed.children {
                 try process(child)
             }
-            return true
+            // A ChangeSet may bundle a decision prompt with model updates. The
+            // model part is applied above; forward the envelope so the UI can
+            // surface the prompt.
+            return containsDecisionPrompt(parsed) ? false : true
 
         case "update":
             try game.applyUpdate(parsed)
             FreeColLogger.shared.debug("Applied update")
-            return true
+            return containsDecisionPrompt(parsed) ? false : true
 
         case "partial":
             try game.applyPartial(parsed)
@@ -113,7 +117,13 @@ public final class GameStateManager: @unchecked Sendable {
             FreeColLogger.shared.debug("Applied setStance")
             return true
 
-        case "setAI", "setDead", "setNation", "setNationType", "setColor", "setAvailable":
+        case "setDead":
+            try game.applyPlayerChange(tag: parsed.tag, attributes: parsed.attributes)
+            FreeColLogger.shared.debug("Applied <setDead>")
+            // Forward to the UI: a local death needs a defeat/revenge prompt.
+            return false
+
+        case "setAI", "setNation", "setNationType", "setColor", "setAvailable":
             try game.applyPlayerChange(tag: parsed.tag, attributes: parsed.attributes)
             FreeColLogger.shared.debug("Applied <\(parsed.tag)>")
             return true
@@ -123,7 +133,23 @@ public final class GameStateManager: @unchecked Sendable {
                 game.removePlayer(playerId)
                 FreeColLogger.shared.info("Player logged out: \(playerId)")
             }
-            return true
+            // Forward so the UI can end the session when it is the local player.
+            return false
+
+        case "newTradeRoute", "updateTradeRoute":
+            var handledRoute = false
+            for child in parsed.children where child.tag == "tradeRoute" {
+                try game.loadTradeRoute(child)
+                handledRoute = true
+            }
+            return handledRoute
+
+        case "deleteTradeRoute":
+            if let routeId = parsed.attributes["tradeRoute"] {
+                game.removeTradeRoute(routeId)
+                return true
+            }
+            return false
 
         case "animateMove":
             guard let unitId = parsed.attributes["unit"],
@@ -155,6 +181,21 @@ public final class GameStateManager: @unchecked Sendable {
             FreeColLogger.shared.debug("Unhandled message: <\(parsed.tag)>")
             return false
         }
+    }
+
+    /// Tags that represent server-initiated prompts which need UI handling.
+    private static let serverPromptTags: Set<String> = [
+        "fountainOfYouth", "indianDemand", "lootCargo",
+        "firstContact", "monarchAction", "newLandName", "newRegionName",
+        "close", "highScores", "nationSummary", "nativeTrade", "diplomacy",
+        "chooseFoundingFather", "scoutSpeakToChief", "spySettlement",
+        "incite", "setDead"
+    ]
+
+    /// True if the message (or any nested child) carries a server prompt.
+    private func containsDecisionPrompt(_ parsed: ParsedMessage) -> Bool {
+        if Self.serverPromptTags.contains(parsed.tag) { return true }
+        return parsed.children.contains { containsDecisionPrompt($0) }
     }
 
     /// Load from a login response (full `<login>` message containing `<game>`).

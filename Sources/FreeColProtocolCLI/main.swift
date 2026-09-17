@@ -114,10 +114,58 @@ test("game visibility includes owned tiles and nearby exploration") {
     """)
     try game.load(from: parsed)
 
-    let visible = game.visibleTileIds(for: "player-1", radius: 1)
+    let visible = game.visibleTileIds(for: "player-1")
     try assertEqual(visible.contains("tile-0-0"), true)
     try assertEqual(visible.contains("tile-1-0"), true)
     try assertEqual(visible.contains("tile-2-0"), false)
+}
+
+test("game explored tracks tile type presence") {
+    let game = Game()
+    let parsed = try XMLDecoder.decode("""
+    <game id="game-1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch"/>
+      <map id="map-1" width="4" height="2">
+        <tile id="tile-0-0" x="0" y="0" type="model.tile.plains"/>
+        <tile id="tile-1-0" x="1" y="0"/>
+      </map>
+    </game>
+    """)
+    try game.load(from: parsed)
+
+    try assertEqual(game.isExplored(tileId: "tile-0-0"), true)
+    try assertEqual(game.isExplored(tileId: "tile-1-0"), false)
+    try assertEqual(game.exploredTileIds(), ["tile-0-0"])
+}
+
+test("game sight radius follows specification line-of-sight") {
+    let game = Game()
+    let parsed = try XMLDecoder.decode("""
+    <game id="game-1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch"/>
+      <freecol-specification id="spec">
+        <unit-type id="model.unit.seer" line-of-sight="2"/>
+      </freecol-specification>
+      <map id="map-1" width="6" height="2">
+        <tile id="tile-0-0" x="0" y="0" type="model.tile.ocean"/>
+        <tile id="tile-1-0" x="1" y="0" type="model.tile.ocean"/>
+        <tile id="tile-2-0" x="2" y="0" type="model.tile.ocean"/>
+      </map>
+      <unit id="unit-1" owner="player-1" location="tile-0-0" unitType="model.unit.seer"/>
+    </game>
+    """)
+    try game.load(from: parsed)
+
+    let visible = game.visibleTileIds(for: "player-1")
+    try assertEqual(visible.contains("tile-0-0"), true)
+    try assertEqual(visible.contains("tile-1-0"), true)
+    try assertEqual(visible.contains("tile-2-0"), true)
+
+    // Fallback heuristic: naval names get radius 2 without a specification.
+    let fallbackShip = Specification.fallbackLineOfSight(forUnitType: "model.unit.caravel")
+    try assertEqual(fallbackShip, 2)
+    let fallbackLand = Specification.fallbackLineOfSight(forUnitType: "model.unit.freeColonist")
+    try assertEqual(fallbackLand, 1)
 }
 
 test("game selection recovery prefers same-tile or fallback local units") {
@@ -212,6 +260,36 @@ test("server reject mapper normalizes common reject messages") {
     try assertEqual(
         ServerRejectMapper.userFacingMessage(for: templateReject),
         "Server hat die Aktion abgelehnt."
+    )
+
+    let turnReject = ParsedMessage(
+        tag: "error",
+        attributes: ["message": "It is not Alice's turn, it is Bob's!"],
+        children: []
+    )
+    try assertEqual(
+        ServerRejectMapper.userFacingMessage(for: turnReject),
+        "Du bist gerade nicht am Zug."
+    )
+
+    let amphibiousReject = ParsedMessage(
+        tag: "error",
+        attributes: ["message": "MOVE_NO_AMPHIBIOUS unit:1"],
+        children: []
+    )
+    try assertEqual(
+        ServerRejectMapper.userFacingMessage(for: amphibiousReject),
+        "Diese Einheit kann nicht über Wasser gehen."
+    )
+
+    let hostileReject = ParsedMessage(
+        tag: "error",
+        attributes: ["message": "NAK_HOSTILE"],
+        children: []
+    )
+    try assertEqual(
+        ServerRejectMapper.userFacingMessage(for: hostileReject),
+        "Die Siedlung ist feindlich gesinnt."
     )
 }
 
@@ -605,6 +683,245 @@ test("game load parses stance children from player XML") {
     try assertEqual(game.players["player-1"]?.stances["player-3"], .peace)
 }
 
+test("game load parses trade routes from player XML") {
+    let game = Game()
+    let parsed = try XMLDecoder.decode("""
+    <game id="game-1">
+      <player id="player-1" username="Alice">
+        <tradeRoute id="tradeRoute:1" name="Route A" owner="player-1" silent="false">
+          <tradeRouteStop location="colony:1">
+            <cargo id="model.goods.food"/>
+            <cargo id="model.goods.sugar"/>
+          </tradeRouteStop>
+          <tradeRouteStop location="europe:9"/>
+        </tradeRoute>
+      </player>
+    </game>
+    """)
+    try game.load(from: parsed)
+    try assertEqual(game.tradeRoutes["tradeRoute:1"]?.name, "Route A")
+    try assertEqual(game.tradeRoutes["tradeRoute:1"]?.owner, "player-1")
+    try assertEqual(game.tradeRoutes["tradeRoute:1"]?.stops.count, 2)
+    try assertEqual(game.tradeRoutes["tradeRoute:1"]?.stops.first?.locationId, "colony:1")
+    try assertEqual(game.tradeRoutes["tradeRoute:1"]?.stops.first?.cargoTypeIds,
+                    ["model.goods.food", "model.goods.sugar"])
+    try assertEqual(game.tradeRoutes(forPlayer: "player-1").count, 1)
+}
+
+test("GameStateManager processes newTradeRoute") {
+    let mgr = GameStateManager()
+    let handled = try mgr.process(try XMLDecoder.decode("""
+    <newTradeRoute>
+      <tradeRoute id="tradeRoute:7" name="New Route" owner="player-1" silent="false">
+        <tradeRouteStop location="colony:1"/>
+      </tradeRoute>
+    </newTradeRoute>
+    """))
+    try assertEqual(handled, true)
+    try assertEqual(mgr.game.tradeRoutes["tradeRoute:7"]?.name, "New Route")
+    try assertEqual(mgr.game.tradeRoutes["tradeRoute:7"]?.stops.count, 1)
+}
+
+test("GameStateManager processes updateTradeRoute and deleteTradeRoute") {
+    let mgr = GameStateManager()
+    _ = try mgr.process(try XMLDecoder.decode("""
+    <newTradeRoute>
+      <tradeRoute id="tradeRoute:7" name="Old" owner="player-1"/>
+    </newTradeRoute>
+    """))
+    _ = try mgr.process(try XMLDecoder.decode("""
+    <updateTradeRoute>
+      <tradeRoute id="tradeRoute:7" name="Renamed" owner="player-1">
+        <tradeRouteStop location="europe:9"><cargo id="model.goods.food"/></tradeRouteStop>
+      </tradeRoute>
+    </updateTradeRoute>
+    """))
+    try assertEqual(mgr.game.tradeRoutes["tradeRoute:7"]?.name, "Renamed")
+    try assertEqual(mgr.game.tradeRoutes["tradeRoute:7"]?.stops.first?.cargoTypeIds,
+                    ["model.goods.food"])
+    let handled = try mgr.process(ParsedMessage(
+        tag: "deleteTradeRoute",
+        attributes: ["tradeRoute": "tradeRoute:7"],
+        children: []
+    ))
+    try assertEqual(handled, true)
+    try assertEqual(mgr.game.tradeRoutes.keys.contains("tradeRoute:7"), false)
+}
+
+test("game load parses colony build queue and buildings") {
+    let game = Game()
+    let parsed = try XMLDecoder.decode("""
+    <game id="game-1">
+      <player id="player-1" username="Alice"/>
+      <colony id="colony-1" name="Boston" owner="player-1" tile="tile-0-0" unitCount="3">
+        <buildQueueItem id="model.building.townHall"/>
+        <buildQueueItem id="model.building.carpenterHouse"/>
+        <populationQueueItem id="model.unit.freeColonist"/>
+        <building id="building-1" buildingType="model.building.townHall"/>
+      </colony>
+      <freecol-specification id="spec">
+        <building-type id="model.building.lumberMill" required-population="3" upkeep="10"
+                       upgrades-from="model.building.carpenterHouse"/>
+        <building-type id="model.building.townHall"/>
+      </freecol-specification>
+    </game>
+    """)
+    try game.load(from: parsed)
+    try assertEqual(game.colonies["colony-1"]?.buildQueue,
+                    ["model.building.townHall", "model.building.carpenterHouse"])
+    try assertEqual(game.colonies["colony-1"]?.populationQueue, ["model.unit.freeColonist"])
+    try assertEqual(game.colonies["colony-1"]?.buildings.first?.buildingType, "model.building.townHall")
+    try assertEqual(game.specification?.buildingTypes["model.building.lumberMill"]?.requiredPopulation, 3)
+    try assertEqual(game.specification?.buildingTypes["model.building.lumberMill"]?.upgradesFrom,
+                    "model.building.carpenterHouse")
+    try assertEqual(game.specification?.buildingTypes["model.building.lumberMill"]?.displayName, "LumberMill")
+}
+
+test("game load parses colony goods and building production costs") {
+    let game = Game()
+    let parsed = try XMLDecoder.decode("""
+    <game id="game-1">
+      <player id="player-1" username="Alice"/>
+      <colony id="colony-1" name="Boston" owner="player-1" tile="tile-0-0" unitCount="3">
+        <building id="building-1" buildingType="model.building.carpenterHouse"/>
+        <goodsContainer id="colony-1-goods">
+          <storedGoods>
+            <goods type="model.goods.hammers" amount="12"/>
+            <goods type="model.goods.lumber" amount="40"/>
+          </storedGoods>
+        </goodsContainer>
+        <buildQueueItem id="model.building.lumberMill"/>
+      </colony>
+      <freecol-specification id="spec">
+        <building-type id="model.building.carpenterHouse">
+          <production>
+            <input goods-type="model.goods.lumber" value="3"/>
+            <output goods-type="model.goods.hammers" value="3"/>
+          </production>
+        </building-type>
+        <building-type id="model.building.lumberMill" required-population="3"
+                       upgrades-from="model.building.carpenterHouse">
+          <required-goods id="model.goods.hammers" value="52"/>
+          <production>
+            <output goods-type="model.goods.hammers" value="6"/>
+          </production>
+        </building-type>
+      </freecol-specification>
+    </game>
+    """)
+    try game.load(from: parsed)
+    try assertEqual(game.colonies["colony-1"]?.goods["model.goods.hammers"], 12)
+    try assertEqual(game.colonies["colony-1"]?.goods["model.goods.lumber"], 40)
+    let carpenter = game.specification?.buildingTypes["model.building.carpenterHouse"]
+    try assertEqual(carpenter?.productionOutputs["model.goods.hammers"], 3)
+    try assertEqual(carpenter?.productionInputs["model.goods.lumber"], 3)
+    let mill = game.specification?.buildingTypes["model.building.lumberMill"]
+    try assertEqual(mill?.requiredGoods["model.goods.hammers"], 52)
+}
+
+test("UnitTypeTraits classifies naval and missionary units") {
+    try assertEqual(UnitTypeTraits.isNaval(unitType: "model.unit.caravel"), true)
+    try assertEqual(UnitTypeTraits.isNaval(unitType: "model.unit.galleon"), true)
+    try assertEqual(UnitTypeTraits.isNaval(unitType: "model.unit.freeColonist"), false)
+    try assertEqual(UnitTypeTraits.isNaval(unitType: nil, role: "model.role.merchantman"), true)
+    try assertEqual(UnitTypeTraits.isMissionary(unitType: "model.unit.jesuitMissionary"), true)
+    try assertEqual(UnitTypeTraits.isMissionary(unitType: nil, role: "model.role.missionary"), true)
+    try assertEqual(UnitTypeTraits.isMissionary(unitType: "model.unit.freeColonist"), false)
+    try assertEqual(UnitTypeTraits.isCarrier(unitType: "model.unit.merchantman"), true)
+}
+
+test("native trade item serializes price and goods") {
+    let item = NativeTradeItem(goodsType: "model.goods.fur", amount: 10, price: 90,
+                               haggleCount: 2, source: "unit-1", destination: "colony-1")
+    let node = item.toMessage()
+    try assertEqual(node.tag, "nativeTradeItem")
+    try assertEqual(node.attributes["price"], "90")
+    try assertEqual(node.attributes["haggleCount"], "2")
+    try assertEqual(node.attributes["source"], "unit-1")
+    try assertEqual(node.attributes["destination"], "colony-1")
+    try assertEqual(node.children.first?.attributes["type"], "model.goods.fur")
+    try assertEqual(node.children.first?.attributes["amount"], "10")
+}
+
+test("building type prefers attended production over unattended") {
+    let game = Game()
+    let parsed = try XMLDecoder.decode("""
+    <game id="game-1">
+      <player id="player-1" username="Alice"/>
+      <freecol-specification id="spec">
+        <building-type id="model.building.townHall">
+          <production unattended="true">
+            <output goods-type="model.goods.bells" value="1"/>
+          </production>
+          <production>
+            <output goods-type="model.goods.bells" value="3"/>
+          </production>
+        </building-type>
+        <building-type id="model.building.carpenterHouse">
+          <production>
+            <input goods-type="model.goods.lumber" value="3"/>
+            <output goods-type="model.goods.hammers" value="3"/>
+          </production>
+        </building-type>
+      </freecol-specification>
+    </game>
+    """)
+    try game.load(from: parsed)
+    try assertEqual(game.specification?.buildingTypes["model.building.townHall"]?
+        .productionOutputs["model.goods.bells"], 3)
+    try assertEqual(game.specification?.buildingTypes["model.building.carpenterHouse"]?
+        .productionInputs["model.goods.lumber"], 3)
+}
+
+test("specification resolves unit abilities through extends") {
+    let game = Game()
+    let parsed = try XMLDecoder.decode("""
+    <game id="game-1">
+      <player id="player-1" username="Alice"/>
+      <freecol-specification id="spec">
+        <unit-type id="ship" abstract="true" line-of-sight="2">
+          <ability id="model.ability.navalUnit" value="true"/>
+          <ability id="model.ability.carryUnits" value="true"/>
+        </unit-type>
+        <unit-type id="model.unit.caravel" extends="ship"/>
+        <unit-type id="model.unit.freeColonist" movement="3"/>
+      </freecol-specification>
+    </game>
+    """)
+    try game.load(from: parsed)
+    let spec = game.specification
+    try assertEqual(spec?.isNaval(unitType: "model.unit.caravel"), true)
+    try assertEqual(spec?.carriesUnits(unitType: "model.unit.caravel"), true)
+    try assertEqual(spec?.lineOfSight(forUnitType: "model.unit.caravel"), 2)
+    try assertEqual(spec?.isNaval(unitType: "model.unit.freeColonist"), false)
+    try assertEqual(spec?.lineOfSight(forUnitType: "model.unit.freeColonist"), 1)
+    try assertEqual(spec?.isNaval(unitType: "model.unit.unknown"), nil)
+}
+
+test("specification parses tile-type center production") {
+    let game = Game()
+    let parsed = try XMLDecoder.decode("""
+    <game id="game-1">
+      <player id="player-1" username="Alice"/>
+      <freecol-specification id="spec">
+        <tile-type id="model.tile.plains">
+          <production unattended="true">
+            <output goods-type="model.goods.grain" value="3"/>
+            <output goods-type="model.goods.cotton" value="2"/>
+          </production>
+          <production>
+            <output goods-type="model.goods.grain" value="5"/>
+          </production>
+        </tile-type>
+      </freecol-specification>
+    </game>
+    """)
+    try game.load(from: parsed)
+    let plains = game.specification?.tileTypes["model.tile.plains"]
+    try assertEqual(plains?.centerOutputs["model.goods.grain"], 3)
+    try assertEqual(plains?.centerOutputs["model.goods.cotton"], 2)
+}
+
 test("GameStateManager processes setStance") {
     let mgr = GameStateManager()
     try mgr.process(ParsedMessage(tag: "addPlayer", attributes: [:], children: [
@@ -633,8 +950,9 @@ test("GameStateManager processes setAI and setDead") {
     ]))
     _ = try mgr.process(ParsedMessage(tag: "setAI", attributes: ["player": "player-1", "ai": "true"], children: []))
     try assertEqual(mgr.game.players["player-1"]?.ai, true)
+    // setDead is forwarded to the UI so a local death can prompt the player.
     let handled = try mgr.process(ParsedMessage(tag: "setDead", attributes: ["player": "player-1"], children: []))
-    try assertEqual(handled, true)
+    try assertEqual(handled, false)
     try assertEqual(mgr.game.players.keys.contains("player-1"), false)
 }
 
@@ -666,8 +984,9 @@ test("GameStateManager processes logout") {
             "id": "player-1", "username": "Alice", "nationId": "model.nation.dutch"
         ], children: []),
     ]))
+    // logout is forwarded to the UI so a local logout can end the session.
     let handled = try mgr.process(ParsedMessage(tag: "logout", attributes: ["player": "player-1", "reason": "done"], children: []))
-    try assertEqual(handled, true)
+    try assertEqual(handled, false)
     try assertEqual(mgr.game.players.count, 0)
 }
 
@@ -3704,6 +4023,351 @@ await integrationTest("message loop processes question payload and replies") {
     }
 }
 
+await integrationTest("decision-action asks use emigrateUnit and lootCargo contract") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-5" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <player id="player-2" username="Bob" nationId="model.nation.french" gold="400"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            try await Task.sleep(nanoseconds: 200_000_000)
+
+            // 1. Fountain of youth is answered with a specific emigrateUnit slot.
+            let rawEmigrate = try await server.nextLine()
+            let emigrateQuestion = try XMLDecoder.decode(rawEmigrate)
+            guard emigrateQuestion.tag == "question",
+                  let emigrateReplyId = emigrateQuestion.attributes["networkReplyId"],
+                  let emigrate = emigrateQuestion.children.first,
+                  emigrate.tag == "emigrateUnit" else {
+                throw TestError(message: "expected emigrateUnit question")
+            }
+            guard emigrate.attributes["slot"] == "1" else {
+                throw TestError(message: "expected specific emigrate slot")
+            }
+            await server.send("<reply networkReplyId=\"\(emigrateReplyId)\"><emigrateUnit/></reply>")
+            await server.flush()
+            try await Task.sleep(nanoseconds: 150_000_000)
+
+            // 2. Loot cargo reply must preserve winner/loser plus <goods> children.
+            let rawLoot = try await server.nextLine()
+            let lootQuestion = try XMLDecoder.decode(rawLoot)
+            guard lootQuestion.tag == "question",
+                  let lootReplyId = lootQuestion.attributes["networkReplyId"],
+                  let loot = lootQuestion.children.first,
+                  loot.tag == "lootCargo" else {
+                throw TestError(message: "expected lootCargo question")
+            }
+            guard loot.attributes["winner"] == "unit-9",
+                  loot.attributes["loser"] == "unit-2" else {
+                throw TestError(message: "expected winner/loser in lootCargo payload")
+            }
+            guard let goods = loot.children.first,
+                  goods.tag == "goods",
+                  goods.attributes["type"] == "model.goods.sugar",
+                  goods.attributes["amount"] == "20" else {
+                throw TestError(message: "expected goods child in lootCargo payload")
+            }
+            await server.send("<reply networkReplyId=\"\(lootReplyId)\"><lootCargo/></reply>")
+            await server.flush()
+            try await Task.sleep(nanoseconds: 150_000_000)
+            await server.stop()
+        }
+
+        // No message loop here: the ask/reply pairs must be the only consumers of
+        // incoming lines to stay deterministic.
+        try await client.connect()
+        _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+
+        let emigrateReply = try await client.ask(message: ParsedMessage(
+            tag: "emigrateUnit",
+            attributes: ["slot": "1"],
+            children: []
+        ))
+        guard emigrateReply.tag == "reply" else {
+            throw TestError(message: "expected emigrateUnit reply")
+        }
+
+        let lootReply = try await client.ask(message: ParsedMessage(
+            tag: "lootCargo",
+            attributes: ["winner": "unit-9", "loser": "unit-2"],
+            children: [ParsedMessage(
+                tag: "goods",
+                attributes: ["type": "model.goods.sugar", "amount": "20"],
+                children: []
+            )]
+        ))
+        guard lootReply.tag == "reply" else {
+            throw TestError(message: "expected lootCargo reply")
+        }
+
+        group.cancelAll()
+    }
+}
+
+await integrationTest("message loop routes ask replies while running") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-8" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            try await Task.sleep(nanoseconds: 150_000_000)
+            let raw = try await server.nextLine()
+            let question = try XMLDecoder.decode(raw)
+            guard question.tag == "question",
+                  let replyId = question.attributes["networkReplyId"],
+                  question.children.first?.tag == "emigrateUnit" else {
+                throw TestError(message: "expected emigrateUnit question")
+            }
+            await server.send("<reply networkReplyId=\"\(replyId)\"><emigrateUnit/></reply>")
+            await server.flush()
+            try await Task.sleep(nanoseconds: 150_000_000)
+            await server.stop()
+        }
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            Task { try? await client.startMessageLoop() }
+            try await Task.sleep(nanoseconds: 150_000_000)
+            // The message loop owns the receive stream; the ask must be routed
+            // through it instead of racing on nextLine().
+            let reply = try await client.ask(message: ParsedMessage(
+                tag: "emigrateUnit",
+                attributes: ["slot": "1"],
+                children: []
+            ))
+            guard reply.tag == "reply" else {
+                throw TestError(message: "expected routed reply")
+            }
+        }
+        try await Task.sleep(nanoseconds: 3_000_000_000)
+        group.cancelAll()
+    }
+}
+
+await integrationTest("prompt replies use firstContact/monarchAction/newLandName contract") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-6" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <player id="player-2" username="Bob" nationId="model.nation.french" gold="400"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            try await Task.sleep(nanoseconds: 200_000_000)
+
+            // 1. firstContact reply carries player/other/tile + boolean result.
+            let rawContact = try await server.nextLine()
+            let contactQuestion = try XMLDecoder.decode(rawContact)
+            guard contactQuestion.tag == "question",
+                  let contactReplyId = contactQuestion.attributes["networkReplyId"],
+                  let contact = contactQuestion.children.first,
+                  contact.tag == "firstContact" else {
+                throw TestError(message: "expected firstContact question")
+            }
+            guard contact.attributes["player"] == "player-1",
+                  contact.attributes["other"] == "player-4",
+                  contact.attributes["tile"] == "tile-2-3",
+                  contact.attributes["result"] == "true" else {
+                throw TestError(message: "bad firstContact payload: \(contact.attributes)")
+            }
+            await server.send("<reply networkReplyId=\"\(contactReplyId)\"><firstContact/></reply>")
+            await server.flush()
+            try await Task.sleep(nanoseconds: 120_000_000)
+
+            // 2. monarchAction reply carries action + boolean result.
+            let rawMonarch = try await server.nextLine()
+            let monarchQuestion = try XMLDecoder.decode(rawMonarch)
+            guard monarchQuestion.tag == "question",
+                  let monarchReplyId = monarchQuestion.attributes["networkReplyId"],
+                  let monarch = monarchQuestion.children.first,
+                  monarch.tag == "monarchAction" else {
+                throw TestError(message: "expected monarchAction question")
+            }
+            guard monarch.attributes["action"] == "raise_tax_act",
+                  monarch.attributes["result"] == "true" else {
+                throw TestError(message: "bad monarchAction payload: \(monarch.attributes)")
+            }
+            await server.send("<reply networkReplyId=\"\(monarchReplyId)\"><monarchAction/></reply>")
+            await server.flush()
+            try await Task.sleep(nanoseconds: 120_000_000)
+
+            // 3. newLandName reply carries unit + newLandName.
+            let rawLand = try await server.nextLine()
+            let landQuestion = try XMLDecoder.decode(rawLand)
+            guard landQuestion.tag == "question",
+                  let landReplyId = landQuestion.attributes["networkReplyId"],
+                  let land = landQuestion.children.first,
+                  land.tag == "newLandName" else {
+                throw TestError(message: "expected newLandName question")
+            }
+            guard land.attributes["unit"] == "unit-5",
+                  land.attributes["newLandName"] == "Nieuw Zeeland" else {
+                throw TestError(message: "bad newLandName payload: \(land.attributes)")
+            }
+            await server.send("<reply networkReplyId=\"\(landReplyId)\"><newLandName/></reply>")
+            await server.flush()
+            try await Task.sleep(nanoseconds: 120_000_000)
+            await server.stop()
+        }
+
+        try await client.connect()
+        _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+
+        let contactReply = try await client.ask(message: ParsedMessage(
+            tag: "firstContact",
+            attributes: ["player": "player-1", "other": "player-4", "tile": "tile-2-3", "camps": "2", "result": "true"],
+            children: []
+        ))
+        guard contactReply.tag == "reply" else {
+            throw TestError(message: "expected firstContact reply")
+        }
+
+        let monarchReply = try await client.ask(message: ParsedMessage(
+            tag: "monarchAction",
+            attributes: ["action": "raise_tax_act", "monarch": "model.nation.dutch", "result": "true"],
+            children: []
+        ))
+        guard monarchReply.tag == "reply" else {
+            throw TestError(message: "expected monarchAction reply")
+        }
+
+        let landReply = try await client.ask(message: ParsedMessage(
+            tag: "newLandName",
+            attributes: ["unit": "unit-5", "newLandName": "Nieuw Zeeland"],
+            children: []
+        ))
+        guard landReply.tag == "reply" else {
+            throw TestError(message: "expected newLandName reply")
+        }
+
+        group.cancelAll()
+    }
+}
+
+await integrationTest("client sends nativeTrade and diplomacy sessions") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+
+    let gameXML = """
+    <game id="game-7" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <player id="player-2" username="Bob" nationId="model.nation.french" gold="400"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            try await Task.sleep(nanoseconds: 200_000_000)
+
+            // 1. OPEN carries the unit/settlement in a nested <nativeTrade>.
+            let rawOpen = try await server.nextLine()
+            let open = try XMLDecoder.decode(rawOpen)
+            guard open.tag == "nativeTrade", open.attributes["action"] == "OPEN",
+                  let openInner = open.children.first,
+                  openInner.tag == "nativeTrade",
+                  openInner.attributes["unit"] == "unit-1",
+                  openInner.attributes["settlement"] == "is-1" else {
+                throw TestError(message: "bad nativeTrade OPEN payload: \(rawOpen)")
+            }
+
+            // 2. BUY carries the focused <nativeTradeItem> with goods.
+            let rawBuy = try await server.nextLine()
+            let buy = try XMLDecoder.decode(rawBuy)
+            guard buy.tag == "nativeTrade", buy.attributes["action"] == "BUY",
+                  let buyInner = buy.children.first(where: { $0.tag == "nativeTrade" }),
+                  let item = buyInner.children.first(where: { $0.tag == "nativeTradeItem" }),
+                  item.attributes["price"] == "42",
+                  item.children.first?.attributes["type"] == "model.goods.sugar" else {
+                throw TestError(message: "bad nativeTrade BUY payload: \(rawBuy)")
+            }
+
+            // 3. CLOSE.
+            let rawClose = try await server.nextLine()
+            let close = try XMLDecoder.decode(rawClose)
+            guard close.tag == "nativeTrade", close.attributes["action"] == "CLOSE" else {
+                throw TestError(message: "bad nativeTrade CLOSE payload: \(rawClose)")
+            }
+
+            // 4. Diplomacy proposal answer with status + clause.
+            let rawDiplomacy = try await server.nextLine()
+            let diplomacy = try XMLDecoder.decode(rawDiplomacy)
+            guard diplomacy.tag == "diplomacy",
+                  diplomacy.attributes["ourId"] == "unit-1",
+                  diplomacy.attributes["otherId"] == "unit-2",
+                  let trade = diplomacy.children.first(where: { $0.tag == "diplomaticTrade" }),
+                  trade.attributes["status"] == "ACCEPT_TRADE",
+                  trade.attributes["context"] == "DIPLOMATIC",
+                  trade.children.contains(where: { $0.tag == "goldTradeItem" && $0.attributes["gold"] == "100" }) else {
+                throw TestError(message: "bad diplomacy payload: \(rawDiplomacy)")
+            }
+
+            try await Task.sleep(nanoseconds: 150_000_000)
+            await server.stop()
+        }
+
+        try await client.connect()
+        _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+
+        var session = NativeTradeSession(unitId: "unit-1", settlementId: "is-1")
+        try await client.send(message: session.toMessage(action: "OPEN", item: nil))
+
+        let item = NativeTradeItem(
+            goodsType: "model.goods.sugar",
+            amount: 20,
+            price: 42,
+            haggleCount: 0,
+            source: "is-1",
+            destination: "unit-1"
+        )
+        try await client.send(message: session.toMessage(action: "BUY", item: item))
+
+        session.item = item
+        try await client.send(message: session.toMessage(action: "CLOSE", item: nil))
+
+        let goldClause = ParsedMessage(
+            tag: "goldTradeItem",
+            attributes: ["gold": "100", "source": "player-2", "destination": "player-1"],
+            children: []
+        )
+        let agreement = ParsedMessage(
+            tag: "diplomaticTrade",
+            attributes: ["context": "DIPLOMATIC", "sender": "player-2", "recipient": "player-1", "status": "ACCEPT_TRADE", "version": "1"],
+            children: [goldClause]
+        )
+        try await client.send(message: ParsedMessage(
+            tag: "diplomacy",
+            attributes: ["ourId": "unit-1", "otherId": "unit-2"],
+            children: [agreement]
+        ))
+
+        group.cancelAll()
+    }
+}
+
 await integrationTest("message loop applies inbound stance/ai/chat/logout") {
     let server = MockServer()
     let port = await server.port
@@ -3748,6 +4412,57 @@ await integrationTest("message loop applies inbound stance/ai/chat/logout") {
     }
     guard !game.players.keys.contains("player-2") else {
         throw TestError(message: "inbound logout did not remove the player")
+    }
+}
+
+await integrationTest("message loop forwards founding-father and death prompts") {
+    let server = MockServer()
+    let port = await server.port
+    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let delegate = TestDelegate()
+    await client.setDelegate(delegate)
+
+    let gameXML = """
+    <game id="game-54" turn="1">
+      <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
+      <player id="player-2" username="Bob" nationId="model.nation.french" gold="400"/>
+    </game>
+    """
+
+    try await withThrowingTaskGroup(of: Void.self) { group in
+        group.addTask {
+            try await client.connect()
+            _ = try await client.login(userName: "Alice", nationId: "model.nation.dutch")
+            await client.startMessageLoop()
+        }
+        group.addTask {
+            try await server.doHandshake(gameResponse: gameXML)
+            try await Task.sleep(nanoseconds: 200_000_000)
+            await server.send("<question networkReplyId=\"21\"><chooseFoundingFather trade=\"model.foundingFather.adamSmith\"/></question>")
+            await server.flush()
+            _ = try await server.nextLine()
+            await server.send("<update><setDead player=\"player-2\"/></update>")
+            await server.flush()
+
+            try await Task.sleep(nanoseconds: 300_000_000)
+            await server.stop()
+        }
+        try await Task.sleep(nanoseconds: 5_000_000_000)
+        group.cancelAll()
+    }
+
+    let flags = await delegate.receivedMessages
+    guard flags.contains("chooseFoundingFather") else {
+        throw TestError(message: "chooseFoundingFather prompt was not forwarded")
+    }
+    // The death arrives inside an update; the whole envelope must be forwarded.
+    guard flags.contains("update") else {
+        throw TestError(message: "setDead update was not forwarded")
+    }
+
+    let game = await client.game
+    guard !game.players.keys.contains("player-2") else {
+        throw TestError(message: "inbound setDead did not remove the player")
     }
 }
 

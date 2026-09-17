@@ -58,6 +58,19 @@ struct InfoPanelView: View {
                     .font(.caption)
                     .foregroundColor(.white)
             }
+            if !state.nativeTradeTargetsForSelectedUnit.isEmpty {
+                Menu("Trade") {
+                    ForEach(state.nativeTradeTargetsForSelectedUnit) { target in
+                        Button(target.name) {
+                            state.openNativeTradeWithSelectedUnit(settlementId: target.settlementId)
+                        }
+                    }
+                }
+                .font(.caption)
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .disabled(!state.isLocalPlayersTurn)
+            }
             Spacer(minLength: 0)
         }
         .padding(10)
@@ -113,35 +126,102 @@ struct InfoPanelView: View {
     // MARK: - TILE mode
 
     private func tileContent(_ tile: FreeColGame.Tile) -> some View {
-        HStack(spacing: 10) {
-            if let nsImg = TileImageCache.shared.terrainImage(forType: tile.type) {
-                Image(nsImage: nsImg)
-                    .resizable()
-                    .interpolation(.high)
-                    .frame(width: 56, height: 40)
-                    .clipShape(DiamondShape())
-            } else {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(colorForTileType(tile.type))
-                    .frame(width: 56, height: 40)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                if let nsImg = TileImageCache.shared.terrainImage(forType: tile.type) {
+                    Image(nsImage: nsImg)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: 56, height: 40)
+                        .clipShape(DiamondShape())
+                } else {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(colorForTileType(tile.type))
+                        .frame(width: 56, height: 40)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(typeLabel(tile.type))
+                        .font(.headline)
+                        .foregroundColor(.white)
+                    Text(tile.type == nil ? "Unexplored" : "Explored")
+                        .font(.caption2)
+                        .foregroundColor(tile.type == nil ? .secondary : .green)
+                    if let ownerId = tile.owner, let game = state.game {
+                        Text(game.players[ownerId]?.name ?? ownerId)
+                            .font(.caption)
+                            .foregroundColor(.yellow)
+                    }
+                    Text("(\(tile.x), \(tile.y))")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
+                Spacer(minLength: 0)
             }
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(typeLabel(tile.type))
-                    .font(.headline)
-                    .foregroundColor(.white)
-                if let ownerId = tile.owner, let game = state.game {
-                    Text(game.players[ownerId]?.name ?? ownerId)
-                        .font(.caption)
-                        .foregroundColor(.yellow)
-                }
-                Text("(\(tile.x), \(tile.y))")
+            if let region = tile.region {
+                Text("Region: \(short(region, prefix: "model.region."))")
                     .font(.caption2)
-                    .foregroundColor(.gray)
+                    .foregroundColor(.secondary)
             }
-            Spacer(minLength: 0)
+            if let settlementId = tile.settlement {
+                let name = state.game?.colonies[settlementId]?.name ?? settlementId
+                Text("Settlement: \(name)")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            let units = units(on: tile.id)
+            if !units.isEmpty {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Units")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    ForEach(units) { unit in
+                        Button {
+                            state.selectUnit(unit.id, onTile: tile.id)
+                        } label: {
+                            HStack(spacing: 4) {
+                                if unit.id == state.selectedUnitId {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.caption2)
+                                        .foregroundColor(.green)
+                                }
+                                Text("\(displayUnitName(unit.unitType)) (\(unit.movesLeft) MP)")
+                                    .font(.caption2)
+                                    .foregroundColor(.white)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            HStack(spacing: 6) {
+                Button("Set Destination") {
+                    state.setSelectedUnitDestination(to: tile.id)
+                }
+                .font(.caption2)
+                .disabled(!state.canSetDestinationToSelectedTile)
+
+                Button("Clear") {
+                    state.clearSelectedUnitDestination()
+                }
+                .font(.caption2)
+                .disabled(!state.canClearSelectedUnitDestination)
+            }
         }
         .padding(10)
+    }
+
+    private func units(on tileId: String) -> [FreeColGame.Unit] {
+        guard let game = state.game else { return [] }
+        return game.units.values
+            .filter { game.resolvedTileId(for: $0) == tileId }
+            .sorted { ($0.unitType ?? "") < ($1.unitType ?? "") }
+    }
+
+    private func short(_ value: String, prefix: String) -> String {
+        value.hasPrefix(prefix) ? String(value.dropFirst(prefix.count)) : value
     }
 
     private func typeLabel(_ type: String?) -> String {

@@ -64,3 +64,11 @@ Codebase-Analyse des FreeCol-Clients mit Fokus auf Architektur, Risiken und aktu
 3. Häufig genutzte Tile-/Unit-Lookups für MapView und Pfad-/Sichtbarkeitslogik indexieren oder cachen.
 4. Debug-Prints und Debug-UI-Texte vor einem Stabilitätsrelease entfernen oder hinter eine Logger-Policy hängen.
 5. Save/Load auf UI-/Workflow-Ebene vervollständigen, falls der nächste Meilenstein tatsächlich persistente Sessions verlangt.
+
+## Status der Maßnahmen (Phase 51/53)
+
+1. [x] `GameState.resetSessionState()` wird von connect/disconnect/mock/reconnect genutzt.
+2. [x] `UnitTypeTraits` + `Specification`-Fähigkeiten (extends/abilities) ersetzen die verstreuten Heuristiken.
+3. [x] Bewertet: bei aktuellen Kartengrößen unkritisch; Lookups werden lokal pro Render/Report gebildet (kein persistenter Cache → keine Stale-Bugs).
+4. [x] Keine Debug-Prints/DEBUG-UI mehr (Phase 7).
+5. [x] Save/Load entfällt: in dieser FreeCol-Version kein Client-Protokoll vorhanden (Server-seitig).

@@ -56,6 +56,13 @@ public struct Player: GameObject, PartiallyUpdatable, Identifiable {
                    let stance = Stance(rawValue: v) {
                     stances[otherPlayerId] = stance
                 }
+            case "tradeRoute":
+                if let route = try? TradeRoute(id: child.attributes["id"] ?? UUID().uuidString,
+                                               attributes: child.attributes,
+                                               children: child.children,
+                                               game: game) {
+                    game.addTradeRoute(route)
+                }
             default:
                 break
             }

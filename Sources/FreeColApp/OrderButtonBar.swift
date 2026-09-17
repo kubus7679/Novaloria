@@ -42,7 +42,8 @@ struct OrderButtonBar: View {
 
             orderButton(name: "End Turn", imageName: "done", symbol: "checkmark.circle", action: {
                 state.endTurn()
-            }, enabled: state.canEndTurn)
+            }, enabled: state.canEndTurn,
+               highlighted: state.canEndTurn && !state.hasUnmovedLocalUnits)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
@@ -54,7 +55,8 @@ struct OrderButtonBar: View {
                              imageName: String?,
                              symbol: String,
                              action: @escaping () -> Void,
-                             enabled: Bool) -> some View {
+                             enabled: Bool,
+                             highlighted: Bool = false) -> some View {
         Button(action: action) {
             VStack(spacing: 2) {
                 if let imageName,
@@ -75,6 +77,16 @@ struct OrderButtonBar: View {
                     .font(.system(size: 9))
                     .foregroundColor(enabled ? .white : .gray)
             }
+            .padding(.horizontal, 4)
+            .padding(.vertical, 2)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(highlighted ? Color.green.opacity(0.35) : Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(highlighted ? Color.green : Color.clear, lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
         .disabled(!enabled)

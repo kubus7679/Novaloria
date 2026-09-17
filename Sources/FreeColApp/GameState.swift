@@ -46,9 +46,321 @@ final class GameState {
         }
     }
 
+    enum PendingServerDecisionType: String {
+        case fountainOfYouth
+        case indianDemand
+        case lootCargo
+        case firstContact
+        case monarchAction
+        case newLandName
+        case newRegionName
+        case nativeTrade
+        case diplomacy
+        case foundingFather
+        case scoutReport
+        case incite
+    }
+
+    struct PendingServerDecision {
+        let type: PendingServerDecisionType
+        let rawPayload: [String: String]
+        var children: [ParsedMessage] = []
+
+        /// `<goods>` children carried by a `lootCargo` prompt.
+        var goodsChildren: [ParsedMessage] {
+            children.filter { $0.tag == "goods" }
+        }
+
+        /// Remaining fountain-of-youth migrants to place.
+        var migrantCount: Int {
+            max(0, Int(rawPayload["migrants"] ?? "") ?? 0)
+        }
+
+        /// Inner `<nativeTrade>` node of a `nativeTrade` prompt.
+        var nativeTradeChild: ParsedMessage? {
+            children.first { $0.tag == "nativeTrade" }
+        }
+
+        var nativeTradeSession: NativeTradeSession {
+            NativeTradeSession(nativeTradeChild: nativeTradeChild)
+        }
+
+        /// `<diplomaticTrade>` node of a `diplomacy` prompt.
+        var diplomaticTradeChild: ParsedMessage? {
+            children.first { $0.tag == "diplomaticTrade" }
+        }
+
+        var diplomaticTradeProposal: DiplomaticTradeProposal? {
+            diplomaticTradeChild.map { DiplomaticTradeProposal(raw: $0) }
+        }
+    }
+
+    /// A selectable loot stack from a `lootCargo` prompt.
+    struct LootGoodsOption: Identifiable {
+        var id: String { type }
+        let type: String
+        let amount: Int
+    }
+
+    /// A selectable emigrant slot from a `fountainOfYouth` prompt.
+    struct EmigrantOption: Identifiable {
+        var id: Int { slot }
+        let slot: Int
+        let unitType: String?
+        let role: String?
+    }
+
+    /// A candidate founding father from a `chooseFoundingFather` prompt.
+    struct FoundingFatherOption: Identifiable {
+        var id: String { fatherId }
+        let fatherId: String
+        /// Offer category key (`trade`, `exploration`, `military`, `political`, `religious`).
+        let typeKey: String
+        let label: String
+    }
+
+    /// A pending `incite` confirmation.
+    struct InciteOption {
+        let unit: String
+        let settlement: String
+        let enemy: String
+        let gold: Int
+        let enemyName: String?
+    }
+
     var phase: Phase = .disconnected
     var statusMessage: String = ""
     var errorMessage: String?
+    var pendingServerDecision: PendingServerDecision?
+    var hasPendingDecision: Bool {
+        pendingServerDecision != nil
+    }
+    var pendingDecisionTitle: String {
+        switch pendingServerDecision?.type {
+        case .fountainOfYouth:
+            return "Fountain of Youth"
+        case .indianDemand:
+            return "Native Demand"
+        case .lootCargo:
+            return "Loot Cargo"
+        case .firstContact:
+            return "First Contact"
+        case .monarchAction:
+            return "Monarch"
+        case .newLandName:
+            return "Name New Land"
+        case .newRegionName:
+            return "Name New Region"
+        case .nativeTrade:
+            return "Native Trade"
+        case .diplomacy:
+            return "Diplomacy"
+        case .foundingFather:
+            return "Continental Congress"
+        case .scoutReport:
+            return "Scout Report"
+        case .incite:
+            return "Incite Natives"
+        case .none:
+            return ""
+        }
+    }
+
+    var pendingDecisionSummary: String {
+        guard let decision = pendingServerDecision else { return "" }
+        switch decision.type {
+        case .fountainOfYouth:
+            return "Migrants to place: \(decision.migrantCount)"
+        case .indianDemand:
+            var parts: [String] = []
+            if let type = decision.rawPayload["type"] { parts.append("demand: \(type)") }
+            if let amount = decision.rawPayload["amount"] { parts.append("amount: \(amount)") }
+            if let colony = decision.rawPayload["colony"] { parts.append("colony: \(colony)") }
+            if let unit = decision.rawPayload["unit"] { parts.append("unit: \(unit)") }
+            return parts.isEmpty ? "Native demand to review." : parts.joined(separator: ", ")
+        case .lootCargo:
+            var parts: [String] = []
+            if let winner = decision.rawPayload["winner"] { parts.append("winner: \(winner)") }
+            if let loser = decision.rawPayload["loser"] { parts.append("loser: \(loser)") }
+            let goodsCount = decision.goodsChildren.count
+            if goodsCount > 0 { parts.append("goods stacks: \(goodsCount)") }
+            return parts.isEmpty ? "Cargo to assess." : parts.joined(separator: ", ")
+        case .firstContact:
+            var parts: [String] = []
+            if let other = decision.rawPayload["other"] { parts.append("contact: \(other)") }
+            if let camps = decision.rawPayload["camps"] { parts.append("camps: \(camps)") }
+            if let tile = decision.rawPayload["tile"] { parts.append("tile: \(tile)") }
+            return parts.isEmpty ? "A native people greets you." : parts.joined(separator: ", ")
+        case .monarchAction:
+            var parts: [String] = []
+            if let action = decision.rawPayload["action"] { parts.append(prettyEnum(action)) }
+            if let tax = decision.rawPayload["tax"] { parts.append("tax: \(tax)") }
+            return parts.isEmpty ? "The monarch makes an offer." : parts.joined(separator: ", ")
+        case .newLandName:
+            if let unit = decision.rawPayload["unit"] { return "Unit: \(unit)" }
+            return "Choose a name for the new land."
+        case .newRegionName:
+            var parts: [String] = []
+            if let region = decision.rawPayload["region"] { parts.append("region: \(region)") }
+            if let tile = decision.rawPayload["tile"] { parts.append("tile: \(tile)") }
+            return parts.isEmpty ? "Choose a name for the new region." : parts.joined(separator: ", ")
+        case .nativeTrade:
+            let session = decision.nativeTradeSession
+            let buy = session.settlementToUnit.filter { $0.priceIsValid }.count
+            let sell = session.unitToSettlement.filter { $0.priceIsValid }.count
+            return "Can buy \(buy), can sell \(sell)"
+        case .diplomacy:
+            guard let proposal = decision.diplomaticTradeProposal else {
+                return "Diplomatic proposal to review."
+            }
+            let context = proposal.context ?? "DIPLOMATIC"
+            return "\(context): \(proposal.clauses.count) clause(s)"
+        case .foundingFather:
+            let options = pendingFoundingFathers
+            return options.isEmpty
+                ? "Choose a founding father."
+                : "\(options.count) candidate(s) available."
+        case .scoutReport:
+            return scoutReportText
+        case .incite:
+            guard let incite = pendingIncite else { return "Incite the natives?" }
+            let enemy = incite.enemyName ?? incite.enemy
+            return "Incite \(enemy) for \(incite.gold) gold."
+        }
+    }
+
+    /// Parsed session for a pending `nativeTrade` prompt.
+    var pendingNativeTrade: NativeTradeSession? {
+        guard pendingServerDecision?.type == .nativeTrade else { return nil }
+        return pendingServerDecision?.nativeTradeSession
+    }
+
+    /// Parsed proposal for a pending `diplomacy` prompt.
+    var pendingDiplomacy: DiplomaticTradeProposal? {
+        guard pendingServerDecision?.type == .diplomacy else { return nil }
+        return pendingServerDecision?.diplomaticTradeProposal
+    }
+
+    /// Title and seeded default text for the text-entry prompts.
+    var pendingTextPrompt: (title: String, defaultText: String)? {
+        guard let decision = pendingServerDecision else { return nil }
+        switch decision.type {
+        case .newLandName:
+            return (pendingDecisionTitle, decision.rawPayload["newLandName"] ?? "")
+        case .newRegionName:
+            return (pendingDecisionTitle, decision.rawPayload["newRegionName"] ?? "")
+        default:
+            return nil
+        }
+    }
+
+    /// Turns a wire enum value such as `raise_tax_act` into `Raise tax act`.
+    private func prettyEnum(_ raw: String) -> String {
+        let spaced = raw.replacingOccurrences(of: "_", with: " ")
+        guard let first = spaced.first else { return raw }
+        return first.uppercased() + spaced.dropFirst()
+    }
+
+    /// Available loot stacks for a pending `lootCargo` prompt.
+    var pendingLootOptions: [LootGoodsOption] {
+        guard let decision = pendingServerDecision, decision.type == .lootCargo else { return [] }
+        return decision.goodsChildren.compactMap { child in
+            guard let type = child.attributes["type"] else { return nil }
+            let amount = Int(child.attributes["amount"] ?? "") ?? 0
+            return LootGoodsOption(type: type, amount: amount)
+        }
+    }
+
+    /// Expanded emigrant slots (1...3) for a pending `fountainOfYouth` prompt.
+    var pendingEmigrantOptions: [EmigrantOption] {
+        guard let decision = pendingServerDecision, decision.type == .fountainOfYouth,
+              let europe = localPlayer?.europe else { return [] }
+        var options: [EmigrantOption] = []
+        var slot = 1
+        for recruit in europe.recruitable {
+            for _ in 0..<max(1, recruit.number) {
+                if slot > 3 { break }
+                options.append(EmigrantOption(slot: slot, unitType: recruit.unitType, role: recruit.role))
+                slot += 1
+            }
+            if slot > 3 { break }
+        }
+        return options
+    }
+
+    /// Candidate founding fathers offered by a `chooseFoundingFather` prompt.
+    var pendingFoundingFathers: [FoundingFatherOption] {
+        guard let decision = pendingServerDecision, decision.type == .foundingFather else {
+            return []
+        }
+        // The server keys offers by FoundingFatherType key.
+        let order = ["trade", "exploration", "military", "political", "religious"]
+        var options: [FoundingFatherOption] = []
+        for key in order {
+            guard let fatherId = decision.rawPayload[key], !fatherId.isEmpty else { continue }
+            options.append(FoundingFatherOption(fatherId: fatherId,
+                                                typeKey: key,
+                                                label: Self.foundingFatherLabel(fatherId)))
+        }
+        return options
+    }
+
+    /// Pending `incite` confirmation details.
+    var pendingIncite: InciteOption? {
+        guard let decision = pendingServerDecision, decision.type == .incite,
+              let unit = decision.rawPayload["unit"],
+              let settlement = decision.rawPayload["settlement"],
+              let enemy = decision.rawPayload["enemy"] else { return nil }
+        let gold = Int(decision.rawPayload["gold"] ?? "") ?? 0
+        return InciteOption(unit: unit,
+                            settlement: settlement,
+                            enemy: enemy,
+                            gold: gold,
+                            enemyName: cachedGame?.players[enemy]?.name)
+    }
+
+    /// Human-readable outcome of a `scoutSpeakToChief` prompt.
+    var scoutReportText: String {
+        guard let decision = pendingServerDecision, decision.type == .scoutReport else {
+            return ""
+        }
+        let result = decision.rawPayload["result"] ?? ""
+        switch result {
+        case "die": return "The chief had the scout killed."
+        case "expert": return "The scout learned from the chief and became an expert."
+        case "tales": return "The chief shared tales of the land."
+        case "nothing": return "The chief had nothing to offer."
+        default:
+            if let amount = Int(result), amount > 0 {
+                return "The chief gave beads worth \(amount) gold."
+            } else if result.isEmpty {
+                return "The scout spoke with the chief."
+            }
+            return "The chief's response: \(result)"
+        }
+    }
+
+    /// Turns a founding-father id (`model.foundingFather.adamSmith`) into a label.
+    static func foundingFatherLabel(_ id: String) -> String {
+        var name = id
+        if let range = name.range(of: "model.foundingFather.") {
+            name = String(name[range.upperBound...])
+        }
+        var result = ""
+        for character in name {
+            if character.isUppercase, !result.isEmpty {
+                result.append(" ")
+            }
+            result.append(character)
+        }
+        guard !result.isEmpty else { return id }
+        return result.prefix(1).uppercased() + result.dropFirst()
+    }
+
+    /// Latest `highScores` report from the server, if any.
+    var highScoresReport: ParsedMessage?
+    /// Latest `nationSummary` report from the server, if any.
+    var nationSummaryReport: ParsedMessage?
 
     private(set) var client: FreeColClient?
     // Expose vacant players after connection, before login
@@ -57,19 +369,29 @@ final class GameState {
     private var bridge: ClientBridge?
     private var server: MockServer?
     private var messageLoopTask: Task<Void, Never>?
+    private var localServerTask: Task<Void, Never>?
     private(set) var cachedGame: Game?
     var gameUpdateID: Int = 0
     var selectedUnitId: String?
     var selectedTileId: String?
     var isReadyToStart: Bool = false
     private var localPlayerName: String?
+    private var cachedLocalPlayerId: String?
     private var localNationId: String?
     private var localNationTypeId: String?
     private var localColorValue: String?
     private var isEndingTurn: Bool = false
     private var pendingEndTurnTurn: Int?
+    private var endTurnToken: Int = 0
     var incomingChatLog: [String] = []
     var isGameEnded: Bool = false
+    /// Set when the server announces the local player has been eliminated.
+    var isDefeated: Bool = false
+    /// Set when the local player won (`gameEnded`); drives the victory overlay.
+    var isVictorious: Bool = false
+    var gameEndedHighScore: Bool = false
+    /// True once the local player has already entered revenge mode.
+    var isUndead: Bool = false
     var mapAnimationCue: MapAnimationCue?
     private var mapAnimationCueToken: Int = 0
     private var didAutoFocusInitialUnit: Bool = false
@@ -78,10 +400,15 @@ final class GameState {
 
     var showMapGrid: Bool = true
     var showFogOfWar: Bool = true
+    var showBorders: Bool = true
     var showEuropePanel: Bool = false
     var showColonyPanel: Bool = false
     var showDebugPanel: Bool = false
     var requestedMapScrollTileId: String?
+    /// Report currently selected in the report browser.
+    var requestedReport: ReportKind?
+    /// Settlement the user asked to find (center map on).
+    var findSettlementQuery: String?
 
     // Purchases tracking (client-side, like the Java client's purchases summary)
     var purchasesRecruits: Int = 0
@@ -96,9 +423,21 @@ final class GameState {
 
     func toggleMapGrid() { showMapGrid.toggle() }
     func toggleFogOfWar() { showFogOfWar.toggle() }
+    func toggleBorders() { showBorders.toggle() }
     func openEuropePanel() { showEuropePanel = true }
     func closeEuropePanel() { showEuropePanel = false }
     func openColonyPanel() { showColonyPanel = true }
+    /// Select a colony by id (e.g. from a spy result) and open its panel.
+    func openColonyPanel(colonyId: String) {
+        guard let colony = cachedGame?.colonies[colonyId] else {
+            showColonyPanel = true
+            return
+        }
+        if let tileId = colony.tileId {
+            selectedTileId = tileId
+        }
+        showColonyPanel = true
+    }
     func closeColonyPanel() { showColonyPanel = false }
     func openDebugPanel() { showDebugPanel = true }
     func closeDebugPanel() { showDebugPanel = false }
@@ -117,7 +456,11 @@ final class GameState {
               let localPlayerId = resolveLocalPlayerId() else {
             return false
         }
-        return game.currentPlayerId == localPlayerId
+        // The server writes `currentPlayer` only once a turn is underway; when
+        // it is still unset (mid-game join, or a local game) assume it is our
+        // turn so turn-bound actions such as "End Turn" stay available.
+        guard let currentPlayerId = game.currentPlayerId else { return true }
+        return currentPlayerId == localPlayerId
     }
 
     var localPlayerId: String? {
@@ -143,12 +486,26 @@ final class GameState {
     }
 
     var europeCarrierUnits: [FreeColGame.Unit] {
-        let shipKeywords = ["caravel", "galleon", "frigate", "merchantman", "pinnace", "fluyt", "boat"]
-        let carriers = europeUnits.filter { unit in
-            guard let type = unit.unitType?.lowercased() else { return false }
-            return shipKeywords.contains(where: type.contains)
-        }
+        let carriers = europeUnits.filter { isCarrierUnit($0) }
         return carriers.isEmpty ? europeUnits : carriers
+    }
+
+    /// Naval flag preferring the specification ability, heuristic as fallback.
+    func isNavalUnit(_ unit: FreeColGame.Unit) -> Bool {
+        if let type = unit.unitType,
+           let value = cachedGame?.specification?.isNaval(unitType: type) {
+            return value
+        }
+        return UnitTypeTraits.isNaval(unitType: unit.unitType, role: unit.role)
+    }
+
+    /// Carrier flag preferring the specification ability, heuristic as fallback.
+    func isCarrierUnit(_ unit: FreeColGame.Unit) -> Bool {
+        if let type = unit.unitType,
+           let value = cachedGame?.specification?.carriesUnits(unitType: type) {
+            return value
+        }
+        return UnitTypeTraits.isCarrier(unitType: unit.unitType, role: unit.role)
     }
 
     var localPlayerMarketData: [MarketData] {
@@ -156,8 +513,75 @@ final class GameState {
         return market.data.values.sorted { ($0.goodsType ?? "") < ($1.goodsType ?? "") }
     }
 
+    // MARK: - Trade routes
+
+    var localPlayerTradeRoutes: [TradeRoute] {
+        guard let game = cachedGame,
+              let localPlayerId = resolveLocalPlayerId() else {
+            return []
+        }
+        return game.tradeRoutes(forPlayer: localPlayerId)
+    }
+
+    var canManageTradeRoutes: Bool {
+        phase == .inGame && isLocalPlayersTurn
+    }
+
+    /// Owned colonies plus Europe, as candidate trade route stops.
+    var tradeRouteStopCandidates: [(id: String, label: String)] {
+        guard let game = cachedGame,
+              let localPlayerId = resolveLocalPlayerId() else {
+            return []
+        }
+        var result: [(id: String, label: String)] = []
+        if let europeId = game.players[localPlayerId]?.europe?.id {
+            result.append((id: europeId, label: "Europe"))
+        }
+        let colonies = game.colonies.values
+            .filter { $0.owner == localPlayerId }
+            .sorted { ($0.name ?? "") < ($1.name ?? "") }
+            .map { (id: $0.id, label: $0.name ?? $0.id) }
+        result.append(contentsOf: colonies)
+        return result
+    }
+
+    /// Goods types offered for trade-route cargo selection.
+    var tradeRouteGoodsTypes: [(id: String, label: String)] {
+        guard let specification = cachedGame?.specification else { return [] }
+        return specification.goodsTypes.values
+            .sorted { ($0.name ?? $0.id) < ($1.name ?? $1.id) }
+            .map { (id: $0.id, label: $0.name ?? $0.id) }
+    }
+
     var canEndTurn: Bool {
-        phase == .inGame && isLocalPlayersTurn && !isEndingTurn && !isGameEnded
+        // Always available on the local player's turn, like the Java client.
+        // Duplicate requests while one is in flight are blocked in `endTurn()`.
+        phase == .inGame && isLocalPlayersTurn && !isGameEnded
+    }
+
+    /// True while the local player still has an active unit with moves left.
+    var hasUnmovedLocalUnits: Bool {
+        guard let game = cachedGame,
+              let localPlayerId = resolveLocalPlayerId() else {
+            return false
+        }
+        return game.units.values.contains { unit in
+            unit.owner == localPlayerId
+                && unit.state == .active
+                && unit.movesLeft > 0
+                && game.resolvedTileId(for: unit) != nil
+        }
+    }
+
+    /// A colony name that is not already in use, seeded into the build-colony field.
+    var suggestedColonyName: String {
+        guard let game = cachedGame else { return "New Colony" }
+        let existing = Set(game.colonies.values.compactMap { $0.name?.lowercased() })
+        let base = "New Amsterdam"
+        if !existing.contains(base.lowercased()) { return base }
+        var index = 2
+        while existing.contains("\(base) \(index)".lowercased()) { index += 1 }
+        return "\(base) \(index)"
     }
 
     var canBuildSelectedColony: Bool {
@@ -309,6 +733,13 @@ final class GameState {
         return game.units[unitId]
     }
 
+    /// Tile the selected unit currently occupies (resolving carriers/colonies).
+    /// Used by the map to keep the camera on the active unit.
+    var selectedUnitTileId: String? {
+        guard let game = cachedGame, let unit = selectedUnit else { return nil }
+        return resolveUnitTileId(unit, in: game)
+    }
+
     var selectedUnitIsCarrier: Bool {
         guard let game = cachedGame, let unit = selectedUnit else { return false }
         return isLikelyCarrier(unit, in: game)
@@ -377,6 +808,208 @@ final class GameState {
         return colony.owner == localPlayerId
     }
 
+    /// Building types the colony can start building now (spec-known, not yet
+    /// built, population requirement met, and — for upgrades — the prerequisite
+    /// building present). Approximation of the Java `BuildQueuePanel`.
+    var selectedColonyBuildableCandidates: [(id: String, label: String)] {
+        guard let colony = selectedColony,
+              let specification = cachedGame?.specification else {
+            return []
+        }
+        let population = max(colony.unitCount, selectedColonyUnits.count)
+        return Self.buildableBuildingCandidates(colony: colony,
+                                                specification: specification,
+                                                population: population)
+    }
+
+    /// Building types a colony may start building: spec-known, not yet built,
+    /// population requirement met, and — for upgrades — predecessor present.
+    nonisolated static func buildableBuildingCandidates(colony: Colony,
+                                                        specification: Specification,
+                                                        population: Int) -> [(id: String, label: String)] {
+        let built = Set(colony.buildings.compactMap { $0.buildingType })
+        return specification.buildingTypes.values
+            .filter { info in
+                guard !built.contains(info.id), info.requiredPopulation <= population else {
+                    return false
+                }
+                if let upgradesFrom = info.upgradesFrom {
+                    return built.contains(upgradesFrom)
+                }
+                return true
+            }
+            .map { info -> (id: String, label: String) in
+                let cost = info.requiredGoods[buildingMaterialsGoodsId] ?? 0
+                let label = cost > 0 ? "\(info.displayName) – \(cost)" : info.displayName
+                return (id: info.id, label: label)
+            }
+            .sorted { $0.label < $1.label }
+    }
+
+    /// Buildings present in the selected colony with display names.
+    var selectedColonyBuildings: [(id: String, label: String)] {
+        guard let colony = selectedColony else { return [] }
+        return colony.buildings
+            .map { (id: $0.buildingType ?? $0.id, label: buildingDisplayName($0.buildingType ?? $0.id)) }
+            .sorted { $0.label < $1.label }
+    }
+
+    /// Build queue of the selected colony, already known to the server.
+    var selectedColonyBuildQueue: [String] {
+        selectedColony?.buildQueue ?? []
+    }
+
+    /// Human-readable building name for a `model.building.*` id.
+    func buildingDisplayName(_ typeId: String) -> String {
+        if let info = cachedGame?.specification?.buildingTypes[typeId] {
+            return info.displayName
+        }
+        return typeId.split(separator: ".").last.map(String.init) ?? typeId
+    }
+
+    /// Human-readable goods name for a `model.goods.*` id.
+    func goodsDisplayName(_ typeId: String) -> String {
+        if let name = cachedGame?.specification?.goodsTypes[typeId]?.name, !name.isEmpty {
+            return name
+        }
+        return typeId.split(separator: ".").last.map(String.init) ?? typeId
+    }
+
+    /// Goods type used for construction progress (FreeCol "building materials").
+    nonisolated static let buildingMaterialsGoodsId = "model.goods.hammers"
+
+    /// Stored goods of the selected colony.
+    var selectedColonyStoredGoods: [(id: String, label: String, amount: Int)] {
+        guard let colony = selectedColony else { return [] }
+        return colony.goods
+            .map { (id: $0.key, label: goodsDisplayName($0.key), amount: $0.value) }
+            .filter { $0.amount > 0 }
+            .sorted { $0.label < $1.label }
+    }
+
+    /// First item of the selected colony build queue.
+    var selectedColonyBuildTarget: (id: String, label: String)? {
+        guard let first = selectedColony?.buildQueue.first else { return nil }
+        return (id: first, label: buildingDisplayName(first))
+    }
+
+    /// Required vs. stored goods for the current build target.
+    var selectedColonyBuildRequirements: [(id: String, label: String, required: Int, stored: Int)] {
+        guard let colony = selectedColony,
+              let target = selectedColonyBuildTarget,
+              let info = cachedGame?.specification?.buildingTypes[target.id] else {
+            return []
+        }
+        return info.requiredGoods
+            .map { (id: $0.key,
+                    label: goodsDisplayName($0.key),
+                    required: $0.value,
+                    stored: colony.goods[$0.key] ?? 0) }
+            .sorted { $0.label < $1.label }
+    }
+
+    /// Estimated per-turn output of the construction goods from present buildings.
+    var selectedColonyEstimatedBuildPerTurn: Int {
+        guard let colony = selectedColony,
+              let specification = cachedGame?.specification else {
+            return 0
+        }
+        return Self.estimatedBuildPerTurn(colony: colony,
+                                          specification: specification,
+                                          centerTileType: centerTileType(of: colony))
+    }
+
+    /// Estimated turns until the current build target completes (nil if unknown).
+    var selectedColonyEstimatedBuildTurns: Int? {
+        guard let target = selectedColonyBuildTarget,
+              let colony = selectedColony,
+              let specification = cachedGame?.specification else {
+            return nil
+        }
+        return Self.estimatedBuildTurns(colony: colony,
+                                        buildableId: target.id,
+                                        specification: specification,
+                                        centerTileType: centerTileType(of: colony))
+    }
+
+    /// Estimate the construction-goods output per turn from present buildings.
+    nonisolated static func estimatedBuildPerTurn(colony: Colony,
+                                                   specification: Specification,
+                                                   centerTileType: String? = nil) -> Int {
+        estimatedProduction(colony: colony,
+                            specification: specification,
+                            centerTileType: centerTileType)
+            .first { $0.id == buildingMaterialsGoodsId }?.amount ?? 0
+    }
+
+    /// Estimated net per-turn goods output from present buildings plus the
+    /// colony-center tile (attended production preferred, unattended fallback).
+    nonisolated static func estimatedProduction(colony: Colony,
+                                                specification: Specification,
+                                                centerTileType: String? = nil) -> [(id: String, amount: Int)] {
+        var totals: [String: Int] = [:]
+        for building in colony.buildings {
+            guard let type = building.buildingType,
+                  let info = specification.buildingTypes[type] else { continue }
+            for (goods, value) in info.productionOutputs {
+                totals[goods, default: 0] += value
+            }
+            for (goods, value) in info.productionInputs {
+                totals[goods, default: 0] -= value
+            }
+        }
+        // The colony center tile is always worked (unattended production).
+        if let centerTileType, let tileInfo = specification.tileTypes[centerTileType] {
+            for (goods, value) in tileInfo.centerOutputs {
+                totals[goods, default: 0] += value
+            }
+            for (goods, value) in tileInfo.centerInputs {
+                totals[goods, default: 0] -= value
+            }
+        }
+        return totals
+            .filter { $0.value != 0 }
+            .map { (id: $0.key, amount: $0.value) }
+    }
+
+    /// Estimated net production of the selected colony, with display names.
+    var selectedColonyEstimatedProduction: [(id: String, label: String, amount: Int)] {
+        guard let colony = selectedColony,
+              let specification = cachedGame?.specification else {
+            return []
+        }
+        return Self.estimatedProduction(colony: colony,
+                                        specification: specification,
+                                        centerTileType: centerTileType(of: colony))
+            .map { (id: $0.id, label: goodsDisplayName($0.id), amount: $0.amount) }
+            .sorted { $0.label < $1.label }
+    }
+
+    private func centerTileType(of colony: Colony) -> String? {
+        guard let tileId = colony.tileId else { return nil }
+        return cachedGame?.tiles[tileId]?.type
+    }
+
+    /// Estimate the turns to complete a buildable, or nil when unknown.
+    nonisolated static func estimatedBuildTurns(colony: Colony,
+                                                buildableId: String,
+                                                specification: Specification,
+                                                centerTileType: String? = nil) -> Int? {
+        guard let info = specification.buildingTypes[buildableId],
+              !info.requiredGoods.isEmpty else {
+            return nil
+        }
+        let material = buildingMaterialsGoodsId
+        guard let required = info.requiredGoods[material] else { return nil }
+        let remaining = required - (colony.goods[material] ?? 0)
+        guard remaining > 0 else { return 0 }
+        let perTurn = estimatedBuildPerTurn(colony: colony,
+                                            specification: specification,
+                                            centerTileType: centerTileType)
+        guard perTurn > 0 else { return nil }
+        return (remaining + perTurn - 1) / perTurn
+    }
+
     var selectedColonyWorkerUnitId: String? {
         guard canManageSelectedColony else { return nil }
         if let unit = selectedUnit,
@@ -421,6 +1054,12 @@ final class GameState {
 
     var game: Game? { _ = gameUpdateID; return cachedGame }
 
+    /// Install a game model directly (local play and tests) without a connection.
+    func installGame(_ game: Game) {
+        cachedGame = game
+        gameUpdateID += 1
+    }
+
     func startLocal(userName: String, nationId: String) {
         guard case .disconnected = phase else { return }
         FreeColLogger.shared.info("Starting local game: user=\(userName) nation=\(nationId)")
@@ -448,6 +1087,10 @@ final class GameState {
                 statusMessage = "Connected, logging in…"
                 _ = try await client.login(userName: userName, nationId: nationId)
                 cachedGame = await client.game
+                if let game = cachedGame, game.currentPlayerId == nil {
+                    // Local games have no server-side turn owner yet.
+                    game.currentPlayerId = resolveLocalPlayerId()
+                }
 
                 // Make sure handshake completed
                 _ = try await serverHandshake
@@ -455,6 +1098,7 @@ final class GameState {
                 phase = .inGame
                 statusMessage = ""
                 startMessageLoop(client: client, server: server)
+                startLocalServerLoop(server: server)
             } catch {
                 FreeColLogger.shared.error("Local game failed: \(error)")
                 errorMessage = error.localizedDescription
@@ -467,6 +1111,44 @@ final class GameState {
     private func runServerHandshake(server: MockServer, gameXML: String) async throws {
         try await server.waitForConnection()
         try await server.doHandshake(gameResponse: gameXML)
+    }
+
+    /// Minimal server-side loop for local games: answers the handful of
+    /// messages that need a server response so the local game is playable,
+    /// most importantly `endTurn` (turn advancement).
+    private func startLocalServerLoop(server: MockServer) {
+        localServerTask?.cancel()
+        localServerTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let line = try? await server.nextLine() else { break }
+                guard let parsed = try? XMLDecoder.decode(line) else { continue }
+                let message = (parsed.tag == "question" && !parsed.children.isEmpty)
+                    ? parsed.children[0]
+                    : parsed
+                await self?.handleLocalServerMessage(message, server: server)
+            }
+        }
+    }
+
+    private func handleLocalServerMessage(_ message: ParsedMessage, server: MockServer) async {
+        switch message.tag {
+        case "endTurn":
+            let nextTurn = (cachedGame?.turn.number ?? 1) + 1
+            await server.send("<newTurn turn=\"\(nextTurn)\"/>")
+            if let localPlayerId = resolveLocalPlayerId() {
+                await server.send("<setCurrentPlayer player=\"\(localPlayerId)\"/>")
+            }
+            await server.flush()
+        case "chat":
+            let text = message.attributes["message"] ?? ""
+            let from = message.attributes["userName"] ?? "?"
+            if !text.isEmpty {
+                await server.send("<chat userName=\"\(from)\" message=\"\(text)\"/>")
+                await server.flush()
+            }
+        default:
+            break
+        }
     }
 
     func connect(host: String, port: Int) {
@@ -526,6 +1208,8 @@ final class GameState {
     func disconnect() {
         messageLoopTask?.cancel()
         messageLoopTask = nil
+        localServerTask?.cancel()
+        localServerTask = nil
         Task {
             await client?.disconnect()
             await server?.stop()
@@ -548,6 +1232,27 @@ final class GameState {
         applyServerState(result.serverState)
     }
 
+    private static let serverPromptTags: Set<String> = [
+        "fountainOfYouth", "indianDemand", "lootCargo",
+        "firstContact", "monarchAction", "newLandName", "newRegionName",
+        "close", "highScores", "nationSummary", "nativeTrade", "diplomacy",
+        "chooseFoundingFather", "scoutSpeakToChief", "spySettlement",
+        "incite", "setDead"
+    ]
+
+    private func isServerPromptTag(_ tag: String) -> Bool {
+        Self.serverPromptTags.contains(tag)
+    }
+
+    private func isDecisionPromptTag(_ tag: String) -> Bool {
+        tag == "fountainOfYouth" || tag == "indianDemand" || tag == "lootCargo"
+    }
+
+    private func isDecisionResponse(_ parsed: ParsedMessage) -> Bool {
+        guard isDecisionPromptTag(parsed.tag) else { return false }
+        return parsed.attributes["result"] != nil || parsed.attributes["value"] != nil
+    }
+
     func applySessionMessage(_ parsed: ParsedMessage) {
         switch parsed.tag {
         case "question":
@@ -556,7 +1261,20 @@ final class GameState {
             }
         case "reply", "multiple":
             for child in parsed.children {
+                if isDecisionResponse(child) {
+                    clearPendingDecision()
+                    statusMessage = "Decision processed."
+                    continue
+                }
                 applySessionMessage(child)
+            }
+        case "update":
+            // Model deltas in an update are applied by GameStateManager; here we
+            // only surface nested server prompts that were forwarded up.
+            for child in parsed.children {
+                if isServerPromptTag(child.tag) || child.tag == "multiple" || child.tag == "update" {
+                    applySessionMessage(child)
+                }
             }
         case "gameState":
             guard let rawState = parsed.attributes["state"],
@@ -578,6 +1296,69 @@ final class GameState {
             applyFirstContactMessage(parsed)
         case "missionary":
             applyMissionaryMessage(parsed)
+        case "monarchAction":
+            applyMonarchActionMessage(parsed)
+        case "newLandName":
+            applyNamePrompt(parsed, type: .newLandName)
+        case "newRegionName":
+            applyNamePrompt(parsed, type: .newRegionName)
+        case "close":
+            applyCloseMessage(parsed)
+        case "highScores":
+            highScoresReport = parsed
+            statusMessage = "High scores received."
+        case "nationSummary":
+            nationSummaryReport = parsed
+            statusMessage = "Nation summary received."
+        case "scoutSpeakToChief":
+            if isDecisionResponse(parsed) {
+                clearPendingDecision()
+                return
+            }
+            clearPendingDecision()
+            pendingServerDecision = PendingServerDecision(
+                type: .scoutReport,
+                rawPayload: parsed.attributes,
+                children: parsed.children
+            )
+        case "spySettlement":
+            applySpySettlementMessage(parsed)
+        case "incite":
+            if isDecisionResponse(parsed) {
+                clearPendingDecision()
+                statusMessage = "Decision processed."
+                return
+            }
+            clearPendingDecision()
+            pendingServerDecision = PendingServerDecision(
+                type: .incite,
+                rawPayload: parsed.attributes,
+                children: parsed.children
+            )
+            statusMessage = "Incite confirmation pending."
+        case "chooseFoundingFather":
+            if isDecisionResponse(parsed) {
+                clearPendingDecision()
+                statusMessage = "Founding father chosen."
+                return
+            }
+            clearPendingDecision()
+            pendingServerDecision = PendingServerDecision(
+                type: .foundingFather,
+                rawPayload: parsed.attributes,
+                children: parsed.children
+            )
+            statusMessage = "Choose a founding father."
+        case "learnSkill", "askSkill":
+            applyActionResultLog(parsed)
+        case "setDead":
+            applySetDeadMessage(parsed)
+        case "updateGameOptions", "updateMapGeneratorOptions":
+            applyOptionEcho(parsed)
+        case "nativeTrade":
+            applyNativeTradeMessage(parsed)
+        case "diplomacy":
+            applyDiplomacyMessage(parsed)
         case "animateMove":
             applyAnimateMoveMessage(parsed)
         case "animateAttack":
@@ -585,19 +1366,59 @@ final class GameState {
         case "chat":
             applyChatMessage(parsed)
         case "gameEnded":
+            // The server broadcasts this to every player; only the winner reacts.
+            let winner = parsed.attributes["winner"]
             isGameEnded = true
-            let winner = parsed.attributes["winner"] ?? "unknown"
-            statusMessage = "Game ended. Winner: \(winner)"
+            isVictorious = winner != nil && winner == resolveLocalPlayerId()
+            gameEndedHighScore = (parsed.attributes["highScore"] ?? "").lowercased() == "true"
+            statusMessage = isVictorious
+                ? "You won the game!"
+                : "Game ended. Winner: \(winner ?? "unknown")"
+            pendingServerDecision = nil
         case "fountainOfYouth":
-            statusMessage = "Fountain of youth: a party of immigrants joins you."
+            if isDecisionResponse(parsed) {
+                clearPendingDecision()
+                statusMessage = "Decision processed."
+                return
+            }
+            clearPendingDecision()
+            pendingServerDecision = PendingServerDecision(
+                type: .fountainOfYouth,
+                rawPayload: parsed.attributes,
+                children: parsed.children
+            )
+            statusMessage = "Fountain of youth: select emigrants."
         case "indianDemand":
-            statusMessage = "Native demand received (details pending)."
+            if isDecisionResponse(parsed) {
+                clearPendingDecision()
+                statusMessage = "Decision processed."
+                return
+            }
+            clearPendingDecision()
+            pendingServerDecision = PendingServerDecision(
+                type: .indianDemand,
+                rawPayload: parsed.attributes,
+                children: parsed.children
+            )
+            statusMessage = "Native demand pending."
         case "lootCargo":
-            statusMessage = "Loot available after the battle (details pending)."
+            if isDecisionResponse(parsed) {
+                clearPendingDecision()
+                statusMessage = "Decision processed."
+                return
+            }
+            clearPendingDecision()
+            pendingServerDecision = PendingServerDecision(
+                type: .lootCargo,
+                rawPayload: parsed.attributes,
+                children: parsed.children
+            )
+            statusMessage = "Loot decision pending."
         case "logout":
             if parsed.attributes["player"] == resolveLocalPlayerId() {
                 statusMessage = "Your session has ended."
             }
+            pendingServerDecision = nil
         default:
             break
         }
@@ -654,13 +1475,233 @@ final class GameState {
     }
 
     private func applyFirstContactMessage(_ parsed: ParsedMessage) {
-        let result = parsed.attributes["result"] ?? "unknown"
-        let player = parsed.attributes["player"] ?? "unknown"
-        let other = parsed.attributes["other"] ?? "unknown"
-        let camps = parsed.attributes["camps"] ?? "unknown"
-        let tile = parsed.attributes["tile"] ?? "unknown"
         errorMessage = nil
-        statusMessage = "First contact: result=\(result) player=\(player) other=\(other) camps=\(camps) tile=\(tile)"
+        if let result = parsed.attributes["result"], !result.isEmpty {
+            // Response echo: record it instead of opening a new prompt.
+            statusMessage = "First contact resolved: result=\(result)"
+            return
+        }
+        clearPendingDecision()
+        pendingServerDecision = PendingServerDecision(
+            type: .firstContact,
+            rawPayload: parsed.attributes,
+            children: parsed.children
+        )
+        statusMessage = "First contact: accept or decline."
+    }
+
+    private func applyMonarchActionMessage(_ parsed: ParsedMessage) {
+        let action = parsed.attributes["action"] ?? ""
+        // A result attribute means this is a response echo, not a new offer.
+        if let result = parsed.attributes["result"], !result.isEmpty {
+            statusMessage = "Monarch: \(prettyEnum(action)) (\(result))"
+            return
+        }
+        // Announcement-only actions need no answer.
+        if action == "no_action" || action == "displeasure" {
+            statusMessage = "Monarch: \(prettyEnum(action))"
+            return
+        }
+        clearPendingDecision()
+        pendingServerDecision = PendingServerDecision(
+            type: .monarchAction,
+            rawPayload: parsed.attributes,
+            children: parsed.children
+        )
+        statusMessage = "Monarch offer pending."
+    }
+
+    private func applyNamePrompt(_ parsed: ParsedMessage, type: PendingServerDecisionType) {
+        if parsed.attributes["result"] != nil {
+            clearPendingDecision()
+            statusMessage = "Name submitted."
+            return
+        }
+        clearPendingDecision()
+        pendingServerDecision = PendingServerDecision(
+            type: type,
+            rawPayload: parsed.attributes,
+            children: parsed.children
+        )
+        statusMessage = type == .newLandName ? "Name the new land." : "Name the new region."
+    }
+
+    private func applyCloseMessage(_ parsed: ParsedMessage) {
+        let panel = parsed.attributes["panel"] ?? ""
+        if matchesPendingPrompt(panel: panel) {
+            clearPendingDecision()
+            statusMessage = "Server closed the prompt."
+        } else {
+            statusMessage = "Server closed panel: \(panel)"
+        }
+    }
+
+    private func matchesPendingPrompt(panel: String) -> Bool {
+        guard let type = pendingServerDecision?.type else { return false }
+        let lower = panel.lowercased()
+        switch type {
+        case .indianDemand:
+            return lower.contains("demand")
+        case .lootCargo:
+            return lower.contains("capture") || lower.contains("loot")
+        case .fountainOfYouth:
+            return lower.contains("emigration") || lower.contains("fountain")
+        case .firstContact:
+            return lower.contains("contact")
+        case .monarchAction:
+            return lower.contains("monarch")
+        case .newLandName:
+            return lower.contains("newland")
+        case .newRegionName:
+            return lower.contains("newregion")
+        case .nativeTrade:
+            return lower.contains("trade")
+        case .diplomacy:
+            return lower.contains("diplomacy") || lower.contains("negotiation")
+        case .foundingFather:
+            return lower.contains("congress") || lower.contains("founding")
+        case .scoutReport:
+            return lower.contains("scout") || lower.contains("chief")
+        case .incite:
+            return lower.contains("incite")
+        }
+    }
+
+    private func applyActionResultLog(_ parsed: ParsedMessage) {
+        var parts: [String] = [parsed.tag]
+        for key in ["unit", "settlement", "result", "success", "gold", "goods", "action"] {
+            if let value = parsed.attributes[key] { parts.append("\(key): \(value)") }
+        }
+        let line = parts.joined(separator: " · ")
+        incomingChatLog.append(line)
+        if incomingChatLog.count > 8 {
+            incomingChatLog.removeFirst(incomingChatLog.count - 8)
+        }
+        statusMessage = line
+        errorMessage = nil
+    }
+
+    /// A `spySettlement` result opens the colony panel for the spied settlement.
+    private func applySpySettlementMessage(_ parsed: ParsedMessage) {
+        guard let settlementId = parsed.attributes["settlement"] else {
+            applyActionResultLog(parsed)
+            return
+        }
+        guard let game = cachedGame else { return }
+        if let colony = game.colonies[settlementId] {
+            statusMessage = "Spying on \(colony.name ?? settlementId)."
+        } else {
+            statusMessage = "Spy report: \(settlementId)"
+        }
+        openColonyPanel(colonyId: settlementId)
+    }
+
+    /// A `setDead` record: forward defeat of the local player to the UI.
+    private func applySetDeadMessage(_ parsed: ParsedMessage) {
+        guard let deadId = parsed.attributes["player"] else { return }
+        if deadId == resolveLocalPlayerId() {
+            isDefeated = true
+            isVictorious = false
+            pendingServerDecision = nil
+            statusMessage = "Your nation has been defeated."
+        } else {
+            statusMessage = "Player eliminated: \(deadId)"
+        }
+    }
+
+    /// Merge `updateGameOptions` / `updateMapGeneratorOptions` echoes.
+    private func applyOptionEcho(_ parsed: ParsedMessage) {
+        var options: [String: String] = [:]
+        for child in parsed.children where child.tag == "option" {
+            guard let id = child.attributes["id"] else { continue }
+            options[id] = child.attributes["value"] ?? ""
+        }
+        if !options.isEmpty {
+            cachedGame?.mergeOptions(options)
+            statusMessage = "Options updated (\(options.count))."
+        }
+    }
+
+    private func applyNativeTradeMessage(_ parsed: ParsedMessage) {
+        let action = parsed.attributes["action"] ?? ""
+        errorMessage = nil
+        let incoming = NativeTradeSession(nativeTradeChild: parsed.children.first { $0.tag == "nativeTrade" })
+
+        func mergeIntoPrompt() {
+            var session = pendingNativeTrade ?? incoming
+            session.merge(from: incoming)
+            pendingServerDecision = PendingServerDecision(
+                type: .nativeTrade,
+                rawPayload: ["action": action],
+                children: [session.toInnerMessage()]
+            )
+        }
+
+        switch action {
+        case "ACK_OPEN":
+            clearPendingDecision()
+            pendingServerDecision = PendingServerDecision(
+                type: .nativeTrade,
+                rawPayload: ["action": action],
+                children: [incoming.toInnerMessage()]
+            )
+            statusMessage = "Native trade open."
+        case "ACK_BUY":
+            mergeIntoPrompt()
+            statusMessage = tradeItemStatus("Bought", session: pendingNativeTrade)
+        case "ACK_SELL":
+            mergeIntoPrompt()
+            statusMessage = tradeItemStatus("Sold", session: pendingNativeTrade)
+        case "ACK_GIFT":
+            mergeIntoPrompt()
+            statusMessage = "Gift accepted."
+        case "ACK_BUY_HAGGLE", "ACK_SELL_HAGGLE":
+            mergeIntoPrompt()
+            if let item = pendingNativeTrade?.item {
+                statusMessage = "Haggle: \(item.goodsType ?? "goods") now \(item.price) gold."
+            } else {
+                statusMessage = "Haggle counter-offer received."
+            }
+        case "CLOSE":
+            clearPendingDecision()
+            statusMessage = "Native trade closed."
+        case "NAK_GOODS", "NAK_HAGGLE", "NAK_HOSTILE", "NAK_NOSALE", "NAK_INVALID":
+            statusMessage = "Native trade declined: \(action)"
+        default:
+            // Includes a stray server-side OPEN echo.
+            mergeIntoPrompt()
+            statusMessage = "Native trade: \(action)"
+        }
+    }
+
+    private func tradeItemStatus(_ verb: String, session: NativeTradeSession?) -> String {
+        guard let item = session?.item else { return "\(verb)." }
+        return "\(verb) \(item.goodsType ?? "goods") x\(item.amount) for \(item.price) gold."
+    }
+
+    private func applyDiplomacyMessage(_ parsed: ParsedMessage) {
+        guard let tradeNode = parsed.children.first(where: { $0.tag == "diplomaticTrade" }) else {
+            statusMessage = "Diplomacy message without agreement."
+            return
+        }
+        errorMessage = nil
+        let proposal = DiplomaticTradeProposal(raw: tradeNode)
+        switch proposal.status {
+        case "ACCEPT_TRADE":
+            clearPendingDecision()
+            statusMessage = "Diplomacy: offer accepted."
+        case "REJECT_TRADE":
+            clearPendingDecision()
+            statusMessage = "Diplomacy: offer rejected."
+        default:
+            clearPendingDecision()
+            pendingServerDecision = PendingServerDecision(
+                type: .diplomacy,
+                rawPayload: parsed.attributes,
+                children: [tradeNode]
+            )
+            statusMessage = "Diplomacy: proposal pending."
+        }
     }
 
     private func applyMissionaryMessage(_ parsed: ParsedMessage) {
@@ -725,21 +1766,539 @@ final class GameState {
         errorMessage = "Server hat eine Neuverbindung angefordert."
     }
 
+    func clearPendingDecision() {
+        pendingServerDecision = nil
+    }
+
+    func dismissPendingDecision() {
+        clearPendingDecision()
+        statusMessage = ""
+    }
+
+    func canRespondToPendingDecision() -> Bool {
+        guard let decision = pendingServerDecision else { return false }
+        guard phase == .inGame else { return false }
+        switch decision.type {
+        case .fountainOfYouth, .monarchAction, .nativeTrade, .foundingFather, .incite:
+            // All are current-player messages on the Java side.
+            return isLocalPlayersTurn
+        case .indianDemand, .lootCargo, .firstContact, .newLandName, .newRegionName,
+             .diplomacy, .scoutReport:
+            return true
+        }
+    }
+
+    /// Reply to an `indianDemand` prompt. The Java enum wire values are
+    /// `indian_demand_accept` / `indian_demand_reject`.
+    private func respondToIndianDemand(accept: Bool) {
+        guard let decision = pendingServerDecision, decision.type == .indianDemand else { return }
+        guard phase == .inGame else { return }
+
+        var attributes: [String: String] = [:]
+        for key in ["unit", "colony", "type", "amount"] {
+            if let value = decision.rawPayload[key] { attributes[key] = value }
+        }
+        attributes["result"] = accept ? "indian_demand_accept" : "indian_demand_reject"
+        sendDecision(tag: "indianDemand", attributes: attributes, children: [])
+    }
+
+    func acceptPendingDecision() {
+        respondToIndianDemand(accept: true)
+    }
+
+    func declinePendingDecision() {
+        respondToIndianDemand(accept: false)
+    }
+
+    func acceptFirstContact() {
+        respondToFirstContact(accept: true)
+    }
+
+    func declineFirstContact() {
+        respondToFirstContact(accept: false)
+    }
+
+    /// Reply to a `firstContact` prompt. `result` is a boolean string.
+    private func respondToFirstContact(accept: Bool) {
+        guard let decision = pendingServerDecision, decision.type == .firstContact else { return }
+        guard phase == .inGame else { return }
+
+        var attributes: [String: String] = [:]
+        for key in ["player", "other", "tile", "camps"] {
+            if let value = decision.rawPayload[key] { attributes[key] = value }
+        }
+        attributes["result"] = accept ? "true" : "false"
+        sendDecision(tag: "firstContact", attributes: attributes, children: [])
+    }
+
+    /// Reply to a `monarchAction` offer. `result` is a boolean string.
+    func answerMonarch(accept: Bool) {
+        guard let decision = pendingServerDecision, decision.type == .monarchAction else { return }
+        guard phase == .inGame, isLocalPlayersTurn else { return }
+
+        var attributes: [String: String] = [:]
+        for key in ["action", "monarch", "tax"] {
+            if let value = decision.rawPayload[key] { attributes[key] = value }
+        }
+        attributes["result"] = accept ? "true" : "false"
+        sendDecision(tag: "monarchAction", attributes: attributes, children: [])
+    }
+
+    func submitNewLandName(_ name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            errorMessage = "Bitte einen Namen eingeben."
+            return
+        }
+        guard let decision = pendingServerDecision, decision.type == .newLandName else { return }
+        guard phase == .inGame else { return }
+
+        var attributes: [String: String] = [:]
+        if let unit = decision.rawPayload["unit"] { attributes["unit"] = unit }
+        attributes["newLandName"] = trimmed
+        sendDecision(tag: "newLandName", attributes: attributes, children: [])
+    }
+
+    func submitNewRegionName(_ name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            errorMessage = "Bitte einen Namen eingeben."
+            return
+        }
+        guard let decision = pendingServerDecision, decision.type == .newRegionName else { return }
+        guard phase == .inGame else { return }
+
+        var attributes: [String: String] = [:]
+        for key in ["region", "tile", "unit"] {
+            if let value = decision.rawPayload[key] { attributes[key] = value }
+        }
+        attributes["newRegionName"] = trimmed
+        sendDecision(tag: "newRegionName", attributes: attributes, children: [])
+    }
+
+    // MARK: Phase 54 - inbound decision handling
+
+    /// Dismiss an informational server prompt (no reply is sent).
+    func acknowledgePendingDecision() {
+        clearPendingDecision()
+        statusMessage = ""
+    }
+
+    /// Choose one of the offered founding fathers in a `chooseFoundingFather` prompt.
+    func choosePendingFoundingFather(_ fatherId: String) {
+        guard let decision = pendingServerDecision, decision.type == .foundingFather,
+              phase == .inGame else { return }
+        let trimmed = fatherId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        var attributes = decision.rawPayload
+        attributes["foundingFather"] = trimmed
+        sendDecision(tag: "chooseFoundingFather", attributes: attributes, children: [])
+    }
+
+    /// Accept an `incite` prompt by sending the confirmed action back.
+    func confirmPendingIncite() {
+        guard let incite = pendingIncite, phase == .inGame else { return }
+        errorMessage = nil
+        let attributes = [
+            "unit": incite.unit,
+            "settlement": incite.settlement,
+            "enemy": incite.enemy,
+            "gold": String(incite.gold),
+        ]
+        sendDecision(tag: "incite", attributes: attributes, children: [])
+    }
+
+    func declinePendingIncite() {
+        clearPendingDecision()
+        statusMessage = "Incite declined."
+    }
+
+    /// Continue playing after winning.
+    func continueAfterVictory() {
+        isVictorious = false
+        isGameEnded = false
+        sendContinue()
+    }
+
+    /// Retire after winning.
+    func retireAfterVictory() {
+        isVictorious = false
+        isGameEnded = false
+        retireGame()
+    }
+
+    /// Enter revenge mode after a local defeat.
+    func enterRevengeModeFromDefeat() {
+        isDefeated = false
+        isUndead = true
+        enterRevengeMode()
+    }
+
+    // MARK: Phase 45 - Native trade sessions
+
+    /// A native settlement adjacent to the selected unit that can be traded with.
+    struct NativeTradeTarget: Identifiable {
+        var id: String { settlementId }
+        let settlementId: String
+        let name: String
+    }
+
+    /// Native settlements adjacent to the selected unit.
+    var nativeTradeTargetsForSelectedUnit: [NativeTradeTarget] {
+        guard let game = cachedGame,
+              let unit = selectedUnit,
+              let unitTileId = unit.location,
+              let unitTile = game.tiles[unitTileId] else { return [] }
+        return game.colonies.values.compactMap { colony in
+            guard let ownerId = colony.owner,
+                  let owner = game.players[ownerId],
+                  owner.playerType == .indian,
+                  let colonyTileId = colony.tileId,
+                  let colonyTile = game.tiles[colonyTileId] else { return nil }
+            let dx = abs(colonyTile.x - unitTile.x)
+            let dy = abs(colonyTile.y - unitTile.y)
+            guard dx <= 1, dy <= 1, !(dx == 0 && dy == 0) else { return nil }
+            return NativeTradeTarget(settlementId: colony.id, name: colony.name ?? colony.id)
+        }
+    }
+
+    var canOpenNativeTrade: Bool {
+        guard phase == .inGame, isLocalPlayersTurn, selectedUnit != nil else { return false }
+        return !nativeTradeTargetsForSelectedUnit.isEmpty
+    }
+
+    /// Compass direction from the selected unit's tile to an adjacent settlement.
+    func directionToAdjacentSettlement(_ settlementId: String) -> String? {
+        guard let game = cachedGame,
+              let unitId = selectedUnitId,
+              let unit = game.units[unitId],
+              let fromTileId = game.resolvedTileId(for: unit),
+              let settlement = game.colonies[settlementId],
+              let toTileId = settlement.tileId else {
+            return nil
+        }
+        return attackDirection(fromTileId: fromTileId, toTileId: toTileId, in: game)
+    }
+
+    func openNativeTradeWithSelectedUnit(settlementId: String) {
+        guard phase == .inGame, isLocalPlayersTurn, let unitId = selectedUnitId else {
+            errorMessage = "Kein Handel möglich."
+            return
+        }
+        guard !settlementId.isEmpty else {
+            errorMessage = "Siedlung erforderlich."
+            return
+        }
+        errorMessage = nil
+        let session = NativeTradeSession(unitId: unitId, settlementId: settlementId)
+        sendNativeTrade(session.toMessage(action: "OPEN", item: nil))
+    }
+
+    func nativeTradeBuy(_ item: NativeTradeItem, offerPrice: Int? = nil) {
+        sendNativeTradeOffer("BUY", item: item, offerPrice: offerPrice)
+    }
+
+    func nativeTradeSell(_ item: NativeTradeItem, offerPrice: Int? = nil) {
+        sendNativeTradeOffer("SELL", item: item, offerPrice: offerPrice)
+    }
+
+    func nativeTradeGift(_ item: NativeTradeItem) {
+        sendNativeTradeAction("GIFT", item: item)
+    }
+
+    /// Suggested haggle offer: 10% better than the native's asking/offered price.
+    func nativeTradeHaggleOffer(_ item: NativeTradeItem, buying: Bool) -> Int {
+        let step = max(1, item.price / 10)
+        return buying ? max(1, item.price - step) : item.price + step
+    }
+
+    func closeNativeTrade() {
+        if let session = pendingNativeTrade {
+            sendNativeTrade(session.toMessage(action: "CLOSE", item: nil))
+        }
+        clearPendingDecision()
+        statusMessage = "Native trade closed."
+    }
+
+    private func sendNativeTradeAction(_ action: String, item: NativeTradeItem) {
+        guard let session = pendingNativeTrade else { return }
+        guard phase == .inGame, isLocalPlayersTurn else { return }
+        errorMessage = nil
+        sendNativeTrade(session.toMessage(action: action, item: item))
+    }
+
+    /// Send BUY/SELL with an optional offer price. A positive `offerPrice`
+    /// below (buy) / above (sell) the native's price triggers a haggle.
+    private func sendNativeTradeOffer(_ action: String, item: NativeTradeItem, offerPrice: Int?) {
+        var offered = item
+        if let offerPrice {
+            offered.price = max(0, offerPrice)
+        }
+        sendNativeTradeAction(action, item: offered)
+    }
+
+    private func sendNativeTrade(_ message: ParsedMessage) {
+        guard let client else {
+            errorMessage = "Client is not connected."
+            return
+        }
+        Task {
+            do {
+                try await client.send(message: message)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    // MARK: Phase 45 - Diplomacy
+
+    func acceptDiplomacy() {
+        respondToDiplomacy(accept: true)
+    }
+
+    func rejectDiplomacy() {
+        respondToDiplomacy(accept: false)
+    }
+
+    private func respondToDiplomacy(accept: Bool) {
+        guard let decision = pendingServerDecision, decision.type == .diplomacy,
+              let proposal = decision.diplomaticTradeProposal else { return }
+        guard phase == .inGame else { return }
+        guard let client else {
+            errorMessage = "Client is not connected."
+            return
+        }
+
+        var attributes = proposal.raw.attributes
+        attributes["status"] = accept ? "ACCEPT_TRADE" : "REJECT_TRADE"
+        let tradeNode = ParsedMessage(
+            tag: "diplomaticTrade",
+            attributes: attributes,
+            children: proposal.raw.children
+        )
+        let ourId = decision.rawPayload["ourId"] ?? proposal.sender ?? resolveLocalPlayerId() ?? ""
+        let otherId = decision.rawPayload["otherId"] ?? proposal.recipient ?? ""
+        let message = ParsedMessage(
+            tag: "diplomacy",
+            attributes: ["ourId": ourId, "otherId": otherId],
+            children: [tradeNode]
+        )
+        errorMessage = nil
+        Task {
+            do {
+                _ = try await client.ask(message: message)
+                clearPendingDecision()
+                statusMessage = accept ? "Diplomacy accepted." : "Diplomacy rejected."
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    /// Send a counter-proposal built from the given clause drafts.
+    func sendDiplomacyCounterProposal(_ drafts: [DiplomaticClauseDraft]) {
+        guard let decision = pendingServerDecision, decision.type == .diplomacy,
+              let proposal = decision.diplomaticTradeProposal,
+              phase == .inGame,
+              let client else {
+            errorMessage = "Kein diplomatischer Vorschlag aktiv."
+            return
+        }
+        let ourId = decision.rawPayload["ourId"] ?? resolveLocalPlayerId() ?? ""
+        let otherId = decision.rawPayload["otherId"] ?? ""
+        guard !ourId.isEmpty, !otherId.isEmpty else {
+            errorMessage = "Diplomatie-Objekte fehlen."
+            return
+        }
+
+        var attributes = proposal.raw.attributes
+        attributes["status"] = "PROPOSE_TRADE"
+        attributes["version"] = String(proposal.version + 1)
+        let children = drafts.map { Self.diplomacyClauseNode($0, ourId: ourId, otherId: otherId) }
+        let tradeNode = ParsedMessage(tag: "diplomaticTrade", attributes: attributes, children: children)
+        let message = ParsedMessage(
+            tag: "diplomacy",
+            attributes: ["ourId": ourId, "otherId": otherId],
+            children: [tradeNode]
+        )
+        errorMessage = nil
+        Task {
+            do {
+                _ = try await client.ask(message: message)
+                clearPendingDecision()
+                statusMessage = "Gegenangebot gesendet."
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    /// Draft clauses pre-populated from the pending proposal.
+    var pendingDiplomacyDrafts: [DiplomaticClauseDraft] {
+        guard let decision = pendingServerDecision,
+              let proposal = decision.diplomaticTradeProposal else {
+            return []
+        }
+        let ourId = decision.rawPayload["ourId"] ?? resolveLocalPlayerId() ?? ""
+        return proposal.clauses.compactMap {
+            DiplomaticClauseDraft(clause: $0, ourPlayerId: ourId)
+        }
+    }
+
+    /// Serialize a clause draft into a `<*TradeItem>` node.
+    nonisolated static func diplomacyClauseNode(_ draft: DiplomaticClauseDraft,
+                                                 ourId: String,
+                                                 otherId: String) -> ParsedMessage {
+        let source = draft.weGive ? ourId : otherId
+        let destination = draft.weGive ? otherId : ourId
+        var attributes: Attributes = [
+            "id": draft.kind.tradeItemId,
+            "source": source,
+            "destination": destination,
+        ]
+        var children: [ParsedMessage] = []
+        switch draft.kind {
+        case .gold:
+            attributes["gold"] = String(draft.goldAmount)
+        case .goods:
+            children = [ParsedMessage(
+                tag: "goods",
+                attributes: ["type": draft.goodsType, "amount": String(draft.goodsAmount)],
+                children: []
+            )]
+        case .colony:
+            attributes["colony"] = draft.colonyId
+            attributes["colonyName"] = draft.colonyName
+        case .stance:
+            attributes["stance"] = draft.stance
+        case .unit:
+            attributes["unit"] = draft.unitId
+        case .incite:
+            attributes["victim"] = draft.victimId
+        }
+        return ParsedMessage(tag: draft.kind.tag, attributes: attributes, children: children)
+    }
+
+    /// Units selectable for a diplomacy unit clause.
+    func diplomacyUnitOptions(weGive: Bool) -> [(id: String, label: String)] {
+        guard let game = cachedGame,
+              let localPlayerId = resolveLocalPlayerId() else {
+            return []
+        }
+        return game.units.values
+            .filter { weGive ? $0.owner == localPlayerId : ($0.owner != localPlayerId && $0.owner != nil) }
+            .map { (id: $0.id, label: "\($0.unitType ?? $0.id) [\($0.owner ?? "?")]") }
+            .sorted { $0.label < $1.label }
+    }
+
+    /// Player ids selectable as an incite target (everyone but us).
+    func diplomacyVictimOptions() -> [(id: String, label: String)] {
+        guard let game = cachedGame,
+              let localPlayerId = resolveLocalPlayerId() else {
+            return []
+        }
+        return game.players.values
+            .filter { $0.id != localPlayerId }
+            .map { (id: $0.id, label: $0.name ?? $0.nationId ?? $0.id) }
+            .sorted { $0.label < $1.label }
+    }
+
+    /// Reply to a `lootCargo` prompt with the selected goods stacks. An empty
+    /// selection sends the reply with no `<goods>` children, meaning "loot nothing".
+    func lootPendingCargo(selected: [LootGoodsOption]) {
+        guard let decision = pendingServerDecision, decision.type == .lootCargo else { return }
+        guard phase == .inGame else { return }
+
+        var attributes: [String: String] = [:]
+        if let winner = decision.rawPayload["winner"] { attributes["winner"] = winner }
+        if let loser = decision.rawPayload["loser"] { attributes["loser"] = loser }
+
+        let children = selected.map { option in
+            ParsedMessage(
+                tag: "goods",
+                attributes: ["type": option.type, "amount": "\(option.amount)"],
+                children: []
+            )
+        }
+        sendDecision(tag: "lootCargo", attributes: attributes, children: children)
+    }
+
+    /// Place one fountain-of-youth emigrant in the given slot (1...3).
+    /// Each call consumes one remaining migrant; the pending prompt closes at zero.
+    func emigratePendingMigrant(slot: Int) {
+        guard let decision = pendingServerDecision, decision.type == .fountainOfYouth else { return }
+        guard phase == .inGame, isLocalPlayersTurn else { return }
+        guard slot >= 1 && slot <= 3 else { return }
+        guard let client else {
+            errorMessage = "Client is not connected."
+            return
+        }
+
+        Task {
+            do {
+                let message = ParsedMessage(
+                    tag: "emigrateUnit",
+                    attributes: ["slot": "\(slot)"],
+                    children: []
+                )
+                _ = try await client.ask(message: message)
+
+                let remaining = decision.migrantCount - 1
+                if remaining > 0 {
+                    pendingServerDecision = PendingServerDecision(
+                        type: .fountainOfYouth,
+                        rawPayload: ["migrants": "\(remaining)"],
+                        children: []
+                    )
+                    statusMessage = "Emigrant placed. \(remaining) remaining."
+                } else {
+                    clearPendingDecision()
+                    statusMessage = "Emigrants placed."
+                }
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func sendDecision(tag: String, attributes: [String: String], children: [ParsedMessage]) {
+        guard let client else {
+            errorMessage = "Client is not connected."
+            return
+        }
+        Task {
+            do {
+                _ = try await client.ask(
+                    message: ParsedMessage(tag: tag, attributes: attributes, children: children)
+                )
+                clearPendingDecision()
+                statusMessage = "Decision sent."
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
     private func resolveLocalPlayerId() -> String? {
-        guard let game = cachedGame else { return nil }
+        guard let game = cachedGame else { return cachedLocalPlayerId }
         if let clientUserName = game.clientUserName,
            let player = game.players.values.first(where: { $0.name == clientUserName }) {
+            cachedLocalPlayerId = player.id
             return player.id
         }
         if let name = localPlayerName,
            let player = game.players.values.first(where: { $0.name == name }) {
+            cachedLocalPlayerId = player.id
             return player.id
         }
         if let nationId = localNationId,
            let player = game.players.values.first(where: { $0.nationId == nationId }) {
+            cachedLocalPlayerId = player.id
             return player.id
         }
-        return nil
+        // The local player object may already have been removed (e.g. setDead).
+        return cachedLocalPlayerId
     }
 
     private func applyServerState(_ state: ServerState) {
@@ -761,6 +2320,7 @@ final class GameState {
         selectedTileId = nil
         isReadyToStart = false
         localPlayerName = nil
+        cachedLocalPlayerId = nil
         localNationId = nil
         localNationTypeId = nil
         localColorValue = nil
@@ -768,6 +2328,11 @@ final class GameState {
         pendingEndTurnTurn = nil
         incomingChatLog = []
         isGameEnded = false
+        isVictorious = false
+        isDefeated = false
+        isUndead = false
+        gameEndedHighScore = false
+        pendingServerDecision = nil
         mapAnimationCue = nil
         mapAnimationCueToken += 1
         didAutoFocusInitialUnit = false
@@ -999,7 +2564,7 @@ final class GameState {
     }
 
     func chooseFoundingFather(_ foundingFatherId: String) {
-        guard phase == .lobby else { return }
+        guard phase == .lobby || phase == .inGame else { return }
         let trimmedFoundingFatherId = foundingFatherId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedFoundingFatherId.isEmpty else {
             errorMessage = "Bitte eine FoundingFather-ID angeben."
@@ -1093,19 +2658,16 @@ final class GameState {
             errorMessage = "Bitte einen Monarch-Action-Typ angeben."
             return
         }
-        guard let playerId = resolveLocalPlayerId() else {
-            errorMessage = "Lokaler Spieler konnte nicht bestimmt werden."
-            return
-        }
 
         errorMessage = nil
 
 
         Task {
             do {
+                // Java reads `action` plus a boolean `result` here.
                 let msg = ParsedMessage(
                     tag: "monarchAction",
-                    attributes: ["action": trimmedActionType, "player": playerId],
+                    attributes: ["action": trimmedActionType, "result": "true"],
                     children: []
                 )
                 try await client?.send(message: msg)
@@ -1336,6 +2898,8 @@ final class GameState {
         errorMessage = nil
         isEndingTurn = true
         pendingEndTurnTurn = game.turn.number
+        endTurnToken += 1
+        let token = endTurnToken
 
         Task {
             do {
@@ -1345,6 +2909,16 @@ final class GameState {
                 clearPendingEndTurn()
                 errorMessage = error.localizedDescription
             }
+        }
+
+        // Safety net: if the server never confirms (no turn/current-player
+        // update), release the lock after a while so the player can retry
+        // instead of being stuck with a permanently disabled button.
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 8_000_000_000)
+            guard token == self.endTurnToken, self.isEndingTurn else { return }
+            self.clearPendingEndTurn()
+            self.statusMessage = "Zugende nicht bestätigt – bitte erneut versuchen."
         }
     }
 
@@ -1358,18 +2932,10 @@ final class GameState {
               let unitId = selectedUnitId,
               let unit = cachedGame?.units[unitId],
               let game = cachedGame else {
-            if let unitId = selectedUnitId,
-               let unit = cachedGame?.units[unitId],
-               unit.location != nil,
-               cachedGame?.tiles[unit.location ?? ""] == nil {
-                errorMessage = "Einheit ist eingeschifft; bitte zuerst ausschiffen."
-            } else {
-                errorMessage = "Ungueltige Bewegung."
-            }
+            errorMessage = "Ungueltige Bewegung."
             return
         }
-        guard let sourceTileId = unit.location,
-              game.tiles[sourceTileId] != nil,
+        guard let sourceTileId = resolveUnitTileId(unit, in: game),
               let dir = attackDirection(fromTileId: sourceTileId, toTileId: destinationTileId, in: game) else {
             errorMessage = "Ziel nicht benachbart."
             return
@@ -1406,9 +2972,8 @@ final class GameState {
               unit.owner == localPlayerId,
               unit.movesLeft > 0,
               unit.state == .active,
-              let sourceTileId = unit.location,
-              game.tiles[sourceTileId] != nil,
-              unit.location != destinationTileId,
+              let sourceTileId = resolveUnitTileId(unit, in: game),
+              sourceTileId != destinationTileId,
               game.tiles[destinationTileId] != nil else {
             return false
         }
@@ -1769,6 +3334,100 @@ final class GameState {
         }
     }
 
+    // MARK: - Trade route editing
+
+    func createTradeRoute() {
+        guard canManageTradeRoutes else {
+            errorMessage = "Handelsrouten können nur im eigenen Zug verwaltet werden."
+            return
+        }
+        errorMessage = nil
+        Task {
+            do {
+                let msg = ParsedMessage(tag: "newTradeRoute", attributes: [:], children: [])
+                try await client?.send(message: msg)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func saveTradeRoute(_ route: TradeRoute) {
+        guard canManageTradeRoutes,
+              let game = cachedGame,
+              route.owner != nil else {
+            errorMessage = "Handelsroute kann nicht gespeichert werden."
+            return
+        }
+        let trimmed = (route.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            errorMessage = "Handelsroute braucht einen Namen."
+            return
+        }
+        errorMessage = nil
+
+        var updated = route
+        updated.name = trimmed
+        let msg = Self.tradeRouteMessage(tag: "updateTradeRoute", route: updated)
+
+        Task {
+            do {
+                if server != nil {
+                    game.addTradeRoute(updated)
+                    gameUpdateID += 1
+                }
+                try await client?.send(message: msg)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func deleteTradeRoute(_ tradeRouteId: String) {
+        guard canManageTradeRoutes,
+              let game = cachedGame,
+              game.tradeRoutes[tradeRouteId] != nil else {
+            errorMessage = "Handelsroute kann nicht gelöscht werden."
+            return
+        }
+        errorMessage = nil
+
+        Task {
+            do {
+                let msg = ParsedMessage(
+                    tag: "deleteTradeRoute",
+                    attributes: ["tradeRoute": tradeRouteId],
+                    children: []
+                )
+                if server != nil {
+                    game.removeTradeRoute(tradeRouteId)
+                    gameUpdateID += 1
+                }
+                try await client?.send(message: msg)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    /// Serialize a `<tradeRoute>` object for `updateTradeRoute` requests.
+    nonisolated static func tradeRouteMessage(tag: String, route: TradeRoute) -> ParsedMessage {
+        let stops: [ParsedMessage] = route.stops.map { stop in
+            var attributes: Attributes = [:]
+            if let locationId = stop.locationId { attributes["location"] = locationId }
+            let cargo = stop.cargoTypeIds.map {
+                ParsedMessage(tag: "cargo", attributes: ["id": $0], children: [])
+            }
+            return ParsedMessage(tag: "tradeRouteStop", attributes: attributes, children: cargo)
+        }
+        var routeAttributes: Attributes = ["id": route.id]
+        if let name = route.name { routeAttributes["name"] = name }
+        if let owner = route.owner { routeAttributes["owner"] = owner }
+        routeAttributes["silent"] = route.silent ? "true" : "false"
+        let routeChild = ParsedMessage(tag: "tradeRoute", attributes: routeAttributes, children: stops)
+        return ParsedMessage(tag: tag, attributes: [:], children: [routeChild])
+    }
+
     func setSelectedUnitCurrentStop(_ indexText: String) {
         guard phase == .inGame,
               isLocalPlayersTurn,
@@ -1861,14 +3520,7 @@ final class GameState {
         case .skipped:
             return unit.state == .active && unit.movesLeft > 0
         case .sentry:
-            let type = (unit.unitType ?? "").lowercased()
-            let isLikelyNaval = type.contains("ship")
-                || type.contains("caravel")
-                || type.contains("galleon")
-                || type.contains("frigate")
-                || type.contains("manowar")
-                || type.contains("privateer")
-            return unit.state == .active && !isLikelyNaval
+            return unit.state == .active && !isNavalUnit(unit)
         default:
             return false
         }
@@ -2577,9 +4229,7 @@ final class GameState {
               unit.movesLeft > 0 else {
             return false
         }
-        let unitType = (unit.unitType ?? "").lowercased()
-        let role = (unit.role ?? "").lowercased()
-        return unitType.contains("missionary") || role.contains("missionary")
+        return UnitTypeTraits.isMissionary(unitType: unit.unitType, role: unit.role)
     }
 
     func learnSkillAtSelectedUnit(direction: String) {
@@ -3209,8 +4859,7 @@ final class GameState {
               unit.owner == localPlayerId,
               unit.movesLeft > 0,
               unit.state == .active,
-              let sourceTileId = unit.location,
-              game.tiles[sourceTileId] != nil,
+              let sourceTileId = resolveUnitTileId(unit, in: game),
               unit.location != destinationTileId,
               game.tiles[destinationTileId] != nil else {
             return false
@@ -3424,6 +5073,7 @@ final class GameState {
     private func clearPendingEndTurn() {
         isEndingTurn = false
         pendingEndTurnTurn = nil
+        endTurnToken += 1
     }
 
     private func autoFocusInitialUnitIfNeeded() {
@@ -3452,25 +5102,50 @@ final class GameState {
         if game.units.values.contains(where: { $0.location == unit.id }) {
             return true
         }
-        let type = (unit.unitType ?? "").lowercased()
-        return type.contains("ship")
-            || type.contains("caravel")
-            || type.contains("galleon")
-            || type.contains("merchant")
-            || type.contains("frigate")
-            || type.contains("privateer")
-            || type.contains("manowar")
+        return isCarrierUnit(unit)
+    }
+
+    /// True when a settlement (colony or native village) occupies the tile.
+    nonisolated static func tileHasSettlement(_ tile: Tile, in game: Game) -> Bool {
+        if tile.settlement != nil { return true }
+        if let owning = tile.owningSettlement, game.colonies[owning] != nil { return true }
+        return game.colonies.values.contains { $0.tileId == tile.id }
+    }
+
+    /// True when the tile is owned by a native (Indian) player.
+    nonisolated static func tileIsNativeOwned(_ tile: Tile, in game: Game) -> Bool {
+        let ownerId = tile.owner
+            ?? tile.owningSettlement.flatMap { game.colonies[$0]?.owner }
+        guard let ownerId else { return false }
+        return game.players[ownerId]?.playerType == .indian
+    }
+
+    /// Founding eligibility, approximating the server's
+    /// `Player.canClaimToFoundSettlement` rules: settleable terrain, no
+    /// settlement on the tile (colony *or* native village), no native-owned
+    /// land, and no settlement on an adjacent tile.
+    nonisolated static func isBuildableColonyTile(_ tile: Tile, in game: Game) -> Bool {
+        guard let type = tile.type?.lowercased() else { return false }
+        let forbidden = ["ocean", "highseas", "lake", "arctic", "mountains"]
+        guard !forbidden.contains(where: { type.contains($0) }) else { return false }
+
+        // Reject tiles that already carry a settlement (another colony or a
+        // native village), including when only a partial tile update was seen.
+        if tileHasSettlement(tile, in: game) { return false }
+        if tileIsNativeOwned(tile, in: game) { return false }
+
+        // FreeCol founding rule: no settlement on the tile or an adjacent tile.
+        for neighborId in game.neighborTileIds(of: tile.id) {
+            if game.colonies.values.contains(where: { $0.tileId == neighborId }) {
+                return false
+            }
+        }
+        return true
     }
 
     private func isBuildableColonyTile(_ tile: Tile) -> Bool {
-        guard let type = tile.type?.lowercased() else { return false }
-        guard !type.contains("ocean"),
-              !type.contains("highseas"),
-              !type.contains("lake"),
-              tile.settlement == nil else {
-            return false
-        }
-        return true
+        guard let game = cachedGame else { return false }
+        return Self.isBuildableColonyTile(tile, in: game)
     }
 
     private func startMessageLoop(client: FreeColClient, server: MockServer? = nil) {

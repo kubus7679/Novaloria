@@ -404,3 +404,224 @@ Stabilize in-game turn progression so end-turn actions are only sent when legal 
 - [x] Debug/UX cleanup: MapView per-render prints removed, LoginView DEBUG line removed.
 - [x] CLI regressions (8 new: model/GMS unit tests + inbound loop integration test) and validation passed.
 - Detailed plan saved in `Docs/Plans/phase7-parity-pass-plan.md`.
+
+## Next Implementation Plan (Phase 42 Server Decision Dialogs)
+
+- [x] Pending-decision model in `GameState` for `fountainOfYouth`/`indianDemand`/`lootCargo`.
+- [x] Game-overlay shell in `GameView` preserving the status bar.
+- [x] Lifecycle regression coverage scaffolded.
+- Detailed plan saved in `Docs/Plans/phase42-server-decision-dialogs-plan.md`.
+
+## Next Implementation Plan (Phase 43 Server Decision Payload Contract)
+
+- [x] Corrected the wire-contract direction (`colony` not `settlement`; `winner`/`loser` not `unit`/`defender`;
+      `fountainOfYouth` is a notification, answered with `emigrateUnit`).
+- [x] Routed decision tags nested in `<update>`/`<multiple>` through to `GameState`.
+- [x] `indianDemand` reply uses `indian_demand_accept`/`indian_demand_reject` plus `unit`/`colony`/`type`/`amount`.
+- [x] `lootCargo` preserves `winner`/`loser` and `<goods>` children with selection UI.
+- [x] Full `fountainOfYouth` emigration flow via `emigrateUnit`.
+- Detailed plan saved in `Docs/Plans/phase43-server-decision-payload-contract-plan.md`.
+
+## Next Implementation Plan (Phase 44 Server Prompt & Report Parity)
+
+- [x] `firstContact` accept/decline prompt mit `result`-Boolean.
+- [x] `monarchAction` Offer-Prompt (Accept/Decline) und korrigierter Reply-Shape
+      (`action` + `result`; `sendMonarchAction` sendet jetzt `result`).
+- [x] `newLandName`/`newRegionName` Text-Prompts mit Server-Default.
+- [x] `close` räumt den passenden Prompt ab (Panel-Matching).
+- [x] `highScores`/`nationSummary` in `GameState` + `ReportsView`.
+- [x] Ergebnis-Logs für `scoutSpeakToChief`/`learnSkill`/`askSkill`/`incite`/`spySettlement`.
+- [x] Routing über `GameStateManager.serverPromptTags` (auch verschachtelt in `<update>`).
+- [x] Regressions: XCTest-Lifecycle + CLI-Roundtrips (22 XCTest / 115 CLI grün).
+- `nativeTrade` (Trade-Session-UI) und `diplomacy` (`DiplomaticTrade`-Klauseln)
+  sind bewusst nach Phase 45 verschoben.
+- Detailed plan saved in `Docs/Plans/phase44-server-prompt-dialog-parity-plan.md`.
+
+## Next Implementation Plan (Phase 45 / Roadmap Phase 9 Trade & Diplomacy Sessions)
+
+- [x] `NativeTradeSession`/`NativeTradeItem` Modell + Parsing (`FreeColGame`).
+- [x] `DiplomaticTradeProposal`/`DiplomaticTradeClause` Modell + Parsing (`FreeColGame`).
+- [x] GameState: Prompt-Kinds `.nativeTrade`/`.diplomacy`, Inbound-Handling für
+      alle `ACK_*`/`NAK_*`-Actions und `PROPOSE/ACCEPT/REJECT`, Outbound-Actions
+      (open/close/buy/sell/gift, accept/reject diplomacy).
+- [x] UI: `NativeTradeView` + `DiplomacyView`, Entry-Point im `InfoPanelView`.
+- [x] Regressions: 24 XCTest / 116 CLI grün.
+- ~~Known limitations~~ aufgelöst: proaktives Feilschen (Phase 52),
+  Counter-Proposal-Builder (Phase 49).
+- Detailed plan saved in `Docs/Plans/phase45-trade-diplomacy-sessions-plan.md`.
+
+## Next Implementation Plan (Phase 46 Java-Client Parity: Map, Menus, Reports)
+
+Gap-Analyse Screenshot vs. Java-Client: Die Karte zeigt nur den `radius: 1`-
+Sichtbereich statt allen erkundeten Terrains, die Minikarte ist dadurch fast
+schwarz, und Menüleiste/Reports fehlen. Die View-Toggles (`showFogOfWar`,
+`showMapGrid`) sind im State vorhanden, aber in `MapView` ungenutzt.
+
+Priorisierte Teilphasen:
+
+- [x] **46A Fog of War & Visibility (P0)** — `explored` (`Tile.type != null`)
+      vs. `visible` getrennt; Java-Rendering-Parität (20% Black-Overlay);
+      Minikarte auf erkundetes Terrain; View-Toggles verdrahtet;
+      Sight-Radius aus der Spec (`line-of-sight`) mit Namens-Fallback.
+- [x] **46B Menüleiste & Reports (P1)** — Game/View/Orders/Report/Colopedia-Menü
+      plus Report-Browser (Colonies, Units, Cargo, Military, Naval, Trade,
+      Foreign, Indian, Exploration, Turn, High Scores) und Chat-Panel.
+- [x] **46C Tile-Info & Kontextaktionen (P2)** — Tile-Details (explored, owner,
+      region, settlement, units) plus Ziel-Aktionen und Find-Settlement.
+- [x] **46D Unit-/Colony-UI-Breite (P2)** — Cargo-Report; Trade-Route-Editor
+      (Phase 47) sowie Native-Settlement-Aktionen/Cargo-Liste (Phase 53).
+- [x] **46E Colopedia & Preferences (P3)** — Spec-Browser + Display-Optionen.
+- Tests: 26 XCTest / 118 CLI grün.
+- Detailed plan saved in `Docs/Plans/phase46-java-client-parity-plan.md`.
+
+## Next Implementation Plan (Phase 47 Trade Route Editor / Roadmap Phase 13)
+
+- [x] `TradeRoute`/`TradeRouteStop` Modell + Parsing (`<player>`-Kinder,
+      `newTradeRoute`/`updateTradeRoute` ChangeRecords).
+- [x] `Game.tradeRoutes` Store + `addTradeRoute`/`removeTradeRoute`/
+      `tradeRoutes(forPlayer:)`; `Player`/`load`/`applyUpdate`/`applyPartial`
+      und `applyRemove` integriert.
+- [x] `GameStateManager` Inbound-Handling `newTradeRoute`/`updateTradeRoute`/
+      `deleteTradeRoute` (auch verschachtelt in `<update>`).
+- [x] GameState-Actions `createTradeRoute`/`saveTradeRoute`/`deleteTradeRoute`
+      plus Stop-/Goods-Kandidaten und expliziter `<tradeRoute>`-Serialisierung.
+- [x] UI `TradeRoutePanelView` (Liste, Name, Stops mit Ort + Cargo, Speichern,
+      Löschen, Zuweisung an ausgewählte Einheit), Entry-Point im Orders-Menü.
+- [x] Regressionen: 28 XCTest / 122 CLI grün.
+- ~~Known limitations~~ aufgelöst: Stop-Reihenfolge per Up/Down und
+  „Current Stop"-Stepper im Panel (Phase 53).
+- Detailed plan saved in `Docs/Plans/phase47-trade-route-editor-plan.md`.
+
+## Next Implementation Plan (Phase 48 Colony Build Queue & Buildings Panel)
+
+- [x] `BuildingTypeInfo` + `Specification.buildingTypes` (upkeep,
+      required-population, upgrades-from, extends, displayName).
+- [x] `Colony` parst `buildQueueItem`/`populationQueueItem`/`building`-Kinder
+      in geordnete Queues + `buildings`.
+- [x] GameState: `selectedColonyBuildableCandidates`, `selectedColonyBuildings`,
+      `selectedColonyBuildQueue`, `buildingDisplayName(_:)`.
+- [x] `ColonyPanelView`: Gebäudeliste, Build-Queue-Picker mit Add/Up/Down/Remove,
+      Set/Reset und Sync bei server-seitiger Queue-Änderung.
+- [x] Regressionen: 29 XCTest / 123 CLI grün.
+- ~~Known limitations~~ aufgelöst: Upgrade-Voraussetzung (`upgrades-from`) und
+  Kostenanzeige in der Bauliste (Phase 53).
+- Detailed plan saved in `Docs/Plans/phase48-colony-build-panel-plan.md`.
+
+## Next Implementation Plan (Phase 49 Diplomacy Counter-Proposal Builder)
+
+- [x] `DiplomaticClauseKind`/`DiplomaticClauseDraft` Modell (+ Rekonstruktion
+      aus empfangenen Klauseln).
+- [x] GameState `sendDiplomacyCounterProposal(_:)` / `pendingDiplomacyDrafts` /
+      `diplomacyClauseNode(...)`.
+- [x] `DiplomacyView`: editierbare Klauseln (Gold/Waren/Kolonie/Stance),
+      Richtungs-Picker, Senden.
+- [x] Regressionen: 31 XCTest / 123 CLI grün.
+- ~~Known limitations~~ aufgelöst: Unit-/Incite-Klauseln im Builder (Phase 49
+  Follow-up).
+- Detailed plan saved in `Docs/Plans/phase49-diplomacy-counter-proposal-plan.md`.
+
+## Next Implementation Plan (Phase 50 Colony Production Estimate & ETA)
+
+- [x] `BuildingTypeInfo` erweitert um `requiredGoods`/`productionOutputs`/
+      `productionInputs`.
+- [x] `Colony.goods` aus `<goodsContainer><storedGoods>` geparst.
+- [x] GameState: Stored Goods, Build-Ziel, Requirements, `estimatedBuildPerTurn`
+      und `estimatedBuildTurns` (testbare `nonisolated static`-Helfer).
+- [x] `ColonyPanelView`: „Production Estimate" mit Fortschrittsbalken, ETA und
+      Stored-Goods-Liste.
+- [x] Regressionen: 32 XCTest / 124 CLI grün.
+- ~~Known limitations~~ aufgelöst: attended/unattended getrennt, Zentralkachel
+  einbezogen (Phasen 50 Follow-up / 53).
+- Detailed plan saved in `Docs/Plans/phase50-colony-production-eta-plan.md`.
+
+## Next Implementation Plan (Phase 51 Robustness Cleanup)
+
+- [x] Zentraler Session-Reset (`GameState.resetSessionState`) von connect/
+      disconnect/mock/reconnect genutzt (bereits vorhanden, verifiziert).
+- [x] `UnitTypeTraits` (`isNaval`/`isMissionary`/`isCarrier`) als einzige
+      Keyword-Quelle; `Specification`/`GameState` darauf umgestellt.
+- [x] Keine Debug-Prints mehr (bereits in Phase 7 entfernt).
+- [x] Regressionen: 32 XCTest / 125 CLI grün.
+- Detailed plan saved in `Docs/Plans/phase51-robustness-cleanup-plan.md`.
+
+## Next Implementation Plan (Phase 52 Native Trade Haggling)
+
+- [x] `nativeTradeBuy`/`nativeTradeSell` mit `offerPrice`, `nativeTradeHaggleOffer`
+      (±10 % Vorschlag) und gemeinsamem `sendNativeTradeOffer`.
+- [x] `NativeTradeView`: Offer-Stepper, „Offer" (feilschen), „Accept" und
+      „Gift" pro Warenposten plus Haggle-Zähler.
+- [x] Regressionen: 33 XCTest / 126 CLI grün.
+- Java-Parität: das native AI führt den `haggleCount` autoritativ; der Client
+  liefert nur den Angebotspreis.
+- Detailed plan saved in `Docs/Plans/phase52-native-trade-haggling-plan.md`.
+
+## Follow-up zu Phasen 49–52 (Known Limitations abgebaut)
+
+- [x] **49:** Unit-/Incite-Klauseln im Diplomatie-Builder (`unitTradeItem`
+      `unit=`, `inciteTradeItem` `victim=`), Unit-/Viktim-Auswahllisten,
+      Draft-Rekonstruktion.
+- [x] **50:** attended/unattended-Produktion korrekt getrennt (kein Doppel-
+      zählen), `estimatedProduction`-Aufschlüsselung pro Runde im Panel.
+- [x] **51:** Spec-getriebene Fähigkeiten — `UnitTypeInfo.extendsId`/`abilities`,
+      Auflösung von `navalUnit`/`carryUnits` über die `extends`-Kette,
+      `line-of-sight`-Vererbung, `Specification.isNaval/carriesUnits` mit
+      Heuristik-Fallback.
+- [x] **52:** Offer-Stepper werden bei neuem Serverpreis zurückgesetzt,
+      Siedlungsname statt ID.
+- [x] Regressionen: 33 XCTest / 128 CLI grün.
+
+## Next Implementation Plan (Phase 53 Offene Punkte)
+
+- [x] **MockServer**: lokale Spiele beantworten `endTurn` (Turn-Wechsel via
+      `<newTurn>`/`<setCurrentPlayer>`) und `chat` (Echo) →
+      `GameState.startLocalServerLoop`; End Turn funktioniert im lokalen Spiel.
+- [x] **46C/46D UI**: Native-Settlement-Menü in `unitQuickActions`
+      (Trade, Deliver Gift, Demand Tribute, Spy, Scout, Incite) plus Cargo-Liste
+      mit Auswahl eingeschiffter Einheiten; `directionToAdjacentSettlement(_:)`.
+- [x] **Phase 48**: `buildableBuildingCandidates` verlangt bei Upgrades das
+      Vorhandensein des `upgrades-from`-Gebäudes.
+- [x] **Phase 50**: `<tile-type>`-Produktion (`TileTypeInfo`) und Einbeziehung
+      der Kolonie-Zentralkachel in die Produktions-/ETA-Schätzung.
+- [x] **Zusatz**: Financial-Report (`ReportKind.financial`), Trade-Route-Stop-
+      Reihenfolge (Up/Down) + „Current Stop"-Stepper, Kostenanzeige in der
+      Kolonie-Bauliste.
+- [x] **Analyse-Empfehlung #3 (Performance)** bewertet: Tile-/Unit-Lookups sind
+      bei aktuellen Kartengrößen unkritisch; Indizes werden pro Render/Report
+      lokal gebildet, kein persistenter Cache nötig.
+- [x] Regressionen: 36 XCTest / 129 CLI grün.
+- Detailed plan saved in `Docs/Plans/phase53-open-points-cleanup-plan.md`.
+
+## Status-Korrektur (nach Java-Gegenprüfung)
+
+Die obigen `[x]`-Markierungen (Phasen 1–53) bedeuten „protokoll-/UI-seitig
+angebunden", **nicht** „wie der Java-Client spielbar". Eine systematische
+Gegenprüfung gegen `/Users/marcel/projects/freecol` (104/104 Message-Tags
+vorhanden, ~60 von ~70 `ServerAPI`-Actions) listet die verifizierten
+Restlücken in `Docs/Plans/playability-roadmap-54-57.md`.
+
+## Phase 54 — Inbound-Blocker (Spielbarkeit zuerst)
+
+- [x] `chooseFoundingFather` eingehend: Pending-Typ, Angebotsliste
+      (`trade/exploration/military/political/religious`), In-Game-Dialog,
+      Outbound-Guard entkoppelt (lobby **und** inGame).
+- [x] `setDead` lokale Niederlage: Niederlage-Overlay + „Enter Revenge Mode".
+- [x] Lokaler `logout`: an die UI durchgereicht (Session-Ende erreichbar).
+- [x] `gameEnded`: Sieg-Overlay mit „Continue Playing"/„Retire".
+- [x] `incite` (Bestätigung), `spySettlement` (Kolonie-Panel),
+      `scoutSpeakToChief` (Info) eingehend behandelt.
+- [x] `updateGameOptions`/`updateMapGeneratorOptions`-Echo in
+      `Game.optionValues` gemergt.
+- [x] Regressionen: 43 XCTest / 130 CLI grün.
+- Detailed plan saved in `Docs/Plans/phase54-inbound-blockers-plan.md`.
+
+## Offene Arbeit (Phasen 55–57)
+
+- [ ] **55 Kolonie-Ökonomie**: `<exportData>`/Warehouse-Levels, echtes
+      `rearrangeColony`, Worker-Picker, Marktpreise, `payArrears`.
+- [ ] **56 Karte/Einheiten**: `moveTo`, Clear Orders/Next-Unit/EndTurn-Dialog,
+      TilePopup, Pionier-Improvements auf der Karte.
+- [ ] **57 Founding Fathers & Reports**: FF-Daten/Congress-Report, fehlende
+      Reports, `modelMessage`-Event-Log, Score/Summary-Requests, Colopedia.
+- Backlog (58–61): Diplomatie/Native-Tiefe, Europe-Tiefe, Model-Tiefe,
+  Meta (Save/Load via embedded Server) — siehe
+  `Docs/Plans/playability-roadmap-54-57.md`.
