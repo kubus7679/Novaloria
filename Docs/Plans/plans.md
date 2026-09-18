@@ -690,6 +690,17 @@ Restlücken in `Docs/Plans/playability-roadmap-54-57.md`.
 
 Alle Phasen 54–61 (ohne Save/Load) sind umgesetzt; offene Punkte sind nur noch
 die dokumentierten Nicht-Ziele.
+
+## Phase 62 — E2E-Validierung gegen den Java-Server
+
+- [x] `Tools/e2e-java-server.sh`: Docker-Server seeden/starten/aufräumen.
+- [x] Smoke-Probe (connect/login/launch transport) gegen echten Server.
+- [x] Deep-Probe (Pre-Game → In-Game) gegen frischen Server.
+- [x] Fixes: `ready`/`requestLaunch` als `send`, toleranter `endTurn`-Probe-Ask,
+      `FreeColClient.ask(message:timeout:)`.
+- [x] Ergebnis: 131/0 (Smoke) und 131/0 (Deep); lokale Regressionen
+      66 XCTest / 130 CLI grün.
+- Detailed plan saved in `Docs/Plans/phase62-java-server-e2e-plan.md`.
 - Backlog (58–61): Diplomatie/Native-Tiefe, Europe-Tiefe, Model-Tiefe,
   Meta (Save/Load via embedded Server) — siehe
   `Docs/Plans/playability-roadmap-54-57.md`.

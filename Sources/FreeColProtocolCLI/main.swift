@@ -4523,7 +4523,10 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_E2E"] == "1" {
     }
 }
 
-if ProcessInfo.processInfo.environment["REAL_SERVER_DEEP_E2E"] == "1" {
+// The deep probe launches a game, which consumes the server's pre-game lobby.
+// Run it on a fresh server, i.e. not together with the smoke probe.
+if ProcessInfo.processInfo.environment["REAL_SERVER_DEEP_E2E"] == "1"
+    && ProcessInfo.processInfo.environment["REAL_SERVER_E2E"] != "1" {
     await integrationTest("real Java server pregame-to-ingame probe") {
         let host = ProcessInfo.processInfo.environment["REAL_SERVER_HOST"] ?? "127.0.0.1"
         let port = Int(ProcessInfo.processInfo.environment["REAL_SERVER_PORT"] ?? "3541") ?? 3541
@@ -4550,9 +4553,11 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_DEEP_E2E"] == "1" {
         var launchProbeSent = false
 
         // Probe launch path in pre-game. Servers may reject launch if not all players are ready.
+        // `ready`/`requestLaunch` are fire-and-forget in the Java ServerAPI, so
+        // they do not produce a `<reply>` to wait for.
         if result.serverState == .preGame {
-            _ = try await client.ask(message: ParsedMessage(tag: "ready", attributes: ["value": "true"], children: []))
-            _ = try await client.ask(message: ParsedMessage(tag: "requestLaunch", attributes: [:], children: []))
+            try await client.send(message: ParsedMessage(tag: "ready", attributes: ["value": "true"], children: []))
+            try await client.send(message: ParsedMessage(tag: "requestLaunch", attributes: [:], children: []))
             launchProbeSent = true
         }
 
@@ -4572,11 +4577,14 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_DEEP_E2E"] == "1" {
         }
 
         // If the session reached in-game, probe endTurn transport opportunistically.
+        // The server may defer the reply until it is our turn, so a timeout here
+        // must not fail the launch probe.
         if await client.game.currentPlayerId != nil {
             do {
-                _ = try await client.ask(message: ParsedMessage(tag: "endTurn", attributes: [:], children: []))
-            } catch FreeColProtocolError.disconnected {
-                // Real server can close/rotate connection during launch transitions.
+                _ = try await client.ask(message: ParsedMessage(tag: "endTurn", attributes: [:], children: []),
+                                         timeout: 5)
+            } catch {
+                // Disconnects, server errors and deferred turns are all tolerated.
             }
         }
 

@@ -55,6 +55,11 @@ Backlog siehe unten (58–61).
   Metaserver-Browser und Save/Load bleiben Nicht-Ziele. Siehe
   `phase61-lobby-status-parity-plan.md`.
 
+## Phase 62 — Java-Server-E2E ✅
+
+- `Tools/e2e-java-server.sh` + Smoke-/Deep-Probes; beide 131/0 gegen den
+  echten Java-Server. Siehe `phase62-java-server-e2e-plan.md`.
+
 ## Status-/Doku-Regel
 
 Nach jeder Phase: betroffene Zeilen in `plans.md` und

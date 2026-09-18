@@ -111,6 +111,8 @@
 - [x] **61 Lobby & status parity** — player table, option presets/server echo,
       status panel, codegen fix for final message classes. Non-goals:
       metaserver browser, save/load.
+- [x] **62 Java-server E2E** — reproducible Docker harness plus smoke and
+      pre-game-to-in-game probes against the real server.
 
 ## Suggested order
 

@@ -148,8 +148,9 @@ public actor FreeColClient {
     }
 
     /// Send an action as a question and wait for the reply.
-    public func ask(message: ParsedMessage) async throws -> ParsedMessage {
-        try await connection.ask(message: message)
+    public func ask(message: ParsedMessage,
+                    timeout: TimeInterval = 30) async throws -> ParsedMessage {
+        try await connection.ask(message: message, timeout: timeout)
     }
 
     /// Send a fire-and-forget message.
