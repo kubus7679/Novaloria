@@ -10,10 +10,12 @@ swift run FreeColApp               # run the SwiftUI app
 swift run FreeColProtocolCLI       # run the CLI protocol-debug tool
 swift test                         # run all tests
 Tools/build-app.sh                 # build & create .app bundle
-docker compose -f docker/docker-compose.yml up  # start local FreeCol Java server (port 3541)
+Tools/e2e-java-server.sh           # E2E smoke + deep probes against the real Java server (Docker)
 ```
 
-Requirements: macOS 14.0+, Xcode / Swift toolchain.
+Requirements: macOS 14.0+, Xcode / Swift toolchain. `Tools/e2e-java-server.sh`
+needs Docker and a locally built `docker-freecol-server` image
+(`docker compose -f ../freecol/docker/docker-compose.yml build`).
 
 ## Module Map
 

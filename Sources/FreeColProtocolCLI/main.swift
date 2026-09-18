@@ -4576,10 +4576,27 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_DEEP_E2E"] == "1"
             throw TestError(message: "no session signal and no launch probe activity observed")
         }
 
-        // If the session reached in-game, probe endTurn transport opportunistically.
-        // The server may defer the reply until it is our turn, so a timeout here
-        // must not fail the launch probe.
+        // If the session reached in-game, validate the deserialized model and
+        // probe endTurn transport opportunistically.
         if await client.game.currentPlayerId != nil {
+            let game = await client.game
+            guard !game.players.isEmpty else {
+                throw TestError(message: "real server game has no players")
+            }
+            guard !game.tiles.isEmpty else {
+                throw TestError(message: "real server game has no map tiles")
+            }
+            guard game.specification != nil else {
+                throw TestError(message: "real server game has no specification")
+            }
+            guard game.units.values.contains(where: { unit in
+                unit.owner != nil && game.resolvedTileId(for: unit) != nil
+            }) else {
+                throw TestError(message: "real server game has no units on the map")
+            }
+
+            // The server may defer the reply until it is our turn, so a timeout
+            // here must not fail the launch probe.
             do {
                 _ = try await client.ask(message: ParsedMessage(tag: "endTurn", attributes: [:], children: []),
                                          timeout: 5)
