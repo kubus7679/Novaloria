@@ -190,6 +190,12 @@ struct GameView: View {
         .sheet(isPresented: $showColopedia) {
             ColopediaView()
         }
+        .sheet(isPresented: Binding(
+            get: { state.showStatusPanel },
+            set: { state.showStatusPanel = $0 }
+        )) {
+            StatusPanelView()
+        }
         .sheet(isPresented: $showIndependence) {
             independenceSheet
         }

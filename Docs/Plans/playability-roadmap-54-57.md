@@ -50,8 +50,10 @@ Backlog siehe unten (58–61).
 - **60** Model-Tiefe ✅: `featureChange` (Fähigkeiten/ModelMessages),
   Einheiten-`goodsContainer` (Phase 59), Tile-Ressourcen/Lost-City,
   NationOptions/Cibola. Siehe `phase60-model-depth-plan.md`.
-- **61** Meta (optional): Save/Load nur mit embedded Server (Design nötig),
-  Meta-Server-Browser, Lobby-Optionsbaum.
+- **61** Meta ✅ (ohne Save/Load): Lobby-Spielertabelle, Options-Presets +
+  Server-Echo, Status-/Statistikpanel, Codegen-Fix für `final`-Messages.
+  Metaserver-Browser und Save/Load bleiben Nicht-Ziele. Siehe
+  `phase61-lobby-status-parity-plan.md`.
 
 ## Status-/Doku-Regel
 

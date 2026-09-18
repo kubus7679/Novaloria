@@ -1564,6 +1564,28 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(game.nationStates["model.nation.french"], "NOT_AVAILABLE")
     }
 
+    @MainActor
+    func testLobbyPlayersAndServerOptionValue() async throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1" clientUserName="Alice">
+          <player id="player-2" username="Bob" nationId="model.nation.french"/>
+          <player id="player-1" username="Alice" nationId="model.nation.dutch" admin="true"/>
+        </game>
+        """)
+        try game.load(from: parsed)
+
+        let state = GameState()
+        state.installGame(game)
+
+        XCTAssertEqual(state.lobbyPlayers.map { $0.name }, ["Alice", "Bob"])
+        XCTAssertTrue(state.isLocalPlayerAdmin)
+
+        game.mergeOptions(["model.option.startingMoney": "3000"])
+        XCTAssertEqual(state.serverOptionValue(id: "model.option.startingMoney"), "3000")
+        XCTAssertNil(state.serverOptionValue(id: "model.option.unknown"))
+    }
+
     func testFeatureChangeAppliesAbilitiesAndMessages() throws {
         let game = Game()
         let parsed = try XMLDecoder.decode("""

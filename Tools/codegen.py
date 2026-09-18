@@ -45,12 +45,12 @@ def extract_tag(content: str) -> Optional[str]:
 
 
 def extract_class_name(content: str) -> Optional[str]:
-    m = re.search(r'public (?:abstract )?class (\w+Message)\s+extends\s+(\w+)', content)
+    m = re.search(r'public (?:abstract |final )?class (\w+Message)\s+extends\s+(\w+)', content)
     return m.group(1) if m else None
 
 
 def extract_parent(content: str) -> Optional[str]:
-    m = re.search(r'public (?:abstract )?class \w+Message\s+extends\s+(\w+)', content)
+    m = re.search(r'public (?:abstract |final )?class \w+Message\s+extends\s+(\w+)', content)
     return m.group(1) if m else None
 
 

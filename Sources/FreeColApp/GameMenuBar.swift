@@ -44,6 +44,7 @@ struct GameMenuBar: View {
                 state.requestedReport = .highScores
                 onReports()
             }
+            Button("Status…") { state.showStatusPanel = true }
             Button("Preferences…") { onPreferences() }
             Divider()
             Button("Disconnect") { state.disconnect() }

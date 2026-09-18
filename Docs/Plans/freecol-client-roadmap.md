@@ -108,7 +108,9 @@
       market price history.
 - [x] **60 Model depth** — featureChange abilities/messages, tile resources,
       lost city, nation options, Cibola.
-- Backlog: 61 meta (save/load via embedded server).
+- [x] **61 Lobby & status parity** — player table, option presets/server echo,
+      status panel, codegen fix for final message classes. Non-goals:
+      metaserver browser, save/load.
 
 ## Suggested order
 

@@ -404,6 +404,7 @@ final class GameState {
     var showEuropePanel: Bool = false
     var showColonyPanel: Bool = false
     var showDebugPanel: Bool = false
+    var showStatusPanel: Bool = false
     var requestedMapScrollTileId: String?
     /// Report currently selected in the report browser.
     var requestedReport: ReportKind?
@@ -449,6 +450,18 @@ final class GameState {
             return false
         }
         return player.admin
+    }
+
+    /// All players in the lobby/game, sorted by name (for the player table).
+    var lobbyPlayers: [Player] {
+        guard let game = cachedGame else { return [] }
+        return game.players.values.sorted { ($0.name ?? $0.id) < ($1.name ?? $1.id) }
+    }
+
+    /// Server-authoritative value for an option id from the `updateGameOptions`
+    /// echo, when available.
+    func serverOptionValue(id: String) -> String? {
+        cachedGame?.optionValues[id]
     }
 
     var isLocalPlayersTurn: Bool {

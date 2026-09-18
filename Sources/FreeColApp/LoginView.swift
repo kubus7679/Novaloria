@@ -25,6 +25,21 @@ struct LoginView: View {
     @State private var mapOptionValue: String = "80"
     @State private var foundingFatherId: String = "model.foundingFather.adamSmith"
 
+    private static let gameOptionPresets: [(id: String, value: String)] = [
+        ("model.option.startingMoney", "3000"),
+        ("model.option.numPlayers", "4"),
+        ("model.option.difficulty", "model.difficulty.medium"),
+        ("model.option.giftToAllies", "true"),
+        ("model.option.customHouse", "false"),
+    ]
+
+    private static let mapOptionPresets: [(id: String, value: String)] = [
+        ("model.option.mapWidth", "80"),
+        ("model.option.mapHeight", "100"),
+        ("model.option.landMass", "model.landMass.normal"),
+        ("model.option.mapGenerator", "model.mapGenerator.classic"),
+    ]
+
     private var availableNations: [(id: String, name: String)] {
         guard let vp = state.vacantPlayers else { return Self.fallbackNations }
         let advertisedNations: [(id: String, name: String)] = vp.children.compactMap { child in
@@ -57,6 +72,10 @@ struct LoginView: View {
         Text(text)
             .frame(width: 58, alignment: .trailing)
             .fixedSize()
+    }
+
+    private func shortOptionId(_ id: String) -> String {
+        id.split(separator: ".").last.map(String.init) ?? id
     }
 
     private func applyButton(_ title: String,
@@ -193,6 +212,16 @@ struct LoginView: View {
                         TextField("3000", text: $gameOptionValue)
                             .textFieldStyle(.roundedBorder)
                             .frame(width: 70)
+                        Menu("Presets") {
+                            ForEach(Self.gameOptionPresets, id: \.id) { preset in
+                                Button("\(shortOptionId(preset.id)) = \(preset.value)") {
+                                    gameOptionId = preset.id
+                                    gameOptionValue = preset.value
+                                }
+                            }
+                        }
+                        .menuStyle(.borderlessButton)
+                        .fixedSize()
                         if isLobby {
                             applyButton("Apply",
                                         disabled: gameOptionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -201,6 +230,11 @@ struct LoginView: View {
                             }
                         }
                     }
+                    if let serverValue = state.serverOptionValue(id: gameOptionId), !serverValue.isEmpty {
+                        Text("Server: \(shortOptionId(gameOptionId)) = \(serverValue)")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
                     HStack {
                         fieldLabel("Map:")
                         TextField("model.option.mapWidth", text: $mapOptionId)
@@ -208,6 +242,16 @@ struct LoginView: View {
                         TextField("80", text: $mapOptionValue)
                             .textFieldStyle(.roundedBorder)
                             .frame(width: 70)
+                        Menu("Presets") {
+                            ForEach(Self.mapOptionPresets, id: \.id) { preset in
+                                Button("\(shortOptionId(preset.id)) = \(preset.value)") {
+                                    mapOptionId = preset.id
+                                    mapOptionValue = preset.value
+                                }
+                            }
+                        }
+                        .menuStyle(.borderlessButton)
+                        .fixedSize()
                         if isLobby {
                             applyButton("Apply",
                                         disabled: mapOptionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -215,6 +259,11 @@ struct LoginView: View {
                                 state.updateSingleMapGeneratorOption(id: mapOptionId, value: mapOptionValue)
                             }
                         }
+                    }
+                    if let serverValue = state.serverOptionValue(id: mapOptionId), !serverValue.isEmpty {
+                        Text("Server: \(shortOptionId(mapOptionId)) = \(serverValue)")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
                     }
                     HStack {
                         fieldLabel("Father:")
@@ -265,6 +314,39 @@ struct LoginView: View {
                 .padding(.vertical, 4)
             }
 
+
+            if !state.lobbyPlayers.isEmpty {
+                GroupBox("Players") {
+                    VStack(alignment: .leading, spacing: 3) {
+                        ForEach(state.lobbyPlayers) { player in
+                            HStack(spacing: 8) {
+                                Text(player.name ?? player.id)
+                                    .font(.caption)
+                                    .frame(width: 90, alignment: .leading)
+                                    .foregroundColor(player.id == state.localPlayerId ? .yellow : .primary)
+                                Text(shortOptionId(player.nationId ?? "—"))
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 90, alignment: .leading)
+                                Text(player.playerType == .european ? (player.ai ? "AI" : "Human") : player.playerType.rawValue)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 60, alignment: .leading)
+                                if player.admin {
+                                    Text("Admin")
+                                        .font(.caption2)
+                                        .foregroundColor(.blue)
+                                }
+                                Spacer()
+                                Text(player.ready ? "Ready" : "Not ready")
+                                    .font(.caption2)
+                                    .foregroundColor(player.ready ? .green : .secondary)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
 
             Text("FreeColClient \(AppVersion.displayString)")
                 .font(.caption2)
