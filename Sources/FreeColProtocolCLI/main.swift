@@ -4609,5 +4609,117 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_DEEP_E2E"] == "1"
     }
 }
 
+// Gameplay probe: launch a real game, move a unit, end the turn and verify the
+// server-driven model advances. Requires a fresh server (pre-game lobby).
+if ProcessInfo.processInfo.environment["REAL_SERVER_GAMEPLAY_E2E"] == "1" {
+    await integrationTest("real Java server gameplay probe") {
+        let host = ProcessInfo.processInfo.environment["REAL_SERVER_HOST"] ?? "127.0.0.1"
+        let port = Int(ProcessInfo.processInfo.environment["REAL_SERVER_PORT"] ?? "3541") ?? 3541
+        let client = FreeColClient(host: host, port: port)
+
+        try await client.connect()
+        let vacant = await client.initialVacantPlayers
+        let nationId = vacant?.children.first?.attributes["nationId"]
+            ?? vacant?.children.first?.attributes["id"]
+            ?? "model.nation.dutch"
+        let userName = "CopilotPlay-\(Int(Date().timeIntervalSince1970))"
+
+        let result = try await client.login(userName: userName, nationId: nationId)
+        if result.serverState == .preGame {
+            try await client.send(message: ParsedMessage(tag: "ready", attributes: ["value": "true"], children: []))
+            try await client.send(message: ParsedMessage(tag: "requestLaunch", attributes: [:], children: []))
+        }
+
+        let loopTask = Task { await client.startMessageLoop() }
+        defer { loopTask.cancel() }
+
+        // Wait for the launched game to reach the client.
+        var waited = 0
+        while true {
+            let current = await client.game
+            if current.currentPlayerId != nil && !current.units.isEmpty {
+                break
+            }
+            if waited >= 60 {
+                throw TestError(message: "game did not start within 30s")
+            }
+            try await Task.sleep(nanoseconds: 500_000_000)
+            waited += 1
+        }
+
+        let game = await client.game
+        guard let spec = game.specification else {
+            throw TestError(message: "launched game has no specification")
+        }
+        guard !spec.unitTypes.isEmpty, !spec.goodsTypes.isEmpty,
+              !spec.buildingTypes.isEmpty, !spec.tileTypes.isEmpty else {
+            throw TestError(message: "specification is missing type definitions")
+        }
+        guard !game.tiles.isEmpty else {
+            throw TestError(message: "launched game has no map tiles")
+        }
+        guard let localPlayerId = game.players.values.first(where: { $0.name == result.playerName })?.id else {
+            throw TestError(message: "local player not found in launched game")
+        }
+        // Pick a unit standing directly on a tile (not embarked / in Europe).
+        guard let unit = game.units.values.first(where: { candidate in
+            candidate.owner == localPlayerId
+                && candidate.movesLeft > 0
+                && candidate.location.flatMap { game.tiles[$0] } != nil
+        }) else {
+            throw TestError(message: "no local unit with movement on the map")
+        }
+        let unitId = unit.id
+
+        // Try each adjacent direction until the server accepts one.
+        let directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+        var moved = false
+        var lastError: String?
+        for direction in directions {
+            let before = await client.game.units[unitId]?.location ?? ""
+            do {
+                _ = try await client.ask(message: ParsedMessage(
+                    tag: "move",
+                    attributes: ["unit": unitId, "direction": direction],
+                    children: []
+                ), timeout: 8)
+            } catch {
+                lastError = "\(error)"
+                continue
+            }
+            for _ in 0..<10 {
+                try await Task.sleep(nanoseconds: 200_000_000)
+                let after = await client.game.units[unitId]?.location ?? ""
+                if after != before {
+                    moved = true
+                    break
+                }
+            }
+            if moved { break }
+        }
+        guard moved else {
+            throw TestError(message: "unit did not move in any direction (last error: \(lastError ?? "none"))")
+        }
+
+        // End the turn and wait for the server to advance the turn counter.
+        let turnBefore = await client.game.turn.number
+        _ = try await client.ask(message: ParsedMessage(tag: "endTurn", attributes: [:], children: []),
+                                 timeout: 45)
+        var advanced = false
+        for _ in 0..<120 {
+            if await client.game.turn.number > turnBefore {
+                advanced = true
+                break
+            }
+            try await Task.sleep(nanoseconds: 500_000_000)
+        }
+        guard advanced else {
+            throw TestError(message: "turn did not advance after endTurn")
+        }
+
+        await client.disconnect()
+    }
+}
+
 print("\n\(passed) passed, \(failed) failed")
 exit(failed > 0 ? 1 : 0)

@@ -701,6 +701,15 @@ die dokumentierten Nicht-Ziele.
 - [x] Ergebnis: 131/0 (Smoke) und 131/0 (Deep); lokale Regressionen
       66 XCTest / 130 CLI grün.
 - Detailed plan saved in `Docs/Plans/phase62-java-server-e2e-plan.md`.
+
+## Phase 63 — Gameplay-E2E gegen den Java-Server
+
+- [x] Gameplay-Probe: Einheit bewegen (`move`) und Zug beenden (`endTurn`)
+      inkl. Modell-Assertions (Spec/Karte/Einheit/Position/Rundenwechsel).
+- [x] `Tools/e2e-java-server.sh` um die dritte Probe erweitert.
+- [x] Fixes: eingeschiffte Einheiten ausschließen, `await` in Schleifenkopf.
+- [x] Ergebnis: Smoke/Deep/Gameplay je 131/0; lokal 66 XCTest / 130 CLI grün.
+- Detailed plan saved in `Docs/Plans/phase63-gameplay-e2e-plan.md`.
 - Backlog (58–61): Diplomatie/Native-Tiefe, Europe-Tiefe, Model-Tiefe,
   Meta (Save/Load via embedded Server) — siehe
   `Docs/Plans/playability-roadmap-54-57.md`.

@@ -60,6 +60,11 @@ Backlog siehe unten (58–61).
 - `Tools/e2e-java-server.sh` + Smoke-/Deep-Probes; beide 131/0 gegen den
   echten Java-Server. Siehe `phase62-java-server-e2e-plan.md`.
 
+## Phase 63 — Gameplay-E2E ✅
+
+- Dritte Probe: Einheit bewegen + Zug beenden gegen den echten Server;
+  Smoke/Deep/Gameplay je 131/0. Siehe `phase63-gameplay-e2e-plan.md`.
+
 ## Status-/Doku-Regel
 
 Nach jeder Phase: betroffene Zeilen in `plans.md` und

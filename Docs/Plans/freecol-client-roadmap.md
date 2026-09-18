@@ -113,6 +113,8 @@
       metaserver browser, save/load.
 - [x] **62 Java-server E2E** — reproducible Docker harness plus smoke and
       pre-game-to-in-game probes against the real server.
+- [x] **63 Gameplay E2E** — move a unit and advance the turn against the real
+      server, asserting the deserialized model.
 
 ## Suggested order
 
