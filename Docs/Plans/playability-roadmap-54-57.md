@@ -78,13 +78,13 @@ Erweiterte Parität und Realserver-Validierung siehe die abgeschlossenen Phasen
 - Smoke/Deep/Gameplay jeweils 1/0. Siehe
   `phase64-market-trade-e2e-plan.md`.
 
-## Phase 65 — Koloniegründung-E2E (geplant)
+## Phase 65 — Koloniegründung-E2E ✅
 
-- Der Gameplay-Probe-Code schifft einen `foundColony`-Colonist aus und sucht
-  nach einer erreichbaren Küste; die aktuelle Startkarte enthält keinen
-  erreichbaren freien Siedlungsplatz.
-- Eine reproduzierbare Startkarte/-konstellation ist nötig, bevor der
-  Koloniepfad im Harness verpflichtend wird. Siehe
+- Die Gameplay-Probe navigiert den Carrier bei Bedarf zur Küste und bewegt den
+  `foundColony`-Colonist direkt auf ein freies, besiedelbares Landtile.
+- Koloniegründung gegen Java FreeCol 0.120 mit Name-, Owner- und Tile-Assertion
+  verifiziert; der Harness erzwingt den Pfad.
+- Smoke/Deep/Gameplay jeweils 1/0; 66 XCTest und 132 CLI-Prüfungen grün. Siehe
   `phase65-colony-founding-e2e-plan.md`.
 
 ## Status-/Doku-Regel

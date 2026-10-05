@@ -1047,6 +1047,16 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(oversupplied.costToBuy, 3)
     }
 
+    func testEuropeMarketTradeLimitsUseAvailableStockAndCargo() {
+        let limits = GameState.marketTradeLimits(marketStock: 37, carriedAmount: 12)
+        XCTAssertEqual(limits.buy, 37)
+        XCTAssertEqual(limits.sell, 12)
+
+        let emptyLimits = GameState.marketTradeLimits(marketStock: -4, carriedAmount: -2)
+        XCTAssertEqual(emptyLimits.buy, 0)
+        XCTAssertEqual(emptyLimits.sell, 0)
+    }
+
     func testMarketPricingNewWorldClamp() throws {
         let spec = try pricingSpecification()
         let sugar = try XCTUnwrap(spec.goodsTypes["model.goods.sugar"])

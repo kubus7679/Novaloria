@@ -601,6 +601,43 @@ test("Tile parses settlement from children") {
     try assertEqual(tile.settlement, "colony-1")
 }
 
+test("Game.applyUpdate registers a settlement nested in a tile update") {
+    let game = Game()
+    let update = try XMLDecoder.decode("""
+    <update>
+      <tile id="tile-1" x="3" y="4" type="model.tile.plains">
+        <colony id="colony-1" name="E2E Colony" owner="player-1"
+                settlementType="model.settlement.colony"/>
+      </tile>
+    </update>
+    """)
+    try game.applyUpdate(update)
+    try assertEqual(game.tiles["tile-1"]?.settlement, "colony-1")
+    try assertEqual(game.colonies["colony-1"]?.name, "E2E Colony")
+    try assertEqual(game.colonies["colony-1"]?.owner, "player-1")
+    try assertEqual(game.colonies["colony-1"]?.tileId, "tile-1")
+}
+
+test("Game.applyUpdate updates a unit nested in a tile update") {
+    let game = Game()
+    try game.load(from: XMLDecoder.decode("""
+    <game id="game-1">
+      <unit id="unit-1" unitType="model.unit.freeColonist" location="ship-1"/>
+    </game>
+    """))
+    let update = try XMLDecoder.decode("""
+    <update>
+      <tile id="tile-1" x="3" y="4" type="model.tile.plains">
+        <unit id="unit-1" unitType="model.unit.freeColonist" location="tile-1"
+              movesLeft="0" state="ACTIVE"/>
+      </tile>
+    </update>
+    """)
+    try game.applyUpdate(update)
+    try assertEqual(game.units["unit-1"]?.location, "tile-1")
+    try assertEqual(game.units["unit-1"]?.movesLeft, 0)
+}
+
 test("Unit parses state enum") {
     let unit = try Unit(id: "unit-1", attributes: [
         "id": "unit-1", "unitType": "model.unit.galleon", "state": "SAILING"
@@ -4832,7 +4869,8 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_GAMEPLAY_E2E"] == "1" {
 
         func moveCarrierToCoast(_ carrierId: String) async throws -> Bool {
             let allDirections = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
-            for stepIndex in 0..<24 {
+            var explorationHeading = 0
+            for _ in 0..<120 {
                 game = await client.game
                 guard let carrier = game.units[carrierId],
                       let sourceTileId = carrier.location,
@@ -4847,39 +4885,32 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_GAMEPLAY_E2E"] == "1" {
                 let knownCoastDirection = nextCoastalSeaStep(from: sourceTileId, in: game)
                     .flatMap { game.tiles[$0] }
                     .flatMap { direction(from: sourceTile, to: $0) }
-                let rotation = stepIndex % allDirections.count
-                let exploratoryDirections = Array(allDirections[rotation...])
-                    + Array(allDirections[..<rotation])
-                let moveDirections = knownCoastDirection.map { [$0] } ?? exploratoryDirections
-                var moved = false
-                var refreshedTurn = false
-                for moveDirection in moveDirections {
-                    let before = sourceTileId
-                    do {
-                        _ = try await client.ask(message: ParsedMessage(
-                            tag: "move",
-                            attributes: ["unit": carrierId, "direction": moveDirection],
-                            children: []
-                        ), timeout: 8)
-                    } catch {
-                        if "\(error)".contains("MOVE_NO_MOVES") {
-                            game = try await endTurnAndWaitForLocalPlayer()
-                            refreshedTurn = true
-                            break
-                        }
+                let moveDirection = knownCoastDirection ?? allDirections[explorationHeading]
+                let before = sourceTileId
+                do {
+                    _ = try await client.ask(message: ParsedMessage(
+                        tag: "move",
+                        attributes: ["unit": carrierId, "direction": moveDirection],
+                        children: []
+                    ), timeout: 8)
+                } catch {
+                    if "\(error)".contains("MOVE_NO_MOVES") {
+                        game = try await endTurnAndWaitForLocalPlayer()
                         continue
                     }
-                    for _ in 0..<20 {
-                        game = await client.game
-                        if game.units[carrierId]?.location != before {
-                            moved = true
-                            break
-                        }
-                        try await Task.sleep(nanoseconds: 200_000_000)
-                    }
-                    if moved { break }
+                    guard knownCoastDirection == nil else { return false }
+                    explorationHeading = (explorationHeading + 1) % allDirections.count
+                    continue
                 }
-                if refreshedTurn { continue }
+                var moved = false
+                for _ in 0..<20 {
+                    game = await client.game
+                    if game.units[carrierId]?.location != before {
+                        moved = true
+                        break
+                    }
+                    try await Task.sleep(nanoseconds: 200_000_000)
+                }
                 if !moved { return false }
             }
             game = await client.game
@@ -4887,7 +4918,9 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_GAMEPLAY_E2E"] == "1" {
             return !colonyLandingTiles(around: location, in: game).isEmpty
         }
 
+        let requireColonyFounding = ProcessInfo.processInfo.environment["REAL_SERVER_REQUIRE_COLONY_FOUNDING"] == "1"
         var colonyWasFounded = false
+        var foundedColonyId: String?
         game = await client.game
         let foundingUnits = game.units.values
             .filter {
@@ -4904,10 +4937,13 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_GAMEPLAY_E2E"] == "1" {
             ), timeout: 8)
             for _ in 0..<30 {
                 game = await client.game
-                if game.colonies.values.contains(where: {
-                    $0.name == colonyName && $0.owner == localPlayerId
+                if let colony = game.colonies.values.first(where: {
+                    $0.name == colonyName
+                        && $0.owner == localPlayerId
+                        && $0.tileId == landedFounder.location
                 }) {
                     colonyWasFounded = true
+                    foundedColonyId = colony.id
                     break
                 }
                 try await Task.sleep(nanoseconds: 200_000_000)
@@ -4932,32 +4968,24 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_GAMEPLAY_E2E"] == "1" {
                     game = await client.game
                 }
                 if let currentCarrier = game.units[carrierId],
-                   let sourceTileId = currentCarrier.location,
-                   let sourceTile = game.tiles[sourceTileId],
-                   let targetTile = colonyLandingTiles(around: sourceTileId, in: game).first,
-                   let landingDirection = direction(from: sourceTile, to: targetTile) {
-                    _ = try await client.ask(message: ParsedMessage(
-                        tag: "disembark", attributes: ["unit": embarkedFounder.id], children: []
-                    ), timeout: 8)
-                    var disembarked = false
-                    for _ in 0..<30 {
-                        game = await client.game
-                        if game.units[embarkedFounder.id]?.location == sourceTileId {
-                            disembarked = true
-                            break
-                        }
-                        try await Task.sleep(nanoseconds: 200_000_000)
-                    }
-                    guard disembarked else {
-                        throw TestError(message: "founding unit did not disembark onto the carrier tile")
-                    }
-
+                    let sourceTileId = currentCarrier.location,
+                    let sourceTile = game.tiles[sourceTileId],
+                 let targetTile = colonyLandingTiles(around: sourceTileId, in: game).first,
+                 let landingDirection = direction(from: sourceTile, to: targetTile) {
+                    // Moving the passenger directly onto the land tile unloads
+                    // it in Java FreeCol; <disembark> would place it on the
+                    // carrier's water tile, which rejects land units.
                     game = try await endTurnAndWaitForLocalPlayer()
-                    _ = try await client.ask(message: ParsedMessage(
-                        tag: "move",
-                        attributes: ["unit": embarkedFounder.id, "direction": landingDirection],
-                        children: []
-                    ), timeout: 8)
+                    do {
+                        _ = try await client.ask(message: ParsedMessage(
+                            tag: "move",
+                            attributes: ["unit": embarkedFounder.id, "direction": landingDirection],
+                            children: []
+                        ), timeout: 8)
+                    } catch {
+                        throw TestError(message: "founding unit could not move from carrier tile "
+                            + "\(sourceTileId) to land tile \(targetTile.id): \(error)")
+                    }
                     var reachedLand = false
                     for _ in 0..<30 {
                         game = await client.game
@@ -4967,24 +4995,34 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_GAMEPLAY_E2E"] == "1" {
                         }
                         try await Task.sleep(nanoseconds: 200_000_000)
                     }
-                    guard reachedLand,
-                          let landedFounder = game.units[embarkedFounder.id],
-                          canFoundColony(with: landedFounder, in: game) else {
-                        throw TestError(message: "founding unit did not reach the selected settleable land tile")
+                    guard reachedLand else {
+                        throw TestError(message: "founding unit did not reach selected tile \(targetTile.id)")
                     }
-
+                    game = try await endTurnAndWaitForLocalPlayer()
+                    guard let landedFounder = game.units[embarkedFounder.id],
+                          canFoundColony(with: landedFounder, in: game) else {
+                        throw TestError(message: "founding unit is not eligible after reaching tile \(targetTile.id)")
+                    }
                     let colonyName = "E2E\(Int(Date().timeIntervalSince1970) % 100000)"
-                    _ = try await client.ask(message: ParsedMessage(
-                        tag: "buildColony",
-                        attributes: ["unit": landedFounder.id, "name": colonyName],
-                        children: []
-                    ), timeout: 8)
+                    do {
+                        _ = try await client.ask(message: ParsedMessage(
+                            tag: "buildColony",
+                            attributes: ["unit": landedFounder.id, "name": colonyName],
+                            children: []
+                        ), timeout: 8)
+                    } catch {
+                        throw TestError(message: "buildColony rejected for unit \(embarkedFounder.id) "
+                            + "type=\(embarkedFounder.unitType ?? "unknown") tile=\(targetTile.id): \(error)")
+                    }
                     for _ in 0..<30 {
                         game = await client.game
-                        if game.colonies.values.contains(where: {
-                            $0.name == colonyName && $0.owner == localPlayerId
+                        if let colony = game.colonies.values.first(where: {
+                            $0.name == colonyName
+                                && $0.owner == localPlayerId
+                                && $0.tileId == targetTile.id
                         }) {
                             colonyWasFounded = true
+                            foundedColonyId = colony.id
                             break
                         }
                         try await Task.sleep(nanoseconds: 200_000_000)
@@ -4994,11 +5032,58 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_GAMEPLAY_E2E"] == "1" {
                     }
                     print("    founded colony \(colonyName)")
                 } else {
-                    print("    colony founding skipped: no reachable eligible coastal tile")
+                    let carrierState = game.units[carrierId].map {
+                        let location = $0.location.flatMap { game.tiles[$0] }
+                        return "carrier=\(carrierId) tile=\($0.location ?? "unknown") "
+                            + "coord=\(location.map { "\($0.x),\($0.y)" } ?? "unknown") "
+                            + "movesLeft=\($0.movesLeft) exploredTiles=\(game.exploredTileIds().count)"
+                    } ?? "carrier=\(carrierId) missing from game model"
+                    let reason = "no reachable eligible coastal tile (\(carrierState))"
+                    if requireColonyFounding {
+                        throw TestError(message: "colony founding required but \(reason)")
+                    }
+                    print("    colony founding skipped: \(reason)")
                 }
             } else {
-                print("    colony founding skipped: no founder aboard a map carrier")
+                let reason = "no founder aboard a map carrier"
+                if requireColonyFounding {
+                    throw TestError(message: "colony founding required but \(reason)")
+                }
+                print("    colony founding skipped: \(reason)")
             }
+        }
+
+        if let foundedColonyId,
+           let foundedColony = game.colonies[foundedColonyId],
+           let foundedTileId = foundedColony.tileId {
+            let renamedColony = "Managed\(Int(Date().timeIntervalSince1970) % 100000)"
+            do {
+                _ = try await client.ask(message: ParsedMessage(
+                    tag: "rename",
+                    attributes: ["nameable": foundedColonyId, "name": renamedColony],
+                    children: []
+                ), timeout: 8)
+            } catch {
+                throw TestError(message: "rename rejected for colony \(foundedColonyId): \(error)")
+            }
+            var colonyWasRenamed = false
+            for _ in 0..<30 {
+                game = await client.game
+                if let colony = game.colonies[foundedColonyId],
+                   colony.name == renamedColony,
+                   colony.owner == localPlayerId,
+                   colony.tileId == foundedTileId {
+                    colonyWasRenamed = true
+                    break
+                }
+                try await Task.sleep(nanoseconds: 200_000_000)
+            }
+            guard colonyWasRenamed else {
+                throw TestError(message: "renamed colony \(foundedColonyId) was not updated in the model")
+            }
+            print("    renamed colony to \(renamedColony)")
+        } else if requireColonyFounding {
+            throw TestError(message: "colony management required but the new colony was not available to rename")
         }
 
         // The default server start places the initial carrier on the map.

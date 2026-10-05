@@ -213,6 +213,10 @@ struct EuropePanelView: View {
                     .frame(maxHeight: 160)
 
                     if !selectedGoodsType.isEmpty {
+                        let limits = state.europeMarketTradeLimits(
+                            goodsTypeId: selectedGoodsType,
+                            carrierId: selectedCarrierId
+                        )
                         HStack {
                             Text("Goods: \(goodsLabel(selectedGoodsType))")
                                 .font(.caption)
@@ -224,13 +228,16 @@ struct EuropePanelView: View {
                                 trade(selectedGoodsType, amount: Int(tradeAmount) ?? 0, sell: true)
                             }
                             .buttonStyle(.bordered)
-                            .disabled(!canTrade)
+                            .disabled(!canTrade || requestedTradeAmount > limits.sell)
                             Button("Buy") {
                                 trade(selectedGoodsType, amount: Int(tradeAmount) ?? 0, sell: false)
                             }
                             .buttonStyle(.bordered)
-                            .disabled(!canTrade)
+                            .disabled(!canTrade || requestedTradeAmount > limits.buy)
                         }
+                        Text("Available: buy \(limits.buy) · sell \(limits.sell)")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
                     }
                 }
             }
@@ -241,6 +248,10 @@ struct EuropePanelView: View {
     private var canTrade: Bool {
         state.isLocalPlayersTurn && !selectedCarrierId.isEmpty
             && (Int(tradeAmount) ?? 0) > 0 && !selectedGoodsType.isEmpty
+    }
+
+    private var requestedTradeAmount: Int {
+        Int(tradeAmount) ?? 0
     }
 
     private func trade(_ goodsType: String, amount: Int, sell: Bool) {

@@ -3706,6 +3706,11 @@ final class GameState {
             .sorted { $0.label < $1.label }
     }
 
+    /// Pioneer improvements available in the colony worker controls.
+    var selectedColonyWorkImprovementCandidates: [(id: String, label: String)] {
+        selectedUnitImprovementCandidates
+    }
+
     var canChangeSelectedUnitWorkImprovement: Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,
@@ -4751,6 +4756,23 @@ final class GameState {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// Maximum market stock and carrier cargo currently available for a Europe trade.
+    func europeMarketTradeLimits(goodsTypeId: String?, carrierId: String?) -> (buy: Int, sell: Int) {
+        guard let goodsTypeId, !goodsTypeId.isEmpty,
+              let marketData = localPlayer?.market?.entry(for: goodsTypeId) else {
+            return (buy: 0, sell: 0)
+        }
+        let carriedAmount = carrierId
+            .flatMap { cachedGame?.units[$0]?.goods[goodsTypeId] } ?? 0
+        return Self.marketTradeLimits(marketStock: marketData.amount,
+                                      carriedAmount: carriedAmount)
+    }
+
+    nonisolated static func marketTradeLimits(marketStock: Int,
+                                             carriedAmount: Int) -> (buy: Int, sell: Int) {
+        (buy: max(0, marketStock), sell: max(0, carriedAmount))
     }
 
     /// Buy price (`costToBuy`) or sale price (`paidForSale`) for one goods type.

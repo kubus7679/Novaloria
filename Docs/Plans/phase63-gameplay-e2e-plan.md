@@ -51,13 +51,13 @@ prüfen.
 - Die Gameplay-Probe hat Bewegung und Zugwechsel tatsächlich ausgeführt und
   bestätigt. Sie hat außerdem 100 `model.goods.horses` in Europa gekauft und
   verkauft; Cargo und Gold wurden serverseitig aktualisiert.
-- Koloniegründung wurde übersprungen, weil der Colonist aus dem Startcarrier im
-  generierten Spiel kein erreichbares freies, besiedelbares Küsten-Tile fand.
+- Koloniegründung wurde in Phase 65 mit verpflichtendem Harness gegen Java
+  FreeCol 0.120 erfolgreich ergänzt; Details stehen in
+  `phase65-colony-founding-e2e-plan.md`.
 
 Damit sind Smoke, Deep und der erweiterte Gameplay-Transport-/Modellpfad gegen
-Java FreeCol 0.120 bestätigt. Die Markttransaktion ist ebenfalls gegen den
-Realserver verifiziert. Für die Koloniegründung ist weiterhin eine passende
-Startkonstellation erforderlich.
+Java FreeCol 0.120 bestätigt. Markttransaktion und Koloniegründung sind ebenfalls
+gegen den Realserver verifiziert.
 
 ## Nutzung
 

@@ -3,7 +3,8 @@
 > **Hinweis (Status):** Die folgenden Phasen 1–14 sind *protokoll-/UI-seitig*
 > angebunden. „Spielbar wie der Java-Client" ist damit noch nicht erreicht.
 > Die verifizierten Restlücken stehen in
-> `Docs/Plans/playability-roadmap-54-57.md` (Phasen 54–65).
+> `Docs/Plans/playability-roadmap-54-57.md` (Phasen 54–65) sowie die
+> Economy-/Colony-Management-Follow-ups der Phasen 66–68.
 
 ## Phase 1: Colony and Unit UX completion
 
@@ -91,7 +92,7 @@
 - [x] In-game help browser.
 - [x] Preferences sheet (display/animation).
 
-## Phase 15: Playability completion and real-server validation (54–63)
+## Phase 15: Playability completion and real-server validation (54–68)
 
 - [x] **54 Inbound blockers** — `chooseFoundingFather` in-game dialog,
       `setDead` defeat/revenge, local `logout`, `gameEnded` victory screen,
@@ -117,15 +118,21 @@
       plus market buy/sell and conditional colony founding with model assertions.
 - [x] Expanded Phase-63 probe run against Java: Smoke/Deep/Gameplay each 1/0 in
       isolated probe mode; movement, turn advance and market trade verified.
-- [x] Colony founding skipped because this generated scenario lacked a free
-      eligible tile.
 - [x] **64 Market transaction E2E** — carrier sails to Europe, cargo space is
       freed when needed, and a real 100-goods buy/sell roundtrip is asserted.
       The harness requires the market action; Java probes each passed 1/0.
-- [ ] **65 Colony founding E2E** — disembark a founder, navigate to a valid
-      coastal tile, found a colony and assert the server model. Current generated
-      starts expose no reachable eligible tile; see
-      `phase65-colony-founding-e2e-plan.md`.
+- [x] **65 Colony founding E2E** — move a founder from its carrier onto a valid
+      coastal tile, found a colony and assert the server model. The harness
+      requires this action; see `phase65-colony-founding-e2e-plan.md`.
+- [x] **66 Colony worker improvement picker** — select a tile improvement from
+      the loaded specification rather than entering a raw protocol ID. See
+      `phase66-colony-worker-improvement-picker-plan.md`.
+- [x] **67 Colony rename E2E** — rename the founded colony against Java and
+      assert updated name, owner and tile in the client model. See
+      `phase67-colony-rename-e2e-plan.md`.
+- [x] **68 Europe market availability** — bound Buy/Sell controls by market
+      stock and selected-carrier cargo. See
+      `phase68-europe-market-availability-plan.md`.
 
 ## Suggested order
 

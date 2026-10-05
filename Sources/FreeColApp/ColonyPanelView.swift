@@ -19,6 +19,7 @@ struct ColonyPanelView: View {
     let exportData: [ColonyExportData]
     let workLocationCandidates: [(id: String, label: String)]
     let workTypeCandidates: [(id: String, label: String)]
+    let workImprovementCandidates: [(id: String, label: String)]
     let onAbandonColony: () -> Void
     let canAbandonColony: Bool
     let onSetBuildQueue: ([String]) -> Void
@@ -39,7 +40,7 @@ struct ColonyPanelView: View {
     let estimatedProduction: [(id: String, label: String, amount: Int)]
 
     @State private var workTypeId: String = "model.goods.grain"
-    @State private var workImprovementTypeId: String = "model.improvement.plow"
+    @State private var workImprovementTypeId: String = ""
     @State private var teacherId: String = ""
     @State private var workLocationId: String = ""
     @State private var colonyNameInput: String
@@ -68,6 +69,7 @@ struct ColonyPanelView: View {
         exportData: [ColonyExportData] = [],
         workLocationCandidates: [(id: String, label: String)] = [],
         workTypeCandidates: [(id: String, label: String)] = [],
+        workImprovementCandidates: [(id: String, label: String)] = [],
         onAbandonColony: @escaping () -> Void,
         canAbandonColony: Bool,
         onSetBuildQueue: @escaping ([String]) -> Void,
@@ -104,6 +106,7 @@ struct ColonyPanelView: View {
         self.exportData = exportData
         self.workLocationCandidates = workLocationCandidates
         self.workTypeCandidates = workTypeCandidates
+        self.workImprovementCandidates = workImprovementCandidates
         self.onAbandonColony = onAbandonColony
         self.canAbandonColony = canAbandonColony
         self.onSetBuildQueue = onSetBuildQueue
@@ -298,13 +301,17 @@ struct ColonyPanelView: View {
                 .buttonStyle(.bordered)
                 .disabled(!canManage || selectedWorkerUnitId == nil || workTypeId.isEmpty)
 
-                TextField("Work Improvement Type ID", text: $workImprovementTypeId)
-                    .textFieldStyle(.roundedBorder)
+                Picker("Improvement", selection: $workImprovementTypeId) {
+                    ForEach(workImprovementCandidates, id: \.id) { candidate in
+                        Text(candidate.label).tag(candidate.id)
+                    }
+                }
+                .disabled(!canManage || selectedWorkerUnitId == nil || workImprovementCandidates.isEmpty)
                 Button("Change Work Improvement Type") {
                     onChangeWorkImprovementType(workImprovementTypeId)
                 }
                 .buttonStyle(.bordered)
-                .disabled(!canManage || selectedWorkerUnitId == nil)
+                .disabled(!canManage || selectedWorkerUnitId == nil || workImprovementTypeId.isEmpty)
 
                 Button("Clear Speciality") {
                     onClearSpeciality()
@@ -581,6 +588,9 @@ struct ColonyPanelView: View {
         .onAppear {
             if workTypeId.isEmpty, let first = workTypeCandidates.first {
                 workTypeId = first.id
+            }
+            if !workImprovementCandidates.contains(where: { $0.id == workImprovementTypeId }) {
+                workImprovementTypeId = workImprovementCandidates.first?.id ?? ""
             }
             if workLocationId.isEmpty, let first = workLocationCandidates.first {
                 workLocationId = first.id

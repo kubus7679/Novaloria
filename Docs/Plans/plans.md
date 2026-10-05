@@ -720,8 +720,7 @@ die dokumentierten Nicht-Ziele.
       Bewegung und Zugwechsel bestätigt.
 - [x] Markttransaktion (Kauf/Verkauf) mit Modell-Assertions ergänzt und gegen
       Java verifiziert (Phase 64).
-- [x] Koloniegründung wegen fehlendem erreichbarem freien Küsten-Tile in diesem
-      generierten Spiel übersprungen; Phase 65 plant eine deterministische Karte.
+- [x] Phase 65 hat die Koloniegründung gegen Java FreeCol 0.120 bestätigt.
 - Detailed plan saved in `Docs/Plans/phase63-gameplay-e2e-plan.md`.
 - Phasen 58–64 sind implementiert. Save/Load ist in dieser FreeCol-Version
   mangels Client-Protokoll weiterhin kein Client-Ziel; der Metaserver-Browser
@@ -742,9 +741,38 @@ die dokumentierten Nicht-Ziele.
       und Cargo/Gold-Updates bestätigt.
 - Detailed plan saved in `Docs/Plans/phase64-market-trade-e2e-plan.md`.
 
-## Nächster Schritt — Phase 65: Koloniegründung-E2E
+## Phase 65 — Koloniegründung-E2E gegen den Java-Server
 
-- [ ] Colonist aus dem Startcarrier ausschiffen, auf ein freies besiedelbares
-      Landtile bringen und Koloniegründung gegen Java bestätigen.
-- [ ] Harness mit einer echten Koloniegründung verpflichtend machen.
+- [x] Gründer aus dem Startcarrier direkt auf ein freies besiedelbares Landtile
+      bewegen und Koloniegründung gegen Java bestätigen.
+- [x] Neue Kolonie mit Name, Owner und Tile im Modell verifizieren.
+- [x] Harness erzwingt den Gründungspfad mit
+      `REAL_SERVER_REQUIRE_COLONY_FOUNDING=1`.
+- [x] Verschachtelte Unit- und Siedlungsobjekte in Tile-Updates anwenden.
+- [x] Smoke/Deep/Gameplay jeweils 1/0; lokale Regressionen 66 XCTest / 132 CLI.
 - Konkreter Plan: `Docs/Plans/phase65-colony-founding-e2e-plan.md`.
+
+## Phase 66 — Kolonie-Worker-Verbesserungsauswahl
+
+- [x] Roh-ID-Eingabe für `changeWorkImprovementType` durch einen Picker für
+      nicht-natürliche Improvements aus der geladenen Spezifikation ersetzt.
+- [x] Aktionsbutton bei fehlendem Worker oder fehlender Auswahl deaktiviert.
+- [x] Build, 66 XCTest und 132 CLI-Prüfungen erfolgreich.
+- Konkreter Plan: `Docs/Plans/phase66-colony-worker-improvement-picker-plan.md`.
+
+## Phase 67 — Kolonie umbenennen gegen den Java-Server
+
+- [x] Nach der echten Koloniegründung `<rename>` senden und die Modelländerung
+      für Name, Owner und Tile bestätigen.
+- [x] Der Gameplay-Harness wertet Rejects oder fehlende Rename-Updates als Fehler.
+- [x] Smoke/Deep/Gameplay jeweils 1/0; 66 XCTest und 132 CLI-Prüfungen grün.
+- Konkreter Plan: `Docs/Plans/phase67-colony-rename-e2e-plan.md`.
+
+## Phase 68 — Europa-Marktverfügbarkeit
+
+- [x] Kaufmengen nach Market-Bestand und Verkaufsmengen nach Carrier-Cargo
+      begrenzen; nicht verfügbare Mengen werden in der UI angezeigt.
+- [x] XCTest für positive und negative Bestandswerte; 67 XCTest / 132 CLI grün.
+- [x] Java-E2E Smoke/Deep/Gameplay jeweils 1/0; 100 Pferde weiterhin gekauft
+      und verkauft.
+- Konkreter Plan: `Docs/Plans/phase68-europe-market-availability-plan.md`.

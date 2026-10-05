@@ -132,6 +132,7 @@ struct GameView: View {
                     exportData: state.selectedColonyExportData,
                     workLocationCandidates: state.selectedColonyWorkLocationCandidates,
                     workTypeCandidates: state.selectedColonyWorkTypeCandidates,
+                    workImprovementCandidates: state.selectedColonyWorkImprovementCandidates,
                     onAbandonColony: {
                         state.abandonSelectedColony()
                     },

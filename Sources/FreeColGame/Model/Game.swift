@@ -128,6 +128,27 @@ public final class Game: @unchecked Sendable {
                                     game: self)
                 tiles[tile.id] = tile
                 coordIndex = nil
+                for nestedObject in child.children {
+                    switch nestedObject.tag {
+                    case "unit":
+                        try loadUnitTree(nestedObject)
+                    case "colony", "indianSettlement":
+                        guard let settlementId = nestedObject.attributes["id"] else { continue }
+                        if var existing = colonies[settlementId] {
+                            existing.applyPartial(attributes: nestedObject.attributes)
+                            colonies[settlementId] = existing
+                        } else {
+                            var settlement = try Colony(id: settlementId,
+                                                        attributes: nestedObject.attributes,
+                                                        children: nestedObject.children,
+                                                        game: self)
+                            if settlement.tileId == nil { settlement.tileId = tile.id }
+                            colonies[settlementId] = settlement
+                        }
+                    default:
+                        continue
+                    }
+                }
             case "unit":
                 try loadUnitTree(child)
             case "colony", "indianSettlement":
