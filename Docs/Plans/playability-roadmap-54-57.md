@@ -65,9 +65,27 @@ Erweiterte Parität und Realserver-Validierung siehe die abgeschlossenen Phasen
 
 - Dritte Probe: Markt-Kauf/-Verkauf mit Modell-Assertions, bedingte
   Koloniegründung, Einheit bewegen + Zug beenden gegen den echten Server.
-  Smoke/Deep/Gameplay jeweils 131/0; Bewegung und Zugwechsel wurden ausgeführt.
-  Markt-/Kolonieaktionen wurden mangels passender Startkonstellation
-  übersprungen. Siehe `phase63-gameplay-e2e-plan.md`.
+  Smoke/Deep/Gameplay jeweils 1/0 im isolierten Probe-Modus; Bewegung und
+  Zugwechsel wurden ausgeführt. Koloniegründung bleibt szenarioabhängig.
+  Siehe `phase63-gameplay-e2e-plan.md`.
+
+## Phase 64 — Markttransaktion-E2E ✅
+
+- Der Harness startet den isolierten Server mit Easy-Difficulty und die
+  Gameplay-Probe setzt die Segelzeit für den Testlauf auf eine Runde.
+- Der Carrier fährt nach Europa; die Probe kauft und verkauft 100 Waren und
+  bestätigt Cargo-/Gold-Modellupdates.
+- Smoke/Deep/Gameplay jeweils 1/0. Siehe
+  `phase64-market-trade-e2e-plan.md`.
+
+## Phase 65 — Koloniegründung-E2E (geplant)
+
+- Der Gameplay-Probe-Code schifft einen `foundColony`-Colonist aus und sucht
+  nach einer erreichbaren Küste; die aktuelle Startkarte enthält keinen
+  erreichbaren freien Siedlungsplatz.
+- Eine reproduzierbare Startkarte/-konstellation ist nötig, bevor der
+  Koloniepfad im Harness verpflichtend wird. Siehe
+  `phase65-colony-founding-e2e-plan.md`.
 
 ## Status-/Doku-Regel
 

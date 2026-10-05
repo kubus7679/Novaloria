@@ -9,15 +9,16 @@ Diplomatie, Native-Siedlungen und Berichte. Die Spielaktionen und XML-
 
 Die Java-Server-E2E-Prüfungen bestätigen bereits Handshake, Login,
 Pre-Game-Start, Bewegung und Zugwechsel. Die erweiterten Smoke-, Deep- und
-Gameplay-Probes liefen jeweils mit 131/0. Markttransaktion und Koloniegründung
-wurden in diesem Lauf wegen fehlender Voraussetzungen des generierten Spiels
-übersprungen; die Aktionspfade bleiben für eine passende Startkonstellation
-offen.
+Gameplay-Probes liefen im isolierten Probe-Modus jeweils mit 1/0. Ein echter
+Kauf und Verkauf von 100 Waren wurde inklusive Cargo- und Goldupdates bestätigt.
+Koloniegründung wurde übersprungen, weil der Colonist aus dem Startcarrier
+kein erreichbares freies Küsten-Tile fand.
 
 ## Aktuelle Schwerpunkte
 
-1. Für Markt und Kolonie eine passende deterministische E2E-Startkonstellation
-   bereitstellen und die Modellupdates gegen den Java-Server bestätigen.
+1. Für Koloniegründung eine passende deterministische E2E-Startkonstellation
+   bereitstellen und die Modellupdates gegen den Java-Server bestätigen
+   (`phase65-colony-founding-e2e-plan.md`).
 2. Danach weitere zentrale Aktionen als reproduzierbare Realserver-Probes
    ergänzen.
 3. Reconnect-, Reject- und Multiplayer-Randfälle anhand konkreter Befunde

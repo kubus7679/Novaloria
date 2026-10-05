@@ -3,7 +3,7 @@
 > **Hinweis (Status):** Die folgenden Phasen 1–14 sind *protokoll-/UI-seitig*
 > angebunden. „Spielbar wie der Java-Client" ist damit noch nicht erreicht.
 > Die verifizierten Restlücken stehen in
-> `Docs/Plans/playability-roadmap-54-57.md` (Phasen 54–63).
+> `Docs/Plans/playability-roadmap-54-57.md` (Phasen 54–65).
 
 ## Phase 1: Colony and Unit UX completion
 
@@ -115,9 +115,17 @@
       pre-game-to-in-game probes against the real server.
 - [x] **63 Gameplay E2E implementation** — move a unit and advance the turn,
       plus market buy/sell and conditional colony founding with model assertions.
-- [x] Expanded Phase-63 probe run against Java: Smoke/Deep/Gameplay each 131/0;
-      market trade and colony founding were skipped because this generated
-      scenario lacked their preconditions.
+- [x] Expanded Phase-63 probe run against Java: Smoke/Deep/Gameplay each 1/0 in
+      isolated probe mode; movement, turn advance and market trade verified.
+- [x] Colony founding skipped because this generated scenario lacked a free
+      eligible tile.
+- [x] **64 Market transaction E2E** — carrier sails to Europe, cargo space is
+      freed when needed, and a real 100-goods buy/sell roundtrip is asserted.
+      The harness requires the market action; Java probes each passed 1/0.
+- [ ] **65 Colony founding E2E** — disembark a founder, navigate to a valid
+      coastal tile, found a colony and assert the server model. Current generated
+      starts expose no reachable eligible tile; see
+      `phase65-colony-founding-e2e-plan.md`.
 
 ## Suggested order
 

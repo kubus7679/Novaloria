@@ -716,13 +716,35 @@ die dokumentierten Nicht-Ziele.
       Aktionen verwenden, Tile-Siedelbarkeit und geerbte `foundColony`-Fähigkeit
       aus der Spec auswerten.
 - [x] Lokale Regressionen der Erweiterung: 66 XCTest / 130 CLI grün.
-- [x] Realserver-E2E nach der Erweiterung: Smoke/Deep/Gameplay je 131/0;
+- [x] Realserver-E2E: Smoke/Deep/Gameplay jeweils 1/0 im isolierten Probe-Modus;
       Bewegung und Zugwechsel bestätigt.
-- [x] Markttransaktion mangels Europa-Carrier/bezahlbarer Ware und
-      Koloniegründung mangels Colonist auf freiem besiedelbarem Tile in diesem
-      generierten Spiel übersprungen; diese Aktionspfade bleiben szenarioabhängig.
+- [x] Markttransaktion (Kauf/Verkauf) mit Modell-Assertions ergänzt und gegen
+      Java verifiziert (Phase 64).
+- [x] Koloniegründung wegen fehlendem erreichbarem freien Küsten-Tile in diesem
+      generierten Spiel übersprungen; Phase 65 plant eine deterministische Karte.
 - Detailed plan saved in `Docs/Plans/phase63-gameplay-e2e-plan.md`.
-- Phasen 58–62 sind abgeschlossen; die erweiterte Phase-63-Probe ist
-  implementiert und gegen den Realserver ausgeführt. Save/Load ist in dieser
-  FreeCol-Version mangels Client-Protokoll weiterhin kein Client-Ziel; der
-  Metaserver-Browser ist ebenfalls nicht Teil dieser E2E-Phase.
+- Phasen 58–64 sind implementiert. Save/Load ist in dieser FreeCol-Version
+  mangels Client-Protokoll weiterhin kein Client-Ziel; der Metaserver-Browser
+  ist ebenfalls nicht Teil dieser E2E-Phase.
+
+## Phase 64 — Markttransaktion-E2E gegen den Java-Server
+
+- [x] Gameplay-Probe segelt den initialen Carrier nach Europa und wartet auf die
+      serverseitige Marktverfügbarkeit.
+- [x] E2E-Harness startet FreeCol mit Easy-Difficulty; die Probe verkürzt
+      `turnsToSail` für den Testlauf und benötigt erfolgreiche Marktaktionen.
+- [x] Carrier-Passagiere werden bei Bedarf ausgeschifft, um Frachtraum zu
+      schaffen; Warenmenge wird aus Bestand, Preis und Spieler-Gold berechnet.
+- [x] `FREECOL_CLI_REAL_SERVER_ONLY=1` trennt Realserver-Probes von der
+      Mock-Integrationssuite.
+- [x] Realserver-Ergebnis: Smoke/Deep/Gameplay jeweils 1/0 im isolierten
+      Probe-Modus; Gameplay hat 100 `model.goods.horses` gekauft und verkauft
+      und Cargo/Gold-Updates bestätigt.
+- Detailed plan saved in `Docs/Plans/phase64-market-trade-e2e-plan.md`.
+
+## Nächster Schritt — Phase 65: Koloniegründung-E2E
+
+- [ ] Colonist aus dem Startcarrier ausschiffen, auf ein freies besiedelbares
+      Landtile bringen und Koloniegründung gegen Java bestätigen.
+- [ ] Harness mit einer echten Koloniegründung verpflichtend machen.
+- Konkreter Plan: `Docs/Plans/phase65-colony-founding-e2e-plan.md`.

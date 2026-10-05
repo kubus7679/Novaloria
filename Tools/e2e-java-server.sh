@@ -59,7 +59,8 @@ XML
 
 start_server() {
   docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
-  docker run -d --name "$CONTAINER" -p "$PORT":3541 -v "$VOLUME":/data "$IMAGE" >/dev/null
+  docker run -d --name "$CONTAINER" -p "$PORT":3541 -v "$VOLUME":/data \
+    "$IMAGE" --difficulty Easy >/dev/null
   echo "==> Waiting for Java server on 127.0.0.1:$PORT"
   for _ in $(seq 1 30); do
     if nc -z 127.0.0.1 "$PORT" >/dev/null 2>&1; then
@@ -75,17 +76,21 @@ start_server() {
 
 echo "==> Smoke probe (connect / login / launch transport)"
 start_server
-(cd "$ROOT" && REAL_SERVER_E2E=1 REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
+(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_E2E=1 \
+  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
   swift run FreeColProtocolCLI)
 
 echo "==> Deep probe (pre-game to in-game on a fresh server)"
 start_server
-(cd "$ROOT" && REAL_SERVER_DEEP_E2E=1 REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
+(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_DEEP_E2E=1 \
+  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
   swift run FreeColProtocolCLI)
 
 echo "==> Gameplay probe (market trade, colony founding when available, move and end turn)"
 start_server
-(cd "$ROOT" && REAL_SERVER_GAMEPLAY_E2E=1 REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
+(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_GAMEPLAY_E2E=1 \
+  REAL_SERVER_REQUIRE_MARKET_TRADE=1 \
+  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
   swift run FreeColProtocolCLI)
 
 echo "==> E2E validation finished"
