@@ -38,9 +38,10 @@ abgearbeitet. Die bestehenden `[x]`-Markierungen in `plans.md` und
 
 ## Playability-Phasen 54–57 abgeschlossen
 
-Backlog siehe unten (58–61).
+Erweiterte Parität und Realserver-Validierung siehe die abgeschlossenen Phasen
+58–63 unten.
 
-## Backlog (nach Spielbarkeit)
+## Erweiterte Parität und Realserver-Validierung
 
 - **58** Diplomatie/Native-Tiefe ✅: aktive Diplomatie (PROPOSE_TRADE),
   IndianSettlement-Details, `askSkill`/`learnSkill`-UI, PreCombat-Bestätigung,
@@ -62,8 +63,11 @@ Backlog siehe unten (58–61).
 
 ## Phase 63 — Gameplay-E2E ✅
 
-- Dritte Probe: Einheit bewegen + Zug beenden gegen den echten Server;
-  Smoke/Deep/Gameplay je 131/0. Siehe `phase63-gameplay-e2e-plan.md`.
+- Dritte Probe: Markt-Kauf/-Verkauf mit Modell-Assertions, bedingte
+  Koloniegründung, Einheit bewegen + Zug beenden gegen den echten Server.
+  Smoke/Deep/Gameplay jeweils 131/0; Bewegung und Zugwechsel wurden ausgeführt.
+  Markt-/Kolonieaktionen wurden mangels passender Startkonstellation
+  übersprungen. Siehe `phase63-gameplay-e2e-plan.md`.
 
 ## Status-/Doku-Regel
 

@@ -704,12 +704,25 @@ die dokumentierten Nicht-Ziele.
 
 ## Phase 63 — Gameplay-E2E gegen den Java-Server
 
-- [x] Gameplay-Probe: Einheit bewegen (`move`) und Zug beenden (`endTurn`)
-      inkl. Modell-Assertions (Spec/Karte/Einheit/Position/Rundenwechsel).
+- [x] Gameplay-Probe: Markt-Daten parsen und — sofern Carrier/Waren verfügbar —
+      Kauf und Verkauf samt Cargo-/Gold-Modellupdates prüfen.
+- [x] Freie Koloniegründung mit `foundColony`-Einheit prüfen, sofern die
+      generierte Spielsituation einen gültigen Siedlungsplatz bietet;
+      Aktionsfehler werden nicht mehr als Skip behandelt.
+- [x] Einheit bewegen (`move`) und Zug beenden (`endTurn`) inkl.
+      Modell-Assertions (Spec/Karte/Einheit/Position/Rundenwechsel).
 - [x] `Tools/e2e-java-server.sh` um die dritte Probe erweitert.
-- [x] Fixes: eingeschiffte Einheiten ausschließen, `await` in Schleifenkopf.
-- [x] Ergebnis: Smoke/Deep/Gameplay je 131/0; lokal 66 XCTest / 130 CLI grün.
+- [x] Fixes: eingeschiffte Einheiten ausschließen, aktuelle Modellsnapshots nach
+      Aktionen verwenden, Tile-Siedelbarkeit und geerbte `foundColony`-Fähigkeit
+      aus der Spec auswerten.
+- [x] Lokale Regressionen der Erweiterung: 66 XCTest / 130 CLI grün.
+- [x] Realserver-E2E nach der Erweiterung: Smoke/Deep/Gameplay je 131/0;
+      Bewegung und Zugwechsel bestätigt.
+- [x] Markttransaktion mangels Europa-Carrier/bezahlbarer Ware und
+      Koloniegründung mangels Colonist auf freiem besiedelbarem Tile in diesem
+      generierten Spiel übersprungen; diese Aktionspfade bleiben szenarioabhängig.
 - Detailed plan saved in `Docs/Plans/phase63-gameplay-e2e-plan.md`.
-- Backlog (58–61): Diplomatie/Native-Tiefe, Europe-Tiefe, Model-Tiefe,
-  Meta (Save/Load via embedded Server) — siehe
-  `Docs/Plans/playability-roadmap-54-57.md`.
+- Phasen 58–62 sind abgeschlossen; die erweiterte Phase-63-Probe ist
+  implementiert und gegen den Realserver ausgeführt. Save/Load ist in dieser
+  FreeCol-Version mangels Client-Protokoll weiterhin kein Client-Ziel; der
+  Metaserver-Browser ist ebenfalls nicht Teil dieser E2E-Phase.

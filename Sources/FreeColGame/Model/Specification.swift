@@ -156,13 +156,19 @@ public struct BuildingTypeInfo: @unchecked Sendable {
 /// used by a colony center on that terrain.
 public struct TileTypeInfo: @unchecked Sendable {
     public var id: String
+    public var isWater: Bool
+    public var canSettle: Bool
     public var centerOutputs: [String: Int]
     public var centerInputs: [String: Int]
 
     public init(id: String,
+                isWater: Bool = false,
+                canSettle: Bool = true,
                 centerOutputs: [String: Int] = [:],
                 centerInputs: [String: Int] = [:]) {
         self.id = id
+        self.isWater = isWater
+        self.canSettle = canSettle
         self.centerOutputs = centerOutputs
         self.centerInputs = centerInputs
     }
@@ -214,6 +220,13 @@ public final class Specification: @unchecked Sendable {
     public func carriesUnits(unitType: String?) -> Bool? {
         guard let unitType, let info = unitTypes[unitType] else { return nil }
         return info.carriesUnits
+    }
+
+    /// Whether a unit type has an ability, including abilities inherited from
+    /// its parent type.
+    public func hasAbility(_ abilityId: String, unitType: String?) -> Bool {
+        guard let unitType else { return false }
+        return effectiveAbility(unitTypeId: unitType, abilityId: abilityId) ?? false
     }
 
     /// Best-effort fallback when the specification was not received.
@@ -315,6 +328,8 @@ public final class Specification: @unchecked Sendable {
                 }
             }
             tileTypes[tileId] = TileTypeInfo(id: tileId,
+                                             isWater: child.attributes.bool("is-water", default: false),
+                                             canSettle: child.attributes.bool("can-settle", default: true),
                                              centerOutputs: outputs,
                                              centerInputs: inputs)
             collectTileTypes(from: child)

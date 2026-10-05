@@ -883,8 +883,11 @@ test("specification resolves unit abilities through extends") {
           <ability id="model.ability.navalUnit" value="true"/>
           <ability id="model.ability.carryUnits" value="true"/>
         </unit-type>
+        <unit-type id="colonist" abstract="true">
+          <ability id="model.ability.foundColony" value="true"/>
+        </unit-type>
         <unit-type id="model.unit.caravel" extends="ship"/>
-        <unit-type id="model.unit.freeColonist" movement="3"/>
+        <unit-type id="model.unit.freeColonist" extends="colonist" movement="3"/>
       </freecol-specification>
     </game>
     """)
@@ -895,6 +898,7 @@ test("specification resolves unit abilities through extends") {
     try assertEqual(spec?.lineOfSight(forUnitType: "model.unit.caravel"), 2)
     try assertEqual(spec?.isNaval(unitType: "model.unit.freeColonist"), false)
     try assertEqual(spec?.lineOfSight(forUnitType: "model.unit.freeColonist"), 1)
+    try assertEqual(spec?.hasAbility("model.ability.foundColony", unitType: "model.unit.freeColonist"), true)
     try assertEqual(spec?.isNaval(unitType: "model.unit.unknown"), nil)
 }
 
@@ -904,7 +908,7 @@ test("specification parses tile-type center production") {
     <game id="game-1">
       <player id="player-1" username="Alice"/>
       <freecol-specification id="spec">
-        <tile-type id="model.tile.plains">
+        <tile-type id="model.tile.plains" can-settle="true">
           <production unattended="true">
             <output goods-type="model.goods.grain" value="3"/>
             <output goods-type="model.goods.cotton" value="2"/>
@@ -913,13 +917,19 @@ test("specification parses tile-type center production") {
             <output goods-type="model.goods.grain" value="5"/>
           </production>
         </tile-type>
+        <tile-type id="model.tile.ocean" is-water="true" can-settle="false"/>
       </freecol-specification>
     </game>
     """)
     try game.load(from: parsed)
     let plains = game.specification?.tileTypes["model.tile.plains"]
+    let ocean = game.specification?.tileTypes["model.tile.ocean"]
     try assertEqual(plains?.centerOutputs["model.goods.grain"], 3)
     try assertEqual(plains?.centerOutputs["model.goods.cotton"], 2)
+    try assertEqual(plains?.isWater, false)
+    try assertEqual(plains?.canSettle, true)
+    try assertEqual(ocean?.isWater, true)
+    try assertEqual(ocean?.canSettle, false)
 }
 
 test("GameStateManager processes setStance") {
@@ -4647,7 +4657,7 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_GAMEPLAY_E2E"] == "1" {
             waited += 1
         }
 
-        let game = await client.game
+        var game = await client.game
         guard let spec = game.specification else {
             throw TestError(message: "launched game has no specification")
         }
@@ -4661,7 +4671,181 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_GAMEPLAY_E2E"] == "1" {
         guard let localPlayerId = game.players.values.first(where: { $0.name == result.playerName })?.id else {
             throw TestError(message: "local player not found in launched game")
         }
+
+        // Market data must deserialize from the real server XML.
+        let marketEntries = game.players[localPlayerId]?.market.map { Array($0.data.values) } ?? []
+        guard !marketEntries.isEmpty else {
+            throw TestError(message: "no market data received")
+        }
+        guard marketEntries.contains(where: { $0.amount > 0 && $0.initialPrice > 0 }) else {
+            throw TestError(message: "market data has no priced entries")
+        }
+
+        // Exercise the real buy/sell wire paths when the fresh game exposes a
+        // Europe-based carrier and an affordable, non-boycotted goods type.
+        let europeId = game.players[localPlayerId]?.europe?.id
+        let marketCarriers: [FreeColGame.Unit]
+        if let europeId {
+            marketCarriers = game.units.values
+                .filter { unit in
+                    unit.owner == localPlayerId
+                        && unit.location == europeId
+                        && spec.isNaval(unitType: unit.unitType) == true
+                }
+                .sorted {
+                    let firstCargo = $0.goods.values.reduce(0, +)
+                    let secondCargo = $1.goods.values.reduce(0, +)
+                    return firstCargo == secondCargo ? $0.id < $1.id : firstCargo < secondCargo
+                }
+        } else {
+            marketCarriers = []
+        }
+        let buyableGoods = marketEntries
+            .filter { entry in
+                guard let goodsType = entry.goodsType,
+                      let goodsInfo = spec.goodsTypes[goodsType] else { return false }
+                let price = MarketPricing.prices(for: entry, specification: spec).costToBuy
+                return goodsInfo.isStorable && entry.amount > 0 && entry.arrears == 0
+                    && price > 0
+                    && price <= (game.players[localPlayerId]?.gold ?? 0)
+            }
+            .sorted { ($0.goodsType ?? "") < ($1.goodsType ?? "") }
+
+        if let europeId, !marketCarriers.isEmpty, !buyableGoods.isEmpty {
+            let carrier = marketCarriers[0]
+            guard let goodsType = buyableGoods[0].goodsType else {
+                throw TestError(message: "selected market entry has no goods type")
+            }
+            let cargoBeforeBuy = carrier.goods[goodsType] ?? 0
+            let goldBeforeBuy = game.players[localPlayerId]?.gold ?? 0
+            _ = try await client.ask(message: ParsedMessage(
+                tag: "loadGoods",
+                attributes: [
+                    "location": europeId,
+                    "type": goodsType,
+                    "amount": "100",
+                    "carrier": carrier.id,
+                ],
+                children: []
+            ), timeout: 8)
+
+            var bought = false
+            for _ in 0..<30 {
+                game = await client.game
+                let currentCargo = game.units[carrier.id]?.goods[goodsType] ?? 0
+                let currentGold = game.players[localPlayerId]?.gold ?? goldBeforeBuy
+                if currentCargo >= cargoBeforeBuy + 100 && currentGold < goldBeforeBuy {
+                    bought = true
+                    break
+                }
+                try await Task.sleep(nanoseconds: 200_000_000)
+            }
+            guard bought else {
+                throw TestError(message: "market purchase did not update carrier cargo and player gold")
+            }
+            let goldAfterBuy = game.players[localPlayerId]?.gold ?? goldBeforeBuy
+
+            _ = try await client.ask(message: ParsedMessage(
+                tag: "unloadGoods",
+                attributes: ["type": goodsType, "amount": "100", "carrier": carrier.id],
+                children: []
+            ), timeout: 8)
+            var sold = false
+            for _ in 0..<30 {
+                game = await client.game
+                let currentCargo = game.units[carrier.id]?.goods[goodsType] ?? 0
+                let currentGold = game.players[localPlayerId]?.gold ?? goldAfterBuy
+                if currentCargo <= cargoBeforeBuy && currentGold > goldAfterBuy {
+                    sold = true
+                    break
+                }
+                try await Task.sleep(nanoseconds: 200_000_000)
+            }
+            guard sold else {
+                throw TestError(message: "market sale did not update carrier cargo and player gold")
+            }
+            guard game.players[localPlayerId]?.market?.entry(for: goodsType) != nil else {
+                throw TestError(message: "market data disappeared after a trade")
+            }
+            print("    bought and sold 100 \(goodsType) in Europe")
+        } else {
+            print("    market trade skipped: no Europe carrier or affordable eligible goods")
+        }
+
+        func canFoundColony(with unit: FreeColGame.Unit, in current: FreeColGame.Game) -> Bool {
+            guard unit.owner == localPlayerId,
+                  spec.hasAbility("model.ability.foundColony", unitType: unit.unitType),
+                  let tileId = unit.location,
+                  let tile = current.tiles[tileId],
+                  tile.settlement == nil,
+                  let tileType = tile.type,
+                  let tileInfo = spec.tileTypes[tileType] else { return false }
+            return !tileInfo.isWater && tileInfo.canSettle
+        }
+
+        // Found a colony when the generated scenario includes a colonist on a
+        // valid tile. An embarked colonist is disembarked only if its carrier
+        // is already on such a tile; ocean/Europe locations are not candidates.
+        game = await client.game
+        let localUnits = game.units.values
+            .filter { $0.owner == localPlayerId }
+            .sorted { $0.id < $1.id }
+        var colonist = localUnits.first(where: { canFoundColony(with: $0, in: game) })
+        if colonist == nil,
+           let embarked = localUnits.first(where: { candidate in
+               guard spec.hasAbility("model.ability.foundColony", unitType: candidate.unitType),
+                     let carrierId = candidate.location,
+                     let carrier = game.units[carrierId],
+                     let carrierTileId = carrier.location,
+                     let carrierTile = game.tiles[carrierTileId],
+                     carrierTile.settlement == nil,
+                     let tileType = carrierTile.type,
+                     let tileInfo = spec.tileTypes[tileType] else { return false }
+               return !tileInfo.isWater && tileInfo.canSettle
+           }) {
+            _ = try await client.ask(message: ParsedMessage(
+                tag: "disembark", attributes: ["unit": embarked.id], children: []
+            ), timeout: 8)
+            for _ in 0..<30 {
+                game = await client.game
+                if let updated = game.units[embarked.id], canFoundColony(with: updated, in: game) {
+                    colonist = updated
+                    break
+                }
+                try await Task.sleep(nanoseconds: 200_000_000)
+            }
+            guard colonist != nil else {
+                throw TestError(message: "disembarked colonist did not appear on a valid colony tile")
+            }
+        }
+        if let colonist {
+            let colonyName = "E2E\(Int(Date().timeIntervalSince1970) % 100000)"
+            _ = try await client.ask(message: ParsedMessage(
+                tag: "buildColony",
+                attributes: ["unit": colonist.id, "name": colonyName],
+                children: []
+            ), timeout: 8)
+            var founded = false
+            for _ in 0..<30 {
+                game = await client.game
+                if game.colonies.values.contains(where: {
+                    $0.name == colonyName && $0.owner == localPlayerId
+                }) {
+                    founded = true
+                    break
+                }
+                try await Task.sleep(nanoseconds: 200_000_000)
+            }
+            guard founded else {
+                throw TestError(message: "colony \(colonyName) was not created")
+            }
+            print("    founded colony \(colonyName)")
+        } else {
+            print("    colony founding skipped: no colonist on an unoccupied settleable tile")
+        }
+
         // Pick a unit standing directly on a tile (not embarked / in Europe).
+        game = await client.game
         guard let unit = game.units.values.first(where: { candidate in
             candidate.owner == localPlayerId
                 && candidate.movesLeft > 0

@@ -1,41 +1,32 @@
-# FreeCol Client - Gesamtuebersicht
+# FreeCol Client — Gesamtübersicht
 
-## Stand heute
+## Stand
 
-Der Swift-Client ist bereits weit ueber den Protokollkern hinaus:
+Der Swift-Client deckt Login, Lobby und In-Game-Sitzungen ab und enthält eine
+umfangreiche SwiftUI-Oberfläche für Karte, Einheiten, Kolonien, Europa/Markt,
+Diplomatie, Native-Siedlungen und Berichte. Die Spielaktionen und XML-
+Änderungen werden durch CLI-Regressionen und XCTest abgedeckt.
 
-- Login, Lobby und In-Game-Session sind verbunden.
-- Map-Rendering, Zoom, Auswahl und Kamera-Fokus funktionieren.
-- Bewegung, Ziele, Embark/Disembark, Cargo-Zugriff und Transport sind vorhanden.
-- Colony-Grundfunktionen sind implementiert.
-- Viele Kernaktionen und Diplomatie-/Native-/Colony-Dialoge sind bereits angebunden.
-- Assets aus dem Java-Client sind teilweise uebernommen.
+Die Java-Server-E2E-Prüfungen bestätigen bereits Handshake, Login,
+Pre-Game-Start, Bewegung und Zugwechsel. Die erweiterten Smoke-, Deep- und
+Gameplay-Probes liefen jeweils mit 131/0. Markttransaktion und Koloniegründung
+wurden in diesem Lauf wegen fehlender Voraussetzungen des generierten Spiels
+übersprungen; die Aktionspfade bleiben für eine passende Startkonstellation
+offen.
 
-## Was aktuell gut funktioniert
+## Aktuelle Schwerpunkte
 
-- TCP/XML-Verbindung zum Java-Server
-- Login und Game-State-Sync
-- Einheiten bewegen, auswählen und entladen
-- Karte zentrieren, zoomen und selektiv darstellen
-- Colony founding / basic colony management
-- Viele serverseitige Aktionen mit Regressionstests
+1. Für Markt und Kolonie eine passende deterministische E2E-Startkonstellation
+   bereitstellen und die Modellupdates gegen den Java-Server bestätigen.
+2. Danach weitere zentrale Aktionen als reproduzierbare Realserver-Probes
+   ergänzen.
+3. Reconnect-, Reject- und Multiplayer-Randfälle anhand konkreter Befunde
+   priorisieren.
 
-## Haupt-Restbaustellen
+## Nicht-Ziele und Grenzen
 
-1. Vollstaendige Colony- und Produktions-UI
-2. Europa / Markt / Immigration / Trade Routes
-3. Dialog- und Ereignis-Handling wie im Java-Client
-4. Vollstaendige Multiplayer-/Lobby-/Reconnect-Flows
-5. Edge-Cases und serverseitige Spezialantworten
-6. Sichtbarkeit/Fog-of-war, Pathfinding und Komfortfunktionen
-
-## Risikoanalyse
-
-- Der Protokollkern ist relativ stabil.
-- Die groesste Arbeit liegt jetzt in UI-Paritaet, fehlenden Aktionen und Robustheit.
-- Viele Restthemen sind nicht mehr technisch fundamental, sondern funktions- und dialoggetrieben.
-
-## Einordnung
-
-Ein "spielbarer Client" ist erreichbar; ein "vollstaendiger FreeCol Client" braucht noch deutlich mehr Oberflaechen- und Sonderfallarbeit.
-
+- Save/Load besitzt in der verwendeten FreeCol-Version keinen passenden
+  Client-Protokollfluss.
+- Ein Metaserver-Browser ist nicht Teil der aktuellen Roadmap.
+- Das Swift-Modell bildet weiterhin nur den vom Client benötigten Teil der
+  vollständigen Java-Spielregeln und Spezifikation ab.

@@ -83,7 +83,7 @@ start_server
 (cd "$ROOT" && REAL_SERVER_DEEP_E2E=1 REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
   swift run FreeColProtocolCLI)
 
-echo "==> Gameplay probe (move a unit and advance the turn)"
+echo "==> Gameplay probe (market trade, colony founding when available, move and end turn)"
 start_server
 (cd "$ROOT" && REAL_SERVER_GAMEPLAY_E2E=1 REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
   swift run FreeColProtocolCLI)

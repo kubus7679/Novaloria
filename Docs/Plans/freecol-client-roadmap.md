@@ -3,7 +3,7 @@
 > **Hinweis (Status):** Die folgenden Phasen 1–14 sind *protokoll-/UI-seitig*
 > angebunden. „Spielbar wie der Java-Client" ist damit noch nicht erreicht.
 > Die verifizierten Restlücken stehen in
-> `Docs/Plans/playability-roadmap-54-57.md` (Phasen 54–57).
+> `Docs/Plans/playability-roadmap-54-57.md` (Phasen 54–63).
 
 ## Phase 1: Colony and Unit UX completion
 
@@ -91,7 +91,7 @@
 - [x] In-game help browser.
 - [x] Preferences sheet (display/animation).
 
-## Phase 15: Playability completion (54–57)
+## Phase 15: Playability completion and real-server validation (54–63)
 
 - [x] **54 Inbound blockers** — `chooseFoundingFather` in-game dialog,
       `setDead` defeat/revenge, local `logout`, `gameEnded` victory screen,
@@ -113,8 +113,11 @@
       metaserver browser, save/load.
 - [x] **62 Java-server E2E** — reproducible Docker harness plus smoke and
       pre-game-to-in-game probes against the real server.
-- [x] **63 Gameplay E2E** — move a unit and advance the turn against the real
-      server, asserting the deserialized model.
+- [x] **63 Gameplay E2E implementation** — move a unit and advance the turn,
+      plus market buy/sell and conditional colony founding with model assertions.
+- [x] Expanded Phase-63 probe run against Java: Smoke/Deep/Gameplay each 131/0;
+      market trade and colony founding were skipped because this generated
+      scenario lacked their preconditions.
 
 ## Suggested order
 

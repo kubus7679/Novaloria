@@ -1,7 +1,8 @@
-# Phase 63 — Gameplay-E2E gegen den Java-Server (Implementiert)
+# Phase 63 — Gameplay-E2E gegen den Java-Server
 
-Ziel: Nach Login/Launch (Phase 62) auch echte Spielaktionen gegen den echten
-Java-Server verifizieren: Einheit bewegen und Zug beenden.
+Ziel: Nach Login/Launch (Phase 62) echte Gameplay-Aktionen gegen den echten
+Java-Server verifizieren und deren serverseitige Modelländerungen im Swift-Modell
+prüfen.
 
 ## Umfang
 
@@ -12,6 +13,14 @@ Java-Server verifizieren: Einheit bewegen und Zug beenden.
 - Spec-/Karten-Assertions: Unit-, Goods-, Building- und Tile-Typen sowie
   Kacheln vorhanden.
 - Lokalen Spieler über den Login-Namen auflösen.
+- Markt-Daten aus dem echten Serverzustand prüfen; wenn ein Europa-Carrier und
+  bezahlbare, nicht boykottierte Waren verfügbar sind, 100 Waren kaufen und
+  wieder verkaufen. Cargo und Gold müssen jeweils serverseitig aktualisiert
+  werden.
+- Wenn ein Colonist mit `foundColony`-Fähigkeit auf einem freien, besiedelbaren
+  Landtile verfügbar ist, optional ausschiffen und eine Kolonie gründen. Nach
+  einem begonnenen Aktionsversuch sind Serverfehler Testfehler; nur fehlende
+  Szenario-Voraussetzungen dürfen den Schritt überspringen.
 - Eine **direkt auf einer Kachel stehende** Einheit mit Bewegung wählen
   (nicht eingeschifft, nicht in Europa).
 - Bis zu acht Richtungen per `move`-`ask` probieren, bis der Server eine
@@ -28,17 +37,28 @@ Java-Server verifizieren: Einheit bewegen und Zug beenden.
   `location` == Kachel-ID.
 - `await`-Ausdruck in `while`-Bedingung war ungültig; Zustand wird nun im
   Schleifenkörper gelesen.
+- E2E-Auswahl für Koloniegründung nutzt nun geparste `foundColony`-Fähigkeit
+  samt geparsten Tile-Flags `is-water`/`can-settle`; ungültige See-/Siedlungstiles
+  werden vor dem Serveraufruf ausgeschlossen.
+- Nach Aktionen wird der neueste `client.game`-Snapshot für die Assertions und
+  die folgende Bewegung verwendet.
 
-## Ergebnis
+## Validierungsstatus
 
-```
-==> Smoke probe    → 131 passed, 0 failed
-==> Deep probe     → 131 passed, 0 failed
-==> Gameplay probe → 131 passed, 0 failed
-```
+- Lokale Regressionen nach der Erweiterung: `swift test` (66 Tests) und
+  `swift run FreeColProtocolCLI` (130 Prüfungen) erfolgreich.
+- Java-Server-E2E nach der Erweiterung: Smoke, Deep und Gameplay jeweils
+  131/0.
+- Die Gameplay-Probe hat Bewegung und Zugwechsel tatsächlich ausgeführt und
+  bestätigt. Markt-Kauf/-Verkauf wurde übersprungen, weil im generierten Spiel
+  kein passender Europa-Carrier oder keine bezahlbare Ware gefunden wurde.
+  Koloniegründung wurde mangels Colonist auf einem freien, besiedelbaren Tile
+  übersprungen.
 
-Damit bestätigt: Bewegung (`move`), Server-Modell-Update und Zugwechsel
-(`endTurn`) funktionieren gegen den Java-Server 0.120.
+Damit sind Smoke, Deep und der erweiterte Gameplay-Transport-/Modellpfad gegen
+Java FreeCol 0.120 bestätigt. Die Markttransaktion und Koloniegründung sind im
+Probe-Code enthalten, benötigen für eine tatsächliche Aktionsprüfung aber eine
+geeignetere Startkonstellation.
 
 ## Nutzung
 
