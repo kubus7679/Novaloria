@@ -770,9 +770,30 @@ die dokumentierten Nicht-Ziele.
 
 ## Phase 68 — Europa-Marktverfügbarkeit
 
-- [x] Kaufmengen nach Market-Bestand und Verkaufsmengen nach Carrier-Cargo
-      begrenzen; nicht verfügbare Mengen werden in der UI angezeigt.
-- [x] XCTest für positive und negative Bestandswerte; 67 XCTest / 132 CLI grün.
+- [x] Markt-/Carrier-Verfügbarkeit in der UI anzeigen; die Kaufobergrenze wurde
+      in Phase 69 nach Prüfung des Java-Vertrags auf Bezahlbarkeit korrigiert.
+- [x] 67 XCTest / 132 CLI grün.
 - [x] Java-E2E Smoke/Deep/Gameplay jeweils 1/0; 100 Pferde weiterhin gekauft
       und verkauft.
 - Konkreter Plan: `Docs/Plans/phase68-europe-market-availability-plan.md`.
+
+## Phase 69 — Markt-Kaufmenge nach Bezahlbarkeit
+
+- [x] Java-Vertrag verifiziert: Käufe werden nach `Gold / costToBuy` begrenzt;
+      der Market-Bestand ist kein Kauf-Limit.
+- [x] Europe-UI begrenzt Käufe nach aktuellem angezeigtem Preis und Verkäufe
+      nach Cargo-Bestand; Grenzfälle getestet.
+- [x] 67 XCTest / 132 CLI grün; Smoke/Deep/Gameplay jeweils 1/0, Handel gegen
+      Java bestätigt.
+- Konkreter Plan: `Docs/Plans/phase69-market-affordability-plan.md`.
+
+## Phase 70 — Kaufmenge nach Frachtraum
+
+- [x] `space`/`spaceTaken` aus der Spezifikation parsen und Vererbung über
+      Unit-Type-`extends` berücksichtigen.
+- [x] Restliche Warenkapazität in 100er-Fracht-Slots unter Einrechnung von
+      vorhandenen Waren, Teilstapeln und Passagieren berechnen.
+- [x] Buy-Limit auf das Minimum aus Gold-Bezahlbarkeit und freiem Laderaum
+      begrenzen.
+- [x] Build, 69 XCTest und 132 CLI-Prüfungen erfolgreich.
+- Konkreter Plan: `Docs/Plans/phase70-europe-cargo-capacity-plan.md`.

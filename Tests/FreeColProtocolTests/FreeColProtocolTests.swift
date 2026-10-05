@@ -1047,14 +1047,78 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(oversupplied.costToBuy, 3)
     }
 
-    func testEuropeMarketTradeLimitsUseAvailableStockAndCargo() {
-        let limits = GameState.marketTradeLimits(marketStock: 37, carriedAmount: 12)
-        XCTAssertEqual(limits.buy, 37)
+    func testEuropeMarketTradeLimitsUseGoldCargoAndLoadableAmount() {
+        let limits = GameState.marketTradeLimits(gold: 137,
+                                                 buyPrice: 25,
+                                                 loadableAmount: 80,
+                                                 carriedAmount: 12)
+        XCTAssertEqual(limits.buy, 5)
         XCTAssertEqual(limits.sell, 12)
 
-        let emptyLimits = GameState.marketTradeLimits(marketStock: -4, carriedAmount: -2)
-        XCTAssertEqual(emptyLimits.buy, 0)
-        XCTAssertEqual(emptyLimits.sell, 0)
+        let cargoLimited = GameState.marketTradeLimits(gold: 1_000,
+                                                       buyPrice: 10,
+                                                       loadableAmount: 80,
+                                                       carriedAmount: 12)
+        XCTAssertEqual(cargoLimited.buy, 80)
+        XCTAssertEqual(cargoLimited.sell, 12)
+
+        let noGoldLimits = GameState.marketTradeLimits(gold: 0,
+                                                      buyPrice: 25,
+                                                      loadableAmount: 100,
+                                                      carriedAmount: -2)
+        XCTAssertEqual(noGoldLimits.buy, 0)
+        XCTAssertEqual(noGoldLimits.sell, 0)
+
+        let noPriceLimits = GameState.marketTradeLimits(gold: 500,
+                                                       buyPrice: 0,
+                                                       loadableAmount: 100,
+                                                       carriedAmount: 0)
+        XCTAssertEqual(noPriceLimits.buy, 0)
+        XCTAssertEqual(noPriceLimits.sell, 0)
+
+        let negativeGoldLimits = GameState.marketTradeLimits(gold: -1,
+                                                             buyPrice: 1,
+                                                             loadableAmount: 100,
+                                                             carriedAmount: -2)
+        XCTAssertEqual(negativeGoldLimits.buy, 0)
+        XCTAssertEqual(negativeGoldLimits.sell, 0)
+    }
+
+    func testLoadableGoodsAmountIncludesPartialStacksAndPassengers() {
+        let partialStack = GameState.loadableGoodsAmount(cargoCapacity: 4,
+                                                        goodsAmounts: [150, 40],
+                                                        carriedUnitSpace: 0,
+                                                        selectedGoodsAmount: 150)
+        XCTAssertEqual(partialStack, 150)
+
+        let passengerCargo = GameState.loadableGoodsAmount(cargoCapacity: 4,
+                                                           goodsAmounts: [40],
+                                                           carriedUnitSpace: 1,
+                                                           selectedGoodsAmount: 40)
+        XCTAssertEqual(passengerCargo, 260)
+
+        let fullCargo = GameState.loadableGoodsAmount(cargoCapacity: 2,
+                                                      goodsAmounts: [100, 100],
+                                                      carriedUnitSpace: 0,
+                                                      selectedGoodsAmount: 100)
+        XCTAssertEqual(fullCargo, 0)
+    }
+
+    func testSpecificationInheritsUnitCargoSpace() throws {
+        let parsed = try XMLDecoder.decode("""
+        <freecol-specification id="spec">
+          <unit-type id="ship" abstract="true" space="2" spaceTaken="24">
+            <ability id="model.ability.carryGoods" value="true"/>
+          </unit-type>
+          <unit-type id="model.unit.merchantman" extends="ship" space="4"/>
+        </freecol-specification>
+        """)
+        let specification = Specification(parsed: parsed)
+        let merchantman = try XCTUnwrap(specification.unitTypes["model.unit.merchantman"])
+        XCTAssertEqual(merchantman.cargoSpace, 4)
+        XCTAssertEqual(merchantman.spaceTaken, 24)
+        XCTAssertEqual(merchantman.spaceTakenOnCarrier, 24)
+        XCTAssertTrue(specification.hasAbility("model.ability.carryGoods", unitType: merchantman.id))
     }
 
     func testMarketPricingNewWorldClamp() throws {

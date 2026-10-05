@@ -4,7 +4,7 @@
 > angebunden. „Spielbar wie der Java-Client" ist damit noch nicht erreicht.
 > Die verifizierten Restlücken stehen in
 > `Docs/Plans/playability-roadmap-54-57.md` (Phasen 54–65) sowie die
-> Economy-/Colony-Management-Follow-ups der Phasen 66–68.
+> Economy-/Colony-Management-Follow-ups der Phasen 66–70.
 
 ## Phase 1: Colony and Unit UX completion
 
@@ -92,7 +92,7 @@
 - [x] In-game help browser.
 - [x] Preferences sheet (display/animation).
 
-## Phase 15: Playability completion and real-server validation (54–68)
+## Phase 15: Playability completion and real-server validation (54–70)
 
 - [x] **54 Inbound blockers** — `chooseFoundingFather` in-game dialog,
       `setDead` defeat/revenge, local `logout`, `gameEnded` victory screen,
@@ -130,9 +130,11 @@
 - [x] **67 Colony rename E2E** — rename the founded colony against Java and
       assert updated name, owner and tile in the client model. See
       `phase67-colony-rename-e2e-plan.md`.
-- [x] **68 Europe market availability** — bound Buy/Sell controls by market
-      stock and selected-carrier cargo. See
-      `phase68-europe-market-availability-plan.md`.
+- [x] **68–70 Europe market availability** — bound buys by affordability/free
+      cargo and sales by selected-carrier cargo. See
+      `phase68-europe-market-availability-plan.md` and
+      `phase69-market-affordability-plan.md` plus
+      `phase70-europe-cargo-capacity-plan.md` for Java behavior and validation.
 
 ## Suggested order
 

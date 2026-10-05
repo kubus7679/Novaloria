@@ -7,11 +7,13 @@ market and the selected carrier before a trade is sent.
 
 ## Umsetzung
 
-- [x] Der maximale Kaufwert folgt dem geparsten Market-Bestand der Ware.
+- [x] Der Kauf- und Verkaufsumfang wird mit den verfügbaren Modelldaten in der
+      UI ausgewiesen. Der Java-Vertrag zur Kaufobergrenze wurde anschließend in
+      Phase 69 geprüft und korrigiert; Phase 70 ergänzt freie Frachtraumkapazität.
 - [x] Der maximale Verkaufswert folgt dem Warenbestand im ausgewählten Carrier.
 - [x] Die Europe-Ansicht zeigt beide verfügbaren Mengen und deaktiviert
       überhöhte Buy-/Sell-Aktionen.
-- [x] Negative/unavailable Bestände werden als null behandelt.
+- [x] Negative/unavailable Verkaufsbestände werden als null behandelt.
 
 ## Validierung
 

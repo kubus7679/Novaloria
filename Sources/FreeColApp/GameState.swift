@@ -4758,21 +4758,68 @@ final class GameState {
         }
     }
 
-    /// Maximum market stock and carrier cargo currently available for a Europe trade.
+    /// Maximum affordable and loadable buy quantity plus sale cargo for a Europe trade.
     func europeMarketTradeLimits(goodsTypeId: String?, carrierId: String?) -> (buy: Int, sell: Int) {
         guard let goodsTypeId, !goodsTypeId.isEmpty,
-              let marketData = localPlayer?.market?.entry(for: goodsTypeId) else {
+              localPlayer?.market?.entry(for: goodsTypeId) != nil else {
             return (buy: 0, sell: 0)
         }
         let carriedAmount = carrierId
             .flatMap { cachedGame?.units[$0]?.goods[goodsTypeId] } ?? 0
-        return Self.marketTradeLimits(marketStock: marketData.amount,
+        guard let game = cachedGame,
+              let specification = game.specification,
+              let carrierId,
+              let carrier = game.units[carrierId],
+              let carrierTypeId = carrier.unitType,
+              specification.hasAbility("model.ability.carryGoods", unitType: carrierTypeId),
+              let cargoCapacity = specification.unitTypes[carrierTypeId]?.cargoSpace else {
+            return Self.marketTradeLimits(gold: localPlayer?.gold ?? 0,
+                                          buyPrice: marketPrices(for: goodsTypeId).costToBuy,
+                                          loadableAmount: 0,
+                                          carriedAmount: carriedAmount)
+        }
+        let carriedUnitSpace = game.units.values
+            .filter { $0.location == carrierId }
+            .reduce(0) { total, cargoUnit in
+                let spaceTaken = cargoUnit.unitType.flatMap {
+                    specification.unitTypes[$0]?.spaceTakenOnCarrier
+                } ?? 1
+                return total + spaceTaken
+            }
+        let loadableAmount = Self.loadableGoodsAmount(
+            cargoCapacity: cargoCapacity,
+            goodsAmounts: Array(carrier.goods.values),
+            carriedUnitSpace: carriedUnitSpace,
+            selectedGoodsAmount: carriedAmount
+        )
+        return Self.marketTradeLimits(gold: localPlayer?.gold ?? 0,
+                                      buyPrice: marketPrices(for: goodsTypeId).costToBuy,
+                                      loadableAmount: loadableAmount,
                                       carriedAmount: carriedAmount)
     }
 
-    nonisolated static func marketTradeLimits(marketStock: Int,
+    nonisolated static func marketTradeLimits(gold: Int,
+                                             buyPrice: Int,
+                                             loadableAmount: Int,
                                              carriedAmount: Int) -> (buy: Int, sell: Int) {
-        (buy: max(0, marketStock), sell: max(0, carriedAmount))
+        let affordableAmount = gold > 0 && buyPrice > 0 ? gold / buyPrice : 0
+        return (buy: min(affordableAmount, max(0, loadableAmount)),
+                sell: max(0, carriedAmount))
+    }
+
+    nonisolated static func loadableGoodsAmount(cargoCapacity: Int,
+                                                goodsAmounts: [Int],
+                                                carriedUnitSpace: Int,
+                                                selectedGoodsAmount: Int) -> Int {
+        let cargoSize = 100
+        let goodsSpace = goodsAmounts.reduce(0) { total, amount in
+            let positiveAmount = max(0, amount)
+            return total + (positiveAmount + cargoSize - 1) / cargoSize
+        }
+        let freeSlots = max(0, cargoCapacity - goodsSpace - max(0, carriedUnitSpace))
+        let selectedRemainder = max(0, selectedGoodsAmount) % cargoSize
+        let partialStackSpace = selectedRemainder == 0 ? 0 : cargoSize - selectedRemainder
+        return freeSlots * cargoSize + partialStackSpace
     }
 
     /// Buy price (`costToBuy`) or sale price (`paidForSale`) for one goods type.

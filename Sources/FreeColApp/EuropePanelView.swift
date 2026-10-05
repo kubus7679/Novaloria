@@ -235,7 +235,7 @@ struct EuropePanelView: View {
                             .buttonStyle(.bordered)
                             .disabled(!canTrade || requestedTradeAmount > limits.buy)
                         }
-                        Text("Available: buy \(limits.buy) · sell \(limits.sell)")
+                        Text("Buy limit: \(limits.buy) · cargo to sell: \(limits.sell)")
                             .font(.caption2)
                             .foregroundColor(.secondary)
                     }

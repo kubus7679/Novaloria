@@ -10,6 +10,10 @@ public struct UnitTypeInfo: @unchecked Sendable {
     public var offence: Int
     public var defence: Int
     public var movement: Int
+    /// Cargo slots this unit type can carry (`space` in the Java specification).
+    public var cargoSpace: Int?
+    /// Cargo slots this unit occupies when carried (`spaceTaken` in the Java specification).
+    public var spaceTaken: Int?
     /// Parent type id from `extends`, used for ability/attribute inheritance.
     public var extendsId: String?
     /// Directly declared abilities (`<ability id= value=>`), before inheritance.
@@ -22,6 +26,8 @@ public struct UnitTypeInfo: @unchecked Sendable {
                 offence: Int,
                 defence: Int,
                 movement: Int,
+                cargoSpace: Int? = nil,
+                spaceTaken: Int? = nil,
                 extendsId: String? = nil,
                 abilities: [String: Bool] = [:]) {
         self.id = id
@@ -31,8 +37,16 @@ public struct UnitTypeInfo: @unchecked Sendable {
         self.offence = offence
         self.defence = defence
         self.movement = movement
+        self.cargoSpace = cargoSpace
+        self.spaceTaken = spaceTaken
         self.extendsId = extendsId
         self.abilities = abilities
+    }
+
+    /// FreeCol reserves at least one slot beyond a unit's own cargo capacity
+    /// when it is carried by another unit.
+    public var spaceTakenOnCarrier: Int {
+        max(spaceTaken ?? 1, (cargoSpace ?? 0) + 1)
     }
 
     public var displayName: String {
@@ -251,6 +265,8 @@ public final class Specification: @unchecked Sendable {
                     offence: child.attributes.int("offence"),
                     defence: child.attributes.int("defence"),
                     movement: child.attributes.int("movement"),
+                    cargoSpace: child.attributes["space"].flatMap { Int($0) },
+                    spaceTaken: child.attributes["spaceTaken"].flatMap { Int($0) },
                     extendsId: child.attributes["extends"],
                     abilities: abilities
                 )
@@ -271,12 +287,29 @@ public final class Specification: @unchecked Sendable {
                 ?? UnitTypeTraits.isNaval(unitType: unitId)
             info.isNaval = naval
             info.carriesUnits = carries
+            if info.cargoSpace == nil {
+                info.cargoSpace = inheritedUnitTypeValue(unitTypeId: unitId, value: \.cargoSpace)
+            }
+            if info.spaceTaken == nil {
+                info.spaceTaken = inheritedUnitTypeValue(unitTypeId: unitId, value: \.spaceTaken)
+            }
             if info.lineOfSight < 0 {
                 info.lineOfSight = inheritedLineOfSight(unitTypeId: unitId)
                     ?? Self.fallbackLineOfSight(forUnitType: unitId)
             }
             unitTypes[unitId] = info
         }
+    }
+
+    private func inheritedUnitTypeValue(unitTypeId: String,
+                                        value: (UnitTypeInfo) -> Int?,
+                                        visited: Set<String> = []) -> Int? {
+        guard !visited.contains(unitTypeId), let info = unitTypes[unitTypeId] else { return nil }
+        if let result = value(info) { return result }
+        guard let parent = info.extendsId else { return nil }
+        var visited = visited
+        visited.insert(unitTypeId)
+        return inheritedUnitTypeValue(unitTypeId: parent, value: value, visited: visited)
     }
 
     /// Walk the `extends` chain for an ability value (own value wins).
