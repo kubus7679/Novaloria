@@ -805,3 +805,12 @@ die dokumentierten Nicht-Ziele.
 - [x] Schnellaktionen sind ohne Zug, Carrier oder verfügbare Menge deaktiviert.
 - [x] Build, 69 XCTest, 132 CLI-Prüfungen und Java-E2E erfolgreich.
 - Konkreter Plan: `Docs/Plans/phase71-market-quantity-shortcuts-plan.md`.
+
+## Phase 72 — Kolonie-Lagerhaus-E2E
+
+- [x] `setGoodsLevels` mit verschachteltem `<exportData>` nach der Gründung an
+      Java senden.
+- [x] Export-Toggle und Import-/Export-/Low-/High-Level im Modell bestätigen.
+- [x] Rejects oder fehlende Updates lassen die Gameplay-Probe fehlschlagen.
+- [x] Build, 69 XCTest, 132 CLI-Prüfungen und Java-E2E erfolgreich.
+- Konkreter Plan: `Docs/Plans/phase72-colony-warehouse-e2e-plan.md`.

@@ -5082,6 +5082,59 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_GAMEPLAY_E2E"] == "1" {
                 throw TestError(message: "renamed colony \(foundedColonyId) was not updated in the model")
             }
             print("    renamed colony to \(renamedColony)")
+
+            guard let warehouseGoodsType = spec.goodsTypes.values
+                .filter(\.isStorable)
+                .map(\.id)
+                .sorted()
+                .first else {
+                throw TestError(message: "specification has no storable goods for warehouse probe")
+            }
+            let warehouseSettings = ColonyExportData(goodsType: warehouseGoodsType,
+                                                     exported: true,
+                                                     importLevel: -1,
+                                                     exportLevel: 60,
+                                                     highLevel: 80,
+                                                     lowLevel: 20)
+            let exportData = ParsedMessage(
+                tag: "exportData",
+                attributes: [
+                    "id": warehouseSettings.goodsType,
+                    "exported": String(warehouseSettings.exported),
+                    "importLevel": String(warehouseSettings.importLevel),
+                    "exportLevel": String(warehouseSettings.exportLevel),
+                    "highLevel": String(warehouseSettings.highLevel),
+                    "lowLevel": String(warehouseSettings.lowLevel),
+                ],
+                children: []
+            )
+            do {
+                _ = try await client.ask(message: ParsedMessage(
+                    tag: "setGoodsLevels",
+                    attributes: ["colony": foundedColonyId],
+                    children: [exportData]
+                ), timeout: 8)
+            } catch {
+                throw TestError(message: "setGoodsLevels rejected for colony \(foundedColonyId): \(error)")
+            }
+            var warehouseUpdateApplied = false
+            for _ in 0..<30 {
+                game = await client.game
+                if let applied = game.colonies[foundedColonyId]?.exportData[warehouseGoodsType],
+                   applied.exported == warehouseSettings.exported,
+                   applied.importLevel == warehouseSettings.importLevel,
+                   applied.exportLevel == warehouseSettings.exportLevel,
+                   applied.highLevel == warehouseSettings.highLevel,
+                   applied.lowLevel == warehouseSettings.lowLevel {
+                    warehouseUpdateApplied = true
+                    break
+                }
+                try await Task.sleep(nanoseconds: 200_000_000)
+            }
+            guard warehouseUpdateApplied else {
+                throw TestError(message: "warehouse settings for \(warehouseGoodsType) were not applied")
+            }
+            print("    updated warehouse levels for \(warehouseGoodsType)")
         } else if requireColonyFounding {
             throw TestError(message: "colony management required but the new colony was not available to rename")
         }

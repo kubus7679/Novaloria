@@ -14,6 +14,8 @@ Kauf und Verkauf von 100 Waren wurde inklusive Cargo- und Goldupdates bestätigt
 eine Koloniegründung wurde mit Name, Owner und Tile im Modell verifiziert. Der
 Gameplay-Harness erzwingt beide Aktionen; die Kolonie wird außerdem nach der
 Gründung erfolgreich umbenannt und ihr Modellupdate bestätigt. Die
+Warehouse-Grenzwerte einer gegründeten Kolonie werden ebenfalls gegen den
+Java-Server geändert und im Clientmodell bestätigt. Die
 Kolonieverwaltung bietet die Auswahl von Worker-Verbesserungen nun direkt aus
 der geladenen Spezifikation. Europa begrenzt Käufe nach Bezahlbarkeit und freiem
 Frachtraum und Verkäufe nach dem Warenbestand des ausgewählten Carriers; „Max

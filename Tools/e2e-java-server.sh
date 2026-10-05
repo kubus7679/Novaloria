@@ -86,7 +86,7 @@ start_server
   REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
   swift run FreeColProtocolCLI)
 
-echo "==> Gameplay probe (colony founding and rename, market trade, move and end turn)"
+echo "==> Gameplay probe (colony founding, rename and warehouse, market trade, move and end turn)"
 start_server
 (cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_GAMEPLAY_E2E=1 \
   REAL_SERVER_REQUIRE_MARKET_TRADE=1 \
