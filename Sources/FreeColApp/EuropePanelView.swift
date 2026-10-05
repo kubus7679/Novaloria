@@ -235,9 +235,30 @@ struct EuropePanelView: View {
                             .buttonStyle(.bordered)
                             .disabled(!canTrade || requestedTradeAmount > limits.buy)
                         }
-                        Text("Buy limit: \(limits.buy) · cargo to sell: \(limits.sell)")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                        HStack {
+                            Button("Max Buy") {
+                                tradeAmount = String(limits.buy)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            .disabled(!state.isLocalPlayersTurn
+                                      || selectedCarrierId.isEmpty
+                                      || limits.buy == 0)
+
+                            Button("Sell All") {
+                                tradeAmount = String(limits.sell)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            .disabled(!state.isLocalPlayersTurn
+                                      || selectedCarrierId.isEmpty
+                                      || limits.sell == 0)
+
+                            Spacer()
+                            Text("Buy limit: \(limits.buy) · cargo: \(limits.sell)")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
             }

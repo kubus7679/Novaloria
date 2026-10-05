@@ -797,3 +797,11 @@ die dokumentierten Nicht-Ziele.
       begrenzen.
 - [x] Build, 69 XCTest und 132 CLI-Prüfungen erfolgreich.
 - Konkreter Plan: `Docs/Plans/phase70-europe-cargo-capacity-plan.md`.
+
+## Phase 71 — Markt-Mengen-Schnellaktionen
+
+- [x] „Max Buy“ übernimmt die bezahlbare und ladbare Kaufmenge.
+- [x] „Sell All“ übernimmt die Warenmenge im ausgewählten Carrier.
+- [x] Schnellaktionen sind ohne Zug, Carrier oder verfügbare Menge deaktiviert.
+- [x] Build, 69 XCTest, 132 CLI-Prüfungen und Java-E2E erfolgreich.
+- Konkreter Plan: `Docs/Plans/phase71-market-quantity-shortcuts-plan.md`.
