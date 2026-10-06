@@ -4,7 +4,7 @@
 > angebunden. „Spielbar wie der Java-Client" ist damit noch nicht erreicht.
 > Die verifizierten Restlücken stehen in
 > `Docs/Plans/playability-roadmap-54-57.md` (Phasen 54–65) sowie die
-> Economy-/Colony-Management-Follow-ups der Phasen 66–78.
+> Economy-/Colony-Management-Follow-ups der Phasen 66–79.
 
 ## Phase 1: Colony and Unit UX completion
 
@@ -92,7 +92,7 @@
 - [x] In-game help browser.
 - [x] Preferences sheet (display/animation).
 
-## Phase 15: Playability completion and real-server validation (54–78)
+## Phase 15: Playability completion and real-server validation (54–79)
 
 - [x] **54 Inbound blockers** — `chooseFoundingFather` in-game dialog,
       `setDead` defeat/revenge, local `logout`, `gameEnded` victory screen,
@@ -159,6 +159,9 @@
 - [x] **78 Market price-step limits** — cap each purchase by Java's per-step
       pricing chunk and verify direct action bounds. See
       `phase78-market-price-chunk-limits-plan.md`.
+- [x] **79 Market transaction quotes** — show total buy cost and net sale
+      proceeds; limit both transaction directions to one price step. See
+      `phase79-market-transaction-quotes-plan.md`.
 
 ## Suggested order
 

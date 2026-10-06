@@ -801,7 +801,8 @@ die dokumentierten Nicht-Ziele.
 ## Phase 71 — Markt-Mengen-Schnellaktionen
 
 - [x] „Max Buy“ übernimmt die bezahlbare und ladbare Kaufmenge.
-- [x] „Sell All“ übernimmt die Warenmenge im ausgewählten Carrier.
+- [x] „Sell All“ übernimmt anfangs den verfügbaren Warenbestand; Phase 79
+      begrenzt den Schnellwert auf eine Java-Preisstufe und nennt ihn „Max Sell“.
 - [x] Schnellaktionen sind ohne Zug, Carrier oder verfügbare Menge deaktiviert.
 - [x] Build, 69 XCTest, 132 CLI-Prüfungen und Java-E2E erfolgreich.
 - Konkreter Plan: `Docs/Plans/phase71-market-quantity-shortcuts-plan.md`.
@@ -867,3 +868,12 @@ die dokumentierten Nicht-Ziele.
       der berechneten Bezahlbarkeit, Kapazität oder dem Cargo-Bestand.
 - [x] Build, 73 XCTest, 132 CLI-Prüfungen und Java-E2E erfolgreich.
 - Konkreter Plan: `Docs/Plans/phase78-market-price-chunk-limits-plan.md`.
+
+## Phase 79 — Markttransaktions-Quotes
+
+- [x] Kauf- und Verkaufsmengen auf jeweils eine 100er-Preisstufe begrenzen.
+- [x] Europe-UI zeigt Gesamtpreis und besteuerten Nettoerlös für die Eingabemenge.
+- [x] App-State sichert dieselben Grenzen auch bei direkten Aktionen.
+- [x] Build, 74 XCTest, 132 CLI-Prüfungen und Java-E2E mit exakten
+      Preis-/Golddelta-Assertions erfolgreich.
+- Konkreter Plan: `Docs/Plans/phase79-market-transaction-quotes-plan.md`.

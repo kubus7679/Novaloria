@@ -21,9 +21,9 @@ der geladenen Spezifikation. Handelsrouten werden gegen den Java-Server erstellt
 geändert, Carriern zugewiesen und gelöscht; der Editor prüft vor dem Speichern
 die Java-Regeln. Europa
 begrenzt Käufe nach Bezahlbarkeit und freiem
-Frachtraum und Verkäufe nach dem Warenbestand des ausgewählten Carriers; „Max
-Buy“ und „Sell All“ füllen passende Mengen direkt ein. Jede Kaufbestellung ist
-auf einen serverseitigen Preisabschnitt von 100 Waren begrenzt. Boykottierte
+Frachtraum und Verkäufe nach dem Warenbestand des ausgewählten Carriers. „Max
+Buy“ und „Max Sell“ füllen passende Mengen bis zur 100er-Preisstufe ein; die
+Ansicht zeigt Gesamtpreis und besteuerten Verkaufserlös. Boykottierte
 Waren sind bis zur Begleichung der Rückstände vom Handel ausgeschlossen. Die lokal
 berechneten Marktpreise folgen jetzt auch bei verarbeiteten New-World-Gütern
 der Java-Rundung.

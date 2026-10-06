@@ -246,7 +246,7 @@ struct EuropePanelView: View {
                                       || selectedCarrierId.isEmpty
                                       || limits.buy == 0)
 
-                            Button("Sell All") {
+                            Button("Max Sell") {
                                 tradeAmount = String(limits.sell)
                             }
                             .buttonStyle(.bordered)
@@ -258,7 +258,16 @@ struct EuropePanelView: View {
                             Spacer()
                             Text(arrears > 0
                                  ? "Boycotted: pay \(arrears) arrears before trading"
-                                 : "Buy/order limit: \(limits.buy) · cargo: \(limits.sell)")
+                                 : "Buy/order limit: \(limits.buy) · sell/order limit: \(limits.sell)")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        if arrears == 0,
+                           let quote = state.europeMarketTradeQuote(
+                            goodsTypeId: selectedGoodsType,
+                            amount: requestedTradeAmount
+                           ) {
+                            Text("Estimated: buy \(quote.buyTotal) G · sell after tax \(quote.sellAfterTax) G")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }

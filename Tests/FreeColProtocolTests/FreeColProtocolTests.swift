@@ -1104,6 +1104,12 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(cargoLimited.buy, 80)
         XCTAssertEqual(cargoLimited.sell, 12)
 
+        let sellChunkLimited = GameState.marketTradeLimits(gold: 1_000,
+                                                           buyPrice: 1,
+                                                           loadableAmount: 500,
+                                                           carriedAmount: 250)
+        XCTAssertEqual(sellChunkLimited.sell, MarketPricing.goodsPerCargoChunk)
+
         let chunkLimited = GameState.marketTradeLimits(gold: 10_000,
                                                        buyPrice: 1,
                                                        loadableAmount: 500,
@@ -1138,6 +1144,22 @@ final class FreeColProtocolTests: XCTestCase {
                                                           arrears: 25)
         XCTAssertEqual(boycottedLimits.buy, 0)
         XCTAssertEqual(boycottedLimits.sell, 0)
+    }
+
+    func testMarketTransactionQuoteIncludesSaleTax() {
+        let quote = GameState.marketTransactionQuote(amount: 30,
+                                                     buyPrice: 7,
+                                                     salePrice: 4,
+                                                     tax: 15)
+        XCTAssertEqual(quote.buyTotal, 210)
+        XCTAssertEqual(quote.sellAfterTax, 102)
+
+        let fullyTaxed = GameState.marketTransactionQuote(amount: 100,
+                                                          buyPrice: 0,
+                                                          salePrice: 2,
+                                                          tax: 100)
+        XCTAssertEqual(fullyTaxed.buyTotal, 0)
+        XCTAssertEqual(fullyTaxed.sellAfterTax, 0)
     }
 
     func testLoadableGoodsAmountIncludesPartialStacksAndPassengers() {

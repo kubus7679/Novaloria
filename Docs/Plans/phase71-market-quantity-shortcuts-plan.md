@@ -8,7 +8,8 @@ entering the amount.
 ## Umsetzung
 
 - [x] Add “Max Buy” to fill the amount with the current gold-and-cargo buy limit.
-- [x] Add “Sell All” to fill the amount with the selected carrier's goods count.
+- [x] Add “Sell All” to fill the amount with the selected carrier's goods count
+      (renamed to “Max Sell” and limited to one Java price step in Phase 79).
 - [x] Disable shortcuts when the action is unavailable or the limit is zero.
 
 ## Validierung

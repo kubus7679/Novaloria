@@ -4869,7 +4869,27 @@ final class GameState {
         return (buy: min(affordableAmount,
                          max(0, loadableAmount),
                          MarketPricing.goodsPerCargoChunk),
-                sell: max(0, carriedAmount))
+                sell: min(max(0, carriedAmount), MarketPricing.goodsPerCargoChunk))
+    }
+
+    func europeMarketTradeQuote(goodsTypeId: String?, amount: Int) -> (buyTotal: Int, sellAfterTax: Int)? {
+        guard let goodsTypeId, !goodsTypeId.isEmpty, amount > 0 else { return nil }
+        let prices = marketPrices(for: goodsTypeId)
+        return Self.marketTransactionQuote(amount: amount,
+                                           buyPrice: prices.costToBuy,
+                                           salePrice: prices.paidForSale,
+                                           tax: localPlayer?.tax ?? 0)
+    }
+
+    nonisolated static func marketTransactionQuote(amount: Int,
+                                                   buyPrice: Int,
+                                                   salePrice: Int,
+                                                   tax: Int) -> (buyTotal: Int, sellAfterTax: Int) {
+        let count = max(0, amount)
+        let normalizedTax = min(max(0, tax), 100)
+        let grossSale = count * max(0, salePrice)
+        return (buyTotal: count * max(0, buyPrice),
+                sellAfterTax: (grossSale * (100 - normalizedTax)) / 100)
     }
 
     nonisolated static func loadableGoodsAmount(cargoCapacity: Int,
