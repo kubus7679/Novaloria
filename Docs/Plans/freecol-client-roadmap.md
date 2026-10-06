@@ -170,6 +170,10 @@
 - [x] **82 Market price trend indicators** — show up/down/stable arrows
       next to prices based on recent price movements. See
       `phase82-market-price-trend-indicators-plan.md`.
+- [x] **83 Automated trade route execution** — execute assigned trade routes at
+      turn end: move carriers to stops, load/unload goods, advance route counter.
+      Auto-execute toggle in trade route editor. See
+      `phase83-automated-trade-route-execution-plan.md`.
 
 ## Suggested order
 

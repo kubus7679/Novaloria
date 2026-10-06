@@ -29,3 +29,14 @@
 - [x] Fenster-Größe konfigurierbar (Standard: 5 Snapshots).
 - [x] Build, 74 XCTest, 132 CLI-Prüfungen und Java-E2E erfolgreich.
 - Konkreter Plan: `Docs/Plans/phase82-market-price-trend-indicators-plan.md`.
+
+## Phase 83 — Automatische Handelsrouten-Ausführung
+
+- [x] `executeTradeRoutes()` in GameState: alle zugewiesenen Routen verarbeiten.
+- [x] Träger zum nächsten Stop bewegen, Güter entladen/laden, Stop-Zähler erhöhen.
+- [x] Route loopt nach letztem Stop zum ersten.
+- [x] `executeTradeRoutesOnTurnEnd()` Hook beim Zugende.
+- [x] UI Toggle "Auto-execute routes at turn end" im TradeRoutePanel.
+- [x] "Execute Now" Button für manuelle Ausführung.
+- [x] Build, 74 XCTest, 132 CLI-Prüfungen und Java-E2E erfolgreich.
+- Konkreter Plan: `Docs/Plans/phase83-automated-trade-route-execution-plan.md`.

@@ -40,22 +40,41 @@ struct TradeRoutePanelView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack {
-            Text("Trade Routes")
-                .font(.headline)
-            Spacer()
-            if let message = state.errorMessage {
-                Text(message)
-                    .font(.caption)
-                    .foregroundColor(.red)
-                    .lineLimit(1)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Trade Routes")
+                    .font(.headline)
+                Spacer()
+                if let message = state.errorMessage {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                        .lineLimit(1)
+                }
+                Button("New Route") {
+                    knownRouteIds = Set(routes.map(\.id))
+                    awaitingNewRoute = true
+                    state.createTradeRoute()
+                }
+                Button("Close") { dismiss() }
             }
-            Button("New Route") {
-                knownRouteIds = Set(routes.map(\.id))
-                awaitingNewRoute = true
-                state.createTradeRoute()
+            
+            HStack {
+                Toggle("Auto-execute routes at turn end", isOn: Binding(
+                    get: { state.autoExecuteTradeRoutes },
+                    set: { state.autoExecuteTradeRoutes = $0 }
+                ))
+                .toggleStyle(.checkbox)
+                .font(.caption)
+                
+                Button("Execute Now") {
+                    state.executeTradeRoutes()
+                }
+                .buttonStyle(.bordered)
+                .disabled(!state.canManageTradeRoutes)
+                
+                Spacer()
             }
-            Button("Close") { dismiss() }
         }
         .padding(12)
     }
