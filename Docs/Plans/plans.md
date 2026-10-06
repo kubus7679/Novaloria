@@ -822,3 +822,11 @@ die dokumentierten Nicht-Ziele.
 - [x] Bestehende `payArrears`-Aktion bleibt als Weg zur Entsperrung erreichbar.
 - [x] Build, 69 XCTest, 132 CLI-Prüfungen und Java-E2E erfolgreich.
 - Konkreter Plan: `Docs/Plans/phase73-market-boycott-guards-plan.md`.
+
+## Phase 74 — Handelsrouten-E2E gegen den Java-Server
+
+- [x] Neue Route anfordern, Europe-/Kolonie-Stationen plus Fracht speichern und
+      die Serverupdates im Clientmodell bestätigen.
+- [x] Route löschen und den Clientbestand anhand des Player-Snapshots abgleichen.
+- [x] Build, 70 XCTest, 132 CLI-Prüfungen und Smoke/Deep/Gameplay E2E erfolgreich.
+- Konkreter Plan: `Docs/Plans/phase74-trade-route-e2e-plan.md`.

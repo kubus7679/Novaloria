@@ -74,15 +74,7 @@ public final class Game: @unchecked Sendable {
             case "map":
                 try loadMap(child)
             case "player":
-                let player = try Player(id: child.attributes["id"] ?? UUID().uuidString,
-                                        attributes: child.attributes,
-                                        children: child.children,
-                                        game: self)
-                players[player.id] = player
-                // Units in Europe / high seas appear as direct children of <player>
-                for playerChild in child.children where playerChild.tag == "unit" {
-                    try loadUnitTree(playerChild)
-                }
+                try loadPlayerTree(child)
             case "unit":
                 try loadUnitTree(child)
             case "colony", "indianSettlement":
@@ -116,11 +108,7 @@ public final class Game: @unchecked Sendable {
         for child in parsed.children {
             switch child.tag {
             case "player":
-                let player = try Player(id: child.attributes["id"] ?? UUID().uuidString,
-                                        attributes: child.attributes,
-                                        children: child.children,
-                                        game: self)
-                players[player.id] = player
+                try loadPlayerTree(child)
             case "tile":
                 let tile = try Tile(id: child.attributes["id"] ?? UUID().uuidString,
                                     attributes: child.attributes,
@@ -884,6 +872,29 @@ public final class Game: @unchecked Sendable {
                             children: parsed.children,
                             game: self)
         units[unit.id] = unit
+        for child in parsed.children where child.tag == "unit" {
+            try loadUnitTree(child)
+        }
+    }
+
+    private func loadPlayerTree(_ parsed: ParsedMessage) throws {
+        let playerId = parsed.attributes["id"] ?? UUID().uuidString
+        let routeIds = Set(parsed.children
+            .filter { $0.tag == "tradeRoute" }
+            .compactMap { $0.attributes["id"] })
+        let removedRouteIds = tradeRoutes.values
+            .filter { $0.owner == playerId && !routeIds.contains($0.id) }
+            .map(\.id)
+        for routeId in removedRouteIds {
+            removeTradeRoute(routeId)
+        }
+
+        let player = try Player(id: playerId,
+                                attributes: parsed.attributes,
+                                children: parsed.children,
+                                game: self)
+        players[player.id] = player
+        // Units in Europe / high seas appear as direct children of <player>.
         for child in parsed.children where child.tag == "unit" {
             try loadUnitTree(child)
         }

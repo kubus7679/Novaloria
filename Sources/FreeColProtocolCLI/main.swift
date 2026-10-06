@@ -5135,6 +5135,104 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_GAMEPLAY_E2E"] == "1" {
                 throw TestError(message: "warehouse settings for \(warehouseGoodsType) were not applied")
             }
             print("    updated warehouse levels for \(warehouseGoodsType)")
+
+            guard let routeEuropeId = game.players[localPlayerId]?.europe?.id else {
+                throw TestError(message: "Europe location missing for trade-route probe")
+            }
+            let previousRouteIds = Set(game.tradeRoutes.keys)
+            do {
+                _ = try await client.ask(message: ParsedMessage(
+                    tag: "newTradeRoute", attributes: [:], children: []
+                ), timeout: 8)
+            } catch {
+                throw TestError(message: "newTradeRoute rejected by Java: \(error)")
+            }
+            var createdRoute: FreeColGame.TradeRoute?
+            for _ in 0..<30 {
+                game = await client.game
+                createdRoute = game.tradeRoutes.values.first {
+                    !previousRouteIds.contains($0.id) && $0.owner == localPlayerId
+                }
+                if createdRoute != nil { break }
+                try await Task.sleep(nanoseconds: 200_000_000)
+            }
+            guard let createdRoute else {
+                throw TestError(message: "Java did not add the requested trade route")
+            }
+
+            let routeName = "E2E Route \(Int(Date().timeIntervalSince1970) % 100000)"
+            let routeCargo = spec.goodsTypes["model.goods.horses"] == nil
+                ? warehouseGoodsType
+                : "model.goods.horses"
+            let routeStops = [
+                ParsedMessage(tag: "tradeRouteStop",
+                              attributes: ["location": routeEuropeId],
+                              children: []),
+                ParsedMessage(tag: "tradeRouteStop",
+                              attributes: ["location": foundedColonyId],
+                              children: [ParsedMessage(tag: "cargo",
+                                                       attributes: ["id": routeCargo],
+                                                       children: [])]),
+            ]
+            let routeNode = ParsedMessage(
+                tag: "tradeRoute",
+                attributes: [
+                    "id": createdRoute.id,
+                    "name": routeName,
+                    "owner": localPlayerId,
+                    "silent": "false",
+                ],
+                children: routeStops
+            )
+            do {
+                _ = try await client.ask(message: ParsedMessage(
+                    tag: "updateTradeRoute", attributes: [:], children: [routeNode]
+                ), timeout: 8)
+            } catch {
+                throw TestError(message: "updateTradeRoute rejected for \(createdRoute.id): \(error)")
+            }
+            var routeUpdateApplied = false
+            for _ in 0..<30 {
+                game = await client.game
+                if let route = game.tradeRoutes[createdRoute.id],
+                   route.name == routeName,
+                   route.owner == localPlayerId,
+                   route.stops.count == 2,
+                   route.stops[0].locationId == routeEuropeId,
+                   route.stops[1].locationId == foundedColonyId,
+                   route.stops[1].cargoTypeIds == [routeCargo] {
+                    routeUpdateApplied = true
+                    break
+                }
+                try await Task.sleep(nanoseconds: 200_000_000)
+            }
+            guard routeUpdateApplied else {
+                throw TestError(message: "updated trade route \(createdRoute.id) missing from game model")
+            }
+            print("    created trade route \(routeName)")
+
+            do {
+                _ = try await client.ask(message: ParsedMessage(
+                    tag: "deleteTradeRoute",
+                    attributes: ["tradeRoute": createdRoute.id],
+                    children: []
+                ), timeout: 8)
+            } catch {
+                throw TestError(message: "deleteTradeRoute rejected for \(createdRoute.id): \(error)")
+            }
+            var routeWasDeleted = false
+            for _ in 0..<30 {
+                game = await client.game
+                if game.tradeRoutes[createdRoute.id] == nil {
+                    routeWasDeleted = true
+                    break
+                }
+                try await Task.sleep(nanoseconds: 200_000_000)
+            }
+            guard routeWasDeleted else {
+                throw TestError(message: "deleted trade route \(createdRoute.id) remains in the game model")
+            }
+            print("    deleted trade route \(createdRoute.id)")
         } else if requireColonyFounding {
             throw TestError(message: "colony management required but the new colony was not available to rename")
         }

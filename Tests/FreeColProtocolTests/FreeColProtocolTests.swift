@@ -1112,6 +1112,29 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(fullCargo, 0)
     }
 
+    func testPlayerUpdateRemovesTradeRoutesMissingFromServerSnapshot() throws {
+        let game = Game()
+        try game.load(from: XMLDecoder.decode("""
+        <game id="game-1">
+          <player id="player-1" username="Alice">
+            <tradeRoute id="route-1" name="Old Route" owner="player-1"/>
+          </player>
+        </game>
+        """))
+        XCTAssertEqual(game.tradeRoutes["route-1"]?.name, "Old Route")
+
+        try game.applyUpdate(XMLDecoder.decode("""
+        <update>
+          <player id="player-1" username="Alice">
+            <tradeRoute id="route-2" name="Current Route" owner="player-1"/>
+          </player>
+        </update>
+        """))
+
+        XCTAssertNil(game.tradeRoutes["route-1"])
+        XCTAssertEqual(game.tradeRoutes["route-2"]?.name, "Current Route")
+    }
+
     func testSpecificationInheritsUnitCargoSpace() throws {
         let parsed = try XMLDecoder.decode("""
         <freecol-specification id="spec">

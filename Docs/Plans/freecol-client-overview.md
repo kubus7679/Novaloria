@@ -17,7 +17,8 @@ Gründung erfolgreich umbenannt und ihr Modellupdate bestätigt. Die
 Warehouse-Grenzwerte einer gegründeten Kolonie werden ebenfalls gegen den
 Java-Server geändert und im Clientmodell bestätigt. Die
 Kolonieverwaltung bietet die Auswahl von Worker-Verbesserungen nun direkt aus
-der geladenen Spezifikation. Europa begrenzt Käufe nach Bezahlbarkeit und freiem
+der geladenen Spezifikation. Handelsrouten werden gegen den Java-Server erstellt,
+geändert und gelöscht. Europa begrenzt Käufe nach Bezahlbarkeit und freiem
 Frachtraum und Verkäufe nach dem Warenbestand des ausgewählten Carriers; „Max
 Buy“ und „Sell All“ füllen passende Mengen direkt ein. Boykottierte Waren sind
 bis zur Begleichung der Rückstände vom Handel ausgeschlossen.
