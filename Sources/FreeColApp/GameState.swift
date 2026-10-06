@@ -594,6 +594,14 @@ final class GameState {
     var marketPriceHistory: [String: [(turn: Int, price: Int)]] = [:]
     /// Client-side recorded market buy-price history per goods type.
     var marketBuyPriceHistory: [String: [(turn: Int, price: Int)]] = [:]
+    /// Price trend indicators per goods type (up/down/stable).
+    var marketPriceTrends: [String: PriceTrend] = [:]
+
+    enum PriceTrend: String, Sendable {
+        case up = "↑"
+        case down = "↓"
+        case stable = "→"
+    }
 
     /// Append an aligned buy/sale price snapshot whenever either price changes.
     func recordMarketSnapshot() {
@@ -618,6 +626,31 @@ final class GameState {
             }
             marketBuyPriceHistory[goodsType] = buySeries
             marketPriceHistory[goodsType] = saleSeries
+            updatePriceTrend(for: goodsType, buySeries: buySeries, saleSeries: saleSeries)
+        }
+    }
+
+    /// Calculate price trend based on recent price movements.
+    private func updatePriceTrend(for goodsType: String, buySeries: [(turn: Int, price: Int)], saleSeries: [(turn: Int, price: Int)]) {
+        let windowSize = 5
+        let recentBuyPrices = buySeries.suffix(windowSize).map { $0.price }
+        let recentSalePrices = saleSeries.suffix(windowSize).map { $0.price }
+        
+        let allRecent = recentBuyPrices + recentSalePrices
+        guard allRecent.count >= 2 else {
+            marketPriceTrends[goodsType] = .stable
+            return
+        }
+        
+        let first = allRecent.first!
+        let last = allRecent.last!
+        
+        if last > first {
+            marketPriceTrends[goodsType] = .up
+        } else if last < first {
+            marketPriceTrends[goodsType] = .down
+        } else {
+            marketPriceTrends[goodsType] = .stable
         }
     }
 
@@ -628,6 +661,12 @@ final class GameState {
             return (0, 0)
         }
         return MarketPricing.prices(for: entry, specification: game.specification)
+    }
+    
+    /// Get the current price trend for a goods type.
+    func marketPriceTrend(for goodsTypeId: String?) -> PriceTrend? {
+        guard let goodsTypeId else { return nil }
+        return marketPriceTrends[goodsTypeId]
     }
 
     // MARK: - Trade routes

@@ -173,13 +173,14 @@ struct EuropePanelView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 } else {
-                    HStack(spacing: 0) {
-                        Text("Goods").frame(width: 100, alignment: .leading)
-                        Text("Buy").frame(width: 46, alignment: .trailing)
-                        Text("Sell").frame(width: 46, alignment: .trailing)
-                        Text("Stock").frame(width: 56, alignment: .trailing)
-                        Spacer()
-                    }
+HStack(spacing: 0) {
+                    Text("Goods").frame(width: 100, alignment: .leading)
+                    Text("Buy").frame(width: 46, alignment: .trailing)
+                    Text("Sell").frame(width: 46, alignment: .trailing)
+                    Text("Stock").frame(width: 56, alignment: .trailing)
+                    Text("Trend").frame(width: 40, alignment: .center)
+                    Spacer()
+                }
                     .font(.caption2.bold())
                     .foregroundColor(.secondary)
 
@@ -203,6 +204,10 @@ struct EuropePanelView: View {
                                         .frame(width: 56, alignment: .trailing)
                                         .font(.caption)
                                         .foregroundColor(.secondary)
+                                    Text(state.marketPriceTrend(for: entry.goodsType)?.rawValue ?? "→")
+                                        .frame(width: 40, alignment: .center)
+                                        .font(.caption)
+                                        .foregroundColor(trendColor(for: entry.goodsType))
                                     Spacer()
                                     if entry.arrears > 0 {
                                         Button("Pay \(entry.arrears)") {
@@ -385,6 +390,16 @@ struct EuropePanelView: View {
     }
 
     // MARK: - Helpers
+
+    private func trendColor(for goodsType: String?) -> Color {
+        guard let goodsType,
+              let trend = state.marketPriceTrend(for: goodsType) else { return .secondary }
+        switch trend {
+        case .up: return .green
+        case .down: return .red
+        case .stable: return .secondary
+        }
+    }
 
     private func cargoLabel(_ carrier: FreeColGame.Unit) -> String {
         guard let game = state.game else { return "" }
