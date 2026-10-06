@@ -814,3 +814,11 @@ die dokumentierten Nicht-Ziele.
 - [x] Rejects oder fehlende Updates lassen die Gameplay-Probe fehlschlagen.
 - [x] Build, 69 XCTest, 132 CLI-Prüfungen und Java-E2E erfolgreich.
 - Konkreter Plan: `Docs/Plans/phase72-colony-warehouse-e2e-plan.md`.
+
+## Phase 73 — Boykott-sicherer Europa-Handel
+
+- [x] Buy/Sell bei positiven Rückständen in UI und App-State sperren.
+- [x] Nutzerhinweis zeigt, dass zuerst Rückstände bezahlt werden müssen.
+- [x] Bestehende `payArrears`-Aktion bleibt als Weg zur Entsperrung erreichbar.
+- [x] Build, 69 XCTest, 132 CLI-Prüfungen und Java-E2E erfolgreich.
+- Konkreter Plan: `Docs/Plans/phase73-market-boycott-guards-plan.md`.

@@ -213,6 +213,7 @@ struct EuropePanelView: View {
                     .frame(maxHeight: 160)
 
                     if !selectedGoodsType.isEmpty {
+                        let arrears = state.arrears(for: selectedGoodsType)
                         let limits = state.europeMarketTradeLimits(
                             goodsTypeId: selectedGoodsType,
                             carrierId: selectedCarrierId
@@ -228,12 +229,12 @@ struct EuropePanelView: View {
                                 trade(selectedGoodsType, amount: Int(tradeAmount) ?? 0, sell: true)
                             }
                             .buttonStyle(.bordered)
-                            .disabled(!canTrade || requestedTradeAmount > limits.sell)
+                            .disabled(!canTrade || arrears > 0 || requestedTradeAmount > limits.sell)
                             Button("Buy") {
                                 trade(selectedGoodsType, amount: Int(tradeAmount) ?? 0, sell: false)
                             }
                             .buttonStyle(.bordered)
-                            .disabled(!canTrade || requestedTradeAmount > limits.buy)
+                            .disabled(!canTrade || arrears > 0 || requestedTradeAmount > limits.buy)
                         }
                         HStack {
                             Button("Max Buy") {
@@ -255,7 +256,9 @@ struct EuropePanelView: View {
                                       || limits.sell == 0)
 
                             Spacer()
-                            Text("Buy limit: \(limits.buy) · cargo: \(limits.sell)")
+                            Text(arrears > 0
+                                 ? "Boycotted: pay \(arrears) arrears before trading"
+                                 : "Buy limit: \(limits.buy) · cargo: \(limits.sell)")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }

@@ -1082,6 +1082,14 @@ final class FreeColProtocolTests: XCTestCase {
                                                              carriedAmount: -2)
         XCTAssertEqual(negativeGoldLimits.buy, 0)
         XCTAssertEqual(negativeGoldLimits.sell, 0)
+
+        let boycottedLimits = GameState.marketTradeLimits(gold: 1_000,
+                                                          buyPrice: 10,
+                                                          loadableAmount: 100,
+                                                          carriedAmount: 100,
+                                                          arrears: 25)
+        XCTAssertEqual(boycottedLimits.buy, 0)
+        XCTAssertEqual(boycottedLimits.sell, 0)
     }
 
     func testLoadableGoodsAmountIncludesPartialStacksAndPassengers() {

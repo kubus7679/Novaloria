@@ -4761,7 +4761,7 @@ final class GameState {
     /// Maximum affordable and loadable buy quantity plus sale cargo for a Europe trade.
     func europeMarketTradeLimits(goodsTypeId: String?, carrierId: String?) -> (buy: Int, sell: Int) {
         guard let goodsTypeId, !goodsTypeId.isEmpty,
-              localPlayer?.market?.entry(for: goodsTypeId) != nil else {
+              let marketData = localPlayer?.market?.entry(for: goodsTypeId) else {
             return (buy: 0, sell: 0)
         }
         let carriedAmount = carrierId
@@ -4776,7 +4776,8 @@ final class GameState {
             return Self.marketTradeLimits(gold: localPlayer?.gold ?? 0,
                                           buyPrice: marketPrices(for: goodsTypeId).costToBuy,
                                           loadableAmount: 0,
-                                          carriedAmount: carriedAmount)
+                                          carriedAmount: carriedAmount,
+                                          arrears: marketData.arrears)
         }
         let carriedUnitSpace = game.units.values
             .filter { $0.location == carrierId }
@@ -4795,13 +4796,16 @@ final class GameState {
         return Self.marketTradeLimits(gold: localPlayer?.gold ?? 0,
                                       buyPrice: marketPrices(for: goodsTypeId).costToBuy,
                                       loadableAmount: loadableAmount,
-                                      carriedAmount: carriedAmount)
+                                      carriedAmount: carriedAmount,
+                                      arrears: marketData.arrears)
     }
 
     nonisolated static func marketTradeLimits(gold: Int,
                                              buyPrice: Int,
                                              loadableAmount: Int,
-                                             carriedAmount: Int) -> (buy: Int, sell: Int) {
+                                             carriedAmount: Int,
+                                             arrears: Int = 0) -> (buy: Int, sell: Int) {
+        guard arrears <= 0 else { return (buy: 0, sell: 0) }
         let affordableAmount = gold > 0 && buyPrice > 0 ? gold / buyPrice : 0
         return (buy: min(affordableAmount, max(0, loadableAmount)),
                 sell: max(0, carriedAmount))
@@ -4888,6 +4892,12 @@ final class GameState {
               let player = game.players[localPlayerId],
               let europeId = player.europe?.id else {
             throw MarketTradeError.message("Europa-Informationen fehlen.")
+        }
+        guard let marketData = player.market?.entry(for: typeId) else {
+            throw MarketTradeError.message("Marktdaten für diese Ware fehlen.")
+        }
+        guard marketData.arrears <= 0 else {
+            throw MarketTradeError.message("Ware boykottiert. Bitte zuerst die Rückstände bezahlen.")
         }
         guard let carrier = game.units[carrierId],
               carrier.owner == localPlayerId,
