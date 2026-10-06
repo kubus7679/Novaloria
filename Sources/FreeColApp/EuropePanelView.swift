@@ -258,7 +258,7 @@ struct EuropePanelView: View {
                             Spacer()
                             Text(arrears > 0
                                  ? "Boycotted: pay \(arrears) arrears before trading"
-                                 : "Buy limit: \(limits.buy) · cargo: \(limits.sell)")
+                                 : "Buy/order limit: \(limits.buy) · cargo: \(limits.sell)")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }

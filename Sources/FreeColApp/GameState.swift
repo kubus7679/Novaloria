@@ -4753,6 +4753,9 @@ final class GameState {
     func buyGoodsInEurope(goodsTypeId: String, amount: Int, carrierId: String) {
         do {
             let (europeId, typeId, carrier) = try marketTradeContext(goodsTypeId: goodsTypeId, amount: amount, carrierId: carrierId)
+            guard amount <= europeMarketTradeLimits(goodsTypeId: typeId, carrierId: carrierId).buy else {
+                throw MarketTradeError.message("Menge überschreitet Bezahlbarkeit, Frachtraum oder Preisstufe.")
+            }
             errorMessage = nil
             let price = marketPrice(for: typeId, sell: false)
             purchasesTotal += amount * price
@@ -4784,6 +4787,9 @@ final class GameState {
     func sellGoodsInEurope(goodsTypeId: String, amount: Int, carrierId: String) {
         do {
             let (_, typeId, carrier) = try marketTradeContext(goodsTypeId: goodsTypeId, amount: amount, carrierId: carrierId)
+            guard amount <= europeMarketTradeLimits(goodsTypeId: typeId, carrierId: carrierId).sell else {
+                throw MarketTradeError.message("Menge überschreitet den Warenbestand im Carrier.")
+            }
             errorMessage = nil
             let price = marketPrice(for: typeId, sell: true)
             salesTotal += amount * price
@@ -4860,7 +4866,9 @@ final class GameState {
                                              arrears: Int = 0) -> (buy: Int, sell: Int) {
         guard arrears <= 0 else { return (buy: 0, sell: 0) }
         let affordableAmount = gold > 0 && buyPrice > 0 ? gold / buyPrice : 0
-        return (buy: min(affordableAmount, max(0, loadableAmount)),
+        return (buy: min(affordableAmount,
+                         max(0, loadableAmount),
+                         MarketPricing.goodsPerCargoChunk),
                 sell: max(0, carriedAmount))
     }
 
@@ -4868,7 +4876,7 @@ final class GameState {
                                                 goodsAmounts: [Int],
                                                 carriedUnitSpace: Int,
                                                 selectedGoodsAmount: Int) -> Int {
-        let cargoSize = 100
+        let cargoSize = MarketPricing.goodsPerCargoChunk
         let goodsSpace = goodsAmounts.reduce(0) { total, amount in
             let positiveAmount = max(0, amount)
             return total + (positiveAmount + cargoSize - 1) / cargoSize
