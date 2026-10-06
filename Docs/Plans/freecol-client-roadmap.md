@@ -4,7 +4,7 @@
 > angebunden. „Spielbar wie der Java-Client" ist damit noch nicht erreicht.
 > Die verifizierten Restlücken stehen in
 > `Docs/Plans/playability-roadmap-54-57.md` (Phasen 54–65) sowie die
-> Economy-/Colony-Management-Follow-ups der Phasen 66–75.
+> Economy-/Colony-Management-Follow-ups der Phasen 66–76.
 
 ## Phase 1: Colony and Unit UX completion
 
@@ -92,7 +92,7 @@
 - [x] In-game help browser.
 - [x] Preferences sheet (display/animation).
 
-## Phase 15: Playability completion and real-server validation (54–75)
+## Phase 15: Playability completion and real-server validation (54–76)
 
 - [x] **54 Inbound blockers** — `chooseFoundingFather` in-game dialog,
       `setDead` defeat/revenge, local `logout`, `gameEnded` victory screen,
@@ -150,6 +150,9 @@
 - [x] **75 Trade route save validation** — validate names, owned stops, cargo
       and standard-route rules before sending updates. See
       `phase75-trade-route-validation-plan.md`.
+- [x] **76 Trade route assignment E2E** — assign a Java-saved route to a carrier
+      and verify deletion releases the carrier. See
+      `phase76-trade-route-assignment-e2e-plan.md`.
 
 ## Suggested order
 

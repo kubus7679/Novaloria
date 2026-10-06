@@ -5211,6 +5211,40 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_GAMEPLAY_E2E"] == "1" {
             }
             print("    created trade route \(routeName)")
 
+            game = await client.game
+            guard let routeCarrier = game.units.values
+                .filter({
+                    $0.owner == localPlayerId
+                        && spec.isNaval(unitType: $0.unitType) == true
+                        && $0.location.flatMap { game.tiles[$0] } != nil
+                })
+                .sorted(by: { $0.id < $1.id })
+                .first else {
+                throw TestError(message: "no local map carrier available for trade-route assignment")
+            }
+            do {
+                _ = try await client.ask(message: ParsedMessage(
+                    tag: "assignTradeRoute",
+                    attributes: ["unit": routeCarrier.id, "tradeRoute": createdRoute.id],
+                    children: []
+                ), timeout: 8)
+            } catch {
+                throw TestError(message: "assignTradeRoute rejected for \(routeCarrier.id): \(error)")
+            }
+            var routeAssigned = false
+            for _ in 0..<30 {
+                game = await client.game
+                if game.units[routeCarrier.id]?.tradeRoute == createdRoute.id {
+                    routeAssigned = true
+                    break
+                }
+                try await Task.sleep(nanoseconds: 200_000_000)
+            }
+            guard routeAssigned else {
+                throw TestError(message: "trade route \(createdRoute.id) was not assigned to \(routeCarrier.id)")
+            }
+            print("    assigned trade route to \(routeCarrier.id)")
+
             do {
                 _ = try await client.ask(message: ParsedMessage(
                     tag: "deleteTradeRoute",
@@ -5220,19 +5254,21 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_GAMEPLAY_E2E"] == "1" {
             } catch {
                 throw TestError(message: "deleteTradeRoute rejected for \(createdRoute.id): \(error)")
             }
-            var routeWasDeleted = false
+            var routeAndCarrierReleased = false
             for _ in 0..<30 {
                 game = await client.game
-                if game.tradeRoutes[createdRoute.id] == nil {
-                    routeWasDeleted = true
+                if game.tradeRoutes[createdRoute.id] == nil,
+                   game.units[routeCarrier.id]?.tradeRoute == nil {
+                    routeAndCarrierReleased = true
                     break
                 }
                 try await Task.sleep(nanoseconds: 200_000_000)
             }
-            guard routeWasDeleted else {
-                throw TestError(message: "deleted trade route \(createdRoute.id) remains in the game model")
+            guard routeAndCarrierReleased else {
+                throw TestError(message: "deleting trade route \(createdRoute.id) did not remove it "
+                    + "or release carrier \(routeCarrier.id) in the client model")
             }
-            print("    deleted trade route \(createdRoute.id)")
+            print("    deleted trade route \(createdRoute.id) and released \(routeCarrier.id)")
         } else if requireColonyFounding {
             throw TestError(message: "colony management required but the new colony was not available to rename")
         }

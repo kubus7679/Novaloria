@@ -840,3 +840,11 @@ die dokumentierten Nicht-Ziele.
 - [x] Dieselbe Validierung in `GameState.saveTradeRoute` als Guard anwenden.
 - [x] Build, 71 XCTest, 132 CLI-Prüfungen und Java-E2E erfolgreich.
 - Konkreter Plan: `Docs/Plans/phase75-trade-route-validation-plan.md`.
+
+## Phase 76 — Handelsroute einem Carrier zuweisen
+
+- [x] Gespeicherte Java-Handelsroute einem lokalen Carrier zuweisen und
+      `unit.tradeRoute` im Clientmodell prüfen.
+- [x] Beim Löschen der Route deren Entfernung und Freigabe des Carriers prüfen.
+- [x] Build, 71 XCTest, 132 CLI-Prüfungen und Java-E2E erfolgreich.
+- Konkreter Plan: `Docs/Plans/phase76-trade-route-assignment-e2e-plan.md`.
