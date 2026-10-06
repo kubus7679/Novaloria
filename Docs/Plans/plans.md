@@ -848,3 +848,13 @@ die dokumentierten Nicht-Ziele.
 - [x] Beim Löschen der Route deren Entfernung und Freigabe des Carriers prüfen.
 - [x] Build, 71 XCTest, 132 CLI-Prüfungen und Java-E2E erfolgreich.
 - Konkreter Plan: `Docs/Plans/phase76-trade-route-assignment-e2e-plan.md`.
+
+## Phase 77 — Marktpreis-Berechnung an Java angleichen
+
+- [x] Java Single-Precision-Reihenfolge/Rundung und `made-from`-New-World-Clamp
+      für verarbeitete Waren umgesetzt.
+- [x] XCTest für New-World-Rohstoffverarbeitung und initial market amount 0.
+- [x] Realserver-Probe vergleicht Kaufkosten und besteuerte Verkaufserlöse mit
+      den clientseitig berechneten Preisen.
+- [x] Build, 73 XCTest, 132 CLI-Prüfungen und Java-E2E erfolgreich.
+- Konkreter Plan: `Docs/Plans/phase77-market-pricing-parity-plan.md`.

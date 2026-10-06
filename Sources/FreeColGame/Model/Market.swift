@@ -88,20 +88,20 @@ public enum MarketPricing {
     /// history is server-side state the client does not track).
     public static func prices(amount: Int,
                               initialPrice: Int,
-                              info: GoodsTypeInfo?) -> (costToBuy: Int, paidForSale: Int) {
+                              info: GoodsTypeInfo?,
+                              madeFromIsNewWorldGoods: Bool = false) -> (costToBuy: Int, paidForSale: Int) {
         guard let info, info.isStorable else { return (0, 0) }
-        let referenceAmount = info.marketInitialAmount > 0
-            ? info.marketInitialAmount
-            : info.marketInitialPrice
         let effectiveAmount = amount > 0 ? amount : 1
         let diff = info.priceDifference
-        let amountPrice = Double(initialPrice) * (Double(referenceAmount) / Double(effectiveAmount))
-        var salePrice = Int(amountPrice.rounded())
+        // Java evaluates this expression using Float arithmetic, including
+        // division before multiplication. Keep that order to match tie rounding.
+        let amountPrice = Float(initialPrice)
+            * (Float(info.marketInitialAmount) / Float(effectiveAmount))
+        var salePrice = javaRound(amountPrice)
         var buyPrice = salePrice + diff
 
         // Work-around to limit prices of new-world goods and their products.
-        let isNewWorld = info.isNewWorldGoods
-            || (info.madeFrom.flatMap { $0.contains("newWorld") } ?? false)
+        let isNewWorld = info.isNewWorldGoods || madeFromIsNewWorldGoods
         if salePrice > initialPrice + 2, isNewWorld {
             salePrice = initialPrice + 2
             buyPrice = salePrice + diff
@@ -123,9 +123,21 @@ public enum MarketPricing {
     public static func prices(for entry: MarketData,
                               specification: Specification?) -> (costToBuy: Int, paidForSale: Int) {
         let info = specification?.goodsTypes[entry.goodsType ?? ""]
+        let madeFromIsNewWorldGoods = info?.madeFrom
+            .flatMap { specification?.goodsTypes[$0]?.isNewWorldGoods } ?? false
         return prices(amount: entry.amount,
                       initialPrice: entry.initialPrice,
-                      info: info)
+                      info: info,
+                      madeFromIsNewWorldGoods: madeFromIsNewWorldGoods)
+    }
+
+    /// Match Java `Math.round(float)` for the positive finite prices used here.
+    private static func javaRound(_ value: Float) -> Int {
+        guard !value.isNaN else { return 0 }
+        if value == .infinity { return Int(Int32.max) }
+        if value == -.infinity { return Int(Int32.min) }
+        let rounded = floor(Double(value + 0.5))
+        return Int(min(max(rounded, Double(Int32.min)), Double(Int32.max)))
     }
 }
 

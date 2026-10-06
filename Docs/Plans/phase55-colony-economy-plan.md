@@ -32,9 +32,9 @@ erreichbar.
   `<market>`-Referenzwerte (`initial-amount`, `initial-price`,
   `price-difference`) erweitert.
 - `MarketPricing.prices(...)` bildet den ersten Durchlauf von Java
-  `MarketData.price()` nach (inkl. New-World-Clamp und Preisgrenzen). Der
-  Server serialisiert nur `amount`/`initialPrice`; Preise werden lokal
-  berechnet statt `initialPrice` für beide Richtungen zu verwenden.
+  `MarketData.price()` nach (inkl. New-World-Clamp und Preisgrenzen). Phase 77
+  gleicht Single-Precision-Rundung und `made-from`-New-World-Güter an. Der
+  Server serialisiert nur `amount`/`initialPrice`; Preise werden lokal berechnet.
 - Europe-Panel und Trade-Report zeigen Buy/Sell/Arrearsspalten.
 
 ### 5. Rückstaende (`payArrears`)

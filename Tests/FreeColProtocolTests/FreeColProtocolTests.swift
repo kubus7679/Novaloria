@@ -1204,6 +1204,33 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(scarce.costToBuy, 6)
     }
 
+    func testMarketPricingClampsGoodsMadeFromNewWorldGoods() throws {
+        let spec = try pricingSpecification()
+        let rum = MarketData(attributes: [
+            "goods-type": "model.goods.rum",
+            "amount": "100",
+            "initialPrice": "4",
+        ])
+
+        let prices = MarketPricing.prices(for: rum, specification: spec)
+        XCTAssertEqual(prices.paidForSale, 6)
+        XCTAssertEqual(prices.costToBuy, 8)
+    }
+
+    func testMarketPricingUsesZeroInitialMarketAmount() {
+        let goods = GoodsTypeInfo(id: "model.goods.test",
+                                  name: nil,
+                                  isFood: false,
+                                  isBuildingMaterial: false,
+                                  isTradeGoods: false,
+                                  marketInitialAmount: 0,
+                                  marketInitialPrice: 2,
+                                  priceDifference: 2)
+        let prices = MarketPricing.prices(amount: 100, initialPrice: 2, info: goods)
+        XCTAssertEqual(prices.paidForSale, 1)
+        XCTAssertEqual(prices.costToBuy, 3)
+    }
+
     func testColonyExportDataAndWorkTilesParsing() throws {
         let game = Game()
         let parsed = try XMLDecoder.decode("""

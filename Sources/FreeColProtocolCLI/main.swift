@@ -5414,6 +5414,19 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_GAMEPLAY_E2E"] == "1" {
                     throw TestError(message: "market purchase did not update carrier cargo and player gold")
                 }
                 let goldAfterBuy = game.players[localPlayerId]?.gold ?? goldBeforeBuy
+                let expectedBuyCost = buyAmount * selectedGoods.unitPrice
+                let actualBuyCost = goldBeforeBuy - goldAfterBuy
+                guard actualBuyCost == expectedBuyCost else {
+                    throw TestError(message: "market purchase price mismatch for \(goodsType): "
+                        + "expected \(expectedBuyCost), server charged \(actualBuyCost)")
+                }
+                guard let marketAfterBuy = game.players[localPlayerId]?.market?.entry(for: goodsType) else {
+                    throw TestError(message: "market data missing after purchase of \(goodsType)")
+                }
+                let expectedSellPrice = MarketPricing.prices(for: marketAfterBuy,
+                                                              specification: spec).paidForSale
+                let taxRate = game.players[localPlayerId]?.tax ?? 0
+                let expectedSaleProceeds = (buyAmount * expectedSellPrice * (100 - taxRate)) / 100
 
                 _ = try await client.ask(message: ParsedMessage(
                     tag: "unloadGoods",
@@ -5433,6 +5446,11 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_GAMEPLAY_E2E"] == "1" {
                 }
                 guard sold else {
                     throw TestError(message: "market sale did not update carrier cargo and player gold")
+                }
+                let actualSaleProceeds = (game.players[localPlayerId]?.gold ?? goldAfterBuy) - goldAfterBuy
+                guard actualSaleProceeds == expectedSaleProceeds else {
+                    throw TestError(message: "market sale price mismatch for \(goodsType): "
+                        + "expected \(expectedSaleProceeds), server paid \(actualSaleProceeds)")
                 }
                 guard game.players[localPlayerId]?.market?.entry(for: goodsType) != nil else {
                     throw TestError(message: "market data disappeared after a trade")
