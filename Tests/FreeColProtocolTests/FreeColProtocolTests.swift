@@ -1715,13 +1715,13 @@ final class FreeColProtocolTests: XCTestCase {
         state.installGame(game)
 
         state.recordMarketSnapshot()
-        XCTAssertEqual(state.marketPriceHistory["model.goods.sugar"], [2])
-        XCTAssertEqual(state.marketBuyPriceHistory["model.goods.sugar"], [4])
+        XCTAssertEqual(state.marketPriceHistory["model.goods.sugar"]?.map { $0.price }, [2])
+        XCTAssertEqual(state.marketBuyPriceHistory["model.goods.sugar"]?.map { $0.price }, [4])
 
         // The same buy/sale snapshot is not recorded twice.
         state.recordMarketSnapshot()
-        XCTAssertEqual(state.marketPriceHistory["model.goods.sugar"], [2])
-        XCTAssertEqual(state.marketBuyPriceHistory["model.goods.sugar"], [4])
+        XCTAssertEqual(state.marketPriceHistory["model.goods.sugar"]?.map { $0.price }, [2])
+        XCTAssertEqual(state.marketBuyPriceHistory["model.goods.sugar"]?.map { $0.price }, [4])
 
         try game.applyUpdate(XMLDecoder.decode("""
         <update>
@@ -1733,8 +1733,8 @@ final class FreeColProtocolTests: XCTestCase {
         </update>
         """))
         state.recordMarketSnapshot()
-        XCTAssertEqual(state.marketPriceHistory["model.goods.sugar"], [2, 1])
-        XCTAssertEqual(state.marketBuyPriceHistory["model.goods.sugar"], [4, 3])
+        XCTAssertEqual(state.marketPriceHistory["model.goods.sugar"]?.map { $0.price }, [2, 1])
+        XCTAssertEqual(state.marketBuyPriceHistory["model.goods.sugar"]?.map { $0.price }, [4, 3])
     }
 
     // MARK: Phase 60 - model depth

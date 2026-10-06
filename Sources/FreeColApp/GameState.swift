@@ -591,24 +591,25 @@ final class GameState {
     }
 
     /// Client-side recorded market sale-price history per goods type.
-    var marketPriceHistory: [String: [Int]] = [:]
+    var marketPriceHistory: [String: [(turn: Int, price: Int)]] = [:]
     /// Client-side recorded market buy-price history per goods type.
-    var marketBuyPriceHistory: [String: [Int]] = [:]
+    var marketBuyPriceHistory: [String: [(turn: Int, price: Int)]] = [:]
 
     /// Append an aligned buy/sale price snapshot whenever either price changes.
     func recordMarketSnapshot() {
         guard phase == .inGame,
               let game = cachedGame else { return }
+        let currentTurn = game.turn.number
         for entry in localPlayerMarketData {
             guard let goodsType = entry.goodsType else { continue }
             let prices = MarketPricing.prices(for: entry, specification: game.specification)
             var buySeries = marketBuyPriceHistory[goodsType] ?? []
             var saleSeries = marketPriceHistory[goodsType] ?? []
-            guard buySeries.last != prices.costToBuy || saleSeries.last != prices.paidForSale else {
+            guard buySeries.last?.price != prices.costToBuy || saleSeries.last?.price != prices.paidForSale else {
                 continue
             }
-            buySeries.append(prices.costToBuy)
-            saleSeries.append(prices.paidForSale)
+            buySeries.append((turn: currentTurn, price: prices.costToBuy))
+            saleSeries.append((turn: currentTurn, price: prices.paidForSale))
             if buySeries.count > 60 {
                 buySeries.removeFirst(buySeries.count - 60)
             }

@@ -885,3 +885,11 @@ die dokumentierten Nicht-Ziele.
 - [x] Beide Reihen im Europe-Marktverlauf mit Last/Min/Max anzeigen.
 - [x] Build, 74 XCTest, 132 CLI-Prüfungen und Java-E2E erfolgreich.
 - Konkreter Plan: `Docs/Plans/phase80-market-price-history-plan.md`.
+
+## Phase 81 — Preisverlauf mit Zeitachse
+
+- [x] Kauf- und Verkaufspreise pro Ware mit Zugnummern speichern (bis 60 Werte).
+- [x] PriceSparkline zeigt X-Achse mit Zugnummern (T#), Y-Achse mit Preis,
+      Gitterlinien und Y-Preisschrift.
+- [x] Build, 74 XCTest, 132 CLI-Prüfungen und Java-E2E erfolgreich.
+- Konkreter Plan: `Docs/Plans/phase81-market-price-history-time-axis-plan.md`.

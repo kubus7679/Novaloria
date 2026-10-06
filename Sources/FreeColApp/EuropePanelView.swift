@@ -110,7 +110,10 @@ struct EuropePanelView: View {
                             .foregroundColor(.yellow)
                     }
                     .font(.caption2)
-                    PriceSparkline(buyValues: buySeries, saleValues: saleSeries)
+                    PriceSparkline(buyValues: buySeries.map { $0.price },
+                                   saleValues: saleSeries.map { $0.price },
+                                   buyTurns: buySeries.map { $0.turn },
+                                   saleTurns: saleSeries.map { $0.turn })
                         .frame(height: 48)
                 }
                 .padding(.vertical, 4)
@@ -118,9 +121,13 @@ struct EuropePanelView: View {
         }
     }
 
-    private func priceHistorySummary(_ label: String, values: [Int]) -> String {
-        guard let latest = values.last else { return "\(label): —" }
-        return "\(label): \(latest) G (\(values.min() ?? latest)–\(values.max() ?? latest))"
+    private func priceHistorySummary(_ label: String, values: [(turn: Int, price: Int)]) -> String {
+        guard let latest = values.last?.price else { return "\(label): —" }
+        let minPrice = values.map { $0.price }.min() ?? values.last!.price
+        let maxPrice = values.map { $0.price }.max() ?? values.last!.price
+        let firstTurn = values.first?.turn ?? 0
+        let lastTurn = values.last?.turn ?? 0
+        return "\(label): \(values.last!.price) G (\(values.map { $0.price }.min() ?? values.last!.price)–\(values.map { $0.price }.max() ?? values.last!.price)), turns \(values.first?.turn ?? 0)–\(values.last?.turn ?? 0)"
     }
 
     // MARK: - Purchase
@@ -402,21 +409,63 @@ struct EuropePanelView: View {
     }
 }
 
-/// A minimal step sparkline for recorded market prices.
+/// A minimal step sparkline for recorded market prices with time axis.
 private struct PriceSparkline: View {
     let buyValues: [Int]
     let saleValues: [Int]
+    let buyTurns: [Int]
+    let saleTurns: [Int]
 
     var body: some View {
         GeometryReader { geo in
             let allValues = buyValues + saleValues
             let minValue = allValues.min() ?? 0
             let maxValue = allValues.max() ?? 1
-            let buyPoints = normalizedPoints(buyValues, minValue: minValue, maxValue: maxValue, in: geo.size)
-            let salePoints = normalizedPoints(saleValues, minValue: minValue, maxValue: maxValue, in: geo.size)
+            let span = max(1, maxValue - minValue)
+            
+            let buyPoints = buyValues.enumerated().map { index, value in
+                let x = geo.size.width * CGFloat(index) / CGFloat(buyValues.count - 1)
+                let y = geo.size.height * (1 - CGFloat(buyValues[index] - minValue) / CGFloat(span))
+                return CGPoint(x: x, y: y)
+            }
+            let salePoints = saleValues.enumerated().map { index, value in
+                let x = geo.size.width * CGFloat(index) / CGFloat(saleValues.count - 1)
+                let y = geo.size.height * (1 - CGFloat(saleValues[index] - minValue) / CGFloat(span))
+                return CGPoint(x: x, y: y)
+            }
+
+            // Turn positions for axis labels
+            let buyTurnPositions = buyTurns.enumerated().map { index, turn in
+                geo.size.width * CGFloat(index) / CGFloat(buyTurns.count - 1)
+            }
+            let saleTurnPositions = saleTurns.enumerated().map { index, turn in
+                geo.size.width * CGFloat(index) / CGFloat(saleTurns.count - 1)
+            }
+
             ZStack {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.black.opacity(0.15))
+                
+                // Grid lines
+                ForEach(0..<5) { i in
+                    let y = geo.size.height * CGFloat(i) / 4
+                    Path { path in
+                        path.move(to: CGPoint(x: 0, y: y))
+                        path.addLine(to: CGPoint(x: geo.size.width, y: y))
+                    }
+                    .stroke(Color.gray.opacity(0.3), lineWidth: 0.5)
+                }
+                
+                // Price labels on Y axis
+                ForEach(0..<5) { i in
+                    let price = minValue + (maxValue - minValue) * i / 4
+                    let y = geo.size.height * (1 - CGFloat(i) / 4)
+                    Text("\(price)")
+                        .font(.system(size: 8))
+                        .foregroundColor(.gray)
+                        .position(x: 15, y: y)
+                }
+                
                 if buyPoints.count > 1 {
                     Path { path in
                         path.move(to: buyPoints[0])
@@ -435,20 +484,34 @@ private struct PriceSparkline: View {
                     }
                     .stroke(Color.yellow, lineWidth: 1.5)
                 }
+                
+                // Turn labels on X axis
+                if buyPoints.count > 1 && buyTurns.count > 1 {
+                    ForEach(0..<buyTurns.count, id: \.self) { i in
+                        if i % max(1, buyTurns.count / 4) == 0 {
+                            let turn = buyTurns[i]
+                            let x = buyPoints[i].x
+                            Text("T\(turn)")
+                                .font(.system(size: 7))
+                                .foregroundColor(.gray)
+                                .position(x: x, y: geo.size.height + 12)
+                        }
+                    }
+                }
+                if salePoints.count > 1 && saleTurns.count > 1 {
+                    ForEach(0..<saleTurns.count, id: \.self) { i in
+                        if i % max(1, saleTurns.count / 4) == 0 {
+                            let turn = saleTurns[i]
+                            let x = salePoints[i].x
+                            Text("T\(turn)")
+                                .font(.system(size: 7))
+                                .foregroundColor(.gray)
+                                .position(x: x, y: geo.size.height + 12)
+                        }
+                    }
+                }
             }
-        }
-    }
-
-    private func normalizedPoints(_ values: [Int],
-                                  minValue: Int,
-                                  maxValue: Int,
-                                  in size: CGSize) -> [CGPoint] {
-        guard values.count > 1 else { return [] }
-        let span = max(1, maxValue - minValue)
-        return values.enumerated().map { index, value in
-            let x = size.width * CGFloat(index) / CGFloat(values.count - 1)
-            let y = size.height * (1 - CGFloat(value - minValue) / CGFloat(span))
-            return CGPoint(x: x, y: y)
+            .frame(height: geo.size.height + 24)
         }
     }
 }

@@ -27,7 +27,7 @@ Ansicht zeigt Gesamtpreis und besteuerten Verkaufserlös. Boykottierte
 Waren sind bis zur Begleichung der Rückstände vom Handel ausgeschlossen. Die lokal
 berechneten Marktpreise folgen jetzt auch bei verarbeiteten New-World-Gütern
 der Java-Rundung.
-Der Europe-Verlauf visualisiert Kauf- und Verkaufspreise getrennt.
+Der Europe-Verlauf visualisiert Kauf- und Verkaufspreise getrennt mit Zugnummern.
 
 ## Aktuelle Schwerpunkte
 
