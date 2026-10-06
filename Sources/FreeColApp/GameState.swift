@@ -659,6 +659,61 @@ final class GameState {
             .map { (id: $0.id, label: $0.name ?? $0.id) }
     }
 
+    func tradeRouteValidationError(for route: TradeRoute) -> String? {
+        guard canManageTradeRoutes,
+              let game = cachedGame,
+              let localPlayerId = resolveLocalPlayerId() else {
+            return "Trade routes can only be managed during your turn."
+        }
+        return Self.tradeRouteValidationError(
+            route: route,
+            localPlayerId: localPlayerId,
+            existingRoutes: localPlayerTradeRoutes,
+            validStopLocationIds: Set(tradeRouteStopCandidates.map(\.id)),
+            validGoodsTypeIds: Set(tradeRouteGoodsTypes.map(\.id)),
+            enhancedTradeRoutes: game.optionValues["model.option.enhancedTradeRoutes"] == "true"
+        )
+    }
+
+    nonisolated static func tradeRouteValidationError(
+        route: TradeRoute,
+        localPlayerId: String,
+        existingRoutes: [TradeRoute],
+        validStopLocationIds: Set<String>,
+        validGoodsTypeIds: Set<String>,
+        enhancedTradeRoutes: Bool
+    ) -> String? {
+        let name = (route.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return "Trade route needs a name." }
+        guard route.owner == localPlayerId else { return "Trade route is not owned by the local player." }
+        guard !existingRoutes.contains(where: { $0.id != route.id && $0.name == name }) else {
+            return "A trade route already uses this name."
+        }
+        guard route.stops.count >= 2 else { return "Add at least two trade route stops." }
+        guard route.stops.allSatisfy({
+            guard let location = $0.locationId else { return false }
+            return validStopLocationIds.contains(location)
+        }) else {
+            return "Choose a valid owned location for every stop."
+        }
+        guard route.stops.allSatisfy({ $0.cargoTypeIds.allSatisfy(validGoodsTypeIds.contains) }) else {
+            return "Trade route contains an unknown goods type."
+        }
+        guard route.stops.contains(where: { !$0.cargoTypeIds.isEmpty }) else {
+            return "Select goods for at least one trade route stop."
+        }
+        if !enhancedTradeRoutes, let firstStop = route.stops.first {
+            var presentAtEveryStop = Set(firstStop.cargoTypeIds)
+            for stop in route.stops.dropFirst() {
+                presentAtEveryStop.formIntersection(stop.cargoTypeIds)
+            }
+            if !presentAtEveryStop.isEmpty {
+                return "In standard trade routes, goods cannot be selected at every stop."
+            }
+        }
+        return nil
+    }
+
     var canEndTurn: Bool {
         // Always available on the local player's turn, like the Java client.
         // Duplicate requests while one is in flight are blocked in `endTurn()`.
@@ -3899,17 +3954,15 @@ final class GameState {
     }
 
     func saveTradeRoute(_ route: TradeRoute) {
-        guard canManageTradeRoutes,
-              let game = cachedGame,
-              route.owner != nil else {
+        guard let game = cachedGame else {
             errorMessage = "Handelsroute kann nicht gespeichert werden."
             return
         }
-        let trimmed = (route.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            errorMessage = "Handelsroute braucht einen Namen."
+        if let validationError = tradeRouteValidationError(for: route) {
+            errorMessage = validationError
             return
         }
+        let trimmed = (route.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         errorMessage = nil
 
         var updated = route

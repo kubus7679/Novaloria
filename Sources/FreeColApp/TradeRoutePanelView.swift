@@ -120,6 +120,12 @@ struct TradeRoutePanelView: View {
                         .textFieldStyle(.roundedBorder)
                     }
 
+                    if let validationMessage = state.tradeRouteValidationError(for: draft) {
+                        Text(validationMessage)
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
                             Text("Stops").font(.subheadline.weight(.semibold))
@@ -149,6 +155,7 @@ struct TradeRoutePanelView: View {
                     HStack {
                         Button("Save") { state.saveTradeRoute(draft) }
                             .buttonStyle(.borderedProminent)
+                            .disabled(state.tradeRouteValidationError(for: draft) != nil)
 
                         Button("Assign to Selected Unit") {
                             state.assignSelectedUnitTradeRoute(draft.id)

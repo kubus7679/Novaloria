@@ -830,3 +830,13 @@ die dokumentierten Nicht-Ziele.
 - [x] Route löschen und den Clientbestand anhand des Player-Snapshots abgleichen.
 - [x] Build, 70 XCTest, 132 CLI-Prüfungen und Smoke/Deep/Gameplay E2E erfolgreich.
 - Konkreter Plan: `Docs/Plans/phase74-trade-route-e2e-plan.md`.
+
+## Phase 75 — Handelsrouten vor dem Speichern validieren
+
+- [x] Java-Save-Regeln im Trade-Route-Editor prüfen: Name, Eigentümer,
+      mindestens zwei eigene Stationen, bekannte Fracht und nicht überall
+      dieselbe Fracht (außer Enhanced Trade Routes ist aktiviert).
+- [x] Save-Button bei ungültiger Route sperren und den Grund anzeigen.
+- [x] Dieselbe Validierung in `GameState.saveTradeRoute` als Guard anwenden.
+- [x] Build, 71 XCTest, 132 CLI-Prüfungen und Java-E2E erfolgreich.
+- Konkreter Plan: `Docs/Plans/phase75-trade-route-validation-plan.md`.

@@ -594,6 +594,48 @@ final class FreeColProtocolTests: XCTestCase {
         )
     }
 
+    func testTradeRouteValidationCatchesJavaSaveRejects() {
+        let validStops: Set<String> = ["colony:1", "europe:9"]
+        let validGoods: Set<String> = ["model.goods.food", "model.goods.sugar"]
+        let route = TradeRoute(id: "route-1",
+                               name: "Route A",
+                               owner: "player-1",
+                               stops: [
+                                   TradeRouteStop(locationId: "colony:1",
+                                                  cargoTypeIds: ["model.goods.food"]),
+                                   TradeRouteStop(locationId: "europe:9"),
+                               ])
+        let validate: (TradeRoute, [TradeRoute], Bool) -> String? = { candidate, existing, enhanced in
+            GameState.tradeRouteValidationError(route: candidate,
+                                                localPlayerId: "player-1",
+                                                existingRoutes: existing,
+                                                validStopLocationIds: validStops,
+                                                validGoodsTypeIds: validGoods,
+                                                enhancedTradeRoutes: enhanced)
+        }
+        XCTAssertNil(validate(route, [], false))
+
+        var oneStop = route
+        oneStop.stops = Array(route.stops.prefix(1))
+        XCTAssertEqual(validate(oneStop, [], false), "Add at least two trade route stops.")
+
+        var invalidLocation = route
+        invalidLocation.stops[1].locationId = "foreign-colony"
+        XCTAssertEqual(validate(invalidLocation, [], false), "Choose a valid owned location for every stop.")
+
+        var allStopsEmpty = route
+        allStopsEmpty.stops[0].cargoTypeIds = []
+        XCTAssertEqual(validate(allStopsEmpty, [], false), "Select goods for at least one trade route stop.")
+
+        var cargoAtEveryStop = route
+        cargoAtEveryStop.stops[1].cargoTypeIds = ["model.goods.food"]
+        XCTAssertNotNil(validate(cargoAtEveryStop, [], false))
+        XCTAssertNil(validate(cargoAtEveryStop, [], true))
+
+        let duplicate = TradeRoute(id: "route-2", name: "Route A", owner: "player-1")
+        XCTAssertEqual(validate(route, [duplicate], false), "A trade route already uses this name.")
+    }
+
     func testColonyBuildQueueAndBuildingsParsing() throws {
         let game = Game()
         let parsed = try XMLDecoder.decode("""
