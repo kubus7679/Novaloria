@@ -1104,6 +1104,12 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(cargoLimited.buy, 80)
         XCTAssertEqual(cargoLimited.sell, 12)
 
+        let chunkLimited = GameState.marketTradeLimits(gold: 10_000,
+                                                       buyPrice: 1,
+                                                       loadableAmount: 500,
+                                                       carriedAmount: 0)
+        XCTAssertEqual(chunkLimited.buy, MarketPricing.goodsPerCargoChunk)
+
         let noGoldLimits = GameState.marketTradeLimits(gold: 0,
                                                       buyPrice: 25,
                                                       loadableAmount: 100,

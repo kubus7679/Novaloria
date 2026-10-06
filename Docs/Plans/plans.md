@@ -858,3 +858,12 @@ die dokumentierten Nicht-Ziele.
       den clientseitig berechneten Preisen.
 - [x] Build, 73 XCTest, 132 CLI-Prüfungen und Java-E2E erfolgreich.
 - Konkreter Plan: `Docs/Plans/phase77-market-pricing-parity-plan.md`.
+
+## Phase 78 — Marktpreis-Schrittgrenze
+
+- [x] Europe-Käufe auf eine Java-Preisberechnungs-Tranche von 100 Waren pro
+      Bestellung begrenzen.
+- [x] App-State schützt direkte Buy-/Sell-Aufrufe zusätzlich vor Mengen über
+      der berechneten Bezahlbarkeit, Kapazität oder dem Cargo-Bestand.
+- [x] Build, 73 XCTest, 132 CLI-Prüfungen und Java-E2E erfolgreich.
+- Konkreter Plan: `Docs/Plans/phase78-market-price-chunk-limits-plan.md`.

@@ -81,6 +81,8 @@ public struct MarketData: Identifiable {
 public enum MarketPricing {
     public static let minimumPrice = 1
     public static let maximumPrice = 19
+    /// Java's GoodsContainer divides large transactions into this many goods per price step.
+    public static let goodsPerCargoChunk = 100
 
     /// Returns `(costToBuy, paidForSale)` for a market entry.
     ///
