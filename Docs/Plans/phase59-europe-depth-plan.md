@@ -23,10 +23,10 @@ Preisverlauf vollständig bedienbar machen.
 - „Dump …"-Buttons in den Einheiten-Quick-Actions.
 
 ### 4. Marktverlauf
-- `recordMarketSnapshot()` zeichnet Verkaufspreise je Ware auf (max. 60
-  Punkte, nur bei Änderung); aufgerufen aus den Client-Bridge-Updates.
-- `PriceSparkline` + „Market History"-Sektion im Europe-Panel
-  (Last/Min/Max).
+- `recordMarketSnapshot()` zeichnet Kauf- und Verkaufspreise je Ware synchron
+  auf (max. 60 Punkte, nur bei Änderung); aufgerufen aus Client-Bridge-Updates.
+- Europe-Panel zeigt beide Reihen als farblich getrennte Linien mit Last/Min/Max.
+- Implementierung: `phase80-market-price-history-plan.md`.
 
 ## Tests
 

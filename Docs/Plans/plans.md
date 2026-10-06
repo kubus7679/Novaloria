@@ -877,3 +877,11 @@ die dokumentierten Nicht-Ziele.
 - [x] Build, 74 XCTest, 132 CLI-Prüfungen und Java-E2E mit exakten
       Preis-/Golddelta-Assertions erfolgreich.
 - Konkreter Plan: `Docs/Plans/phase79-market-transaction-quotes-plan.md`.
+
+## Phase 80 — Kauf-/Verkaufspreisverlauf
+
+- [x] Buy- und Sell-Preisänderungen pro Ware synchron speichern, je bis zu 60
+      Werte, und Verlauf beim Sitzungsreset löschen.
+- [x] Beide Reihen im Europe-Marktverlauf mit Last/Min/Max anzeigen.
+- [x] Build, 74 XCTest, 132 CLI-Prüfungen und Java-E2E erfolgreich.
+- Konkreter Plan: `Docs/Plans/phase80-market-price-history-plan.md`.

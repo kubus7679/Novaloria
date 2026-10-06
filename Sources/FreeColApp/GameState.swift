@@ -592,21 +592,31 @@ final class GameState {
 
     /// Client-side recorded market sale-price history per goods type.
     var marketPriceHistory: [String: [Int]] = [:]
+    /// Client-side recorded market buy-price history per goods type.
+    var marketBuyPriceHistory: [String: [Int]] = [:]
 
-    /// Append a market price point whenever a sale price changes.
+    /// Append an aligned buy/sale price snapshot whenever either price changes.
     func recordMarketSnapshot() {
         guard phase == .inGame,
               let game = cachedGame else { return }
         for entry in localPlayerMarketData {
             guard let goodsType = entry.goodsType else { continue }
-            let price = MarketPricing.prices(for: entry, specification: game.specification).paidForSale
-            var series = marketPriceHistory[goodsType] ?? []
-            guard series.last != price else { continue }
-            series.append(price)
-            if series.count > 60 {
-                series.removeFirst(series.count - 60)
+            let prices = MarketPricing.prices(for: entry, specification: game.specification)
+            var buySeries = marketBuyPriceHistory[goodsType] ?? []
+            var saleSeries = marketPriceHistory[goodsType] ?? []
+            guard buySeries.last != prices.costToBuy || saleSeries.last != prices.paidForSale else {
+                continue
             }
-            marketPriceHistory[goodsType] = series
+            buySeries.append(prices.costToBuy)
+            saleSeries.append(prices.paidForSale)
+            if buySeries.count > 60 {
+                buySeries.removeFirst(buySeries.count - 60)
+            }
+            if saleSeries.count > 60 {
+                saleSeries.removeFirst(saleSeries.count - 60)
+            }
+            marketBuyPriceHistory[goodsType] = buySeries
+            marketPriceHistory[goodsType] = saleSeries
         }
     }
 
@@ -2589,6 +2599,7 @@ final class GameState {
         pendingEndTurnTurn = nil
         incomingChatLog = []
         marketPriceHistory = [:]
+        marketBuyPriceHistory = [:]
         isGameEnded = false
         isVictorious = false
         isDefeated = false

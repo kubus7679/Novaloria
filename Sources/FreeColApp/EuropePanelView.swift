@@ -89,8 +89,9 @@ struct EuropePanelView: View {
 
     private var marketHistorySection: some View {
         GroupBox("Market History") {
-            let series = state.marketPriceHistory[selectedGoodsType] ?? []
-            if selectedGoodsType.isEmpty || series.isEmpty {
+            let buySeries = state.marketBuyPriceHistory[selectedGoodsType] ?? []
+            let saleSeries = state.marketPriceHistory[selectedGoodsType] ?? []
+            if selectedGoodsType.isEmpty || (buySeries.isEmpty && saleSeries.isEmpty) {
                 Text("Wähle eine Ware und handle, um den Preisverlauf zu sehen.")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -100,16 +101,26 @@ struct EuropePanelView: View {
                         Text(goodsLabel(selectedGoodsType))
                             .font(.caption.bold())
                         Spacer()
-                        Text("Last: \(series.last ?? 0) G · Min \(series.min() ?? 0) · Max \(series.max() ?? 0)")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
                     }
-                    PriceSparkline(values: series)
+                    HStack {
+                        Text(priceHistorySummary("Buy", values: buySeries))
+                            .foregroundColor(.orange)
+                        Spacer()
+                        Text(priceHistorySummary("Sell", values: saleSeries))
+                            .foregroundColor(.yellow)
+                    }
+                    .font(.caption2)
+                    PriceSparkline(buyValues: buySeries, saleValues: saleSeries)
                         .frame(height: 48)
                 }
                 .padding(.vertical, 4)
             }
         }
+    }
+
+    private func priceHistorySummary(_ label: String, values: [Int]) -> String {
+        guard let latest = values.last else { return "\(label): —" }
+        return "\(label): \(latest) G (\(values.min() ?? latest)–\(values.max() ?? latest))"
     }
 
     // MARK: - Purchase
@@ -393,18 +404,32 @@ struct EuropePanelView: View {
 
 /// A minimal step sparkline for recorded market prices.
 private struct PriceSparkline: View {
-    let values: [Int]
+    let buyValues: [Int]
+    let saleValues: [Int]
 
     var body: some View {
         GeometryReader { geo in
-            let points = normalizedPoints(in: geo.size)
+            let allValues = buyValues + saleValues
+            let minValue = allValues.min() ?? 0
+            let maxValue = allValues.max() ?? 1
+            let buyPoints = normalizedPoints(buyValues, minValue: minValue, maxValue: maxValue, in: geo.size)
+            let salePoints = normalizedPoints(saleValues, minValue: minValue, maxValue: maxValue, in: geo.size)
             ZStack {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.black.opacity(0.15))
-                if points.count > 1 {
+                if buyPoints.count > 1 {
                     Path { path in
-                        path.move(to: points[0])
-                        for point in points.dropFirst() {
+                        path.move(to: buyPoints[0])
+                        for point in buyPoints.dropFirst() {
+                            path.addLine(to: point)
+                        }
+                    }
+                    .stroke(Color.orange, lineWidth: 1.5)
+                }
+                if salePoints.count > 1 {
+                    Path { path in
+                        path.move(to: salePoints[0])
+                        for point in salePoints.dropFirst() {
                             path.addLine(to: point)
                         }
                     }
@@ -414,10 +439,11 @@ private struct PriceSparkline: View {
         }
     }
 
-    private func normalizedPoints(in size: CGSize) -> [CGPoint] {
+    private func normalizedPoints(_ values: [Int],
+                                  minValue: Int,
+                                  maxValue: Int,
+                                  in size: CGSize) -> [CGPoint] {
         guard values.count > 1 else { return [] }
-        let minValue = values.min() ?? 0
-        let maxValue = values.max() ?? 1
         let span = max(1, maxValue - minValue)
         return values.enumerated().map { index, value in
             let x = size.width * CGFloat(index) / CGFloat(values.count - 1)
