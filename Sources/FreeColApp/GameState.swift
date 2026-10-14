@@ -229,6 +229,66 @@ final class GameState {
         }
     }
 
+    /// User-facing German message for the monarchAction prompt.
+    var monarchActionMessage: String {
+        guard let decision = pendingServerDecision, decision.type == .monarchAction else { return "" }
+        let action = decision.rawPayload["action"] ?? ""
+        let tax = decision.rawPayload["tax"]
+        let monarch = decision.rawPayload["monarch"]
+        let gold = decision.rawPayload["gold"]
+        let bell = decision.rawPayload["bell"]
+
+        switch action {
+        case "RAISE_TAX_ACT":
+            if let tax { return "Der Monarch möchte die Steuern auf \(tax)% erhöhen. Akzeptieren?" }
+            return "Der Monarch fordert eine Steuererhöhung. Akzeptieren?"
+        case "LOWER_TAX_ACT":
+            if let tax { return "Der Monarch bietet an, die Steuern auf \(tax)% zu senken. Akzeptieren?" }
+            return "Der Monarch bietet eine Steuersenkung an. Akzeptieren?"
+        case "ADD_TO_ARMY":
+            if let gold { return "Der Monarch fordert \(gold) Gold für die Armee. Bezahlen?" }
+            return "Der Monarch fordert Gold für die Armee. Bezahlen?"
+        case "ADD_TO_NAVY":
+            if let gold { return "Der Monarch fordert \(gold) Gold für die Marine. Bezahlen?" }
+            return "Der Monarch fordert Gold für die Marine. Bezahlen?"
+        case "DECLARE_INDEPENDENCE":
+            return "Der Monarch bietet an, die Unabhängigkeit zu erklären. Akzeptieren?"
+        case "BELL":
+            if let bell { return "Der Monarch verkündet eine neue Freiheit: \(bell). Akzeptieren?" }
+            return "Der Monarch verkündet eine neue Freiheit. Akzeptieren?"
+        default:
+            return "Der Monarch hat eine Aktion: \(action). Akzeptieren?"
+        }
+    }
+
+    /// User-facing German message for the firstContact prompt.
+    var firstContactMessage: String {
+        guard let decision = pendingServerDecision, decision.type == .firstContact else { return "" }
+        let other = decision.rawPayload["other"] ?? "ein natives Volk"
+        let camps = decision.rawPayload["camps"]
+        let playerName = decision.rawPayload["player"] ?? "Du"
+        if let camps, camps == "true" {
+            return "\(playerName) hat zum ersten Mal Kontakt mit \(other) aufgenommen (Siedlung sichtbar). Diplomatische Beziehungen herstellen?"
+        }
+        return "\(playerName) hat zum ersten Mal Kontakt mit \(other) aufgenommen. Diplomatische Beziehungen herstellen?"
+    }
+
+    /// User-facing German message for the indianDemand prompt.
+    var indianDemandMessage: String {
+        guard let decision = pendingServerDecision, decision.type == .indianDemand else { return "" }
+        let type = decision.rawPayload["type"] ?? "Gold"
+        let amount = decision.rawPayload["amount"] ?? "?"
+        let colonyId = decision.rawPayload["colony"]
+        let colony = colonyId.flatMap { cachedGame?.colonies[$0] }
+        let colonyName = colony?.name ?? colonyId ?? "eine Kolonie"
+        let unitId = decision.rawPayload["unit"]
+        let unit = unitId.flatMap { cachedGame?.units[$0] }
+        let unitName = unit?.unitType?.split(separator: ".").last.map(String.init) ?? unitId ?? "eine Einheit"
+
+        let typeDisplay = type == "gold" ? "Gold" : type
+        return "Die Native fordern \(amount) \(typeDisplay) als Tribut für \(unitName) in \(colonyName). Akzeptieren (Verlust: \(amount) \(typeDisplay)) oder ablehnen (Risiko: Angriff)?"
+    }
+
     /// Parsed session for a pending `nativeTrade` prompt.
     var pendingNativeTrade: NativeTradeSession? {
         guard pendingServerDecision?.type == .nativeTrade else { return nil }
@@ -368,9 +428,11 @@ final class GameState {
     var serverState: ServerState?
     private var bridge: ClientBridge?
     private var server: MockServer?
+    var usesLocalServer: Bool { server != nil }
     private var messageLoopTask: Task<Void, Never>?
     private var localServerTask: Task<Void, Never>?
     private(set) var cachedGame: Game?
+    var autoExecuteTradeRoutes: Bool = false
     var gameUpdateID: Int = 0
     var selectedUnitId: String?
     var selectedTileId: String?
@@ -383,6 +445,7 @@ final class GameState {
     private var isEndingTurn: Bool = false
     private var pendingEndTurnTurn: Int?
     private var endTurnToken: Int = 0
+    private static let coreGameplayAskTimeout: TimeInterval = 30
     var incomingChatLog: [String] = []
     var isGameEnded: Bool = false
     /// Set when the server announces the local player has been eliminated.
@@ -474,6 +537,25 @@ final class GameState {
         // turn so turn-bound actions such as "End Turn" stay available.
         guard let currentPlayerId = game.currentPlayerId else { return true }
         return currentPlayerId == localPlayerId
+    }
+
+    /// Name of the current player (whose turn it is), if available.
+    var currentPlayerName: String? {
+        guard let game = cachedGame,
+              let currentPlayerId = game.currentPlayerId else { return nil }
+        return game.players[currentPlayerId]?.name
+    }
+
+    /// Human-readable description of the current turn status.
+    var turnStatusDescription: String {
+        let turnNumber = cachedGame?.turn.number ?? 0
+        if isLocalPlayersTurn {
+            return "Dein Zug (Zug #\(turnNumber))"
+        } else if let name = currentPlayerName {
+            return "Warte auf \(name) (Zug #\(turnNumber))"
+        } else {
+            return "Zug #\(turnNumber)"
+        }
     }
 
     var localPlayerId: String? {
@@ -669,105 +751,8 @@ final class GameState {
         return marketPriceTrends[goodsTypeId]
     }
 
-    // MARK: - Trade routes
-
-    var localPlayerTradeRoutes: [TradeRoute] {
-        guard let game = cachedGame,
-              let localPlayerId = resolveLocalPlayerId() else {
-            return []
-        }
-        return game.tradeRoutes(forPlayer: localPlayerId)
-    }
-
-    var canManageTradeRoutes: Bool {
-        phase == .inGame && isLocalPlayersTurn
-    }
-
-    /// Owned colonies plus Europe, as candidate trade route stops.
-    var tradeRouteStopCandidates: [(id: String, label: String)] {
-        guard let game = cachedGame,
-              let localPlayerId = resolveLocalPlayerId() else {
-            return []
-        }
-        var result: [(id: String, label: String)] = []
-        if let europeId = game.players[localPlayerId]?.europe?.id {
-            result.append((id: europeId, label: "Europe"))
-        }
-        let colonies = game.colonies.values
-            .filter { $0.owner == localPlayerId }
-            .sorted { ($0.name ?? "") < ($1.name ?? "") }
-            .map { (id: $0.id, label: $0.name ?? $0.id) }
-        result.append(contentsOf: colonies)
-        return result
-    }
-
-    /// Goods types offered for trade-route cargo selection.
-    var tradeRouteGoodsTypes: [(id: String, label: String)] {
-        guard let specification = cachedGame?.specification else { return [] }
-        return specification.goodsTypes.values
-            .sorted { ($0.name ?? $0.id) < ($1.name ?? $1.id) }
-            .map { (id: $0.id, label: $0.name ?? $0.id) }
-    }
-
-    func tradeRouteValidationError(for route: TradeRoute) -> String? {
-        guard canManageTradeRoutes,
-              let game = cachedGame,
-              let localPlayerId = resolveLocalPlayerId() else {
-            return "Trade routes can only be managed during your turn."
-        }
-        return Self.tradeRouteValidationError(
-            route: route,
-            localPlayerId: localPlayerId,
-            existingRoutes: localPlayerTradeRoutes,
-            validStopLocationIds: Set(tradeRouteStopCandidates.map(\.id)),
-            validGoodsTypeIds: Set(tradeRouteGoodsTypes.map(\.id)),
-            enhancedTradeRoutes: game.optionValues["model.option.enhancedTradeRoutes"] == "true"
-        )
-    }
-
-    nonisolated static func tradeRouteValidationError(
-        route: TradeRoute,
-        localPlayerId: String,
-        existingRoutes: [TradeRoute],
-        validStopLocationIds: Set<String>,
-        validGoodsTypeIds: Set<String>,
-        enhancedTradeRoutes: Bool
-    ) -> String? {
-        let name = (route.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return "Trade route needs a name." }
-        guard route.owner == localPlayerId else { return "Trade route is not owned by the local player." }
-        guard !existingRoutes.contains(where: { $0.id != route.id && $0.name == name }) else {
-            return "A trade route already uses this name."
-        }
-        guard route.stops.count >= 2 else { return "Add at least two trade route stops." }
-        guard route.stops.allSatisfy({
-            guard let location = $0.locationId else { return false }
-            return validStopLocationIds.contains(location)
-        }) else {
-            return "Choose a valid owned location for every stop."
-        }
-        guard route.stops.allSatisfy({ $0.cargoTypeIds.allSatisfy(validGoodsTypeIds.contains) }) else {
-            return "Trade route contains an unknown goods type."
-        }
-        guard route.stops.contains(where: { !$0.cargoTypeIds.isEmpty }) else {
-            return "Select goods for at least one trade route stop."
-        }
-        if !enhancedTradeRoutes, let firstStop = route.stops.first {
-            var presentAtEveryStop = Set(firstStop.cargoTypeIds)
-            for stop in route.stops.dropFirst() {
-                presentAtEveryStop.formIntersection(stop.cargoTypeIds)
-            }
-            if !presentAtEveryStop.isEmpty {
-                return "In standard trade routes, goods cannot be selected at every stop."
-            }
-        }
-        return nil
-    }
-
     var canEndTurn: Bool {
-        // Always available on the local player's turn, like the Java client.
-        // Duplicate requests while one is in flight are blocked in `endTurn()`.
-        phase == .inGame && isLocalPlayersTurn && !isGameEnded
+        phase == .inGame && isLocalPlayersTurn && !isGameEnded && !isEndingTurn
     }
 
     /// True while the local player still has an active unit with moves left.
@@ -886,19 +871,6 @@ final class GameState {
             return false
         }
         return unit.destination != nil
-    }
-
-    var canClearSelectedUnitTradeRoute: Bool {
-        guard phase == .inGame,
-              isLocalPlayersTurn,
-              let game = cachedGame,
-              let unitId = selectedUnitId,
-              let unit = game.units[unitId],
-              let localPlayerId = resolveLocalPlayerId(),
-              unit.owner == localPlayerId else {
-            return false
-        }
-        return unit.tradeRoute != nil
     }
 
     var canCashInSelectedTreasureTrain: Bool {
@@ -1092,269 +1064,6 @@ final class GameState {
         return colony.buildings
             .map { (id: $0.buildingType ?? $0.id, label: buildingDisplayName($0.buildingType ?? $0.id)) }
             .sorted { $0.label < $1.label }
-    }
-
-    /// Build queue of the selected colony, already known to the server.
-    var selectedColonyBuildQueue: [String] {
-        selectedColony?.buildQueue ?? []
-    }
-
-    /// Human-readable building name for a `model.building.*` id.
-    func buildingDisplayName(_ typeId: String) -> String {
-        if let info = cachedGame?.specification?.buildingTypes[typeId] {
-            return info.displayName
-        }
-        return typeId.split(separator: ".").last.map(String.init) ?? typeId
-    }
-
-    /// Human-readable goods name for a `model.goods.*` id.
-    func goodsDisplayName(_ typeId: String) -> String {
-        if let name = cachedGame?.specification?.goodsTypes[typeId]?.name, !name.isEmpty {
-            return name
-        }
-        return typeId.split(separator: ".").last.map(String.init) ?? typeId
-    }
-
-    /// Goods type used for construction progress (FreeCol "building materials").
-    nonisolated static let buildingMaterialsGoodsId = "model.goods.hammers"
-
-    /// Stored goods of the selected colony.
-    var selectedColonyStoredGoods: [(id: String, label: String, amount: Int)] {
-        guard let colony = selectedColony else { return [] }
-        return colony.goods
-            .map { (id: $0.key, label: goodsDisplayName($0.key), amount: $0.value) }
-            .filter { $0.amount > 0 }
-            .sorted { $0.label < $1.label }
-    }
-
-    /// First item of the selected colony build queue.
-    var selectedColonyBuildTarget: (id: String, label: String)? {
-        guard let first = selectedColony?.buildQueue.first else { return nil }
-        return (id: first, label: buildingDisplayName(first))
-    }
-
-    /// Required vs. stored goods for the current build target.
-    var selectedColonyBuildRequirements: [(id: String, label: String, required: Int, stored: Int)] {
-        guard let colony = selectedColony,
-              let target = selectedColonyBuildTarget,
-              let info = cachedGame?.specification?.buildingTypes[target.id] else {
-            return []
-        }
-        return info.requiredGoods
-            .map { (id: $0.key,
-                    label: goodsDisplayName($0.key),
-                    required: $0.value,
-                    stored: colony.goods[$0.key] ?? 0) }
-            .sorted { $0.label < $1.label }
-    }
-
-    /// Estimated per-turn output of the construction goods from present buildings.
-    var selectedColonyEstimatedBuildPerTurn: Int {
-        guard let colony = selectedColony,
-              let specification = cachedGame?.specification else {
-            return 0
-        }
-        return Self.estimatedBuildPerTurn(colony: colony,
-                                          specification: specification,
-                                          centerTileType: centerTileType(of: colony))
-    }
-
-    /// Estimated turns until the current build target completes (nil if unknown).
-    var selectedColonyEstimatedBuildTurns: Int? {
-        guard let target = selectedColonyBuildTarget,
-              let colony = selectedColony,
-              let specification = cachedGame?.specification else {
-            return nil
-        }
-        return Self.estimatedBuildTurns(colony: colony,
-                                        buildableId: target.id,
-                                        specification: specification,
-                                        centerTileType: centerTileType(of: colony))
-    }
-
-    /// Estimate the construction-goods output per turn from present buildings.
-    nonisolated static func estimatedBuildPerTurn(colony: Colony,
-                                                   specification: Specification,
-                                                   centerTileType: String? = nil) -> Int {
-        estimatedProduction(colony: colony,
-                            specification: specification,
-                            centerTileType: centerTileType)
-            .first { $0.id == buildingMaterialsGoodsId }?.amount ?? 0
-    }
-
-    /// Estimated net per-turn goods output from present buildings plus the
-    /// colony-center tile (attended production preferred, unattended fallback).
-    nonisolated static func estimatedProduction(colony: Colony,
-                                                specification: Specification,
-                                                centerTileType: String? = nil) -> [(id: String, amount: Int)] {
-        var totals: [String: Int] = [:]
-        for building in colony.buildings {
-            guard let type = building.buildingType,
-                  let info = specification.buildingTypes[type] else { continue }
-            for (goods, value) in info.productionOutputs {
-                totals[goods, default: 0] += value
-            }
-            for (goods, value) in info.productionInputs {
-                totals[goods, default: 0] -= value
-            }
-        }
-        // The colony center tile is always worked (unattended production).
-        if let centerTileType, let tileInfo = specification.tileTypes[centerTileType] {
-            for (goods, value) in tileInfo.centerOutputs {
-                totals[goods, default: 0] += value
-            }
-            for (goods, value) in tileInfo.centerInputs {
-                totals[goods, default: 0] -= value
-            }
-        }
-        return totals
-            .filter { $0.value != 0 }
-            .map { (id: $0.key, amount: $0.value) }
-    }
-
-    // MARK: Phase 57 - report helpers
-
-    /// Colonies owned by the local player, sorted by name.
-    var localColonies: [Colony] {
-        guard let game = cachedGame,
-              let localPlayerId = resolveLocalPlayerId() else { return [] }
-        return game.colonies.values
-            .filter { $0.owner == localPlayerId }
-            .sorted { ($0.name ?? "") < ($1.name ?? "") }
-    }
-
-    /// Workers (units) assigned to a colony, either inside it or on a work location.
-    func colonyWorkerUnits(_ colony: Colony) -> [FreeColGame.Unit] {
-        guard let game = cachedGame,
-              let localPlayerId = resolveLocalPlayerId() else { return [] }
-        let workLocationIds = Set(colony.buildings.map(\.id) + colony.workTiles.map(\.id))
-        return game.units.values
-            .filter { unit in
-                guard unit.owner == localPlayerId else { return false }
-                if unit.location == colony.id { return true }
-                if let location = unit.location, workLocationIds.contains(location) { return true }
-                return false
-            }
-            .sorted { $0.id < $1.id }
-    }
-
-    /// Net production estimate for a colony, with display names.
-    func colonyProductionSummary(_ colony: Colony) -> [(id: String, label: String, amount: Int)] {
-        guard let specification = cachedGame?.specification else { return [] }
-        return Self.estimatedProduction(colony: colony,
-                                        specification: specification,
-                                        centerTileType: centerTileType(of: colony))
-            .map { (id: $0.id, label: goodsDisplayName($0.id), amount: $0.amount) }
-            .sorted { $0.label < $1.label }
-    }
-
-    /// Required vs. stored construction goods for a colony's current build target.
-    func colonyBuildRequirements(_ colony: Colony) -> (target: String, items: [(id: String, label: String, required: Int, stored: Int)])? {
-        guard let first = colony.buildQueue.first,
-              let info = cachedGame?.specification?.buildingTypes[first] else {
-            return nil
-        }
-        let items = info.requiredGoods
-            .map { (id: $0.key,
-                    label: goodsDisplayName($0.key),
-                    required: $0.value,
-                    stored: colony.goods[$0.key] ?? 0) }
-            .sorted { $0.label < $1.label }
-        return (buildingDisplayName(first), items)
-    }
-
-    /// Units with an education assignment (student/teacher).
-    var educationAssignments: [FreeColGame.Unit] {
-        selectableLocalUnits.filter { unit in
-            (unit.teacher?.isEmpty == false) || (unit.student?.isEmpty == false)
-        }
-    }
-
-    /// Units with a missionary role.
-    var missionaryUnits: [FreeColGame.Unit] {
-        selectableLocalUnits.filter {
-            UnitTypeTraits.isMissionary(unitType: $0.unitType, role: $0.role)
-        }
-    }
-
-    /// Estimated net production of the selected colony, with display names.
-    var selectedColonyEstimatedProduction: [(id: String, label: String, amount: Int)] {
-        guard let colony = selectedColony,
-              let specification = cachedGame?.specification else {
-            return []
-        }
-        return Self.estimatedProduction(colony: colony,
-                                        specification: specification,
-                                        centerTileType: centerTileType(of: colony))
-            .map { (id: $0.id, label: goodsDisplayName($0.id), amount: $0.amount) }
-            .sorted { $0.label < $1.label }
-    }
-
-    private func centerTileType(of colony: Colony) -> String? {
-        guard let tileId = colony.tileId else { return nil }
-        return cachedGame?.tiles[tileId]?.type
-    }
-
-    /// Estimate the turns to complete a buildable, or nil when unknown.
-    nonisolated static func estimatedBuildTurns(colony: Colony,
-                                                buildableId: String,
-                                                specification: Specification,
-                                                centerTileType: String? = nil) -> Int? {
-        guard let info = specification.buildingTypes[buildableId],
-              !info.requiredGoods.isEmpty else {
-            return nil
-        }
-        let material = buildingMaterialsGoodsId
-        guard let required = info.requiredGoods[material] else { return nil }
-        let remaining = required - (colony.goods[material] ?? 0)
-        guard remaining > 0 else { return 0 }
-        let perTurn = estimatedBuildPerTurn(colony: colony,
-                                            specification: specification,
-                                            centerTileType: centerTileType)
-        guard perTurn > 0 else { return nil }
-        return (remaining + perTurn - 1) / perTurn
-    }
-
-    var selectedColonyWorkerUnitId: String? {
-        guard canManageSelectedColony else { return nil }
-        if let unit = selectedUnit,
-           selectedColonyUnits.contains(where: { $0.id == unit.id }) {
-            return unit.id
-        }
-        return selectedColonyUnits.first?.id
-    }
-
-    var canPutSelectedColonyWorkerOutside: Bool {
-        guard canManageSelectedColony,
-              let colony = selectedColony,
-              let colonyId = colony.id as String?,
-              let unitId = selectedColonyWorkerUnitId,
-              let game = cachedGame,
-              let unit = game.units[unitId] else {
-            return false
-        }
-        return unit.location == colonyId
-    }
-
-    var canAbandonSelectedColony: Bool {
-        guard canManageSelectedColony else { return false }
-        return selectedColonyUnits.isEmpty
-    }
-
-    var selectedColonyCarrierId: String? {
-        guard canManageSelectedColony,
-              let game = cachedGame,
-              let localPlayerId = resolveLocalPlayerId() else {
-            return nil
-        }
-        if let unit = selectedUnit,
-           unit.owner == localPlayerId,
-           isLikelyCarrier(unit, in: game) {
-            return unit.id
-        }
-        return selectedColonyUnits.first(where: {
-            $0.owner == localPlayerId && isLikelyCarrier($0, in: game)
-        })?.id
     }
 
     var game: Game? { _ = gameUpdateID; return cachedGame }
@@ -2268,7 +1977,12 @@ final class GameState {
     }
 
     var canOpenNativeTrade: Bool {
-        guard phase == .inGame, isLocalPlayersTurn, selectedUnit != nil else { return false }
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let unit = selectedUnit,
+              let localPlayerId = resolveLocalPlayerId(),
+              unit.movesLeft > 0,
+              unit.owner == localPlayerId else { return false }
         return !nativeTradeTargetsForSelectedUnit.isEmpty
     }
 
@@ -2286,12 +2000,16 @@ final class GameState {
     }
 
     func openNativeTradeWithSelectedUnit(settlementId: String) {
-        guard phase == .inGame, isLocalPlayersTurn, let unitId = selectedUnitId else {
+        guard canOpenNativeTrade, let unitId = selectedUnitId else {
             errorMessage = "Kein Handel möglich."
             return
         }
         guard !settlementId.isEmpty else {
             errorMessage = "Siedlung erforderlich."
+            return
+        }
+        guard nativeTradeTargetsForSelectedUnit.contains(where: { $0.settlementId == settlementId }) else {
+            errorMessage = "Keine angrenzende Native-Siedlung."
             return
         }
         errorMessage = nil
@@ -2591,7 +2309,7 @@ final class GameState {
         }
     }
 
-    private func resolveLocalPlayerId() -> String? {
+    func resolveLocalPlayerId() -> String? {
         guard let game = cachedGame else { return cachedLocalPlayerId }
         if let clientUserName = game.clientUserName,
            let player = game.players.values.first(where: { $0.name == clientUserName }) {
@@ -3265,6 +2983,66 @@ final class GameState {
         showEndTurnDialog = false
     }
 
+    /// Java handles core in-game actions as `<question>` requests and returns a
+    /// `<reply>` containing the result/change set. The local mock server only
+    /// implements the fire-and-forget subset, so retain that transport locally.
+    private func sendCoreGameplayAction(
+        _ message: ParsedMessage,
+        timeout: TimeInterval? = nil
+    ) async throws {
+        guard let client else { throw FreeColProtocolError.disconnected }
+        if usesLocalServer {
+            try await client.send(message: message)
+        } else {
+            do {
+                _ = try await client.ask(message: message, timeout: timeout ?? Self.coreGameplayAskTimeout)
+            } catch FreeColProtocolError.serverError(let raw) {
+                throw UserFacingActionError(message: Self.userFacingServerError(raw))
+            }
+        }
+    }
+
+    /// Error carrying a German, user-facing message; `localizedDescription` returns it.
+    struct UserFacingActionError: LocalizedError {
+        let message: String
+        var errorDescription: String? { message }
+    }
+
+    /// Map raw Java server rejection texts (`ServerAPI` clientError) to user-facing messages.
+    /// Unknown texts are passed through so no server information is lost.
+    nonisolated static func userFacingServerError(_ raw: String) -> String {
+        if raw.contains("ServerUnit") {
+            return "Die Einheit ist auf dem Server nicht bekannt."
+        }
+        if raw.contains("Illegal move") {
+            return "Diese Bewegung ist nicht erlaubt."
+        }
+        if raw.contains("can not build colony") {
+            return "Die Einheit kann hier keine Kolonie gründen."
+        }
+        if raw.contains("Non-unique colony name") {
+            return "Der Koloniename ist bereits vergeben."
+        }
+        if raw.contains("Null colony name") {
+            return "Bitte einen Kolonienamen eingeben."
+        }
+        // Turn gating rejections
+        if raw.localizedCaseInsensitiveContains("not the current player") ||
+           raw.localizedCaseInsensitiveContains("not your turn") ||
+           raw.localizedCaseInsensitiveContains("not allowed to end turn") {
+            return "Du bist nicht am Zug. Bitte warte auf deinen nächsten Zug."
+        }
+        if raw.localizedCaseInsensitiveContains("end turn") &&
+           (raw.localizedCaseInsensitiveContains("fail") || raw.localizedCaseInsensitiveContains("reject")) {
+            return "Der Zug konnte nicht beendet werden. Bitte versuche es erneut."
+        }
+        return "Der Server hat die Aktion abgelehnt: \(raw)"
+    }
+
+    nonisolated static func endTurnSafetyTimeout(localServer: Bool, askTimeout: TimeInterval) -> TimeInterval {
+        localServer ? 8 : askTimeout + 5
+    }
+
     func endTurn() {
         guard phase == .inGame else {
             errorMessage = "Aktion nur im laufenden Spiel verfuegbar."
@@ -3284,25 +3062,28 @@ final class GameState {
         pendingEndTurnTurn = game.turn.number
         endTurnToken += 1
         let token = endTurnToken
+        let safetyTimeout = Self.endTurnSafetyTimeout(
+            localServer: usesLocalServer,
+            askTimeout: Self.coreGameplayAskTimeout
+        )
 
         Task {
             do {
+                await executeTradeRoutesOnTurnEnd()
+                // Start the watchdog only after pre-turn actions have been
+                // queued; remote asks get their full reply timeout plus margin.
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: UInt64(safetyTimeout * 1_000_000_000))
+                    guard token == self.endTurnToken, self.isEndingTurn else { return }
+                    self.clearPendingEndTurn()
+                    self.statusMessage = "Zugende nicht bestätigt – bitte erneut versuchen."
+                }
                 let msg = ParsedMessage(tag: "endTurn", attributes: [:], children: [])
-                try await client?.send(message: msg)
+                try await sendCoreGameplayAction(msg, timeout: Self.coreGameplayAskTimeout)
             } catch {
                 clearPendingEndTurn()
                 errorMessage = error.localizedDescription
             }
-        }
-
-        // Safety net: if the server never confirms (no turn/current-player
-        // update), release the lock after a while so the player can retry
-        // instead of being stuck with a permanently disabled button.
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 8_000_000_000)
-            guard token == self.endTurnToken, self.isEndingTurn else { return }
-            self.clearPendingEndTurn()
-            self.statusMessage = "Zugende nicht bestätigt – bitte erneut versuchen."
         }
     }
 
@@ -3356,7 +3137,7 @@ final class GameState {
                     reconcileSelectionWithGame()
                     gameUpdateID += 1
                 }
-                try await client?.send(message: msg)
+                try await sendCoreGameplayAction(msg)
                 selectUnit(unitId, onTile: destinationTileId)
             } catch {
                 errorMessage = error.localizedDescription
@@ -3374,7 +3155,8 @@ final class GameState {
               unit.owner == localPlayerId,
               unit.movesLeft > 0,
               unit.state == .active,
-              let sourceTileId = resolveUnitTileId(unit, in: game),
+              let sourceTileId = unit.location,
+              game.tiles[sourceTileId] != nil,
               sourceTileId != destinationTileId,
               game.tiles[destinationTileId] != nil else {
             return false
@@ -3438,7 +3220,7 @@ final class GameState {
                     reconcileSelectionWithGame()
                     gameUpdateID += 1
                 }
-                try await client?.send(message: msg)
+                try await sendCoreGameplayAction(msg)
                 // Keep the colony tile focused after founding so the new colony panel appears.
                 if let tileId = colonyTileId ?? selectedTileId {
                     selectUnit(nil, onTile: tileId)
@@ -3788,7 +3570,7 @@ final class GameState {
                     game.setUnitDestination(unitId: unitId, destinationId: europeId)
                     gameUpdateID += 1
                 }
-                try await client?.send(message: msg)
+                try await sendCoreGameplayAction(msg)
                 statusMessage = "Segelt nach Europa."
             } catch {
                 errorMessage = error.localizedDescription
@@ -3914,213 +3696,6 @@ final class GameState {
         }
     }
 
-    func canAssignSelectedUnitTradeRoute(_ tradeRouteId: String) -> Bool {
-        let trimmed = tradeRouteId.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty,
-              phase == .inGame,
-              isLocalPlayersTurn,
-              let game = cachedGame,
-              let unitId = selectedUnitId,
-              let unit = game.units[unitId],
-              let localPlayerId = resolveLocalPlayerId(),
-              unit.owner == localPlayerId else {
-            return false
-        }
-        return unit.tradeRoute != trimmed
-    }
-
-    func assignSelectedUnitTradeRoute(_ tradeRouteId: String) {
-        let trimmed = tradeRouteId.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard canAssignSelectedUnitTradeRoute(trimmed),
-              let unitId = selectedUnitId,
-              let game = cachedGame else {
-            errorMessage = "Handelsroute kann nicht zugewiesen werden."
-            return
-        }
-        errorMessage = nil
-
-
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "assignTradeRoute",
-                    attributes: ["unit": unitId, "tradeRoute": trimmed],
-                    children: []
-                )
-                if server != nil {
-                    game.setUnitTradeRoute(unitId: unitId, tradeRouteId: trimmed)
-                    gameUpdateID += 1
-                }
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-        }
-    }
-
-    func clearSelectedUnitTradeRoute() {
-        guard canClearSelectedUnitTradeRoute,
-              let unitId = selectedUnitId,
-              let game = cachedGame else {
-            errorMessage = "Keine Handelsroute zum Entfernen gesetzt."
-            return
-        }
-        errorMessage = nil
-
-
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "assignTradeRoute",
-                    attributes: ["unit": unitId],
-                    children: []
-                )
-                if server != nil {
-                    game.setUnitTradeRoute(unitId: unitId, tradeRouteId: nil)
-                    gameUpdateID += 1
-                }
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-        }
-    }
-
-    // MARK: - Trade route editing
-
-    var autoExecuteTradeRoutes: Bool = false
-
-    func createTradeRoute() {
-        guard canManageTradeRoutes else {
-            errorMessage = "Handelsrouten können nur im eigenen Zug verwaltet werden."
-            return
-        }
-        errorMessage = nil
-        Task {
-            do {
-                let msg = ParsedMessage(tag: "newTradeRoute", attributes: [:], children: [])
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-        }
-    }
-
-    func saveTradeRoute(_ route: TradeRoute) {
-        guard let game = cachedGame else {
-            errorMessage = "Handelsroute kann nicht gespeichert werden."
-            return
-        }
-        if let validationError = tradeRouteValidationError(for: route) {
-            errorMessage = validationError
-            return
-        }
-        let trimmed = (route.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        errorMessage = nil
-
-        var updated = route
-        updated.name = trimmed
-        let msg = Self.tradeRouteMessage(tag: "updateTradeRoute", route: updated)
-
-        Task {
-            do {
-                if server != nil {
-                    game.addTradeRoute(updated)
-                    gameUpdateID += 1
-                }
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-        }
-    }
-
-    func deleteTradeRoute(_ tradeRouteId: String) {
-        guard canManageTradeRoutes,
-              let game = cachedGame,
-              game.tradeRoutes[tradeRouteId] != nil else {
-            errorMessage = "Handelsroute kann nicht gelöscht werden."
-            return
-        }
-        errorMessage = nil
-
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "deleteTradeRoute",
-                    attributes: ["tradeRoute": tradeRouteId],
-                    children: []
-                )
-                if server != nil {
-                    game.removeTradeRoute(tradeRouteId)
-                    gameUpdateID += 1
-                }
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-        }
-    }
-
-    /// Serialize a `<tradeRoute>` object for `updateTradeRoute` requests.
-    nonisolated static func tradeRouteMessage(tag: String, route: TradeRoute) -> ParsedMessage {
-        let stops: [ParsedMessage] = route.stops.map { stop in
-            var attributes: Attributes = [:]
-            if let locationId = stop.locationId { attributes["location"] = locationId }
-            let cargo = stop.cargoTypeIds.map {
-                ParsedMessage(tag: "cargo", attributes: ["id": $0], children: [])
-            }
-            return ParsedMessage(tag: "tradeRouteStop", attributes: attributes, children: cargo)
-        }
-        var routeAttributes: Attributes = ["id": route.id]
-        if let name = route.name { routeAttributes["name"] = name }
-        if let owner = route.owner { routeAttributes["owner"] = owner }
-        routeAttributes["silent"] = route.silent ? "true" : "false"
-        let routeChild = ParsedMessage(tag: "tradeRoute", attributes: routeAttributes, children: stops)
-        return ParsedMessage(tag: tag, attributes: [:], children: [routeChild])
-    }
-
-    func setSelectedUnitCurrentStop(_ indexText: String) {
-        guard phase == .inGame,
-              isLocalPlayersTurn,
-              let game = cachedGame,
-              let unitId = selectedUnitId,
-              let unit = game.units[unitId],
-              let localPlayerId = resolveLocalPlayerId(),
-              unit.owner == localPlayerId else {
-            errorMessage = "Aktueller Stop kann nicht gesetzt werden."
-            return
-        }
-        let trimmed = indexText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let index = Int(trimmed), index >= 0 else {
-            errorMessage = "Bitte einen gueltigen Stop-Index eingeben."
-            return
-        }
-        guard unit.currentStop != index else {
-            errorMessage = "Stop ist bereits gesetzt."
-            return
-        }
-        errorMessage = nil
-
-
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "setCurrentStop",
-                    attributes: ["unit": unitId, "index": String(index)],
-                    children: []
-                )
-                if server != nil {
-                    game.setUnitCurrentStop(unitId: unitId, index: index)
-                    gameUpdateID += 1
-                }
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-        }
-    }
-
     func cashInSelectedTreasureTrain() {
         guard canCashInSelectedTreasureTrain,
               let unitId = selectedUnitId,
@@ -4147,141 +3722,6 @@ final class GameState {
                 errorMessage = error.localizedDescription
             }
         }
-    }
-
-    // MARK: - Trade Route Execution (Phase 83)
-
-    /// Execute all assigned trade routes for the local player.
-    /// Moves carriers along their routes, loads/unloads goods at stops, and advances the route.
-    func executeTradeRoutes() {
-        guard phase == .inGame,
-              isLocalPlayersTurn,
-              let game = cachedGame,
-              let localPlayerId = resolveLocalPlayerId() else {
-            return
-        }
-
-        var anyExecuted = false
-
-        for (_, route) in game.tradeRoutes where route.owner == localPlayerId {
-            // Find carrier assigned to this route
-            guard let carrier = game.units.values.first(where: { unit in
-                unit.owner == localPlayerId && unit.tradeRoute == route.id
-            }) else {
-                continue
-            }
-
-            // Move carrier to next stop and process it
-            if executeTradeRouteStep(route: route, carrier: carrier, game: game, localPlayerId: localPlayerId) {
-                anyExecuted = true
-            }
-        }
-
-        if anyExecuted {
-            gameUpdateID += 1
-            statusMessage = "Handelsrouten ausgeführt."
-        }
-    }
-
-    /// Execute a single step of a trade route for the given carrier.
-    /// Returns true if any action was taken.
-    private func executeTradeRouteStep(route: TradeRoute, carrier: FreeColGame.Unit, game: Game, localPlayerId: String) -> Bool {
-        guard !route.stops.isEmpty else { return false }
-
-        let currentStopIndex = carrier.currentStop
-        let stop = route.stops[currentStopIndex]
-
-        // Check if carrier is at the stop location
-        guard let carrierTileId = resolveUnitTileId(carrier, in: game),
-              let stopLocationId = stop.locationId,
-              carrierTileId == stopLocationId else {
-            // Carrier not at stop - try to move towards it
-            return moveCarrierToStop(carrier: carrier, stop: stop, route: route, game: game)
-        }
-
-        // Carrier is at the stop - process cargo operations
-        var executed = false
-
-        // Unload goods at this stop
-        for cargoTypeId in stop.cargoTypeIds {
-            let amount = carrier.goods[cargoTypeId] ?? 0
-            if amount > 0 {
-                // Unload all of this good type
-                game.removeUnitGoods(unitId: carrier.id, typeId: cargoTypeId, amount: amount)
-                // In real implementation, this would add goods to the colony/market
-                executed = true
-            }
-        }
-
-        // Load goods at this stop (for colonies, this would be goods produced/stored)
-        // This is a simplified version - real implementation would check colony warehouse
-        for _ in stop.cargoTypeIds {
-            // In a real implementation, we'd check what's available at the colony
-            // For now, we just mark as executed
-            executed = true
-        }
-
-        // Advance to next stop (with wrap-around)
-        let nextStopIndex = (currentStopIndex + 1) % route.stops.count
-        if carrier.currentStop != nextStopIndex {
-            game.setUnitCurrentStop(unitId: carrier.id, index: nextStopIndex)
-            executed = true
-        }
-
-        return executed
-    }
-
-    /// Move carrier towards its current stop.
-    /// Returns true if a move was initiated.
-    private func moveCarrierToStop(carrier: FreeColGame.Unit, stop: TradeRouteStop, route: TradeRoute, game: Game) -> Bool {
-        guard let stopLocationId = stop.locationId,
-              let stopTile = game.tiles[stopLocationId],
-              let carrierTileId = resolveUnitTileId(carrier, in: game),
-              let carrierTile = game.tiles[carrierTileId] else {
-            return false
-        }
-
-        // Check if already at destination
-        if carrierTileId == stopLocationId {
-            return false
-        }
-
-        // Check if carrier has moves left
-        guard carrier.movesLeft > 0 else { return false }
-
-        // Find path to stop
-        guard let nextTileId = game.nextPathStep(from: carrierTileId, to: stopLocationId, canTraverse: { _, _ in true }) else {
-            return false
-        }
-
-        // Send move order
-        if let direction = attackDirection(fromTileId: carrierTileId, toTileId: nextTileId, in: game) {
-            Task {
-                do {
-                    let msg = ParsedMessage(
-                        tag: "move",
-                        attributes: ["unit": carrier.id, "direction": direction],
-                        children: []
-                    )
-                    if server != nil {
-                        game.moveUnit(carrier.id, to: nextTileId)
-                        gameUpdateID += 1
-                    }
-                    try await client?.send(message: msg)
-                } catch {
-                    errorMessage = error.localizedDescription
-                }
-            }
-            return true
-        }
-
-        return false
-    }
-
-    /// Execute trade routes at turn end if auto-execute is enabled.
-    func executeTradeRoutesOnTurnEnd() {
-        guard autoExecuteTradeRoutes else { return }
-        executeTradeRoutes()
     }
 
     func canChangeSelectedUnitState(to targetState: UnitState) -> Bool {
@@ -5770,9 +5210,11 @@ final class GameState {
               isLocalPlayersTurn,
               let game = cachedGame,
               let unit = selectedUnit,
+              let localPlayerId = resolveLocalPlayerId(),
+              unit.owner == localPlayerId,
+              game.specification?.hasAbility("model.ability.negotiate", unitType: unit.unitType) == true,
               let unitTileId = resolveUnitTileId(unit, in: game),
-              let unitTile = game.tiles[unitTileId],
-              let localPlayerId = resolveLocalPlayerId() else { return [] }
+              let unitTile = game.tiles[unitTileId] else { return [] }
         return game.colonies.values.compactMap { colony in
             guard let ownerId = colony.owner,
                   ownerId != localPlayerId,
@@ -5950,8 +5392,9 @@ final class GameState {
               unit.owner == localPlayerId,
               unit.movesLeft > 0,
               unit.state == .active,
-              let sourceTileId = resolveUnitTileId(unit, in: game),
-              unit.location != destinationTileId,
+              let sourceTileId = unit.location,
+              game.tiles[sourceTileId] != nil,
+              sourceTileId != destinationTileId,
               game.tiles[destinationTileId] != nil else {
             return false
         }
@@ -5965,26 +5408,7 @@ final class GameState {
         reconcileSelectionWithGame()
         reconcileSelectedUnitOrderWithGame()
         reconcilePendingEndTurnWithGame()
-        checkTurnChangeForAutoExecute()
         autoFocusInitialUnitIfNeeded()
-    }
-
-    private var lastCurrentPlayerId: String? = nil
-
-    private func checkTurnChangeForAutoExecute() {
-        guard let game = cachedGame,
-              let localPlayerId = resolveLocalPlayerId() else { return }
-        
-        let currentPlayerId = game.currentPlayerId
-        let wasOurTurn = lastCurrentPlayerId == localPlayerId
-        let isOurTurnNow = currentPlayerId == localPlayerId
-        
-        // If it was not our turn before, but now it is our turn, execute routes
-        if !wasOurTurn && isOurTurnNow && autoExecuteTradeRoutes {
-            executeTradeRoutes()
-        }
-        
-        lastCurrentPlayerId = currentPlayerId
     }
 
     private func reconcileSelectionWithGame() {
@@ -6081,7 +5505,7 @@ final class GameState {
         }
     }
 
-    private func resolveUnitTileId(_ unit: FreeColGame.Unit, in game: Game) -> String? {
+    func resolveUnitTileId(_ unit: FreeColGame.Unit, in game: Game) -> String? {
         if let loc = unit.location, game.tiles[loc] != nil {
             return loc
         }
@@ -6100,7 +5524,7 @@ final class GameState {
         }
     }
 
-    private func attackDirection(fromTileId sourceTileId: String, toTileId targetTileId: String, in game: Game) -> String? {
+    func attackDirection(fromTileId sourceTileId: String, toTileId targetTileId: String, in game: Game) -> String? {
         guard let source = game.tiles[sourceTileId],
               let target = game.tiles[targetTileId] else {
             return nil
@@ -6208,7 +5632,7 @@ final class GameState {
         didAutoFocusInitialUnit = true
     }
 
-    private func isLikelyCarrier(_ unit: FreeColGame.Unit, in game: Game) -> Bool {
+    func isLikelyCarrier(_ unit: FreeColGame.Unit, in game: Game) -> Bool {
         if game.units.values.contains(where: { $0.location == unit.id }) {
             return true
         }

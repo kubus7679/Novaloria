@@ -208,5 +208,68 @@ Notes from deep probe:
 - `move` uses attributes `unit` and `direction` (`MoveMessage`).
 - `buildColony` uses attributes `name` and `unit` (`BuildColonyMessage`).
 - `endTurn` is a trivial message without attributes (`EndTurnMessage`).
-- In Java `ServerAPI`, all core actions above are sent via ask/query-response semantics.
-- Current Swift implementation keeps a push/message-loop model; action results are synchronized by incoming server updates (`update`, `partial`, `remove`, `newTurn`, `setCurrentPlayer`) and question/reply payload processing.
+- In Java `ServerAPI`, `move`, `moveTo`, `buildColony`, and `endTurn` use ask/query-response semantics.
+- Remote Swift gameplay actions now use `client.ask`; the central message loop applies reply-contained state deltas before returning the reply to `GameState`.
+- Local games retain fire-and-forget transport because the local `MockServer` currently supports only the corresponding push path; their local model mutations remain unchanged.
+- The CLI integration check validates `<question>` wrappers, action attributes, and matching `<reply>` IDs for all four core action tags.
+- Map movement legality now requires the selected unit itself to occupy a map tile; embarked units cannot send standalone `move` requests.
+- Regression tests cover local-turn gating, adjacent versus distant movement, colony-founding eligibility, embarked-unit movement rejection, and selection recovery/blocking after a unit is removed.
+
+## Core-Action Ask/Reply Implementation (2026-10-13)
+
+- Centralized the remote/local transport choice in `GameState.sendCoreGameplayAction`.
+- `move`, `moveTo`, `buildColony`, and `endTurn` now await Java-server replies in remote sessions; server rejection reasons are surfaced through `errorMessage`.
+- Updated the CLI integration probe to validate question wrappers, request attributes, and reply correlation for all core action tags.
+- Validation passed: `swift build --target FreeColApp`, `swift test` (78 tests), `swift run FreeColProtocolCLI` (132 checks), and `Tools/e2e-java-server.sh` (Smoke/Deep/Gameplay each 1/0).
+
+## Movement Legality And Selection Regression Follow-Up (2026-10-13)
+
+- Normal `move` eligibility now requires the selected unit to be located directly on a map tile. Embarked units cannot issue standalone movement orders; `moveTo` remains the route for high-seas travel.
+- Added regression coverage for local-turn gating, adjacent movement versus path-followed destinations, colony-founding eligibility, embarked-unit movement rejection, and stale selection after server removal.
+- Validation passed: `swift build --target FreeColApp`, `swift test` (78 tests), `swift run FreeColProtocolCLI` (132 checks), and `Tools/e2e-java-server.sh` (Smoke/Deep/Gameplay each 1/0).
+
+## End-Turn Duplicate-Request Guard Follow-Up (2026-10-13)
+
+- Remote `endTurn` keeps its pending lock longer than the 30-second ask timeout, so the safety unlock cannot permit a duplicate request while the original ask is still in flight.
+- Local MockServer turns keep the shorter safety retry interval because local turn changes arrive through the push path.
+- `canEndTurn` disables the UI control while a request is pending and becomes available again after server turn synchronization.
+- Regression checks cover both timeout policies and a local-game integration test proving duplicate endTurn calls advance only one turn.
+- Validation passed: `swift build --target FreeColApp`, `swift test` (78 tests), and `swift run FreeColProtocolCLI` (132 checks).
+
+## Local Rejection Feedback (2026-10-13)
+
+- Illegal `move` (no moves left) and `buildColony` (empty name, unit without moves) are rejected before any request is built, set a user-facing `errorMessage`, and leave the model unchanged.
+- Covered by `testIllegalCoreActionsSetUserFacingErrorsWithoutSending`.
+- Validation passed: `swift build --target FreeColApp`, `swift test` (79 tests), and `swift run FreeColProtocolCLI` (132 checks).
+
+## Live Java Rejection Capture (2026-10-13)
+
+- New env-gated probe `REAL_SERVER_REJECT_E2E=1` in `FreeColProtocolCLI`, wired into `Tools/e2e-java-server.sh` as a fourth step.
+- It sends a `move` for a non-existent unit to the real Java server and requires a `serverError` reply, then verifies the client model (unit count and turn) is unchanged.
+- Captured Java text: `Not a net.sf.freecol.server.model.ServerUnit: unit:does-not-exist/null`. This is a raw server exception message and is shown verbatim via `errorMessage`; it is not a localized FreeCol template.
+- Validation passed: `Tools/e2e-java-server.sh` (Smoke/Deep/Gameplay/Rejection each 1/0), `swift build --target FreeColApp`, `swift test` (79 tests), and `swift run FreeColProtocolCLI` (132 checks).
+
+## User-Facing Java Rejection Messages (2026-10-13)
+
+- `GameState.sendCoreGameplayAction` maps `serverError` replies to German messages via `GameState.userFacingServerError`, for example `Die Einheit ist auf dem Server nicht bekannt.` for the captured `ServerUnit` text.
+- Unknown server texts are kept verbatim after the prefix `Der Server hat die Aktion abgelehnt:`, so no information is lost.
+- Covered by `testJavaRejectionTextsMapToUserFacingMessages`, which uses the captured Java text.
+- Validation passed: `swift build --target FreeColApp`, `swift test` (80 tests), and `swift run FreeColProtocolCLI` (132 checks). The Java rejection probe reads raw `FreeColProtocolError` values from the CLI client path and is unaffected by this change; it was not rerun against Docker.
+
+## Acceptance Status (2026-10-13)
+
+| Criterion | Evidence | Status |
+|---|---|---|
+| Movement works for legal targets, rejects illegal ones without desync | `testCoreGameplayActionGuardsRejectIllegalSelectionAndTurn`, `testIllegalCoreActionsSetUserFacingErrorsWithoutSending`, Java gameplay probe (move), Java rejection probe (model unchanged) | Met |
+| End-turn only on local turn, transitions on server updates | `testCoreGameplayActionGuards…` (not local turn: `canEndTurn` false, `endTurn()` rejected), `testLocalEndTurnRejectsDuplicateUntilTurnAdvances`, Java gameplay probe (turn advances, local turn returns) | Met for model and local game; Java "not local turn" rejection not captured live |
+| Colony founding works with correct server update | Java gameplay probe (colony founded, renamed, warehouse updated) | Met at protocol/model level |
+| Selection consistent after remove/update | `testSelectionRecoversAfterSelectedUnitIsRemoved` | Met |
+| No regression in login/lobby | Java smoke and deep probes; CLI integration tests | Met |
+
+Definition of Done:
+
+- Build, XCTest (80), CLI (132), and Java E2E (Smoke/Deep/Gameplay/Rejection each 1/0) are green.
+- Java-server action flow verified through the protocol client. **Not verified:** a manual click-through of the SwiftUI controls against the live server; no GUI automation exists in this repository.
+- No new protocol messages were hand-written; all actions reuse existing tags.
+
+Open gap: the "end turn blocked when not local player" case is verified at the model level only. Reaching it against Java would require a second player session, which the current E2E harness does not provide.

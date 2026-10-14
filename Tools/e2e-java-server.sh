@@ -94,4 +94,41 @@ start_server
   REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
   swift run FreeColProtocolCLI)
 
+echo "==> Rejection probe (illegal action produces a Java server error reply)"
+start_server
+(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_REJECT_E2E=1 \
+  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
+  swift run FreeColProtocolCLI)
+
+echo "==> Trade Route Execution probe (automatic route execution at turn end)"
+start_server
+(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_TRADE_ROUTE_E2E=1 \
+  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
+  swift run FreeColProtocolCLI)
+
+echo "==> Multiplayer Turn Gating probe (2+ players, turn ownership validation)"
+start_server
+(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_MULTIPLAYER_E2E=1 \
+  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
+  REAL_SERVER_PLAYER_COUNT=2 \
+  swift run FreeColProtocolCLI)
+
+echo "==> Server Prompt Parity probe (monarchAction, firstContact, indianDemand)"
+start_server
+(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_PROMPT_E2E=1 \
+  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
+  swift run FreeColProtocolCLI)
+
+echo "==> Native Trade Session probe (open/buy/haggle/close against real settlement)"
+start_server
+(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_NATIVE_TRADE_E2E=1 \
+  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
+  swift run FreeColProtocolCLI)
+
+echo "==> Diplomacy probe (proposal to European AI, async response handling)"
+start_server
+(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_DIPLOMACY_E2E=1 \
+  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
+  swift run FreeColProtocolCLI)
+
 echo "==> E2E validation finished"

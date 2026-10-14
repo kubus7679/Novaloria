@@ -1430,6 +1430,177 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertFalse(state.canClearSelectedUnitOrders)
     }
 
+    func testRemoteEndTurnSafetyTimeoutOutlastsAskTimeout() {
+        let askTimeout: TimeInterval = 30
+        let remoteSafetyTimeout = GameState.endTurnSafetyTimeout(localServer: false, askTimeout: askTimeout)
+
+        XCTAssertGreaterThan(remoteSafetyTimeout, askTimeout)
+        XCTAssertEqual(remoteSafetyTimeout, 35)
+        XCTAssertEqual(GameState.endTurnSafetyTimeout(localServer: true, askTimeout: askTimeout), 8)
+    }
+
+    @MainActor
+    func testLocalEndTurnRejectsDuplicateUntilTurnAdvances() async throws {
+        let state = GameState()
+        defer { state.disconnect() }
+        state.startLocal(userName: "Alice", nationId: "model.nation.dutch")
+
+        let connectionDeadline = Date().addingTimeInterval(5)
+        while state.phase.description != "In Game", Date() < connectionDeadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(state.phase.description, "In Game")
+
+        let turnBefore = try XCTUnwrap(state.game?.turn.number)
+        state.endTurn()
+        XCTAssertFalse(state.canEndTurn, "end-turn controls must disable while the request is pending")
+        state.endTurn()
+        XCTAssertEqual(state.errorMessage, "Warte auf Serverantwort fuer Zugende.")
+
+        let turnDeadline = Date().addingTimeInterval(5)
+        while state.game?.turn.number == turnBefore, Date() < turnDeadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(state.game?.turn.number, turnBefore + 1)
+        XCTAssertTrue(state.canEndTurn, "turn availability should refresh after the server advances the turn")
+        try await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertEqual(state.game?.turn.number, turnBefore + 1, "duplicate endTurn must not advance another turn")
+    }
+
+    @MainActor
+    func testCoreGameplayActionGuardsRejectIllegalSelectionAndTurn() throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1" clientUserName="Alice" currentPlayer="player-1">
+          <player id="player-1" username="Alice"/>
+          <player id="player-2" username="Bob"/>
+          <map id="map-1" width="3" height="1">
+            <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+            <tile id="tile-1" x="1" y="0" type="model.tile.plains"/>
+            <tile id="tile-2" x="2" y="0" type="model.tile.plains"/>
+          </map>
+          <unit id="unit-founder" owner="player-1" unitType="model.unit.freeColonist"
+                location="tile-0" movesLeft="3" state="ACTIVE"/>
+          <unit id="unit-carrier" owner="player-1" unitType="model.unit.caravel"
+                location="tile-0" movesLeft="6" state="ACTIVE"/>
+          <unit id="unit-embarked" owner="player-1" unitType="model.unit.freeColonist"
+                location="unit-carrier" movesLeft="3" state="ACTIVE"/>
+        </game>
+        """)
+        try game.load(from: parsed)
+
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+        state.selectUnit("unit-founder", onTile: "tile-0")
+
+        XCTAssertTrue(state.canMoveSelectedUnit(to: "tile-1"))
+        XCTAssertFalse(state.canMoveSelectedUnit(to: "tile-2"), "one-step movement must require an adjacent tile")
+        XCTAssertTrue(state.canMoveSelectedUnitTo(destinationTileId: "tile-2"), "a distant map destination may be path-followed")
+        XCTAssertTrue(state.canBuildSelectedColony)
+        XCTAssertTrue(state.canEndTurn)
+
+        state.selectUnit("unit-embarked", onTile: "tile-0")
+        XCTAssertFalse(state.canMoveSelectedUnit(to: "tile-1"), "embarked units cannot move independently")
+        XCTAssertFalse(state.canMoveSelectedUnitTo(destinationTileId: "tile-1"))
+
+        game.currentPlayerId = "player-2"
+        state.selectUnit("unit-founder", onTile: "tile-0")
+        XCTAssertFalse(state.canMoveSelectedUnit(to: "tile-1"))
+        XCTAssertFalse(state.canBuildSelectedColony)
+        XCTAssertFalse(state.canEndTurn)
+        state.endTurn()
+        XCTAssertEqual(state.errorMessage, "Du bist gerade nicht am Zug.")
+    }
+
+    @MainActor
+    func testSelectionRecoversAfterSelectedUnitIsRemoved() throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1" clientUserName="Alice" currentPlayer="player-1">
+          <player id="player-1" username="Alice"/>
+          <map id="map-1" width="2" height="1">
+            <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+            <tile id="tile-1" x="1" y="0" type="model.tile.plains"/>
+          </map>
+          <unit id="unit-1" owner="player-1" unitType="model.unit.freeColonist"
+                location="tile-0" movesLeft="3" state="ACTIVE"/>
+          <unit id="unit-2" owner="player-1" unitType="model.unit.freeColonist"
+                location="tile-0" movesLeft="3" state="ACTIVE"/>
+        </game>
+        """)
+        try game.load(from: parsed)
+
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+        state.selectUnit("unit-1", onTile: "tile-0")
+
+        try game.applyRemove(ParsedMessage(tag: "remove", attributes: ["divert": "unit-1"], children: []))
+        XCTAssertFalse(state.canMoveSelectedUnit(to: "tile-1"), "removed selections must not remain actionable")
+        state.syncAfterModelUpdate()
+
+        XCTAssertEqual(state.selectedUnitId, "unit-2")
+        XCTAssertEqual(state.selectedTileId, "tile-0")
+    }
+
+    @MainActor
+    func testIllegalCoreActionsSetUserFacingErrorsWithoutSending() throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1" clientUserName="Alice" currentPlayer="player-1">
+          <player id="player-1" username="Alice"/>
+          <map id="map-1" width="3" height="1">
+            <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+            <tile id="tile-1" x="1" y="0" type="model.tile.plains"/>
+            <tile id="tile-2" x="2" y="0" type="model.tile.plains"/>
+          </map>
+          <unit id="unit-1" owner="player-1" unitType="model.unit.freeColonist"
+                location="tile-0" movesLeft="0" state="ACTIVE"/>
+        </game>
+        """)
+        try game.load(from: parsed)
+
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+        state.selectUnit("unit-1", onTile: "tile-0")
+
+        // No moves left: a move is rejected locally with a user-visible message.
+        state.moveSelectedUnit(to: "tile-1")
+        XCTAssertEqual(state.errorMessage, "Ungueltige Bewegung.")
+
+        // Empty colony name is rejected before any request is built.
+        state.buildColony(name: "   ")
+        XCTAssertEqual(state.errorMessage, "Bitte einen Kolonienamen eingeben.")
+
+        // Unit without moves cannot found a colony here.
+        state.buildColony(name: "Boston")
+        XCTAssertEqual(state.errorMessage, "Kolonie kann hier nicht gegruendet werden.")
+        XCTAssertNotNil(game.units["unit-1"], "rejected actions must not mutate the model")
+    }
+
+    func testJavaRejectionTextsMapToUserFacingMessages() {
+        // Text captured from the real Java server (REAL_SERVER_REJECT_E2E probe).
+        XCTAssertEqual(
+            GameState.userFacingServerError("Not a net.sf.freecol.server.model.ServerUnit: unit:does-not-exist/null"),
+            "Die Einheit ist auf dem Server nicht bekannt."
+        )
+        XCTAssertEqual(
+            GameState.userFacingServerError("Illegal move for: unit-1 type: ILLEGAL from: tile-0 to: tile-1"),
+            "Diese Bewegung ist nicht erlaubt."
+        )
+        XCTAssertEqual(
+            GameState.userFacingServerError("Non-unique colony name Boston"),
+            "Der Koloniename ist bereits vergeben."
+        )
+        // Unknown texts keep the server information instead of being dropped.
+        XCTAssertEqual(
+            GameState.userFacingServerError("something new"),
+            "Der Server hat die Aktion abgelehnt: something new"
+        )
+    }
+
     // MARK: Phase 57 - founding fathers and reports
 
     func testFoundingFatherAndModelMessageParsing() throws {
@@ -1566,6 +1737,11 @@ final class FreeColProtocolTests: XCTestCase {
         let game = Game()
         let parsed = try XMLDecoder.decode("""
         <game id="game-1" clientUserName="Alice">
+          <freecol-specification id="spec">
+            <unit-type id="model.unit.freeColonist">
+              <ability id="model.ability.negotiate" value="true"/>
+            </unit-type>
+          </freecol-specification>
           <player id="player-1" username="Alice"/>
           <player id="player-2" username="Bob"/>
           <map id="map-1" width="3" height="1">

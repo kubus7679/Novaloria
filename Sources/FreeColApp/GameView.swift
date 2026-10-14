@@ -384,18 +384,15 @@ struct GameView: View {
                     Text("Year \(turnInfo.year)")
                         .font(.caption)
                 }
-                if let cp = game.currentPlayerId, let player = game.players[cp] {
-                    Text(player.name ?? "Unknown")
-                        .foregroundColor(.secondary)
-                }
+                // Turn status with current player
+                Text(state.turnStatusDescription)
+                    .font(.subheadline.monospaced())
+                    .foregroundColor(state.isLocalPlayersTurn ? .green : .secondary)
                 if let local = state.localPlayer {
                     Text("Gold: \(local.gold)")
                     Text("Tax: \(local.tax)%")
                     Text("Score: \(local.score)")
                 }
-                Text(state.isLocalPlayersTurn ? "Your turn" : "Waiting")
-                    .font(.caption)
-                    .foregroundColor(state.isLocalPlayersTurn ? .green : .secondary)
             }
             Spacer()
             if state.highScoresReport != nil || state.nationSummaryReport != nil {
@@ -419,17 +416,31 @@ struct GameView: View {
             Text(state.pendingDecisionTitle)
                 .font(.caption.bold())
                 .foregroundColor(.white)
-            Text(state.pendingDecisionSummary)
-                .font(.caption2)
-                .foregroundColor(.secondary)
+            
+            // Show user-facing message for specific prompt types
+            Group {
+                switch pending.type {
+                case .monarchAction:
+                    Text(state.monarchActionMessage)
+                case .firstContact:
+                    Text(state.firstContactMessage)
+                case .indianDemand:
+                    Text(state.indianDemandMessage)
+                default:
+                    Text(state.pendingDecisionSummary)
+                }
+            }
+            .font(.caption)
+            .foregroundColor(.white)
+            .multilineTextAlignment(.leading)
 
             switch pending.type {
             case .indianDemand:
                 HStack(spacing: 8) {
-                    Button("Accept") { state.acceptPendingDecision() }
+                    Button("Akzeptieren") { state.acceptPendingDecision() }
                         .buttonStyle(.borderedProminent)
                         .disabled(!state.canRespondToPendingDecision())
-                    Button("Decline") { state.declinePendingDecision() }
+                    Button("Ablehnen") { state.declinePendingDecision() }
                         .buttonStyle(.bordered)
                         .disabled(!state.canRespondToPendingDecision())
                 }
@@ -439,19 +450,19 @@ struct GameView: View {
                 emigrantDecisionControls()
             case .firstContact:
                 HStack(spacing: 8) {
-                    Button("Make Contact") { state.acceptFirstContact() }
+                    Button("Kontakt herstellen") { state.acceptFirstContact() }
                         .buttonStyle(.borderedProminent)
                         .disabled(!state.canRespondToPendingDecision())
-                    Button("Decline") { state.declineFirstContact() }
+                    Button("Ablehnen") { state.declineFirstContact() }
                         .buttonStyle(.bordered)
                         .disabled(!state.canRespondToPendingDecision())
                 }
             case .monarchAction:
                 HStack(spacing: 8) {
-                    Button("Accept") { state.answerMonarch(accept: true) }
+                    Button("Akzeptieren") { state.answerMonarch(accept: true) }
                         .buttonStyle(.borderedProminent)
                         .disabled(!state.canRespondToPendingDecision())
-                    Button("Decline") { state.answerMonarch(accept: false) }
+                    Button("Ablehnen") { state.answerMonarch(accept: false) }
                         .buttonStyle(.bordered)
                         .disabled(!state.canRespondToPendingDecision())
                 }
@@ -459,18 +470,21 @@ struct GameView: View {
                 nameDecisionControls()
             case .nativeTrade:
                 HStack(spacing: 8) {
-                    Button("Open Trade") { showNativeTrade = true }
+                    Button("Handel öffnen") { showNativeTrade = true }
                         .buttonStyle(.borderedProminent)
                         .disabled(!state.canRespondToPendingDecision())
-                    Button("Close") { state.closeNativeTrade() }
+                    Button("Schließen") { state.closeNativeTrade() }
                         .buttonStyle(.bordered)
+                        .disabled(!state.canRespondToPendingDecision())
                 }
             case .diplomacy:
                 HStack(spacing: 8) {
-                    Button("Review") { showDiplomacy = true }
+                    Button("Prüfen") { showDiplomacy = true }
                         .buttonStyle(.borderedProminent)
-                    Button("Reject") { state.rejectDiplomacy() }
+                        .disabled(!state.canRespondToPendingDecision())
+                    Button("Ablehnen") { state.rejectDiplomacy() }
                         .buttonStyle(.bordered)
+                        .disabled(!state.canRespondToPendingDecision())
                 }
             case .foundingFather:
                 foundingFatherDecisionControls()
@@ -479,11 +493,12 @@ struct GameView: View {
                     .buttonStyle(.borderedProminent)
             case .incite:
                 HStack(spacing: 8) {
-                    Button("Confirm") { state.confirmPendingIncite() }
+                    Button("Bestätigen") { state.confirmPendingIncite() }
                         .buttonStyle(.borderedProminent)
                         .disabled(!state.canRespondToPendingDecision())
-                    Button("Decline") { state.declinePendingIncite() }
+                    Button("Ablehnen") { state.declinePendingIncite() }
                         .buttonStyle(.bordered)
+                        .disabled(!state.canRespondToPendingDecision())
                 }
             }
         }

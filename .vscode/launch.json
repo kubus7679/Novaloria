@@ -1,0 +1,44 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:FreeColClient}",
+            "name": "Debug FreeColProtocolCLI",
+            "target": "FreeColProtocolCLI",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug FreeColProtocolCLI"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:FreeColClient}",
+            "name": "Release FreeColProtocolCLI",
+            "target": "FreeColProtocolCLI",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release FreeColProtocolCLI"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:FreeColClient}",
+            "name": "Debug FreeColApp",
+            "target": "FreeColApp",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug FreeColApp"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:FreeColClient}",
+            "name": "Release FreeColApp",
+            "target": "FreeColApp",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release FreeColApp"
+        }
+    ]
+}

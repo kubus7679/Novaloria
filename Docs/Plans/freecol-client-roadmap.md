@@ -174,6 +174,25 @@
       turn end: move carriers to stops, load/unload goods, advance route counter.
       Auto-execute toggle in trade route editor. See
       `phase83-automated-trade-route-execution-plan.md`.
+- [x] **84 Trade Route E2E Validation** — dedicated end-to-end test for automatic
+      trade route execution against the Java FreeCol server. Verifies carrier
+      movement, currentStop increment, route looping, and cargo handling.
+      See `phase84-trade-route-e2e-validation-plan.md`.
+- [x] **85 Multiplayer Turn Gating** — complete turn ownership parity with Java
+      client for multiplayer: validates current player can endTurn, non-current
+      players receive server rejection; UI shows turn status (current player,
+      "your turn"/"waiting for X"); server error messages mapped to user-facing
+      German text. See `phase85-multiplayer-turn-gating-plan.md`.
+- [x] **86 Server Prompt Parity** — complete parity for server prompts requiring
+      user interaction: monarchAction (tax, army, navy, bell), firstContact
+      (native diplomacy), indianDemand (tribute). German dialogs with proper
+      messages and localized buttons. See `phase86-server-prompt-parity-plan.md`.
+- [ ] **87 Diplomacy & Native Trade E2E Validation** — Java-server probes for
+      native trade OPEN/BUY/SELL/haggling and diplomacy proposals/AI responses,
+      including asynchronous acknowledgements and model checks. Probes skip
+      clearly when random map setup offers no reachable Native settlement or AI
+      colony; full successful sessions still need a reachable E2E fixture. See
+      `phase87-diplomacy-native-trade-e2e-plan.md`.
 
 ## Suggested order
 
