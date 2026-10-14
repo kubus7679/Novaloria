@@ -5607,8 +5607,18 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_TRADE_ROUTE_E2E"] == "1" {
         guard let carrier = navalUnits.first else {
             throw TestError(message: "no local naval carrier found for trade route test")
         }
-        let carrierId = carrier.id
-
+let carrierId = carrier.id
+ 
+        func endTurnAndWait() async throws {
+            let turnBefore = await client.game.turn.number
+            _ = try await client.ask(message: ParsedMessage(tag: "endTurn", attributes: [:], children: []), timeout: 45)
+            for _ in 0..<180 {
+                let current = await client.game
+                if current.turn.number > turnBefore && current.currentPlayerId == localPlayerId { return }
+                try await Task.sleep(nanoseconds: 500_000_000)
+            }
+        }
+ 
         // Find or create a coastal colony to use as a trade route stop.
         var colonyId: String?
         func findCoastalColony(in current: FreeColGame.Game) -> String? {
@@ -5628,18 +5638,28 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_TRADE_ROUTE_E2E"] == "1" {
         colonyId = findCoastalColony(in: game)
         var colonyWasFounded = false
 
-        if colonyId == nil {
+if colonyId == nil {
             // Move carrier to coast if needed, then disembark a founder.
-            let embarkedFounder = game.units.values
+            // Filter out military units that have foundColony ability but can't actually found.
+            func canActuallyFoundColony(unitType: String?) -> Bool {
+                guard let unitType else { return false }
+                let nonFoundingSubstrings = ["dragoon", "cavalry", "artillery", "regular", "soldier", "treasure"]
+                let lower = unitType.lowercased()
+                return !nonFoundingSubstrings.contains { lower.contains($0) }
+            }
+            
+            let candidates = game.units.values
                 .filter {
                     $0.owner == localPlayerId
                         && spec.hasAbility("model.ability.foundColony", unitType: $0.unitType)
+                        && canActuallyFoundColony(unitType: $0.unitType)
                         && $0.location == carrierId
                 }
                 .sorted { $0.id < $1.id }
-                .first
-
-            if let embarkedFounder {
+            
+            print("    embarkedFounder candidates: \(candidates.map { "\($0.id):\($0.unitType ?? "?")" })")
+            if let embarkedFounder = candidates.first {
+                print("    selected founder \(embarkedFounder.id) type \(embarkedFounder.unitType ?? "?")")
                 // Move carrier to coastal tile if not already there.
                 func colonyLandingTiles(around sourceTileId: String,
                                         in current: FreeColGame.Game) -> [FreeColGame.Tile] {
@@ -5652,7 +5672,8 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_TRADE_ROUTE_E2E"] == "1" {
                                   let tileType = tile.type,
                                   let tileInfo = spec.tileTypes[tileType],
                                   !tileInfo.isWater,
-                                  tileInfo.canSettle else { return false }
+                                  tileInfo.canSettle,
+                                  !(tileType.lowercased().contains("arctic")) else { return false }
                             return !current.neighborTileIds(of: tile.id).contains {
                                 current.tiles[$0]?.settlement != nil
                             }
@@ -5736,6 +5757,7 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_TRADE_ROUTE_E2E"] == "1" {
                       let landingDirection = direction(from: sourceTile, to: targetTile) else {
                     throw TestError(message: "could not find coastal tile for colony founding")
                 }
+                print("    carrier at \(sourceTileId) type \(sourceTile.type ?? "?"); landing on \(targetTile.id) type \(targetTile.type ?? "?") dir \(landingDirection)")
 
                 // Move founder from carrier to land tile
                 _ = try await client.ask(message: ParsedMessage(
@@ -5753,9 +5775,22 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_TRADE_ROUTE_E2E"] == "1" {
                     }
                     try await Task.sleep(nanoseconds: 200_000_000)
                 }
-                guard reachedLand else {
+guard reachedLand else {
                     throw TestError(message: "founding unit did not reach land tile")
                 }
+                print("    founder \(embarkedFounder.id) now on \(targetTile.id) with movesLeft \(game.units[embarkedFounder.id]?.movesLeft ?? -1)")
+ 
+                // buildColony requires movement points. If the landing consumed them
+                // all, advance one turn so the founder can act.
+                if (game.units[embarkedFounder.id]?.movesLeft ?? 0) <= 0 {
+                    print("    founder out of moves; advancing one turn")
+                    try await endTurnAndWait()
+                    game = await client.game
+                }
+                guard (game.units[embarkedFounder.id]?.movesLeft ?? 0) > 0 else {
+                    throw TestError(message: "founder has no moves left after waiting")
+                }
+ 
                 // Found colony
                 let colonyName = "E2ETradeRoute\(Int(Date().timeIntervalSince1970) % 100000)"
                 _ = try await client.ask(message: ParsedMessage(
