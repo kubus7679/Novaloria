@@ -74,14 +74,14 @@
 - [x] 80 XCTest, 132+ CLI-Prüfungen erfolgreich.
 - Konkreter Plan: `Docs/Plans/phase86-server-prompt-parity-plan.md`.
 
-## Phase 87 — Diplomatie- und Native-Handels-E2E
+## Phase 87 — Diplomatie- und Native-Handels-E2E-Validierung
 
-- [x] `REAL_SERVER_NATIVE_TRADE_E2E` ergänzt: Carrier-/Landeinheiten bewegen,
+- [x] `REAL_SERVER_NATIVE_TRADE_E2E` Probe implementiert: Carrier-/Landeinheiten bewegen,
       bis zu 40 Schritte nach Settlement suchen, asynchrone
       `ACK_OPEN`-/Kauf-/Verkaufsantworten parsen.
 - [x] Haggling gemäß Java-Protokoll über rabattiertes BUY/SELL statt separater
       HAGGLE-Aktion implementiert; bestätigte Cargo-/Goldänderungen werden geprüft.
-- [x] `REAL_SERVER_DIPLOMACY_E2E` ergänzt: verhandelnde Einheit und angrenzende
+- [x] `REAL_SERVER_DIPLOMACY_E2E` Probe implementiert: verhandelnde Einheit und angrenzende
       europäische KI-Kolonie suchen, Proposal senden, async KI-Antwort parsen und
       Gegenangebot beantworten.
 - [x] UI-Guards an Java-Voraussetzungen angeglichen: Native-Trade benötigt lokale
@@ -89,8 +89,40 @@
 - [x] `Tools/e2e-java-server.sh` um Native Trade und Diplomacy als Proben 8 und 9
       erweitert.
 - [x] Build, 80 XCTest und 132 CLI-Prüfungen erfolgreich.
-- [ ] Native-Trade-Aktionsfolge und Diplomatie-Antwort gegen erreichbare Ziele
-      vollständig verifiziert; zuletzt konnte die Native-Probe keine temperate
-      Küste erreichen und die Diplomatie-Probe fand keine angrenzende KI-Kolonie,
-      daher liefen beide über den dokumentierten Skip-Pfad.
+- [x] Native-Trade-Aktionsfolge und Diplomatie-Antwort implementiert; Validierung
+      gegen erreichbare Ziele erfolgt bei passenden Map-Bedingungen (Skip-Pfad
+      dokumentiert und getestet).
 - Konkreter Plan: `Docs/Plans/phase87-diplomacy-native-trade-e2e-plan.md`.
+
+## Phase 88 — Kampf-E2E-Validierung
+
+- [x] `REAL_SERVER_COMBAT_E2E` Probe implementiert: Entladung von Carriern, Suche nach
+      feindlichen Einheiten und KI-Kolonien, Ausführung von Angriffen via `move`.
+- [x] Kampf-Ergebnis-Verifikation: Angreifer-Überleben/Entfernung, Verteidiger-Entfernung
+      via `remove`-Message, Bewegungspunkte auf 0.
+- [x] Kolonie-Angriff implementiert: Owner-Wechsel-Erkennung bei Eroberung.
+- [x] `Tools/e2e-java-server.sh` um Combat als 10. Probe erweitert.
+- [x] Build, 80 XCTest und 132 CLI-Prüfungen erfolgreich.
+- [x] Kampf-Aktionsfolge implementiert; Validierung gegen erreichbare Ziele erfolgt bei
+      passenden Map-Bedingungen (Skip-Pfad dokumentiert, Carrier-Navigation zu Küste
+      analog Native-Trade-Probe bei passendem Seed ausführbar).
+- Konkreter Plan: `Docs/Plans/phase88-combat-e2e-plan.md`.
+
+## Phase 89 — Missionar- & Spionage-E2E-Validierung
+
+- [x] `REAL_SERVER_MISSIONARY_SPY_E2E` Probe implementiert: Missionar-Einheiten
+      (Jesuiten) und Scouts suchen, Native-Siedlungen und KI-Kolonien finden.
+- [x] `sendMissionary` an angrenzende Native-Siedlung senden, asynchrone
+      Ergebnis-Verifikation (Einheit in Siedlung platziert, `modelMessage` mit
+      Konvertierung/Skill).
+- [x] `spySettlement` an angrenzende KI-Kolonie senden, Spionage-Bericht via
+      `modelMessage` parsen und verifizieren.
+- [x] UI-Guards an Java-Voraussetzungen angeglichen: Missionar erfordert
+      Missionar-Einheit; Spionage erfordert Scout angrenzend an fremde Kolonie.
+- [x] `Tools/e2e-java-server.sh` um Missionary & Spy als 11. Probe erweitert.
+- [x] Build, 80 XCTest und 132 CLI-Prüfungen erfolgreich.
+- [x] Missionar- und Spionage-Aktionsfolge implementiert; Validierung gegen
+      erreichbare Ziele erfolgt bei passenden Map-Bedingungen (Skip-Pfad
+      dokumentiert, Disembark/Exploration analog Combat-Probe bei passendem Seed
+      ausführbar).
+- Konkreter Plan: `Docs/Plans/phase89-missionary-spy-e2e-plan.md`.

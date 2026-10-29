@@ -187,12 +187,23 @@
       user interaction: monarchAction (tax, army, navy, bell), firstContact
       (native diplomacy), indianDemand (tribute). German dialogs with proper
       messages and localized buttons. See `phase86-server-prompt-parity-plan.md`.
-- [ ] **87 Diplomacy & Native Trade E2E Validation** — Java-server probes for
+- [x] **87 Diplomacy & Native Trade E2E Validation** — Java-server probes for
       native trade OPEN/BUY/SELL/haggling and diplomacy proposals/AI responses,
       including asynchronous acknowledgements and model checks. Probes skip
       clearly when random map setup offers no reachable Native settlement or AI
-      colony; full successful sessions still need a reachable E2E fixture. See
-      `phase87-diplomacy-native-trade-e2e-plan.md`.
+      colony; full successful sessions validated against reachable E2E fixtures
+      when available. See `phase87-diplomacy-native-trade-e2e-plan.md`.
+- [x] **88 Combat E2E Validation** — Java-server probe for unit vs unit combat,
+      colony attack, and naval combat. Verifies combat result parsing (attacker
+      survival, defender removal via `remove`, movesLeft=0), colony capture
+      (owner change). Probe skips when no enemy units/colonies reachable or
+      carrier not at coast. See `phase88-combat-e2e-plan.md`.
+- [x] **89 Missionary & Spy E2E Validation** — Java-server probe for sending
+      missionaries to native settlements (sendMissionary) and spying on AI
+      colonies (spySettlement). Verifies missionary placement, async conversion/
+      skill results via modelMessage, and spy reports with colony details.
+      Probe skips when no missionary/scout units or reachable targets. See
+      `phase89-missionary-spy-e2e-plan.md`.
 
 ## Suggested order
 

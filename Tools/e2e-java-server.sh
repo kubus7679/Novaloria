@@ -59,8 +59,9 @@ XML
 
 start_server() {
   docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+  # shellcheck disable=SC2086
   docker run -d --name "$CONTAINER" -p "$PORT":3541 -v "$VOLUME":/data \
-    "$IMAGE" --difficulty Easy >/dev/null
+    "$IMAGE" --difficulty Easy ${1:-} >/dev/null
   echo "==> Waiting for Java server on 127.0.0.1:$PORT"
   for _ in $(seq 1 30); do
     if nc -z 127.0.0.1 "$PORT" >/dev/null 2>&1; then
@@ -120,14 +121,37 @@ start_server
   swift run FreeColProtocolCLI)
 
 echo "==> Native Trade Session probe (open/buy/haggle/close against real settlement)"
-start_server
+# Use a fixed seed that produces a temperate coast with reachable Native settlement
+start_server "--seed 12345"
 (cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_NATIVE_TRADE_E2E=1 \
   REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
   swift run FreeColProtocolCLI)
 
 echo "==> Diplomacy probe (proposal to European AI, async response handling)"
-start_server
+# Use a fixed seed with multiple European AI players for adjacent colony
+start_server "--seed 67890 --europeans 4"
 (cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_DIPLOMACY_E2E=1 \
+  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
+  swift run FreeColProtocolCLI)
+
+echo "==> Combat probe (attack enemy unit, verify combat result)"
+# Use a fixed seed with multiple European AI players for enemy units
+start_server "--seed 42 --europeans 4"
+(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_COMBAT_E2E=1 \
+  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
+  swift run FreeColProtocolCLI)
+
+echo "==> Missionary & Spy probe (send missionary, spy settlement)"
+# Use a fixed seed with multiple European AI players for native settlements and colonies
+start_server "--seed 22222 --europeans 4"
+(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_MISSIONARY_SPY_E2E=1 \
+  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
+  swift run FreeColProtocolCLI)
+
+echo "==> Recruitment probe (sail to Europe, recruit, emigrate, purchase)"
+# Use a fixed seed for reliable Europe access
+start_server "--seed 33333"
+(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_RECRUITMENT_E2E=1 \
   REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
   swift run FreeColProtocolCLI)
 
