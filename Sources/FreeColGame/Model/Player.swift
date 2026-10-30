@@ -6,6 +6,21 @@ public enum PlayerType: String {
     case ref = "REF"
     case indian = "INDIAN"
     case undead = "UNDEAD"
+
+    public init?(xmlValue: String) {
+        switch xmlValue.lowercased() {
+        case "european", "colonial":
+            self = .european
+        case "ref":
+            self = .ref
+        case "indian", "native":
+            self = .indian
+        case "undead":
+            self = .undead
+        default:
+            return nil
+        }
+    }
 }
 
 public enum Stance: String {
@@ -14,6 +29,23 @@ public enum Stance: String {
     case war = "WAR"
     case ceaseFire = "CEASE_FIRE"
     case alliance = "ALLIANCE"
+
+    public init?(xmlValue: String) {
+        switch xmlValue.uppercased() {
+        case "UNCONTACTED":
+            self = .uncontacted
+        case "PEACE":
+            self = .peace
+        case "WAR":
+            self = .war
+        case "CEASE_FIRE":
+            self = .ceaseFire
+        case "ALLIANCE":
+            self = .alliance
+        default:
+            return nil
+        }
+    }
 }
 
 /// A server model message (event log / turn report entry).
@@ -98,7 +130,7 @@ public struct Player: GameObject, PartiallyUpdatable, Identifiable {
                 // Stance map entries are serialized as <stance player=".." value=".."/> children.
                 if let otherPlayerId = child.attributes["player"],
                    let v = child.attributes["value"],
-                   let stance = Stance(rawValue: v) {
+                   let stance = Stance(xmlValue: v) {
                     stances[otherPlayerId] = stance
                 }
             case "tradeRoute":
@@ -138,7 +170,7 @@ public struct Player: GameObject, PartiallyUpdatable, Identifiable {
         if let v = attributes["username"] { name = v }
         if let v = attributes["nationId"] { nationId = v }
         if let v = attributes["nationType"] { nationType = v }
-        if let v = attributes["playerType"], let pt = PlayerType(rawValue: v) { playerType = pt }
+        if let v = attributes["playerType"], let pt = PlayerType(xmlValue: v) { playerType = pt }
         ai = attributes.bool("ai", default: ai)
         dead = attributes.bool("dead", default: dead)
         admin = attributes.bool("admin", default: admin)

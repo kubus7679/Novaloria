@@ -18,6 +18,10 @@ public struct UnitTypeInfo: @unchecked Sendable {
     public var extendsId: String?
     /// Directly declared abilities (`<ability id= value=>`), before inheritance.
     public var abilities: [String: Bool]
+    /// Europe purchase/training price (`price`), inherited through `extends`; nil if not for sale.
+    public var price: Int?
+    /// Skill level (`skill`), inherited through `extends`; Java trains units with skill > 0 in Europe.
+    public var skill: Int?
 
     public init(id: String,
                 lineOfSight: Int,
@@ -29,7 +33,9 @@ public struct UnitTypeInfo: @unchecked Sendable {
                 cargoSpace: Int? = nil,
                 spaceTaken: Int? = nil,
                 extendsId: String? = nil,
-                abilities: [String: Bool] = [:]) {
+                abilities: [String: Bool] = [:],
+                price: Int? = nil,
+                skill: Int? = nil) {
         self.id = id
         self.lineOfSight = lineOfSight
         self.isNaval = isNaval
@@ -41,6 +47,8 @@ public struct UnitTypeInfo: @unchecked Sendable {
         self.spaceTaken = spaceTaken
         self.extendsId = extendsId
         self.abilities = abilities
+        self.price = price
+        self.skill = skill
     }
 
     /// FreeCol reserves at least one slot beyond a unit's own cargo capacity
@@ -268,7 +276,9 @@ public final class Specification: @unchecked Sendable {
                     cargoSpace: child.attributes["space"].flatMap { Int($0) },
                     spaceTaken: child.attributes["spaceTaken"].flatMap { Int($0) },
                     extendsId: child.attributes["extends"],
-                    abilities: abilities
+                    abilities: abilities,
+                    price: child.attributes["price"].flatMap { Int($0) },
+                    skill: child.attributes["skill"].flatMap { Int($0) }
                 )
             }
             collectUnitTypes(from: child)
@@ -292,6 +302,12 @@ public final class Specification: @unchecked Sendable {
             }
             if info.spaceTaken == nil {
                 info.spaceTaken = inheritedUnitTypeValue(unitTypeId: unitId, value: \.spaceTaken)
+            }
+            if info.price == nil {
+                info.price = inheritedUnitTypeValue(unitTypeId: unitId, value: \.price)
+            }
+            if info.skill == nil {
+                info.skill = inheritedUnitTypeValue(unitTypeId: unitId, value: \.skill)
             }
             if info.lineOfSight < 0 {
                 info.lineOfSight = inheritedLineOfSight(unitTypeId: unitId)

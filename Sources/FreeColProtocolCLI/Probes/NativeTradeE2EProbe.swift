@@ -15,10 +15,20 @@ func nativeTradeE2EProbe() async throws {
     let nationId = vacant?.children.first?.attributes["nationId"]
         ?? vacant?.children.first?.attributes["id"]
         ?? "model.nation.dutch"
-    let userName = "CopilotNativeTrade-\(Int(Date().timeIntervalSince1970))"
+    let userName = ProcessInfo.processInfo.environment["REAL_SERVER_USERNAME"]
+        ?? "CopilotNativeTrade-\(Int(Date().timeIntervalSince1970))"
 
     let result = try await client.login(userName: userName, nationId: nationId)
     if result.serverState == .preGame {
+        try await client.send(message: ParsedMessage(
+            tag: "updateGameOptions",
+            attributes: [:],
+            children: [ParsedMessage(tag: "optionGroup", attributes: ["id": "gameOptions"], children: [
+                ParsedMessage(tag: "integerOption", attributes: [
+                    "id": "model.option.turnsToSail", "value": "1",
+                ], children: []),
+            ])]
+        ))
         let mapGeneratorOptions = ParsedMessage(
             tag: "optionGroup",
             attributes: ["id": "mapGeneratorOptions"],
@@ -28,20 +38,16 @@ func nativeTradeE2EProbe() async throws {
                 children: [
                     ParsedMessage(tag: "integerOption", attributes: ["id": "model.option.mapWidth", "value": "40"], children: []),
                     ParsedMessage(tag: "integerOption", attributes: ["id": "model.option.mapHeight", "value": "40"], children: []),
-                    ParsedMessage(tag: "integerOption", attributes: ["id": "model.option.landMass", "value": "70"], children: []),
+                    ParsedMessage(tag: "integerOption", attributes: ["id": "model.option.landMass", "value": "50"], children: []),
                     ParsedMessage(tag: "selectOption", attributes: ["id": "model.option.landGeneratorType", "value": "1"], children: []),
                 ]
             )]
         )
-        do {
-            _ = try await client.ask(message: ParsedMessage(
-                tag: "updateMapGeneratorOptions",
-                attributes: [:],
-                children: [mapGeneratorOptions]
-            ), timeout: 10)
-        } catch {
-            print("    map-generator options unchanged: \(error)")
-        }
+        try await client.send(message: ParsedMessage(
+            tag: "updateMapGeneratorOptions",
+            attributes: [:],
+            children: [mapGeneratorOptions]
+        ))
         try await client.send(message: ParsedMessage(tag: "ready", attributes: ["value": "true"], children: []))
         try await client.send(message: ParsedMessage(tag: "requestLaunch", attributes: [:], children: []))
     }
@@ -143,11 +149,8 @@ func nativeTradeE2EProbe() async throws {
         }
 
         func usefulLandingTiles(around sourceTileId: String, in current: FreeColGame.Game) -> [FreeColGame.Tile] {
-            let centerY = (current.map?.height ?? 0) / 2
-            let latitudeBand = max(8, (current.map?.height ?? 0) / 4)
             return openLandTiles(around: sourceTileId, in: current).filter {
-                return !($0.type?.lowercased().contains("arctic") ?? false)
-                    && abs($0.y - centerY) <= latitudeBand
+                !($0.type?.lowercased().contains("arctic") ?? false)
             }
         }
 
@@ -176,7 +179,7 @@ func nativeTradeE2EProbe() async throws {
                     attributes: ["unit": unitId, "direction": direction],
                     children: []
                 ), timeout: 2)
-            } catch let FreeColProtocolError.serverError {
+            } catch FreeColProtocolError.serverError(_) {
                 return false
             } catch FreeColProtocolError.timeout {
                 return false
@@ -267,6 +270,27 @@ func nativeTradeE2EProbe() async throws {
            let carrier = game.units[location],
            spec.isNaval(unitType: carrier.unitType) == true {
             let carrierId = carrier.id
+            if carrier.location?.hasPrefix("highSeas:") == true {
+                guard let mapId = game.map?.id else {
+                    throw TestError(message: "game map id missing while carrier is on high seas")
+                }
+                _ = try await client.ask(message: ParsedMessage(
+                    tag: "moveTo",
+                    attributes: ["unit": carrierId, "destination": mapId],
+                    children: []
+                ), timeout: 8)
+                for _ in 0..<4 {
+                    game = await client.game
+                    if let location = game.units[carrierId]?.location,
+                       game.tiles[location] != nil { break }
+                    try await endTurnAndWait()
+                }
+                game = await client.game
+                guard let location = game.units[carrierId]?.location,
+                      game.tiles[location] != nil else {
+                    throw TestError(message: "carrier did not return from high seas to the map")
+                }
+            }
             guard try await moveCarrierToCoast(carrierId) != nil else {
                 print("    native trade skipped: carrier could not reach a temperate coast")
                 await client.disconnect()
@@ -310,7 +334,7 @@ func nativeTradeE2EProbe() async throws {
         var foundSettlement: (settlementId: String, tileId: String)?
         var previousTileId: String?
         var blockedLandEdges: Set<String> = []
-        exploreLoop: for _ in 0..<40 {
+        exploreLoop: for _ in 0..<120 {
             game = await client.game
             guard let unit = game.units[traderId],
                   let currentLocation = game.resolvedTileId(for: unit),
@@ -371,7 +395,7 @@ func nativeTradeE2EProbe() async throws {
                 guard let ownerId = colony.owner else { return false }
                 return game.players[ownerId]?.playerType == .indian
             }.count
-            print("    native trade skipped: no reachable settlement after 40 exploration steps (revealed \(game.exploredTileIds().count), known natives \(nativeCount))")
+            print("    native trade skipped: no reachable settlement after 120 exploration steps (revealed \(game.exploredTileIds().count), known natives \(nativeCount))")
             await client.disconnect()
             return
         }
@@ -471,7 +495,8 @@ func nativeTradeE2EProbe() async throws {
         buyOffer.price = max(1, item.price - offerReduction)
         let buyStart = delegate.receivedPayloads.count
         let buyActions: Set<String> = ["ACK_BUY", "ACK_BUY_HAGGLE", "NAK_GOODS", "NAK_HAGGLE", "NAK_HOSTILE", "NAK_INVALID", "NAK_NOSALE"]
-        let buyReply = try await client.ask(message: session.toMessage(action: "BUY", item: buyOffer), timeout: 15)
+        let buyRequest = session.toMessage(action: "BUY", item: buyOffer)
+        let buyReply = try await client.ask(message: buyRequest, timeout: 15)
         let firstEnvelope: ParsedMessage
         if let directEnvelope = nativeTradeEnvelope(in: buyReply),
            buyActions.contains(directEnvelope.attributes["action"] ?? "") {
@@ -517,7 +542,6 @@ func nativeTradeE2EProbe() async throws {
             await client.disconnect()
             return
         }
-
         var tradeObserved = false
         for _ in 0..<50 {
             game = await client.game
@@ -530,7 +554,9 @@ func nativeTradeE2EProbe() async throws {
             try await Task.sleep(nanoseconds: 200_000_000)
         }
         guard tradeObserved else {
-            throw TestError(message: "Java acknowledged BUY but cargo/gold did not change")
+            let cargoAfter = game.units[traderId]?.goods[goodsType] ?? 0
+            let goldAfter = game.players[localPlayerId]?.gold ?? goldBefore
+            throw TestError(message: "Java acknowledged BUY but cargo/gold did not change (cargo \(cargoBefore)->\(cargoAfter), gold \(goldBefore)->\(goldAfter), messages \(delegate.receivedPayloads.suffix(8).map(\.tag)))")
         }
         print("    bought \(goodsType) for negotiated price \(negotiatedPrice)")
 

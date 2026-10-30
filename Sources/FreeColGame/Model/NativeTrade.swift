@@ -8,6 +8,7 @@ public struct NativeTradeItem: Identifiable, Equatable {
     }
     public var goodsType: String?
     public var amount: Int
+    public var goodsLocation: String?
     /// 0 = unset, -1 = invalid, >0 = valid price.
     public var price: Int
     public var haggleCount: Int
@@ -23,12 +24,15 @@ public struct NativeTradeItem: Identifiable, Equatable {
         self.destination = attributes["destination"]
         self.goodsType = goods?.attributes["type"]
         self.amount = goods.map { $0.attributes.int("amount", default: 0) } ?? 0
+        self.goodsLocation = goods?.attributes["location"]
     }
 
     public init(goodsType: String?, amount: Int, price: Int, haggleCount: Int = 0,
-                source: String? = nil, destination: String? = nil) {
+                source: String? = nil, destination: String? = nil,
+                goodsLocation: String? = nil) {
         self.goodsType = goodsType
         self.amount = amount
+        self.goodsLocation = goodsLocation
         self.price = price
         self.haggleCount = haggleCount
         self.source = source
@@ -38,6 +42,7 @@ public struct NativeTradeItem: Identifiable, Equatable {
     /// Serialize this item as a `<nativeTradeItem><goods .../></nativeTradeItem>` node.
     public func toMessage() -> ParsedMessage {
         var attributes: Attributes = [
+            "id": "model.tradeItem.goods.name",
             "price": "\(price)",
             "haggleCount": "\(haggleCount)"
         ]
@@ -45,9 +50,14 @@ public struct NativeTradeItem: Identifiable, Equatable {
         if let destination { attributes["destination"] = destination }
         var children: [ParsedMessage] = []
         if let goodsType {
+            var goodsAttributes: Attributes = [
+                "type": goodsType,
+                "amount": "\(amount)"
+            ]
+            if let goodsLocation { goodsAttributes["location"] = goodsLocation }
             children.append(ParsedMessage(
                 tag: "goods",
-                attributes: ["type": goodsType, "amount": "\(amount)"],
+                attributes: goodsAttributes,
                 children: []
             ))
         }
@@ -147,6 +157,9 @@ public struct NativeTradeSession {
         ]
         if let unitId { attributes["unit"] = unitId }
         if let settlementId { attributes["settlement"] = settlementId }
+        if let unitId, let settlementId {
+            attributes["id"] = "\(unitId)-\(settlementId)"
+        }
         var children: [ParsedMessage] = [
             ParsedMessage(tag: "settlementToUnit", attributes: [:], children: settlementToUnit.map { $0.toMessage() }),
             ParsedMessage(tag: "unitToSettlement", attributes: [:], children: unitToSettlement.map { $0.toMessage() })

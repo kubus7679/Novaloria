@@ -137,19 +137,32 @@ actor MultiplayerE2EHarness {
     private func runTurnGatingTest(clients: [MultiplayerClient]) async throws {
         print("    Running turn gating test...")
 
-        // Find the current player
-        let currentPlayerClient = try await findCurrentPlayerClient(clients: clients)
-        let otherClients = clients.filter { $0.userName != currentPlayerClient.userName }
+        // Java only advances the turn once every player has moved in sequence,
+        // so each human endTurn passes play to the next player (AIs move on their own).
+        let turnBefore = await clients[0].client.game.turn.number
+        var ended: [String] = []
+        for _ in 0..<(clients.count * 4) {
+            if await clients[0].client.game.turn.number > turnBefore { break }
+            guard let current = try? await findCurrentPlayerClient(clients: clients) else {
+                try await Task.sleep(nanoseconds: 500_000_000)
+                continue
+            }
+            if ended.last == current.userName {
+                // Server has not handed over play yet.
+                try await Task.sleep(nanoseconds: 500_000_000)
+                continue
+            }
+            _ = try await current.client.ask(
+                message: ParsedMessage(tag: "endTurn", attributes: [:], children: []),
+                timeout: 45
+            )
+            ended.append(current.userName)
+            print("    Current player \(current.userName) sent endTurn")
+        }
+        guard !ended.isEmpty else {
+            throw TestError(message: "no human player was ever the current player")
+        }
 
-        // Verify current player can end turn
-        let turnBefore = await currentPlayerClient.client.game.turn.number
-        _ = try await currentPlayerClient.client.ask(
-            message: ParsedMessage(tag: "endTurn", attributes: [:], children: []),
-            timeout: 45
-        )
-        print("    Current player \(currentPlayerClient.userName) sent endTurn")
-
-        // Wait for turn to advance for all clients
         for c in clients {
             try await waitForTurnAdvance(client: c.client, fromTurn: turnBefore)
             let newTurn = await c.client.game.turn.number

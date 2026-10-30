@@ -21,6 +21,7 @@ public struct Unit: GameObject, PartiallyUpdatable, Identifiable {
     public var owner: String?
     public var nationality: String?
     public var location: String?
+    public var entryLocation: String?
     public var movesLeft: Int = 0
     public var state: UnitState = .active
     public var role: String?
@@ -59,6 +60,7 @@ public struct Unit: GameObject, PartiallyUpdatable, Identifiable {
         if let v = attributes["owner"] { owner = v }
         if let v = attributes["nationality"] { nationality = v }
         if let v = attributes["location"] { location = v }
+        if let v = attributes["entryLocation"] { entryLocation = v }
         movesLeft = attributes.int("movesLeft", default: movesLeft)
         if let v = attributes["state"], let s = UnitState(rawValue: v) { state = s }
         if let v = attributes["role"] { role = v }

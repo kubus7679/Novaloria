@@ -442,6 +442,7 @@ final class GameState {
     private var localNationId: String?
     private var localNationTypeId: String?
     private var localColorValue: String?
+    private var seenModelMessageSignatures: Set<String> = []
     private var isEndingTurn: Bool = false
     private var pendingEndTurnTurn: Int?
     private var endTurnToken: Int = 0
@@ -2332,11 +2333,11 @@ final class GameState {
 
     private func applyServerState(_ state: ServerState) {
         serverState = state
-        phase = state == .inGame ? .inGame : .lobby
+        phase = state.isInGame ? .inGame : .lobby
         if phase != .inGame {
             clearPendingEndTurn()
         }
-        statusMessage = state == .inGame ? "" : "Waiting for game start…"
+        statusMessage = state.isInGame ? "" : "Waiting for game start…"
     }
 
     private func resetSessionState() {
@@ -2353,6 +2354,7 @@ final class GameState {
         localNationId = nil
         localNationTypeId = nil
         localColorValue = nil
+        seenModelMessageSignatures = []
         isEndingTurn = false
         pendingEndTurnTurn = nil
         incomingChatLog = []
@@ -4239,7 +4241,7 @@ final class GameState {
         errorMessage = nil
 
         // Client-side purchases tracking (like the Java client's purchases summary)
-        let price = localPlayer?.europe?.price(for: trimmed) ?? 0
+        let price = europeUnitPrice(for: trimmed)
         purchasesTrained += 1
         purchasesTotal += price
 
@@ -4257,14 +4259,28 @@ final class GameState {
         }
     }
 
-    /// Purchasable unit types in Europe (from `<unitPrice>`), sorted by price.
+    /// Unit types Europe sells: every type with a price in the specification
+    /// (the server's `<unitPrice>` entries override it), sorted by price.
     var purchasableEuropeUnits: [(unitType: String, label: String, price: Int)] {
         guard let europe = localPlayer?.europe else { return [] }
-        return europe.unitPrices
+        var prices = europe.unitPrices
+        for (id, info) in cachedGame?.specification?.unitTypes ?? [:] {
+            if prices[id] == nil, let price = info.price, price > 0 {
+                prices[id] = price
+            }
+        }
+        return prices
             .map { (unitType: $0.key,
                     label: unitDisplayName($0.key),
                     price: $0.value) }
-            .sorted { $0.price < $1.price }
+            .sorted { $0.price == $1.price ? $0.unitType < $1.unitType : $0.price < $1.price }
+    }
+
+    /// Europe price for a unit type: server override, then the specification price.
+    func europeUnitPrice(for unitType: String) -> Int {
+        if let price = localPlayer?.europe?.unitPrices[unitType] { return price }
+        return cachedGame?.specification?.unitTypes[unitType]?.price
+            ?? localPlayer?.europe?.recruitPrice ?? 0
     }
 
     func unitDisplayName(_ typeId: String) -> String {
@@ -5405,10 +5421,21 @@ final class GameState {
     }
 
     func syncAfterModelUpdate() {
+        surfaceEuropeArrivalMessage()
         reconcileSelectionWithGame()
         reconcileSelectedUnitOrderWithGame()
         reconcilePendingEndTurnWithGame()
         autoFocusInitialUnitIfNeeded()
+    }
+
+    private func surfaceEuropeArrivalMessage() {
+        guard let message = localPlayer?.modelMessages.first(where: { message in
+            let signature = "\(message.id)|\(message.source ?? "")|\(message.display ?? "")"
+            guard !seenModelMessageSignatures.contains(signature) else { return false }
+            seenModelMessageSignatures.insert(signature)
+            return message.id == "model.unit.arriveInEurope"
+        }) else { return }
+        statusMessage = "A ship arrived in Europe."
     }
 
     private func reconcileSelectionWithGame() {

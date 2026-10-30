@@ -15,6 +15,7 @@ public final class Game: @unchecked Sendable {
     public internal(set) var tiles: [String: Tile] = [:]
     public internal(set) var units: [String: Unit] = [:]
     public internal(set) var colonies: [String: Colony] = [:]
+    public internal(set) var regions: [String: GameRegion] = [:]
     public internal(set) var tradeRoutes: [String: TradeRoute] = [:]
     public internal(set) var nationStates: [String: String] = [:]
     public internal(set) var nationColors: [String: String] = [:]
@@ -47,6 +48,7 @@ public final class Game: @unchecked Sendable {
         tiles.removeAll()
         units.removeAll()
         colonies.removeAll()
+        regions.removeAll()
         tradeRoutes.removeAll()
         nationStates.removeAll()
         nationColors.removeAll()
@@ -77,6 +79,10 @@ public final class Game: @unchecked Sendable {
                 try loadPlayerTree(child)
             case "unit":
                 try loadUnitTree(child)
+            case "highSeas":
+                for unitChild in child.children where unitChild.tag == "unit" {
+                    try loadUnitTree(unitChild)
+                }
             case "colony", "indianSettlement":
                 let colony = try Colony(id: child.attributes["id"] ?? UUID().uuidString,
                                         attributes: child.attributes,
@@ -133,12 +139,27 @@ public final class Game: @unchecked Sendable {
                             if settlement.tileId == nil { settlement.tileId = tile.id }
                             colonies[settlementId] = settlement
                         }
+                    case "tileItemContainer":
+                        break
                     default:
+                        FreeColLogger.shared.debug(
+                            "Unhandled <\(nestedObject.tag)> inside tile update \(tile.id)"
+                        )
                         continue
                     }
                 }
             case "unit":
                 try loadUnitTree(child)
+            case "highSeas":
+                // Ships in transit are serialized as children of the HighSeas location.
+                for unitChild in child.children where unitChild.tag == "unit" {
+                    try loadUnitTree(unitChild)
+                }
+            case "europe":
+                try applyEuropeUpdate(child)
+            case "region":
+                guard let regionId = child.attributes["id"] else { continue }
+                regions[regionId] = GameRegion(id: regionId, attributes: child.attributes)
             case "colony", "indianSettlement":
                 let colony = try Colony(id: child.attributes["id"] ?? UUID().uuidString,
                                         attributes: child.attributes,
@@ -180,8 +201,31 @@ public final class Game: @unchecked Sendable {
                 // ChangeSet bookkeeping records with no direct model surface.
                 FreeColLogger.shared.debug("Ignoring nested change record <\(child.tag)> in update")
             default:
-                break
+                FreeColLogger.shared.debug("Unhandled update object <\(child.tag)>")
             }
+        }
+    }
+
+    /// Apply a top-level `<europe>` update (arrivals, recruits and purchases).
+    /// Unit prices are only published with the full player, so keep the known ones.
+    private func applyEuropeUpdate(_ parsed: ParsedMessage) throws {
+        let europeId = parsed.attributes["id"]
+        let ownerId = parsed.attributes["owner"]
+        guard let playerId = players.values.first(where: {
+            $0.id == ownerId || (europeId != nil && $0.europe?.id == europeId)
+        })?.id, var player = players[playerId] else { return }
+
+        var europe = Europe(id: europeId ?? player.europe?.id ?? "\(playerId)-europe",
+                            attributes: parsed.attributes,
+                            children: parsed.children)
+        if europe.unitPrices.isEmpty, let known = player.europe?.unitPrices {
+            europe.unitPrices = known
+        }
+        player.europe = europe
+        players[playerId] = player
+
+        for unitChild in parsed.children where unitChild.tag == "unit" {
+            try loadUnitTree(unitChild)
         }
     }
 
@@ -767,7 +811,10 @@ public final class Game: @unchecked Sendable {
                            children: parsed.children,
                            game: self)
         for child in parsed.children {
-            if child.tag == "tile" {
+            if child.tag == "region" {
+                guard let regionId = child.attributes["id"] else { continue }
+                regions[regionId] = GameRegion(id: regionId, attributes: child.attributes)
+            } else if child.tag == "tile" {
                 let tile = try Tile(id: child.attributes["id"] ?? UUID().uuidString,
                                     attributes: child.attributes,
                                     children: child.children,

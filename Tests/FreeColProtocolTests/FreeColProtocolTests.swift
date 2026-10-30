@@ -784,8 +784,10 @@ final class FreeColProtocolTests: XCTestCase {
         let game = Game()
         let parsed = try XMLDecoder.decode("""
         <game id="game-1">
-          <player id="player-1" username="Alice" nationId="model.nation.dutch"/>
-          <player id="player-native" nationId="model.nation.iroquois" playerType="INDIAN"/>
+          <player id="player-1" username="Alice" nationId="model.nation.dutch" playerType="colonial">
+            <stance player="player-native" value="war"/>
+          </player>
+          <player id="player-native" nationId="model.nation.iroquois" playerType="native"/>
           <map id="map-0" width="8" height="2">
             <tile id="tile-0-0" x="0" y="0" type="model.tile.plains"/>
             <tile id="tile-1-0" x="1" y="0" type="model.tile.plains">
@@ -804,6 +806,10 @@ final class FreeColProtocolTests: XCTestCase {
         </game>
         """)
         try game.load(from: parsed)
+
+        XCTAssertEqual(game.players["player-1"]?.playerType, .european)
+        XCTAssertEqual(game.players["player-native"]?.playerType, .indian)
+        XCTAssertEqual(game.players["player-1"]?.stances["player-native"], .war)
 
         let tile = { (id: String) in game.tiles[id]! }
 
@@ -1027,6 +1033,32 @@ final class FreeColProtocolTests: XCTestCase {
             )
             XCTAssertFalse(try manager.process(update), "expected <\(tag)> to be forwarded")
         }
+
+        func testLoadGameServerStateIsRecognizedAsInGame() {
+            let state = ServerState(rawValue: "LOAD_GAME")
+            XCTAssertEqual(state, .loadGame)
+            XCTAssertTrue(state?.isInGame == true)
+        }
+
+        func testNativeTradeMessageIncludesRequiredObjectId() {
+            let session = NativeTradeSession(unitId: "unit:1", settlementId: "indianSettlement:2")
+            XCTAssertEqual(
+                session.toInnerMessage().attributes["id"],
+                "unit:1-indianSettlement:2"
+            )
+
+            let offer = NativeTradeItem(
+                goodsType: "model.goods.cotton",
+                amount: 100,
+                price: 90,
+                source: "player:2",
+                destination: "player:1",
+                goodsLocation: "indianSettlement:2"
+            )
+            let item = offer.toMessage()
+            XCTAssertEqual(item.attributes["id"], "model.tradeItem.goods.name")
+            XCTAssertEqual(item.children.first?.attributes["location"], "indianSettlement:2")
+        }
     }
 
     func testGameStateManagerForwardsLogout() throws {
@@ -1222,6 +1254,99 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertTrue(specification.hasAbility("model.ability.carryGoods", unitType: merchantman.id))
     }
 
+    func testSpecificationParsesAndInheritsEuropePriceAndSkill() throws {
+        let specification = Specification(parsed: try XMLDecoder.decode("""
+        <freecol-specification id="spec">
+          <unit-type id="expert" abstract="true" price="1000" skill="1"/>
+          <unit-type id="model.unit.expertFarmer" extends="expert" price="1100"/>
+          <unit-type id="model.unit.masterCarpenter" extends="expert"/>
+          <unit-type id="model.unit.freeColonist"/>
+        </freecol-specification>
+        """))
+        XCTAssertEqual(specification.unitTypes["model.unit.expertFarmer"]?.price, 1100)
+        XCTAssertEqual(specification.unitTypes["model.unit.expertFarmer"]?.skill, 1)
+        XCTAssertEqual(specification.unitTypes["model.unit.masterCarpenter"]?.price, 1000)
+        XCTAssertNil(specification.unitTypes["model.unit.freeColonist"]?.price)
+    }
+
+    func testUpdateMovesShipFromTileIntoHighSeas() throws {
+        let game = Game()
+        try game.load(from: XMLDecoder.decode("""
+        <game id="game-1">
+          <player id="player-1" username="Alice"/>
+          <unit id="unit-1" unitType="model.unit.caravel" owner="player-1" location="tile:5"/>
+        </game>
+        """))
+
+        try game.applyUpdate(XMLDecoder.decode("""
+        <update>
+          <highSeas id="highSeas:21">
+            <unit id="unit-1" unitType="model.unit.caravel" owner="player-1" location="highSeas:21" entryLocation="tile:5" workLeft="1">
+              <unit id="unit-2" unitType="model.unit.freeColonist" owner="player-1" location="unit-1"/>
+            </unit>
+            <destination id="europe:20"/>
+          </highSeas>
+        </update>
+        """))
+
+        XCTAssertEqual(game.units["unit-1"]?.location, "highSeas:21")
+        XCTAssertEqual(game.units["unit-1"]?.entryLocation, "tile:5")
+        XCTAssertEqual(game.units["unit-2"]?.location, "unit-1")
+    }
+
+    func testRegionUpdatesAreLoadedAndReplaceKnownRegionData() throws {
+        let game = Game()
+        try game.load(from: XMLDecoder.decode("""
+        <game id="game-1">
+          <map id="map-1" width="1" height="1">
+            <region id="region-1" key="model.region.newWorld" type="ocean" discoverable="true"/>
+          </map>
+        </game>
+        """))
+        XCTAssertEqual(game.regions["region-1"]?.key, "model.region.newWorld")
+        XCTAssertTrue(game.regions["region-1"]?.discoverable == true)
+
+        try game.applyUpdate(XMLDecoder.decode("""
+        <update>
+          <region id="region-1" name="New World" key="model.region.newWorld" type="ocean" discoverable="false"/>
+        </update>
+        """))
+
+        XCTAssertEqual(game.regions["region-1"]?.displayName, "New World")
+        XCTAssertFalse(game.regions["region-1"]?.discoverable ?? true)
+    }
+
+    func testEuropeUpdateAppliesArrivalsAndKeepsKnownUnitPrices() throws {
+        let game = Game()
+        try game.load(from: XMLDecoder.decode("""
+        <game id="game-1">
+          <player id="player-1" username="Alice">
+            <europe id="europe:20" owner="player-1" recruitPrice="200">
+              <unitPrice unitType="model.unit.artillery" price="500"/>
+            </europe>
+          </player>
+          <unit id="ship-1" unitType="model.unit.caravel" owner="player-1" location="highSeas:21"/>
+        </game>
+        """))
+
+        try game.applyUpdate(XMLDecoder.decode("""
+        <update>
+          <europe id="europe:20" recruitPrice="180" recruitLowerCap="80" owner="player-1">
+            <unit id="ship-1" unitType="model.unit.caravel" owner="player-1" location="europe:20"/>
+            <unit id="new-1" unitType="model.unit.pettyCriminal" owner="player-1" location="europe:20"/>
+            <recruit id="model.unit.masterCarpenter" role="model.role.default" number="1"/>
+          </europe>
+        </update>
+        """))
+
+        XCTAssertEqual(game.units["ship-1"]?.location, "europe:20")
+        XCTAssertEqual(game.units["new-1"]?.location, "europe:20")
+        let europe = try XCTUnwrap(game.players["player-1"]?.europe)
+        XCTAssertEqual(europe.recruitPrice, 180)
+        XCTAssertEqual(europe.recruitable.count, 1)
+        XCTAssertEqual(europe.unitPrices["model.unit.artillery"], 500)
+    }
+
     func testMarketPricingNewWorldClamp() throws {
         let spec = try pricingSpecification()
         let sugar = try XCTUnwrap(spec.goodsTypes["model.goods.sugar"])
@@ -1396,6 +1521,10 @@ final class FreeColProtocolTests: XCTestCase {
                 location="tile-1-0" movesLeft="0" state="SENTRY" destination="tile-0-0"/>
           <unit id="unit-3" owner="player-2" unitType="model.unit.freeColonist"
                 location="tile-0-0" movesLeft="3" state="ACTIVE"/>
+          <highSeas id="highSeas-1">
+            <unit id="unit-4" owner="player-1" unitType="model.unit.caravel"
+                  location="highSeas-1" entryLocation="tile-0-0" movesLeft="0" state="ACTIVE"/>
+          </highSeas>
         </game>
         """)
         try game.load(from: parsed)
@@ -1405,13 +1534,14 @@ final class FreeColProtocolTests: XCTestCase {
         state.installGame(game)
 
         // Only local units are cycled.
-        XCTAssertEqual(state.selectableLocalUnits.map(\.id), ["unit-1", "unit-2"])
+        XCTAssertEqual(state.selectableLocalUnits.map(\.id), ["unit-1", "unit-2", "unit-4"])
         state.selectNextUnit()
         XCTAssertEqual(state.selectedUnitId, "unit-1")
         state.selectNextUnit()
         XCTAssertEqual(state.selectedUnitId, "unit-2")
         state.selectNextUnit()
-        XCTAssertEqual(state.selectedUnitId, "unit-1")
+        XCTAssertEqual(state.selectedUnitId, "unit-4")
+        XCTAssertNil(state.selectedUnitTileId)
         state.selectPreviousUnit()
         XCTAssertEqual(state.selectedUnitId, "unit-2")
 

@@ -133,6 +133,13 @@ public final class GameStateManager: @unchecked Sendable {
             FreeColLogger.shared.debug("Applied <\(parsed.tag)>")
             return true
 
+        case "fountainOfYouth", "indianDemand", "lootCargo", "firstContact",
+             "monarchAction", "newLandName", "newRegionName", "close",
+             "highScores", "nationSummary", "nativeTrade", "diplomacy",
+             "chooseFoundingFather", "scoutSpeakToChief", "spySettlement",
+             "incite":
+            return false
+
         case "logout":
             if let playerId = parsed.attributes["player"] {
                 game.removePlayer(playerId)

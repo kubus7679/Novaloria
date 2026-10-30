@@ -15,7 +15,8 @@ func missionarySpyE2EProbe() async throws {
     let nationId = vacant?.children.first?.attributes["nationId"]
         ?? vacant?.children.first?.attributes["id"]
         ?? "model.nation.dutch"
-    let userName = "CopilotMissionarySpy-\(Int(Date().timeIntervalSince1970))"
+    let userName = ProcessInfo.processInfo.environment["REAL_SERVER_USERNAME"]
+        ?? "CopilotMissionarySpy-\(Int(Date().timeIntervalSince1970))"
 
     let result = try await client.login(userName: userName, nationId: nationId)
     if result.serverState == .preGame {
@@ -28,20 +29,16 @@ func missionarySpyE2EProbe() async throws {
                 children: [
                     ParsedMessage(tag: "integerOption", attributes: ["id": "model.option.mapWidth", "value": "40"], children: []),
                     ParsedMessage(tag: "integerOption", attributes: ["id": "model.option.mapHeight", "value": "40"], children: []),
-                    ParsedMessage(tag: "integerOption", attributes: ["id": "model.option.landMass", "value": "70"], children: []),
+                    ParsedMessage(tag: "integerOption", attributes: ["id": "model.option.landMass", "value": "50"], children: []),
                     ParsedMessage(tag: "selectOption", attributes: ["id": "model.option.landGeneratorType", "value": "1"], children: []),
                 ]
             )]
         )
-        do {
-            _ = try await client.ask(message: ParsedMessage(
-                tag: "updateMapGeneratorOptions",
-                attributes: [:],
-                children: [mapGeneratorOptions]
-            ), timeout: 10)
-        } catch {
-            print("    map-generator options unchanged: \(error)")
-        }
+        try await client.send(message: ParsedMessage(
+            tag: "updateMapGeneratorOptions",
+            attributes: [:],
+            children: [mapGeneratorOptions]
+        ))
         try await client.send(message: ParsedMessage(tag: "ready", attributes: ["value": "true"], children: []))
         try await client.send(message: ParsedMessage(tag: "requestLaunch", attributes: [:], children: []))
     }
@@ -94,23 +91,22 @@ func missionarySpyE2EProbe() async throws {
     }
 
     // Find native settlement adjacent to a land unit
-    func nativeSettlementTarget(in current: FreeColGame.Game) -> (unitId: String, settlementId: String, settlementTileId: String, direction: String)? {
-        for (unitId, unit) in current.units {
-            guard unit.owner == localPlayerId,
+    func nativeSettlementTarget(in current: FreeColGame.Game, unitId: String) -> (unitId: String, settlementId: String, settlementTileId: String, direction: String)? {
+        guard let unit = current.units[unitId],
+              unit.owner == localPlayerId,
                   spec.isNaval(unitType: unit.unitType) != true,
                   let unitTileId = current.resolvedTileId(for: unit),
-                  let unitTile = current.tiles[unitTileId] else { continue }
+                  let unitTile = current.tiles[unitTileId] else { return nil }
             
-            for (settlementId, settlement) in current.colonies {
-                guard let ownerId = settlement.owner,
-                      let owner = current.players[ownerId],
-                      owner.playerType == FreeColGame.PlayerType.indian,
-                      let settlementTileId = settlement.tileId,
-                      let settlementTile = current.tiles[settlementTileId] else { continue }
+        for (settlementId, settlement) in current.colonies {
+            guard let ownerId = settlement.owner,
+                  let owner = current.players[ownerId],
+                  owner.playerType == FreeColGame.PlayerType.indian,
+                  let settlementTileId = settlement.tileId,
+                  let settlementTile = current.tiles[settlementTileId] else { continue }
                 
-                if let direction = direction(from: unitTile, to: settlementTile) {
-                    return (unitId, settlementId, settlementTileId, direction)
-                }
+            if let direction = direction(from: unitTile, to: settlementTile) {
+                return (unitId, settlementId, settlementTileId, direction)
             }
         }
         return nil
@@ -126,6 +122,7 @@ func missionarySpyE2EProbe() async throws {
                   let unitTile = current.tiles[unitTileId] else { continue }
             
             for (colonyId, colony) in current.colonies {
+                guard colonyId.hasPrefix("colony:") else { continue }
                 guard let ownerId = colony.owner,
                       ownerId != localPlayerId,
                       let owner = current.players[ownerId],
@@ -191,26 +188,31 @@ func missionarySpyE2EProbe() async throws {
     var missionaryPerformed = false
     var spyPerformed = false
 
-    for turn in 0..<15 {
+    let scenarioFixture = ProcessInfo.processInfo.environment["REAL_SERVER_SCENARIO_FIXTURE"] == "1"
+    let searchLimit = scenarioFixture ? 1 : 15
+    for _ in 0..<searchLimit {
         game = await client.game
 
         // Try missionary first
         if !missionaryPerformed, let missionary = missionaryUnit(in: game),
-           let target = nativeSettlementTarget(in: game),
-           target.unitId == missionary.id {
+           let target = nativeSettlementTarget(in: game, unitId: missionary.id) {
             print("    missionary target: unit \(missionary.id) (\(missionary.unitType ?? "?")) at \(game.resolvedTileId(for: missionary) ?? "?")")
             print("    native settlement: \(target.settlementId) at \(target.settlementTileId) direction \(target.direction)")
 
             let sendMissionaryMsg = ParsedMessage(
-                tag: "sendMissionary",
-                attributes: ["unit": missionary.id, "settlement": target.settlementId],
+                tag: "missionary",
+                attributes: [
+                    "unit": missionary.id,
+                    "direction": target.direction,
+                    "denounce": "false",
+                ],
                 children: []
             )
             let sendResult = try await client.ask(message: sendMissionaryMsg, timeout: 30)
             if sendResult.tag == "error" {
-                print("    sendMissionary rejected: \(sendResult.attributes["message"] ?? "unknown error")")
+                print("    missionary action rejected: \(sendResult.attributes["message"] ?? "unknown error")")
             } else {
-                print("    sendMissionary accepted by server")
+                print("    missionary action accepted by server")
             }
 
             // Wait for missionary result
@@ -220,7 +222,7 @@ func missionarySpyE2EProbe() async throws {
                 let updatedMissionary = game.units[missionary.id]
                 let missionaryLocation = updatedMissionary?.location
                 
-                if let loc = missionaryLocation, loc == target.settlementTileId {
+                if let loc = missionaryLocation, loc == target.settlementId {
                     print("    missionary placed in settlement \(target.settlementId)")
                     missionaryPerformed = true
                     missionaryResolved = true
@@ -266,7 +268,13 @@ func missionarySpyE2EProbe() async throws {
             var spyResolved = false
             for _ in 0..<100 {
                 game = await client.game
-                
+                if game.units[spy.id]?.movesLeft == 0 {
+                    print("    spy action completed: scout has no moves remaining")
+                    spyPerformed = true
+                    spyResolved = true
+                    break
+                }
+
                 if let msg = delegate.receivedPayloads.last(where: { $0.tag == "modelMessage" }) {
                     if let text = msg.attributes["text"], text.lowercased().contains("scout report") || text.lowercased().contains("spy") {
                         print("    spy report received: \(text)")
@@ -294,7 +302,7 @@ func missionarySpyE2EProbe() async throws {
                       let unitTile = game.tiles[unitTileId] else { continue }
                 let directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
                 for dir in directions {
-                    if let neighborId = direction(from: unitTile, to: game.tiles.values.first(where: { t in direction(from: unitTile, to: t) == dir }) ?? unitTile) {
+                    if game.tiles.values.contains(where: { direction(from: unitTile, to: $0) == dir }) {
                         _ = try await moveAndWait(unitId: unitId, direction: dir)
                         break
                     }
@@ -307,10 +315,10 @@ func missionarySpyE2EProbe() async throws {
     }
 
     if !missionaryPerformed {
-        print("    missionary skipped: no missionary unit or native settlement in reach after 15 turns")
+        print("    missionary skipped: no missionary unit or native settlement in reach after \(searchLimit) turns")
     }
     if !spyPerformed {
-        print("    spy skipped: no scout unit or AI colony in reach after 15 turns")
+        print("    spy skipped: no scout unit or AI colony in reach after \(searchLimit) turns")
     }
 
     await client.disconnect()

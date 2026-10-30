@@ -46,7 +46,10 @@
 - [x] Dedizierter Java-E2E-Test für automatische Handelsrouten-Ausführung (Phase 83).
 - [x] `Tools/e2e-java-server.sh` um 5. Probe erweitert (Trade Route Execution).
 - [x] `REAL_SERVER_TRADE_ROUTE_E2E` Probe in `FreeColProtocolCLI` implementiert.
-- [x] Verifiziert: Carrier-Bewegung zu Stops, `currentStop` Inkrementierung, Route-Looping, Güter-Handling.
+- [x] Korrigiert (Phase 91): Der Java-Server schreibt `currentStop` beim Zugende nicht fort,
+      das macht der Client über `setCurrentStop`. Die Probe prüft jetzt Zuweisung,
+      `endTurn`-Invarianz, `setCurrentStop` inkl. Wrap-around und Ablehnung eines
+      ungültigen Index.
 - [x] 80 XCTest, 132+ CLI-Prüfungen erfolgreich.
 - Konkreter Plan: `Docs/Plans/phase84-trade-route-e2e-validation-plan.md`.
 
@@ -67,8 +70,10 @@
 - [x] monarchAction Prompt vollständig implementiert mit deutschem Dialog und userFacingServerError-Mapping.
 - [x] firstContact Prompt vollständig implementiert mit deutschem Dialog.
 - [x] indianDemand Prompt vollständig implementiert mit deutschem Dialog.
-- [x] `Tools/e2e-java-server.sh` um 7. Probe erweitert (Server Prompt Parity).
-- [x] `REAL_SERVER_PROMPT_E2E` Probe in `FreeColProtocolCLI` implementiert.
+- [x] Prompt-Antworten (`firstContact`, `monarchAction`, `newLandName`) sind offline gegen
+      den Mock-Server getestet. Die frühere `REAL_SERVER_PROMPT_E2E`-Probe wurde in
+      Phase 91 entfernt: Sie schickte serverseitig bedeutungslose `question`-Nachrichten
+      an den Java-Server (NPE), diese Prompts lassen sich nicht auf Abruf auslösen.
 - [x] UI-Dialoge zeigen benutzerfreundliche deutsche Meldungen statt Rohdaten.
 - [x] Buttons auf Deutsch lokalisiert (Akzeptieren/Ablehnen, Kontakt herstellen, etc.).
 - [x] 80 XCTest, 132+ CLI-Prüfungen erfolgreich.
@@ -126,3 +131,65 @@
       dokumentiert, Disembark/Exploration analog Combat-Probe bei passendem Seed
       ausführbar).
 - Konkreter Plan: `Docs/Plans/phase89-missionary-spy-e2e-plan.md`.
+
+## Phase 90 — Rekrutierung & Einkauf in Europa (E2E)
+
+- [x] `REAL_SERVER_RECRUITMENT_E2E` neu geschrieben mit den echten Wire-Formaten:
+      `moveTo` nach Europa, `emigrateUnit slot=0`, `trainUnitInEurope unitType=…`
+      (die alte Probe nutzte erfundene Nachrichten und skippte immer).
+- [x] Gegen den Java-Server grün **ohne Skip**: Ankunft in Europa, Ablehnung von
+      ungültigem Slot/Unit-Typ ohne Modelländerung, Rekrutierung (Einheit + Gold),
+      Kauf (Einheit + exakter Spezifikationspreis).
+- [x] Server-Seed/Schwierigkeit: `--difficulty "Very Easy" --seed 33333` (1000 Startgold,
+      Easy hat nur 300 und reicht für keinen Kauf).
+- Konkreter Plan: `Docs/Plans/phase90-recruitment-immigration-e2e-plan.md`.
+
+## Phase 91 — Reale E2E-Validierung & Client-Modellfehler
+
+Erster echter Lauf der gesamten Suite gegen den Java-Server (Docker). Ergebnis und Fixes:
+
+- [x] **Client-Fix `<highSeas>`**: Schiffe auf hoher See kommen als Kind von `<highSeas>`
+      im Update an. Sie blieben bisher im Modell auf dem alten Tile.
+- [x] **Client-Fix `<europe>`-Update**: Ankunft, Rekrutierung und Kauf kommen als
+      Top-Level-`<europe>` mit Einheiten-Kindern. Wurde bisher ignoriert, neue Einheiten
+      in Europa erschienen nie im Modell. Bekannte `unitPrices` bleiben erhalten.
+- [x] **Client-Fix Europa-Einkaufsliste**: Der Server sendet keine `<unitPrice>`-Kinder.
+      Java nimmt `price` (und `skill`) aus der Spezifikation. `UnitTypeInfo` parst und
+      erbt jetzt `price`/`skill`; `purchasableEuropeUnits` und `europeUnitPrice(for:)`
+      fallen auf den Spezifikationspreis zurück.
+- [x] **Probe-Korrekturen**: Trade-Route-Probe (siehe Phase 84), Multiplayer-Probe
+      (Zugnummer rückt erst vor, wenn *alle* Menschen gezogen haben), Prompt-Probe entfernt.
+- [x] **`Tools/e2e-java-server.sh`**: Probes laufen unabhängig voneinander, am Ende steht
+      eine Zusammenfassung *passed / skipped / failed*. `STRICT_SKIPS=1` macht Skips zu
+      Fehlern, `ONLY="combat recruitment"` wählt Proben aus, Server-Argumente dürfen
+      Leerzeichen enthalten (`|`-getrennt).
+- [x] 83 XCTest (3 neu), 132 CLI-Prüfungen.
+- **Stand Real-Server-Suite (11 Proben):** grün ohne Skip: smoke, deep, gameplay, reject,
+  traderoute, multiplayer, recruitment. **Weiterhin nur geskippt, d. h. NICHT validiert:**
+  nativetrade, diplomacy, combat, missionaryspy (kein erreichbares Ziel auf den
+  konfigurierten Seeds). Phasen 87–89 gelten deshalb als „implementiert, nicht real
+  verifiziert".
+
+## Phase 92 — Deterministische Szenario-Fixtures und Zielprobes
+
+- [x] `Tools/prepare-scenario-e2e.py` erstellt aus dem Java-validierten Native-Trade-
+  Spielstand ein deterministisches Szenario für Diplomatie, Kampf und Missionar/
+  Spionage.
+- [x] Java-XML-Kleinschreibung für `playerType` und `stance` wird im Swift-Modell korrekt
+  normalisiert.
+- [x] Wire-Proben korrigiert: asynchroner Diplomatie-Vorschlag, `attack` für Kampf,
+  `missionary` mit `direction`, Modellzustandsprüfung für Missionar und Spion.
+- [x] `STRICT_SKIPS=1 Tools/e2e-java-server.sh`: **11 bestanden, 0 übersprungen,
+  0 fehlgeschlagen**. Native-Trade- und Szenario-Fixtures bestehen die Java-
+  Savegame-Konsistenzprüfung.
+- [ ] Die Diplomatie-Probe erhält vom Java-Server im deterministischen Fixture innerhalb
+  von 30 Sekunden keine asynchrone AI-Antwort; der Sender bekommt keine synchrone
+  Bestätigung. Der Vorschlag wird gesendet und die Antwortbehandlung bleibt aktiv.
+
+## Phase 93 — Update-Audit & Transit-UI
+
+- [x] Regionsmodell, unbekannte Update-Protokollierung sowie Schiffsstatus auf hoher See
+  und Ankunftsmeldung implementiert.
+- [x] 85 Swift-Tests und `swift build --target FreeColApp` erfolgreich; alle 11 Java-
+  E2E-Proben ohne Skip oder Fehler.
+- [ ] Native UI-Sichtprüfung für Transit-/Ankunftsanzeige und Einheitenwahl.

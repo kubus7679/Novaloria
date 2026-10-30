@@ -4,6 +4,11 @@ public enum ServerState: String {
     case preGame = "PRE_GAME"
     case inGame = "IN_GAME"
     case endGame = "END_GAME"
+    case loadGame = "LOAD_GAME"
+
+    public var isInGame: Bool {
+        self == .inGame || self == .loadGame
+    }
 }
 
 public struct LoginResult {

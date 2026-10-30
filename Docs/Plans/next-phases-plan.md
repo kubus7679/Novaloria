@@ -1,442 +1,165 @@
-# Nächste Phasen — Detaillierte Planung
+# Nächste Phasen — Planung
 
-> **Stand:** 14. Oktober 2026  
-> **Aktueller Fortschritt:** Phasen 1–86 abgeschlossen, Phase 87 teilweise offen  
-> **Ziel:** Systematische Priorisierung der nächsten Entwicklungsphasen
+> **Stand:** 29. Oktober 2026
+> **Fortschritt:** Phase 92 ist abgeschlossen: alle 11 Java-E2E-Proben bestehen ohne
+> Skip. Phase 93 ist technisch verifiziert; die native UI-Sichtprüfung bleibt offen.
+> **Grundsatz:** Neue Features erst auf real verifizierter Basis. Ein Probe-Lauf, der
+> nur über den Skip-Pfad läuft, zählt nicht als Validierung.
 
----
+## Messergebnis `Tools/e2e-java-server.sh` (11 Proben)
 
-## Executive Summary
+| Status | Proben |
+|--------|--------|
+| Grün, ohne Skip | smoke, deep, gameplay, reject, traderoute, multiplayer, nativetrade, diplomacy, combat, missionaryspy, recruitment |
+| Nur geskippt (nicht validiert) | – |
+| Rot | – |
 
-Der FreeCol-Client hat mit 86 abgeschlossenen Phasen eine beachtliche Parität mit dem Java-Client erreicht. Die verbleibenden Arbeiten lassen sich in fünf strategische Cluster einteilen:
-
-| Cluster | Priorität | Phasen | Aufwand |
-|---------|-----------|--------|---------|
-| A. Phase 87 abschließen | Hoch | 87 | 2–3 Tage |
-| B. E2E-Abdeckung erweitern | Hoch | 88–92 | 5–7 Tage |
-| C. UI/UX-Verbesserungen | Mittel | 93–96 | 4–6 Tage |
-| D. Robustheit & Performance | Mittel | 97–100 | 4–6 Tage |
-| E. Erweiterte Spielmechaniken | Niedrig | 101–104 | 6–10 Tage |
-
----
-
-## Cluster A: Phase 87 abschließen (Hochpriorität)
-
-### Phase 87 — Diplomatie- & Native-Handels-E2E-Validierung (Fortsetzung)
-
-**Status:** Proben implementiert, aber letzte Läufe über Skip-Pfad gelaufen (keine erreichbaren Ziele).
-
-**Offene Punkte:**
-- Native-Trade-Aktionsfolge gegen erreichbares Settlement vollständig verifizieren
-- Diplomatie-Antwort gegen sichtbare KI-Kolonie empfangen
-- `Tools/e2e-java-server.sh` mit allen 9 Proben vollständig grün bekommen
-
-**Nächste Schritte:**
-
-1. **Deterministisches Test-Setup erstellen**
-   - Einen festen Seed oder eine vorkonfigurierte Map für die E2E-Proben verwenden
-   - Alternative: Einen Java-Server mit einer Map starten, die garantiert Native-Siedlungen in Reichweite enthält
-   - Dauer: 4–6 Stunden
-
-2. **Native-Trade-E2E mit garantiertem Ziel**
-   - Probe erweitern, um eine Native-Siedlung in der Nähe des Startpunkts zu finden
-   - Falls nicht gefunden: Map-Generierung mit spezifischen Paramettern (z.B. `mapWidth=50`, `mapHeight=50`, `numberOfNativeSettlements=10`)
-   - Dauer: 3–4 Stunden
-
-3. **Diplomatie-E2E mit garantiertem Ziel**
-   - Einen KI-Spieler mit einer Kolonie in der Nähe des Spieler-Startpunkts platzieren
-   - Dauer: 2–3 Stunden
-
-4. **Dokumentation und Abschluss**
-   - Phase 87 in `plans.md` und `freecol-client-roadmap.md` als vollständig abgeschlossen markieren
-   - Dauer: 1 Stunde
-
-**Gesamtaufwand:** 10–14 Stunden (1–2 Tage)
+Der erste Lauf hat drei echte Client-Fehler und mehrere falsche Probe-Annahmen
+aufgedeckt (Details in `plans.md`, Phase 91). Daraus folgt: **Jede weitere
+Funktion, die nur gegen den Mock-Server oder gar nicht geprüft wurde, ist verdächtig.**
 
 ---
 
-## Cluster B: E2E-Abdeckung erweitern (Hochpriorität)
+## Cluster A — Validierung abschließen (Hoch)
 
-### Phase 88 — Kampf-E2E-Validierung
+### Phase 92 — Deterministische Fixtures für Native/Diplomatie/Kampf/Missionar
 
-**Ziel:** Vollständige Kampf-Sequenzen gegen den Java-Server validieren.
+**Problem:** Die Proben suchten Ziele per Exploration auf einer Zufallskarte und
+skippten, wenn nichts in Reichweite war.
 
-**Umfang:**
-- Kampf zwischen zwei Einheiten (Angriff und Verteidigung)
-- Kampf gegen eine Kolonie
-- Kampf gegen eine Native-Siedlung
-- Seeschiff-Kampf
-- Plünderung und Eroberung
+**Umsetzung:**
 
-**Implementierung:**
-- Neue Probe `REAL_SERVER_COMBAT_E2E` in `FreeColProtocolCLI`
-- Szenario: Spieler-Einheit angreift KI-Einheit oder -Kolonie
-- Assert: Kampfergebnis, Einheiten-Verluste, ggf. Eroberung
-- Integration in `Tools/e2e-java-server.sh` als 10. Probe
+- Ein echtes Java-Autosave wird mit `prepare-e2e-savegame.py` zu einer reproduzierbaren
+  Native-Trade-Fixture umgebaut. Die Fixture wurde vom Java-Server erfolgreich geladen
+  und die Savegame-Konsistenzprüfung war erfolgreich. Die fertige Fixture liegt unter
+  `Tools/fixtures`; zur Neuerzeugung benötigt das Skript ein Java-generiertes Autosave als
+  Eingabe.
+- Die Native-Trade-Probe lädt diese Fixture und führt jetzt einen echten Kauf samt
+  Haggle-Abschluss aus. Der Client verifiziert sowohl den Goldabzug als auch den
+  Cargo-Zuwachs; der Test deckte erforderliche `NativeTrade`-/Item-IDs, das
+  `Goods.location`-Attribut und einen fehlenden `GoodsContainer` am Fixture-Wagon auf.
+- Beim Fixture-Login wird `LOAD_GAME` korrekt als In-Game-Zustand behandelt.
+- `prepare-scenario-e2e.py` erzeugt aus der Native-Trade-Fixture einen Java-validierten
+  Szenario-Spielstand mit AI-Kolonie, verhandelnder Einheit, Scout, Missionar und
+  benachbartem Kampfziel. Die drei Proben laden diesen Spielstand statt zufällig nach
+  Zielen zu suchen.
+- Java-Wire-Formate korrigiert: Diplomatie ist asynchron, Kampf nutzt `attack` statt
+  `move`, und Missionare verwenden die `missionary`-Nachricht mit Richtung. Die Probe
+  erkennt Missionsplatzierung und Spionage am aktualisierten Modellzustand.
+- Java-XML schreibt `playerType` und `stance` in Kleinbuchstaben. Die Parser ordnen
+  jetzt `colonial`/`native` und die kleingeschriebenen Haltungen korrekt zu.
+- Die Trade-Route-Probe nutzt eine feste Nation, einen kleineren Archipel-Spielstart
+  und rotierende Explorationsrichtungen; so erreicht sie den Küstenstart reproduzierbar.
+- Die Diplomatie-Probe sendet den Vorschlag und verarbeitet eine Antwort, falls der
+  Server eine liefert. Im deterministischen Savegame kam in 30 Sekunden keine AI-Antwort;
+  die Java-Nachricht bestätigt den Vorschlag beim Sender nicht synchron.
 
-**Aufwand:** 8–10 Stunden (1 Tag)
+**Verifikation:** `STRICT_SKIPS=1 Tools/e2e-java-server.sh` — 11 bestanden, 0
+übersprungen, 0 fehlgeschlagen. Die Szenario-Fixture besteht außerdem die Java-
+Savegame-Konsistenzprüfung.
 
----
+### Phase 93 — Update-Abdeckungs-Audit & Schiffe in Transit
 
-### Phase 89 — Missionar- & Spionage-E2E
+**Problem:** `Game.applyUpdate` ignoriert unbekannte Tags still (`default: break`). Genau so
+sind `<highSeas>` und `<europe>` unbemerkt durchgerutscht.
 
-**Ziel:** Missionar- und Spionage-Aktionen gegen den Java-Server validieren.
+- Debug-Audit aller 11 Proben durchgeführt (`E2E_LOG_LEVEL=debug`): `<region>` wurde
+  ignoriert; `<tileItemContainer>` wurde beim Tile-Parsing bereits verarbeitet, aber
+  vom äußeren Audit irrtümlich als unbekannt gemeldet; `chooseFoundingFather` und
+  `newLandName` wurden bewusst zur UI weitergereicht, aber als unhandled geloggt.
+- Region-Objekte werden jetzt beim Map-Load und in Updates gespeichert und im Tile-
+  Infofeld mit ihrem Servernamen angezeigt. Bereits geparste Tile-Item-Container sowie
+  weitergereichte Prompts werden nicht mehr als unbekannt gemeldet.
+- Schiffe ohne Tile-Standort zeigen im Infofeld Reiseziel und Restdauer; die
+  Europa-Ankunftsmeldung wird angezeigt. Auswahl-/Next-Unit-Logik ohne Tile und die
+  sichtbare UI im echten Spiel müssen noch geprüft werden. Der Next-Unit-Pfad wurde
+  mit einer High-Seas-Einheit regressionsgetestet: die Einheit ist auswählbar, hat
+  kein Kartentile und erscheint nicht unter den Einheiten mit offenen Kartenbefehlen.
+- Verifiziert: vollständige Swift-Tests (85) und `swift build --target FreeColApp`
+  sind erfolgreich. Der Debug-Audit meldete keine übrigen unhandled-Tags. Der aktuelle
+  Java-Gesamtlauf hat 11 Pässe, 0 Skips und 0 Fehler; die native UI-Sichtprüfung bleibt
+  offen.
+- **Offen:** Sichtprüfung in der nativen App von Transit-/Ankunftsanzeige,
+  Einheitenwahl und der durch Spezifikationspreise befüllten Europa-Kaufliste.
 
-**Umfang:**
-- Missionar in Native-Siedlung senden (`sendMissionary`)
-- Spionage in fremder Kolonie (`spySettlement`)
-- Ergebnisse und Modell-Updates verifizieren
-
-**Implementierung:**
-- Neue Probe `REAL_SERVER_MISSIONARY_SPY_E2E`
-- Szenario: Missionar-Spieler sendet Einheit an Native-Siedlung, Spion in KI-Kolonie
-- Assert: Erfolg/Fehlermeldungen, Modell-Updates
-
-**Aufwand:** 6–8 Stunden (0,5–1 Tag)
-
----
-
-### Phase 90 — Rekrutierung & Einwanderung-E2E
-
-**Ziel:** Europa-Bildschirm Aktionen gegen den Java-Server validieren.
-
-**Umfang:**
-- Einheiten in Europa rekrutieren (`recruitUnit`)
-- Einwanderer auf ein Schiff laden
-- Einheiten in Europa kaufen (`purchaseUnit`)
-
-**Implementierung:**
-- Neue Probe `REAL_SERVER_RECRUITMENT_E2E`
-- Szenario: Carrier in Europa, Rekrutierung von 2–3 Einheiten, Verladung auf Schiff
-- Assert: Einheiten im Modell, Gold-Abzug, Cargo-Updates
-
-**Aufwand:** 6–8 Stunden (0,5–1 Tag)
-
----
-
-### Phase 91 — Kolonie-Aufgabe & -Umbenennung-E2E
-
-**Ziel:** Kolonie-Aufgabe und -Umbenennung gegen den Java-Server validieren.
-
-**Umfang:**
-- Kolonie aufgeben (`abandonColony`)
-- Kolonie umbenennen (`renameColony`)
-- Modell-Updates verifizieren
-
-**Implementierung:**
-- Neue Probe `REAL_SERVER_COLONY_ABANDON_RENAME_E2E`
-- Szenario: Kolonie gründen, umbenennen, aufgeben
-- Assert: Kolonie-Status im Modell, Tile-Freigabe
-
-**Aufwand:** 4–6 Stunden (0,5 Tag)
+**Aufwand:** 1 Tag.
 
 ---
 
-### Phase 92 — Diplomatie-Tiefe-E2E
+## Cluster B — Restliche E2E-Abdeckung (Hoch, nach Phase 92)
 
-**Ziel:** Erweiterte Diplomatie-Szenarien gegen den Java-Server validieren.
+| Phase | Inhalt | Anmerkung |
+|-------|--------|-----------|
+| 94 | Kolonie aufgeben (`abandonColony`) | Rename ist durch Phase 67 abgedeckt. Neu: Abandon + Tile-Freigabe |
+| 95 | Diplomatie-Tiefe: Geschenk, Tribut, Stance | Braucht die Fixtures aus Phase 92 |
+| 96 | `emigrateUnit` mit konkretem Slot / Fountain of Youth | Setzt `selectRecruit` bzw. Debug voraus |
 
-**Umfang:**
-- Geschenk senden (`sendGift`)
-- Tribut fordern (`demandTribute`)
-- Stance-Änderungen (`setStance`)
-- Bündnis-Verhandlungen
-
-**Implementierung:**
-- Neue Probe `REAL_SERVER_DIPLOMACY_DEPTH_E2E`
-- Szenario: Geschenk an KI-Spieler, Stance-Wechsel, Tribut-Anfrage
-- Assert: Stance-Updates, Gold-/Güter-Transaktionen
-
-**Aufwand:** 6–8 Stunden (0,5–1 Tag)
+Aufwand gesamt: 1–2 Tage.
 
 ---
 
-## Cluster C: UI/UX-Verbesserungen (Mittelpriorität)
+## Cluster C — Wartbarkeit (Mittel)
 
-### Phase 93 — Erweiterte Kolonie-Ansicht
+### Phase 97 — CLI-Refactor
 
-**Ziel:** Kolonie-Detailansicht mit mehr Informationen und Interaktionen.
-
-**Umfang:**
-- Produktions-Vorschau (was wird in N produziert?)
-- Arbeitsplatz-Detailansicht (wer arbeitet wo, was produziert er?)
-- Lagerhaus-Bestand mit Filter- und Sortieroptionen
-- Build-Queue mit Prioritätsänderung
-
-**Implementierung:**
-- Neue SwiftUI-Views für Kolonie-Details
-- Erweiterte `GameState`-Methoden für Produktions-Vorschau
-- UI-Tests für neue Komponenten
-
-**Aufwand:** 8–10 Stunden (1 Tag)
+`Sources/FreeColProtocolCLI/main.swift` hat ~6000 Zeilen, nur ein Teil der Probes ist
+ausgelagert. Gemeinsame Helfer (Login/Launch, `endTurnAndWait`, `direction(from:to:)`,
+Carrier nach Europa, Skip-Meldung) in `ProbeSupport.swift` extrahieren, alle Probes nach
+`Probes/`. Offline-Tests in eine eigene Datei. Aufwand 0,5–1 Tag.
 
 ---
 
-### Phase 94 — Erweiterte Einheiten-Ansicht
+## Cluster D — UI/UX (Mittel)
 
-**Ziel:** Einheiten-Detailansicht mit mehr Informationen und Interaktionen.
+Erst nach Cluster A, damit die UI auf verifiziertem Modell aufsetzt.
 
-**Umfang:**
-- Einheiten-Fähigkeiten und -Erfahrung
-- Cargo-Detailansicht mit Drag-and-Drop
-- Einheiten-Vergleich (z.B. Kampfstärke)
-- Schnellzugriff auf häufige Aktionen
-
-**Implementierung:**
-- Neue SwiftUI-Views für Einheiten-Details
-- Erweiterte `GameState`-Methoden für Einheiten-Informationen
-- UI-Tests für neue Komponenten
-
-**Aufwand:** 6–8 Stunden (0,5–1 Tag)
+| Phase | Inhalt |
+|-------|--------|
+| 98 | Kolonie: Produktionsvorschau, Build-Queue-Priorität |
+| 99 | Einheiten: Fähigkeiten/Erfahrung, Cargo-Detailansicht |
+| 100 | Karte: Overlays (Ressourcen, Routen, Pfade), Legende, Minimap |
+| 101 | Berichte: Filter, Sortierung, CSV-Export |
 
 ---
 
-### Phase 95 — Erweiterte Karten-Ansicht
+## Cluster E — Robustheit (Mittel)
 
-**Ziel:** Karten-Ansicht mit mehr Informationen und Interaktionen.
-
-**Umfang:**
-- Karten-Overlays für Ressourcen, Handelsrouten, Einheiten-Pfade
-- Zoom- und Pan-Verbesserungen
-- Karten-Legende und -Filter
-- Minimap-Verbesserungen
-
-**Implementierung:**
-- Neue SwiftUI-Views für Karten-Overlays
-- Erweiterte `MapView`-Funktionalität
-- UI-Tests für neue Komponenten
-
-**Aufwand:** 8–10 Stunden (1 Tag)
+| Phase | Inhalt |
+|-------|--------|
+| 102 | Auto-Reconnect mit Statusanzeige und Aktions-Queue |
+| 103 | Zentrale Fehlerbehandlung (`userFacingServerError`-Abdeckung gegen reale Server-Texte aus den E2E-Logs) |
+| 104 | Performance/Speicher — erst nach Profiling mit Instruments |
 
 ---
 
-### Phase 96 — Erweiterte Berichte
+## Cluster F — Optional (nur auf Wunsch)
 
-**Ziel:** Berichte mit mehr Informationen und Interaktionen.
-
-**Umfang:**
-- Berichte mit Diagrammen und Visualisierungen
-- Berichte mit Filter- und Sortieroptionen
-- Berichte mit Export-Funktion (z.B. CSV)
-- Berichte mit Druck-Funktion
-
-**Implementierung:**
-- Neue SwiftUI-Views für Berichte
-- Erweiterte `GameState`-Methoden für Berichts-Daten
-- UI-Tests für neue Komponenten
-
-**Aufwand:** 6–8 Stunden (0,5–1 Tag)
-
----
-
-## Cluster D: Robustheit & Performance (Mittelpriorität)
-
-### Phase 97 — Reconnect-Verbesserungen
-
-**Ziel:** Reconnect-Fähigkeiten verbessern.
-
-**Umfang:**
-- Automatischer Reconnect bei Verbindungsverlust
-- Reconnect mit Warteschlange für Aktionen
-- Reconnect-Status-Anzeige
-- Reconnect-Tests
-
-**Implementierung:**
-- Erweiterte `FreeColClient`-Logik für Reconnect
-- Neue UI-Komponenten für Reconnect-Status
-- Unit-Tests für Reconnect-Szenarien
-
-**Aufwand:** 6–8 Stunden (0,5–1 Tag)
-
----
-
-### Phase 98 — Fehlerbehandlung-Verbesserungen
-
-**Ziel:** Fehlerbehandlung verbessern.
-
-**Umfang:**
-- Zentralisierte Fehlerbehandlung
-- Benutzerfreundliche Fehlermeldungen
-- Fehler-Protokollierung
-- Fehler-Wiederherstellung
-
-**Implementierung:**
-- Neue `ErrorHandler`-Klasse
-- Erweiterte `userFacingServerError`-Mappings
-- Unit-Tests für Fehlerbehandlung
-
-**Aufwand:** 4–6 Stunden (0,5 Tag)
-
----
-
-### Phase 99 — Performance-Optimierungen
-
-**Ziel:** Performance verbessern.
-
-**Umfang:**
-- Karten-Rendering optimieren
-- Nachrichten-Verarbeitung optimieren
-- Speicherverbrauch optimieren
-- UI-Updates optimieren
-
-**Implementierung:**
-- Profiling und Identifikation von Engpässen
-- Optimierung der kritischen Pfade
-- Performance-Tests
-
-**Aufwand:** 8–10 Stunden (1 Tag)
-
----
-
-### Phase 100 — Speicherverbrauch-Optimierungen
-
-**Ziel:** Speicherverbrauch reduzieren.
-
-**Umfang:**
-- Modell-Objekte optimieren
-- Bilder und Ressourcen optimieren
-- Caching-Strategie implementieren
-- Speicher-Tests
-
-**Implementierung:**
-- Profiling und Identifikation von Speicher-Engpässen
-- Optimierung der kritischen Pfade
-- Speicher-Tests
-
-**Aufwand:** 6–8 Stunden (0,5–1 Tag)
-
----
-
-## Cluster E: Erweiterte Spielmechaniken (Niedrigpriorität)
-
-### Phase 101 — Save/Load-Unterstützung
-
-**Ziel:** Save/Load-Funktionalität implementieren.
-
-**Hinweis:** Dies ist aktuell als Nicht-Ziel markiert, könnte aber auf Wunsch implementiert werden.
-
-**Umfang:**
-- Spielstand speichern
-- Spielstand laden
-- Spielstand-Verwaltung
-
-**Implementierung:**
-- Neue `SaveLoadManager`-Klasse
-- UI für Save/Load-Dialoge
-- Integration mit `FreeColClient`
-
-**Aufwand:** 12–16 Stunden (1,5–2 Tage)
-
----
-
-### Phase 102 — Metaserver-Browser
-
-**Ziel:** Metaserver-Browser implementieren.
-
-**Hinweis:** Dies ist aktuell als Nicht-Ziel markiert, könnte aber auf Wunsch implementiert werden.
-
-**Umfang:**
--Serverliste abrufen
-- Serverdetails anzeigen
-- Server beitreten
-
-**Implementierung:**
-- Neue `MetaserverClient`-Klasse
-- UI für Metaserver-Browser
-- Integration mit `FreeColClient`
-
-**Aufwand:** 8–12 Stunden (1–1,5 Tage)
-
----
-
-### Phase 103 — Erweiterte Diplomatie-Mechaniken
-
-**Ziel:** Erweiterte Diplomatie-Mechaniken implementieren.
-
-**Umfang:**
-- Bündnisse
-- Handelsabkommen
-- Nicht-Angriffs-Pakte
-- Kriegserklärungen
-
-**Implementierung:**
-- Erweiterte `DiplomaticTrade`-Modelle
-- Neue UI-Komponenten für Diplomatie
-- Integration mit `GameState`
-
-**Aufwand:** 10–14 Stunden (1–1,5 Tage)
-
----
-
-### Phase 104 — Erweiterte Handels-Mechaniken
-
-**Ziel:** Erweiterte Handels-Mechaniken implementieren.
-
-**Umfang:**
-- Handelsrouten mit mehreren Stopps
-- Handelsrouten mit automatischer Ausführung
-- Handelsrouten mit Prioritäten
-- Handelsrouten mit Bedingungen
-
-**Implementierung:**
-- Erweiterte `TradeRoute`-Modelle
-- Neue UI-Komponenten für Handelsrouten
-- Integration mit `GameState`
-
-**Aufwand:** 10–14 Stunden (1–1,5 Tage)
-
----
-
-## Zusammenfassung
-
-| Phase | Titel | Priorität | Aufwand | Cluster |
-|-------|-------|-----------|---------|---------|
-| 87 | Diplomatie- & Native-Handels-E2E (Fortsetzung) | Hoch | 2–3 Tage | A |
-| 88 | Kampf-E2E-Validierung | Hoch | 1 Tag | B |
-| 89 | Missionar- & Spionage-E2E | Hoch | 0,5–1 Tag | B |
-| 90 | Rekrutierung & Einwanderung-E2E | Hoch | 0,5–1 Tag | B |
-| 91 | Kolonie-Aufgabe & -Umbenennung-E2E | Hoch | 0,5 Tag | B |
-| 92 | Diplomatie-Tiefe-E2E | Hoch | 0,5–1 Tag | B |
-| 93 | Erweiterte Kolonie-Ansicht | Mittel | 1 Tag | C |
-| 94 | Erweiterte Einheiten-Ansicht | Mittel | 0,5–1 Tag | C |
-| 95 | Erweiterte Karten-Ansicht | Mittel | 1 Tag | C |
-| 96 | Erweiterte Berichte | Mittel | 0,5–1 Tag | C |
-| 97 | Reconnect-Verbesserungen | Mittel | 0,5–1 Tag | D |
-| 98 | Fehlerbehandlung-Verbesserungen | Mittel | 0,5 Tag | D |
-| 99 | Performance-Optimierungen | Mittel | 1 Tag | D |
-| 100 | Speicherverbrauch-Optimierungen | Mittel | 0,5–1 Tag | D |
-| 101 | Save/Load-Unterstützung | Niedrig | 1,5–2 Tage | E |
-| 102 | Metaserver-Browser | Niedrig | 1–1,5 Tage | E |
-| 103 | Erweiterte Diplomatie-Mechaniken | Niedrig | 1–1,5 Tage | E |
-| 104 | Erweiterte Handels-Mechaniken | Niedrig | 1–1,5 Tage | E |
-
-**Gesamtaufwand (Cluster A–D):** 20–30 Tage  
-**Gesamtaufwand (alle Cluster):** 30–45 Tage
+Save/Load, Metaserver-Browser, erweiterte Diplomatie- und Handelsmechaniken. In den Docs
+bisher bewusst als Nicht-Ziele geführt.
 
 ---
 
 ## Empfohlene Reihenfolge
 
-1. **Phase 87 abschließen** (Cluster A) — Verhindert, dass die E2E-Abdeckung unvollständig bleibt
-2. **Cluster B (Phasen 88–92)** — E2E-Abdeckung für Kern-Spielmechaniken
-3. **Cluster C (Phasen 93–96)** — UI/UX-Verbesserungen für bessere Spielbarkeit
-4. **Cluster D (Phasen 97–100)** — Robustheit und Performance
-5. **Cluster E (Phasen 101–104)** — Erweiterte Spielmechaniken (optional)
+1. **Phase 93** — native UI-Sichtprüfung für Transit-/Ankunftsanzeige und Einheitenwahl
+2. **Phasen 94–96** — restliche E2E
+3. **Phase 97** — CLI-Refactor
+4. **Cluster D, E** — UI und Robustheit
+5. **Cluster F** — nur auf Wunsch
 
----
+## Betrieb der E2E-Suite
 
-## Nächste Schritte
+```bash
+Tools/e2e-java-server.sh                          # alle Proben, Summary am Ende
+ONLY="recruitment combat" Tools/e2e-java-server.sh  # einzelne Proben
+STRICT_SKIPS=1 Tools/e2e-java-server.sh           # Skips gelten als Fehler (Exit 2)
+```
 
-1. Dieses Dokument mit dem Nutzer besprechen
-2. Priorisierung bestätigen
-3. Phase 87 als nächste Phase starten
-4. Nach Abschluss von Phase 87: Cluster B beginnen
-
----
+Voraussetzung: Docker und das Image `docker-freecol-server:latest`
+(`docker compose -f ../freecol/docker/docker-compose.yml build`).
 
 ## Verwandte Dokumente
 
-- `Docs/Plans/plans.md` — Gesamtplanung
+- `Docs/Plans/plans.md` — Gesamtplanung und Phasenprotokoll
 - `Docs/Plans/freecol-client-roadmap.md` — Roadmap
-- `Docs/Plans/freecol-client-overview.md` — Übersicht
-- `Docs/Plans/phase87-diplomacy-native-trade-e2e-plan.md` — Phase 87 Detailplan
+- `Docs/Plans/phase90-recruitment-immigration-e2e-plan.md` — Beispiel für die korrigierten Wire-Formate

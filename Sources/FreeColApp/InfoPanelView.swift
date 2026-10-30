@@ -31,7 +31,7 @@ struct InfoPanelView: View {
 
     private func unitContent(_ unit: FreeColGame.Unit) -> some View {
         HStack(spacing: 10) {
-            if let game = state.game,
+            if state.game != nil,
                let nsImg = TileImageCache.shared.unitImage(forUnitType: unit.unitType) {
                 Image(nsImage: nsImg)
                     .resizable()
@@ -109,18 +109,26 @@ struct InfoPanelView: View {
     }
 
     private func movesLabel(_ unit: FreeColGame.Unit) -> String {
-        if let game = state.game, game.tiles[unit.location ?? ""] == nil,
-           unitLocationIsEurope(unit) {
+        guard let game = state.game else {
+            return "Moves: \(unit.movesLeft)"
+        }
+        if let location = unit.location, location.hasPrefix("highSeas:") {
+            let destinationIsEurope = game.players.values.contains {
+                $0.europe?.id == unit.destination
+            }
+            let destination = destinationIsEurope ? "Europe" : "New World"
+            return "Sailing to \(destination) (\(max(unit.workLeft, 0)) turns)"
+        }
+        if unitLocationIsEurope(unit, in: game) {
             return "In Europe"
         }
         return "Moves: \(unit.movesLeft)"
     }
 
-    private func unitLocationIsEurope(_ unit: FreeColGame.Unit) -> Bool {
-        guard let game = state.game else { return false }
-        if let loc = unit.location, game.units[loc] != nil { return false }
-        if let loc = unit.location, game.tiles[loc] != nil { return false }
-        return true
+    private func unitLocationIsEurope(_ unit: FreeColGame.Unit,
+                                     in game: FreeColGame.Game) -> Bool {
+        guard let location = unit.location else { return false }
+        return game.players.values.contains { $0.europe?.id == location }
     }
 
     // MARK: - TILE mode
@@ -160,7 +168,9 @@ struct InfoPanelView: View {
             }
 
             if let region = tile.region {
-                Text("Region: \(short(region, prefix: "model.region."))")
+                let regionName = state.game?.regions[region]?.displayName
+                    ?? short(region, prefix: "model.region.")
+                Text("Region: \(regionName)")
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -301,7 +311,7 @@ struct InfoPanelView: View {
     }
 
     private func playerColor(for playerId: String) -> Color? {
-        guard let game = state.game else { return nil }
+        guard state.game != nil else { return nil }
         let colors: [Color] = [.blue, .red, .green, .orange, .purple, .brown, .cyan, .mint]
         let idx = abs(playerId.hashValue) % colors.count
         return colors[idx]

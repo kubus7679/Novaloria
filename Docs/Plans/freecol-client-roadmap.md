@@ -4,7 +4,11 @@
 > angebunden. „Spielbar wie der Java-Client" ist damit noch nicht erreicht.
 > Die verifizierten Restlücken stehen in
 > `Docs/Plans/playability-roadmap-54-57.md` (Phasen 54–65) sowie die
-> Economy-/Colony-Management-Follow-ups der Phasen 66–82.
+> Economy-/Colony-Management-Follow-ups der Phasen 66–91. Echt gegen den
+> Java-Server validiert sind alle 11 Proben (smoke, deep, gameplay, reject,
+> traderoute, multiplayer, Native Trade, Diplomatie, Kampf, Missionar/Spionage,
+> Recruitment); `STRICT_SKIPS=1` läuft ohne Skip oder Fehler. Die native UI-
+> Sichtprüfung der Transit-/Ankunftsanzeige steht noch aus.
 
 ## Phase 1: Colony and Unit UX completion
 
@@ -174,9 +178,11 @@
       turn end: move carriers to stops, load/unload goods, advance route counter.
       Auto-execute toggle in trade route editor. See
       `phase83-automated-trade-route-execution-plan.md`.
-- [x] **84 Trade Route E2E Validation** — dedicated end-to-end test for automatic
-      trade route execution against the Java FreeCol server. Verifies carrier
-      movement, currentStop increment, route looping, and cargo handling.
+- [x] **84 Trade Route E2E Validation** — dedicated end-to-end test for trade route
+      assignment against the Java FreeCol server. Route stops are advanced
+      client-side via `setCurrentStop` (the server does not do it at turn end);
+      the probe verifies assignment, endTurn invariance, stop cycling with
+      wrap-around and rejection of an out-of-range index.
       See `phase84-trade-route-e2e-validation-plan.md`.
 - [x] **85 Multiplayer Turn Gating** — complete turn ownership parity with Java
       client for multiplayer: validates current player can endTurn, non-current
@@ -204,6 +210,14 @@
       skill results via modelMessage, and spy reports with colony details.
       Probe skips when no missionary/scout units or reachable targets. See
       `phase89-missionary-spy-e2e-plan.md`.
+- [x] **90 Recruitment & Europe purchase E2E** — `moveTo` Europe, `emigrateUnit`,
+      `trainUnitInEurope` verified against Java without skip. See
+      `phase90-recruitment-immigration-e2e-plan.md`.
+- [x] **91 Real E2E validation & client model fixes** — first real run of the
+      whole suite; fixed `<highSeas>`/`<europe>` updates, specification-based
+      Europe unit prices, flawed trade-route/multiplayer/prompt probes; E2E
+      script now reports passed/skipped/failed. Phases 87–89 remain
+      unverified (probes skip). See `plans.md`.
 
 ## Suggested order
 

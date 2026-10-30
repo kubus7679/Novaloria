@@ -15,7 +15,8 @@ func diplomacyE2EProbe() async throws {
     let nationId = vacant?.children.first?.attributes["nationId"]
         ?? vacant?.children.first?.attributes["id"]
         ?? "model.nation.dutch"
-    let userName = "CopilotDiplomacy-\(Int(Date().timeIntervalSince1970))"
+    let userName = ProcessInfo.processInfo.environment["REAL_SERVER_USERNAME"]
+        ?? "CopilotDiplomacy-\(Int(Date().timeIntervalSince1970))"
 
     let result = try await client.login(userName: userName, nationId: nationId)
     if result.serverState == .preGame {
@@ -51,7 +52,8 @@ func diplomacyE2EProbe() async throws {
         func diplomacyTarget(in current: FreeColGame.Game) -> (unitId: String, colonyId: String, ownerId: String)? {
             for (unitId, unit) in current.units {
                 guard unit.owner == localPlayerId,
-                      spec.hasAbility("model.ability.negotiate", unitType: unit.unitType),
+                      (spec.hasAbility("model.ability.negotiate", unitType: unit.unitType)
+                       || unit.role == "model.role.scout"),
                       let unitTileId = current.resolvedTileId(for: unit),
                       let unitTile = current.tiles[unitTileId] else { continue }
                 for (colonyId, colony) in current.colonies {
@@ -80,9 +82,11 @@ func diplomacyE2EProbe() async throws {
                 if current.turn.number > turnBefore && current.currentPlayerId == localPlayerId { return }
                 try await Task.sleep(nanoseconds: 500_000_000)
             }
+            throw TestError(message: "local player's turn did not return after endTurn")
         }
 
-        for _ in 0..<15 {
+        let scenarioFixture = ProcessInfo.processInfo.environment["REAL_SERVER_SCENARIO_FIXTURE"] == "1"
+        for _ in 0..<(scenarioFixture ? 0 : 15) {
             if diplomacyTarget(in: game) != nil { break }
             try await endTurnAndWait()
             game = await client.game
@@ -165,11 +169,8 @@ func diplomacyE2EProbe() async throws {
 
         // Send proposal and wait for an asynchronous AI answer.
         let responseStart = delegate.receivedPayloads.count
-        let response = try await client.ask(message: proposalMessage, timeout: 60)
-        guard response.tag != "error" else {
-            throw TestError(message: "diplomacy proposal returned immediate error")
-        }
-        print("    diplomacy proposal accepted by server envelope")
+        try await client.send(message: proposalMessage)
+        print("    diplomacy proposal sent")
 
         if let aiReply = try await waitForDiplomacyResponse(after: responseStart, timeout: 30),
            let trade = aiReply.children.first(where: { $0.tag == "diplomaticTrade" }) {

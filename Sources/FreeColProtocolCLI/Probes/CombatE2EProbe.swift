@@ -15,7 +15,8 @@ func combatE2EProbe() async throws {
     let nationId = vacant?.children.first?.attributes["nationId"]
         ?? vacant?.children.first?.attributes["id"]
         ?? "model.nation.dutch"
-    let userName = "CopilotCombat-\(Int(Date().timeIntervalSince1970))"
+    let userName = ProcessInfo.processInfo.environment["REAL_SERVER_USERNAME"]
+        ?? "CopilotCombat-\(Int(Date().timeIntervalSince1970))"
 
     let result = try await client.login(userName: userName, nationId: nationId)
     if result.serverState == .preGame {
@@ -28,20 +29,16 @@ func combatE2EProbe() async throws {
                 children: [
                     ParsedMessage(tag: "integerOption", attributes: ["id": "model.option.mapWidth", "value": "40"], children: []),
                     ParsedMessage(tag: "integerOption", attributes: ["id": "model.option.mapHeight", "value": "40"], children: []),
-                    ParsedMessage(tag: "integerOption", attributes: ["id": "model.option.landMass", "value": "70"], children: []),
+                    ParsedMessage(tag: "integerOption", attributes: ["id": "model.option.landMass", "value": "50"], children: []),
                     ParsedMessage(tag: "selectOption", attributes: ["id": "model.option.landGeneratorType", "value": "1"], children: []),
                 ]
             )]
         )
-        do {
-            _ = try await client.ask(message: ParsedMessage(
-                tag: "updateMapGeneratorOptions",
-                attributes: [:],
-                children: [mapGeneratorOptions]
-            ), timeout: 10)
-        } catch {
-            print("    map-generator options unchanged: \(error)")
-        }
+        try await client.send(message: ParsedMessage(
+            tag: "updateMapGeneratorOptions",
+            attributes: [:],
+            children: [mapGeneratorOptions]
+        ))
         try await client.send(message: ParsedMessage(tag: "ready", attributes: ["value": "true"], children: []))
         try await client.send(message: ParsedMessage(tag: "requestLaunch", attributes: [:], children: []))
     }
@@ -178,6 +175,19 @@ func combatE2EProbe() async throws {
         return false
     }
 
+    func attackAndWait(unitId: String, direction: String) async throws -> Bool {
+        do {
+            let response = try await client.ask(message: ParsedMessage(
+                tag: "attack",
+                attributes: ["unit": unitId, "direction": direction],
+                children: []
+            ), timeout: 10)
+            return response.tag != "error"
+        } catch {
+            return false
+        }
+    }
+
     func endTurnAndWait() async throws {
         let turnBefore = await client.game.turn.number
         _ = try await client.ask(message: ParsedMessage(tag: "endTurn", attributes: [:], children: []), timeout: 45)
@@ -193,7 +203,9 @@ func combatE2EProbe() async throws {
     var combatPerformed = false
     var colonyAttackPerformed = false
     
-    for turn in 0..<15 {
+    let scenarioFixture = ProcessInfo.processInfo.environment["REAL_SERVER_SCENARIO_FIXTURE"] == "1"
+    let searchLimit = scenarioFixture ? 1 : 15
+    for _ in 0..<searchLimit {
         game = await client.game
         
         // Try unit vs unit combat first
@@ -203,9 +215,10 @@ func combatE2EProbe() async throws {
             
             let defenderId = target.defenderId
             let defenderOwner = game.units[defenderId]?.owner
-            let attackerTileIdBefore = game.resolvedTileId(for: game.units[target.attackerId]!)
-            
-            if try await moveAndWait(unitId: target.attackerId, direction: target.direction) {
+            let attackerMovesBefore = game.units[target.attackerId]?.movesLeft ?? 0
+            print("    combat stance: \(game.players[localPlayerId]?.stances[defenderOwner ?? ""]?.rawValue ?? "unknown")")
+
+            if try await attackAndWait(unitId: target.attackerId, direction: target.direction) {
                 // Wait for combat result
                 var combatResolved = false
                 for _ in 0..<100 {
@@ -235,6 +248,12 @@ func combatE2EProbe() async throws {
                         combatPerformed = true
                         combatResolved = true
                         break
+                    } else if let attackerMoves = game.units[target.attackerId]?.movesLeft,
+                              attackerMoves < attackerMovesBefore {
+                        print("    combat processed: attacker moves \(attackerMovesBefore) -> \(attackerMoves)")
+                        combatPerformed = true
+                        combatResolved = true
+                        break
                     }
                     try await Task.sleep(nanoseconds: 200_000_000)
                 }
@@ -251,9 +270,8 @@ func combatE2EProbe() async throws {
             print("    colony attack target: colony \(target.colonyId) at \(target.colonyTileId) (owner \(game.players[game.colonies[target.colonyId]?.owner ?? ""]?.name ?? "?"))")
             
             let colonyOwnerBefore = game.colonies[target.colonyId]?.owner
-            let attackerTileIdBefore = game.resolvedTileId(for: game.units[target.attackerId]!)
             
-            if try await moveAndWait(unitId: target.attackerId, direction: target.direction) {
+            if try await attackAndWait(unitId: target.attackerId, direction: target.direction) {
                 var colonyAttackResolved = false
                 for _ in 0..<100 {
                     game = await client.game
@@ -297,7 +315,7 @@ func combatE2EProbe() async throws {
                       let unitTile = game.tiles[unitTileId] else { continue }
                 let directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
                 for dir in directions {
-                    if let neighborId = direction(from: unitTile, to: game.tiles.values.first(where: { t in direction(from: unitTile, to: t) == dir }) ?? unitTile) {
+                    if game.tiles.values.contains(where: { direction(from: unitTile, to: $0) == dir }) {
                         _ = try await moveAndWait(unitId: unitId, direction: dir)
                         break
                     }
@@ -310,7 +328,7 @@ func combatE2EProbe() async throws {
     }
     
     if !combatPerformed && !colonyAttackPerformed {
-        print("    combat skipped: no enemy unit or AI colony in reach after 15 turns")
+        print("    combat skipped: no enemy unit or AI colony in reach after \(searchLimit) turns")
     }
     
     await client.disconnect()

@@ -12,6 +12,9 @@
 #   FREECOL_IMAGE   Docker image (default: docker-freecol-server:latest)
 #   FREECOL_PORT    Host port (default: 3541)
 #   KEEP_SERVER     Set to 1 to leave the container running afterwards
+#   STRICT_SKIPS    Set to 1 to treat probes that skipped (no reachable target)
+#                   as failures
+#   ONLY            Space-separated probe names to run (e.g. "combat recruitment")
 
 set -euo pipefail
 
@@ -59,9 +62,15 @@ XML
 
 start_server() {
   docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
-  # shellcheck disable=SC2086
+  # Server args are '|'-separated so values may contain spaces (--difficulty|Very Easy).
+  # An explicit --difficulty replaces the Easy default.
+  local server_args=()
+  [ -n "${1:-}" ] && IFS='|' read -ra server_args <<< "$1"
+  local difficulty=(--difficulty Easy)
+  [[ "${1:-}" == *--difficulty* ]] && difficulty=()
   docker run -d --name "$CONTAINER" -p "$PORT":3541 -v "$VOLUME":/data \
-    "$IMAGE" --difficulty Easy ${1:-} >/dev/null
+    -v "$ROOT/Tools/fixtures":/fixtures:ro \
+    "$IMAGE" ${difficulty[@]+"${difficulty[@]}"} ${server_args[@]+"${server_args[@]}"} >/dev/null
   echo "==> Waiting for Java server on 127.0.0.1:$PORT"
   for _ in $(seq 1 30); do
     if nc -z 127.0.0.1 "$PORT" >/dev/null 2>&1; then
@@ -75,84 +84,74 @@ start_server() {
   exit 1
 }
 
-echo "==> Smoke probe (connect / login / launch transport)"
-start_server
-(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_E2E=1 \
-  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
-  swift run FreeColProtocolCLI)
+PASSED=()
+FAILED=()
+SKIPPED=()
+STRICT_SKIPS="${STRICT_SKIPS:-0}"
+ONLY="${ONLY:-}"
+E2E_LOG_LEVEL="${E2E_LOG_LEVEL:-error}"
+SEED_TRADE_ROUTE="${E2E_SEED_TRADE_ROUTE:-33333}"
+LOG_DIR="$(mktemp -d)"
 
-echo "==> Deep probe (pre-game to in-game on a fresh server)"
-start_server
-(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_DEEP_E2E=1 \
-  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
-  swift run FreeColProtocolCLI)
+# run_probe NAME TITLE "SERVER_ARGS" ENV=VALUE...
+# Starts a fresh server, runs one CLI probe and classifies it as passed,
+# skipped (probe printed "skipped") or failed. A failure never aborts the suite.
+run_probe() {
+  local name="$1" title="$2" server_args="$3"
+  shift 3
+  if [ -n "$ONLY" ] && [[ " $ONLY " != *" $name "* ]]; then
+    return 0
+  fi
+  echo "==> $title"
+  start_server "$server_args"
+  local log="$LOG_DIR/$name.log" status=0
+  (cd "$ROOT" && env FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_HOST=127.0.0.1 \
+    REAL_SERVER_PORT="$PORT" FREECOL_LOG="$E2E_LOG_LEVEL" "$@" swift run FreeColProtocolCLI) >"$log" 2>&1 || status=$?
+  grep -E "^\s+(PASS|FAIL)|skipped|^[0-9]+ passed" "$log" || true
+  if [ "$status" -ne 0 ] || grep -q "^  FAIL" "$log"; then
+    FAILED+=("$name")
+    tail -n 25 "$log"
+  elif grep -q "skipped" "$log"; then
+    SKIPPED+=("$name")
+  else
+    PASSED+=("$name")
+  fi
+}
 
-echo "==> Gameplay probe (colony, warehouse, trade route, market, move and end turn)"
-start_server
-(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_GAMEPLAY_E2E=1 \
-  REAL_SERVER_REQUIRE_MARKET_TRADE=1 \
-  REAL_SERVER_REQUIRE_COLONY_FOUNDING=1 \
-  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
-  swift run FreeColProtocolCLI)
+run_probe smoke "Smoke probe (connect / login / launch transport)" "" \
+  REAL_SERVER_E2E=1
+run_probe deep "Deep probe (pre-game to in-game on a fresh server)" "" \
+  REAL_SERVER_DEEP_E2E=1
+run_probe gameplay "Gameplay probe (colony, warehouse, trade route, market, move and end turn)" "" \
+  REAL_SERVER_GAMEPLAY_E2E=1 REAL_SERVER_REQUIRE_MARKET_TRADE=1 \
+  REAL_SERVER_REQUIRE_COLONY_FOUNDING=1
+run_probe reject "Rejection probe (illegal action produces a Java server error reply)" "" \
+  REAL_SERVER_REJECT_E2E=1
+run_probe traderoute "Trade Route probe (assignment, client-driven setCurrentStop, endTurn invariance)" "--seed|$SEED_TRADE_ROUTE|--europeans|2" \
+  REAL_SERVER_TRADE_ROUTE_E2E=1
+run_probe multiplayer "Multiplayer Turn Gating probe (2+ players, turn ownership validation)" "" \
+  REAL_SERVER_MULTIPLAYER_E2E=1 REAL_SERVER_PLAYER_COUNT=2
+run_probe nativetrade "Native Trade Session probe (open/buy/haggle/close against real settlement)" "--load-savegame|/fixtures/native-trade.fsg" \
+  REAL_SERVER_NATIVE_TRADE_E2E=1 REAL_SERVER_USERNAME=FreeColE2ENativeTrade
+run_probe diplomacy "Diplomacy probe (proposal to European AI, async response handling)" "--load-savegame|/fixtures/scenario-e2e.fsg" \
+  REAL_SERVER_USERNAME=FreeColE2ENativeTrade REAL_SERVER_SCENARIO_FIXTURE=1 REAL_SERVER_DIPLOMACY_E2E=1
+run_probe combat "Combat probe (attack enemy unit, verify combat result)" "--load-savegame|/fixtures/scenario-e2e.fsg" \
+  REAL_SERVER_USERNAME=FreeColE2ENativeTrade REAL_SERVER_SCENARIO_FIXTURE=1 REAL_SERVER_COMBAT_E2E=1
+run_probe missionaryspy "Missionary & Spy probe (send missionary, spy settlement)" "--load-savegame|/fixtures/scenario-e2e.fsg" \
+  REAL_SERVER_USERNAME=FreeColE2ENativeTrade REAL_SERVER_SCENARIO_FIXTURE=1 REAL_SERVER_MISSIONARY_SPY_E2E=1
+run_probe recruitment "Recruitment probe (sail to Europe, recruit, emigrate, purchase)" "--difficulty|Very Easy|--seed|33333" \
+  REAL_SERVER_RECRUITMENT_E2E=1
 
-echo "==> Rejection probe (illegal action produces a Java server error reply)"
-start_server
-(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_REJECT_E2E=1 \
-  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
-  swift run FreeColProtocolCLI)
-
-echo "==> Trade Route Execution probe (automatic route execution at turn end)"
-start_server
-(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_TRADE_ROUTE_E2E=1 \
-  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
-  swift run FreeColProtocolCLI)
-
-echo "==> Multiplayer Turn Gating probe (2+ players, turn ownership validation)"
-start_server
-(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_MULTIPLAYER_E2E=1 \
-  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
-  REAL_SERVER_PLAYER_COUNT=2 \
-  swift run FreeColProtocolCLI)
-
-echo "==> Server Prompt Parity probe (monarchAction, firstContact, indianDemand)"
-start_server
-(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_PROMPT_E2E=1 \
-  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
-  swift run FreeColProtocolCLI)
-
-echo "==> Native Trade Session probe (open/buy/haggle/close against real settlement)"
-# Use a fixed seed that produces a temperate coast with reachable Native settlement
-start_server "--seed 12345"
-(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_NATIVE_TRADE_E2E=1 \
-  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
-  swift run FreeColProtocolCLI)
-
-echo "==> Diplomacy probe (proposal to European AI, async response handling)"
-# Use a fixed seed with multiple European AI players for adjacent colony
-start_server "--seed 67890 --europeans 4"
-(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_DIPLOMACY_E2E=1 \
-  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
-  swift run FreeColProtocolCLI)
-
-echo "==> Combat probe (attack enemy unit, verify combat result)"
-# Use a fixed seed with multiple European AI players for enemy units
-start_server "--seed 42 --europeans 4"
-(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_COMBAT_E2E=1 \
-  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
-  swift run FreeColProtocolCLI)
-
-echo "==> Missionary & Spy probe (send missionary, spy settlement)"
-# Use a fixed seed with multiple European AI players for native settlements and colonies
-start_server "--seed 22222 --europeans 4"
-(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_MISSIONARY_SPY_E2E=1 \
-  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
-  swift run FreeColProtocolCLI)
-
-echo "==> Recruitment probe (sail to Europe, recruit, emigrate, purchase)"
-# Use a fixed seed for reliable Europe access
-start_server "--seed 33333"
-(cd "$ROOT" && FREECOL_CLI_REAL_SERVER_ONLY=1 REAL_SERVER_RECRUITMENT_E2E=1 \
-  REAL_SERVER_HOST=127.0.0.1 REAL_SERVER_PORT="$PORT" \
-  swift run FreeColProtocolCLI)
-
+echo
+echo "==> E2E summary (logs in $LOG_DIR)"
+echo "    passed : ${#PASSED[@]} ${PASSED[*]:-}"
+echo "    skipped: ${#SKIPPED[@]} ${SKIPPED[*]:-}"
+echo "    failed : ${#FAILED[@]} ${FAILED[*]:-}"
+if [ "${#FAILED[@]}" -gt 0 ]; then
+  exit 1
+fi
+if [ "$STRICT_SKIPS" = "1" ] && [ "${#SKIPPED[@]}" -gt 0 ]; then
+  echo "STRICT_SKIPS=1: skipped probes count as failures" >&2
+  exit 2
+fi
 echo "==> E2E validation finished"

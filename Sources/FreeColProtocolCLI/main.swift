@@ -5558,10 +5558,7 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_TRADE_ROUTE_E2E"] == "1" {
         let client = FreeColClient(host: host, port: port)
 
         try await client.connect()
-        let vacant = await client.initialVacantPlayers
-        let nationId = vacant?.children.first?.attributes["nationId"]
-            ?? vacant?.children.first?.attributes["id"]
-            ?? "model.nation.dutch"
+        let nationId = "model.nation.dutch"
         let userName = "CopilotTradeRoute-\(Int(Date().timeIntervalSince1970))"
 
         let result = try await client.login(userName: userName, nationId: nationId)
@@ -5571,9 +5568,36 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_TRADE_ROUTE_E2E"] == "1" {
                 tag: "updateGameOptions",
                 attributes: [:],
                 children: [ParsedMessage(tag: "optionGroup", attributes: ["id": "gameOptions"], children: [
+                  ParsedMessage(tag: "optionGroup", attributes: ["id": "gameOptions.map"], children: [
                     ParsedMessage(tag: "integerOption", attributes: [
                         "id": "model.option.turnsToSail", "value": "1",
                     ], children: []),
+                    ParsedMessage(tag: "booleanOption", attributes: [
+                        "id": "model.option.fogOfWar", "value": "false",
+                    ], children: []),
+                  ]),
+                ])]
+            ))
+            try await client.send(message: ParsedMessage(
+                tag: "updateMapGeneratorOptions",
+                attributes: [:],
+                children: [ParsedMessage(tag: "optionGroup", attributes: ["id": "mapGeneratorOptions"], children: [
+                    ParsedMessage(tag: "optionGroup", attributes: [
+                        "id": "mapGeneratorOptions.landGenerator",
+                    ], children: [
+                        ParsedMessage(tag: "integerOption", attributes: [
+                            "id": "model.option.mapWidth", "value": "40",
+                        ], children: []),
+                        ParsedMessage(tag: "integerOption", attributes: [
+                            "id": "model.option.mapHeight", "value": "40",
+                        ], children: []),
+                        ParsedMessage(tag: "integerOption", attributes: [
+                            "id": "model.option.landMass", "value": "50",
+                        ], children: []),
+                        ParsedMessage(tag: "selectOption", attributes: [
+                            "id": "model.option.landGeneratorType", "value": "2",
+                        ], children: []),
+                    ]),
                 ])]
             ))
             try await client.send(message: ParsedMessage(tag: "ready", attributes: ["value": "true"], children: []))
@@ -5699,6 +5723,7 @@ if colonyId == nil {
                     })?.0
                 }
 
+                var explorationHeading = 0
                 for _ in 0..<60 {
                     game = await client.game
                     guard let carrier = game.units[carrierId],
@@ -5719,15 +5744,16 @@ if colonyId == nil {
                         }
                         continue
                     }
-                    // Move towards a coastal tile
-                    let allDirections = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+                    let directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+                    let candidates = directions.indices.map {
+                        directions[($0 + explorationHeading) % directions.count]
+                    }
                     var moved = false
-                    for dir in allDirections {
-                        let before = sourceTileId
+                    for direction in candidates {
                         do {
                             _ = try await client.ask(message: ParsedMessage(
                                 tag: "move",
-                                attributes: ["unit": carrierId, "direction": dir],
+                                attributes: ["unit": carrierId, "direction": direction],
                                 children: []
                             ), timeout: 8)
                         } catch {
@@ -5739,13 +5765,19 @@ if colonyId == nil {
                         }
                         for _ in 0..<10 {
                             game = await client.game
-                            if game.units[carrierId]?.location != before {
+                            if game.units[carrierId]?.location != sourceTileId {
                                 moved = true
+                                if let index = directions.firstIndex(of: direction) {
+                                    explorationHeading = index
+                                }
                                 break
                             }
                             try await Task.sleep(nanoseconds: 200_000_000)
                         }
                         if moved { break }
+                    }
+                    if !moved {
+                        explorationHeading = (explorationHeading + 1) % directions.count
                     }
                 }
 
@@ -5911,14 +5943,18 @@ guard reachedLand else {
         }
         print("    assigned trade route to carrier \(carrierId)")
 
-        // Record initial carrier location and trade route state
-        let initialCarrierLocation = game.units[carrierId]?.location
-        let initialCurrentStop = game.units[carrierId]?.currentStop ?? 0
+        // Java advances route stops client-side (setCurrentStop), not at turn end.
+        // Verify the server's assignment state, that endTurn leaves the stop
+        // untouched, and that setCurrentStop is applied, range-checked and wraps.
+        let stopCount = routeStops.count
+        let assignedStop = game.units[carrierId]?.currentStop ?? -1
+        guard (0..<stopCount).contains(assignedStop) else {
+            throw TestError(message: "server assigned invalid currentStop \(assignedStop)")
+        }
+        print("    server assigned currentStop \(assignedStop)")
 
-        // Execute endTurn to trigger automatic trade route execution
         let turnBefore = await client.game.turn.number
         _ = try await client.ask(message: ParsedMessage(tag: "endTurn", attributes: [:], children: []), timeout: 45)
-
         var advanced = false
         for _ in 0..<120 {
             if await client.game.turn.number > turnBefore {
@@ -5930,65 +5966,57 @@ guard reachedLand else {
         guard advanced else {
             throw TestError(message: "turn did not advance after endTurn")
         }
-
-        // Verify trade route execution
         game = await client.game
-        guard let updatedRoute = game.tradeRoutes[createdRoute.id],
-              let updatedCarrier = game.units[carrierId] else {
-            throw TestError(message: "trade route or carrier missing after turn end")
+        guard let carrierAfterTurn = game.units[carrierId],
+              carrierAfterTurn.tradeRoute == createdRoute.id else {
+            throw TestError(message: "carrier lost trade route assignment after endTurn")
         }
-
-        // Check that currentStop was incremented
-        let newCurrentStop = updatedCarrier.currentStop
-        let expectedStop = (initialCurrentStop + 1) % updatedRoute.stops.count
-        guard newCurrentStop == expectedStop else {
-            throw TestError(message: "currentStop not incremented correctly: expected \(expectedStop), got \(newCurrentStop)")
+        guard carrierAfterTurn.currentStop == assignedStop else {
+            throw TestError(message: "server unexpectedly changed currentStop on endTurn: \(assignedStop) -> \(carrierAfterTurn.currentStop)")
         }
-        print("    currentStop incremented to \(newCurrentStop)")
+        print("    endTurn left currentStop at \(assignedStop) (client-driven, as in Java)")
 
-        // Check that carrier moved (if it wasn't already at the stop)
-        let newCarrierLocation = updatedCarrier.location
-        if let initial = initialCarrierLocation,
-           let newLoc = newCarrierLocation,
-           newLoc != initial {
-            print("    carrier moved from \(initial) to \(newLoc)")
-        } else {
-            print("    carrier location unchanged (may have been at stop): \(newCarrierLocation ?? "nil")")
-        }
-
-        // Verify cargo was loaded/unloaded at the stop (if carrier reached the stop)
-        // The carrier should have loaded food at Europe or unloaded at colony
-        let carrierGoods = updatedCarrier.goods
-        print("    carrier cargo after turn: \(carrierGoods)")
-
-        // Execute a second endTurn to test route looping
-        let turnBefore2 = await client.game.turn.number
-        _ = try await client.ask(message: ParsedMessage(tag: "endTurn", attributes: [:], children: []), timeout: 45)
-
-        var advanced2 = false
-        for _ in 0..<120 {
-            if await client.game.turn.number > turnBefore2 {
-                advanced2 = true
-                break
+        // Step through every stop, then wrap to the first one.
+        for step in 1...stopCount {
+            let target = (assignedStop + step) % stopCount
+            _ = try await client.ask(message: ParsedMessage(
+                tag: "setCurrentStop",
+                attributes: ["unit": carrierId, "index": String(target)],
+                children: []
+            ), timeout: 8)
+            var applied = false
+            for _ in 0..<30 {
+                game = await client.game
+                if game.units[carrierId]?.currentStop == target {
+                    applied = true
+                    break
+                }
+                try await Task.sleep(nanoseconds: 200_000_000)
             }
-            try await Task.sleep(nanoseconds: 500_000_000)
+            guard applied else {
+                throw TestError(message: "setCurrentStop \(target) was not applied (got \(game.units[carrierId]?.currentStop ?? -1))")
+            }
         }
-        guard advanced2 else {
-            throw TestError(message: "turn did not advance after second endTurn")
-        }
+        print("    setCurrentStop cycled through \(stopCount) stops and wrapped to \(assignedStop)")
 
-        // Verify loop behavior - currentStop should wrap around
+        // Out-of-range index must be rejected without changing state.
+        let rejected: Bool
+        do {
+            _ = try await client.ask(message: ParsedMessage(
+                tag: "setCurrentStop",
+                attributes: ["unit": carrierId, "index": String(stopCount)],
+                children: []
+            ), timeout: 8)
+            rejected = false
+        } catch {
+            rejected = true
+        }
+        try await Task.sleep(nanoseconds: 500_000_000)
         game = await client.game
-        guard let finalRoute = game.tradeRoutes[createdRoute.id],
-              let finalCarrier = game.units[carrierId] else {
-            throw TestError(message: "trade route or carrier missing after second turn end")
+        guard game.units[carrierId]?.currentStop == assignedStop else {
+            throw TestError(message: "out-of-range setCurrentStop changed currentStop to \(game.units[carrierId]?.currentStop ?? -1)")
         }
-        let finalCurrentStop = finalCarrier.currentStop
-        let expectedFinalStop = (expectedStop + 1) % finalRoute.stops.count
-        guard finalCurrentStop == expectedFinalStop else {
-            throw TestError(message: "currentStop did not loop correctly: expected \(expectedFinalStop), got \(finalCurrentStop)")
-        }
-        print("    currentStop looped to \(finalCurrentStop)")
+        print("    out-of-range stop \(stopCount) left currentStop unchanged (rejectedReply=\(rejected))")
 
         await client.disconnect()
     }
@@ -6000,95 +6028,6 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_MULTIPLAYER_E2E"] == "1" {
         try await MultiplayerE2EHarness.runFromEnvironment()
     }
 }
-
-// Server Prompt Parity probe: verify monarchAction, firstContact, indianDemand prompts.
-if ProcessInfo.processInfo.environment["REAL_SERVER_PROMPT_E2E"] == "1" {
-    await integrationTest("real Java server prompt parity probe") {
-        let host = ProcessInfo.processInfo.environment["REAL_SERVER_HOST"] ?? "127.0.0.1"
-        let port = Int(ProcessInfo.processInfo.environment["REAL_SERVER_PORT"] ?? "3541") ?? 3541
-        let client = FreeColClient(host: host, port: port)
-
-        try await client.connect()
-        let vacant = await client.initialVacantPlayers
-        let nationId = vacant?.children.first?.attributes["nationId"]
-            ?? vacant?.children.first?.attributes["id"]
-            ?? "model.nation.dutch"
-        let userName = "CopilotPrompt-\(Int(Date().timeIntervalSince1970))"
-
-        let result = try await client.login(userName: userName, nationId: nationId)
-        if result.serverState == .preGame {
-            try await client.send(message: ParsedMessage(tag: "ready", attributes: ["value": "true"], children: []))
-            try await client.send(message: ParsedMessage(tag: "requestLaunch", attributes: [:], children: []))
-        }
-
-        let loopTask = Task { await client.startMessageLoop() }
-        defer { loopTask.cancel() }
-
-        var waited = 0
-        while true {
-            let current = await client.game
-            if current.currentPlayerId != nil && !current.units.isEmpty { break }
-            if waited >= 60 { throw TestError(message: "game did not start within 30s") }
-            try await Task.sleep(nanoseconds: 500_000_000)
-            waited += 1
-        }
-
-        // Test 1: Check if we can receive and handle monarchAction prompt
-        // Note: We can't easily trigger these prompts without specific game state,
-        // so this probe validates the client can parse and respond to them.
-        // The server may send these prompts during normal gameplay.
-
-        print("    Prompt parity test: client connected and ready for prompts")
-
-        // Simulate receiving a monarchAction question (for parsing test)
-        let monarchQuestion = ParsedMessage(
-            tag: "question",
-            attributes: ["networkReplyId": "100"],
-            children: [
-                ParsedMessage(
-                    tag: "monarchAction",
-                    attributes: ["action": "RAISE_TAX_ACT", "tax": "25", "monarch": "monarch.king.georgeI"],
-                    children: []
-                )
-            ]
-        )
-        let monarchReply = try await client.ask(message: monarchQuestion, timeout: 10)
-        print("    monarchAction question/answer test passed")
-
-        // Simulate receiving a firstContact question
-        let firstContactQuestion = ParsedMessage(
-            tag: "question",
-            attributes: ["networkReplyId": "101"],
-            children: [
-                ParsedMessage(
-                    tag: "firstContact",
-                    attributes: ["player": "player-1", "other": "player-native", "tile": "tile-100", "camps": "true"],
-                    children: []
-                )
-            ]
-        )
-        let firstContactReply = try await client.ask(message: firstContactQuestion, timeout: 10)
-        print("    firstContact question/answer test passed")
-
-        // Simulate receiving an indianDemand question
-        let indianDemandQuestion = ParsedMessage(
-            tag: "question",
-            attributes: ["networkReplyId": "102"],
-            children: [
-                ParsedMessage(
-                    tag: "indianDemand",
-                    attributes: ["unit": "unit-1", "colony": "colony-1", "type": "gold", "amount": "500"],
-                    children: []
-                )
-            ]
-        )
-        let indianDemandReply = try await client.ask(message: indianDemandQuestion, timeout: 10)
-        print("    indianDemand question/answer test passed")
-
-        await client.disconnect()
-    }
-}
-
 
 // Native Trade E2E probe: verify open, buy, haggle and close against a real native settlement.
 if ProcessInfo.processInfo.environment["REAL_SERVER_NATIVE_TRADE_E2E"] == "1" {

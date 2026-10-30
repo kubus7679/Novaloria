@@ -49,6 +49,28 @@ swift run FreeColProtocolCLI
 swift test
 ```
 
+### Java-Server-E2E
+
+Validiert den Client gegen den echten Java-FreeCol-Server (Docker nötig, Image
+`docker-freecol-server:latest` aus `../freecol/docker`).
+
+```bash
+Tools/e2e-java-server.sh                            # alle Proben, Summary am Ende
+ONLY="recruitment traderoute" Tools/e2e-java-server.sh  # einzelne Proben
+STRICT_SKIPS=1 Tools/e2e-java-server.sh             # Skips (kein erreichbares Ziel) = Fehler
+```
+
+Die Summary trennt *passed*, *skipped* und *failed*. Eine geskippte Probe ist **nicht**
+validiert. Aktueller Stand: siehe `Docs/Plans/next-phases-plan.md`.
+
+Die deterministischen Spielstands-Fixtures lassen sich aus einem Java-Autosave
+erzeugen:
+
+```bash
+python3 Tools/prepare-e2e-savegame.py /path/to/autosave.fsg Tools/fixtures/native-trade.fsg
+python3 Tools/prepare-scenario-e2e.py Tools/fixtures/native-trade.fsg Tools/fixtures/scenario-e2e.fsg
+```
+
 ### App-Bundle erzeugen
 
 ```bash
