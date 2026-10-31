@@ -1,6 +1,9 @@
 import SwiftUI
 import FreeColGame
 import AppKit
+import os
+
+private let mapRenderLog = OSLog(subsystem: "org.freecol.client", category: "MapRendering")
 
 private let baseTileW: Double = 64
 private let baseTileH: Double = 32
@@ -20,13 +23,7 @@ struct MapViewportKey: PreferenceKey {
 }
 
 private func tileOrigin(x: Int, y: Int, tileW: Double, tileH: Double) -> CGPoint {
-    let colW = tileW / 2
-    let rowH = tileH / 2
-    let offsetX = y.isMultiple(of: 2) ? 0.0 : colW
-    return CGPoint(
-        x: Double(x) * colW + offsetX + colW,
-        y: Double(y) * rowH + rowH
-    )
+    MapGeometry.origin(x: x, y: y, tileW: tileW, tileH: tileH)
 }
 
 private func diamondVertices(at origin: CGPoint, tileW: Double, tileH: Double) -> [CGPoint] {
@@ -38,27 +35,10 @@ private func diamondVertices(at origin: CGPoint, tileW: Double, tileH: Double) -
     ]
 }
 
-private func hitTest(location: CGPoint, tiles: [Tile], tileW: Double, tileH: Double) -> Tile? {
-    let halfW = tileW / 2
-    let halfH = tileH / 2
-    var bestTile: Tile?
-    var bestScore: Double = .greatestFiniteMagnitude
-    for tile in tiles {
-        let origin = tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
-        let dx = abs(location.x - origin.x) / halfW
-        let dy = abs(location.y - origin.y) / halfH
-        let score = dx + dy
-        if score <= 1, score <= bestScore {
-            bestScore = score
-            bestTile = tile
-        }
-    }
-    return bestTile
-}
-
 struct MapMouseCaptureView: NSViewRepresentable {
     var onLeftClick: (CGPoint) -> Void
     var onRightClick: (CGPoint) -> Void
+    var onDoubleClick: (CGPoint) -> Void = { _ in }
     var onDrag: (CGSize) -> Void = { _ in }
     var onScroll: (CGSize) -> Void = { _ in }
 
@@ -66,6 +46,7 @@ struct MapMouseCaptureView: NSViewRepresentable {
         let view = ClickCaptureNSView()
         view.onLeftClick = onLeftClick
         view.onRightClick = onRightClick
+        view.onDoubleClick = onDoubleClick
         view.onDrag = onDrag
         view.onScroll = onScroll
         return view
@@ -74,6 +55,7 @@ struct MapMouseCaptureView: NSViewRepresentable {
     func updateNSView(_ nsView: ClickCaptureNSView, context: Context) {
         nsView.onLeftClick = onLeftClick
         nsView.onRightClick = onRightClick
+        nsView.onDoubleClick = onDoubleClick
         nsView.onDrag = onDrag
         nsView.onScroll = onScroll
     }
@@ -82,6 +64,7 @@ struct MapMouseCaptureView: NSViewRepresentable {
 final class ClickCaptureNSView: NSView {
     var onLeftClick: ((CGPoint) -> Void)?
     var onRightClick: ((CGPoint) -> Void)?
+    var onDoubleClick: ((CGPoint) -> Void)?
     var onDrag: ((CGSize) -> Void)?
     var onScroll: ((CGSize) -> Void)?
 
@@ -90,6 +73,8 @@ final class ClickCaptureNSView: NSView {
     private var didDrag = false
 
     override var isFlipped: Bool { true }
+    override var acceptsFirstResponder: Bool { true }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
@@ -105,13 +90,19 @@ final class ClickCaptureNSView: NSView {
            abs(point.x - start.x) > 2 || abs(point.y - start.y) > 2 {
             didDrag = true
         }
-        onDrag?(CGSize(width: point.x - last.x, height: point.y - last.y))
+        if didDrag {
+            onDrag?(CGSize(width: point.x - last.x, height: point.y - last.y))
+        }
         lastPoint = point
     }
 
     override func mouseUp(with event: NSEvent) {
         if !didDrag, let start = mouseDownPoint {
-            onLeftClick?(start)
+            if event.clickCount == 2 {
+                onDoubleClick?(start)
+            } else {
+                onLeftClick?(start)
+            }
         }
         mouseDownPoint = nil
         lastPoint = nil
@@ -147,23 +138,13 @@ private let tileColors: [String: Color] = [
 
 private func colorForTile(_ type: String?) -> Color {
     guard let type = type else { return .gray }
-    return tileColors[type] ?? Color(hue: Double(abs(type.hashValue) % 360) / 360, saturation: 0.3, brightness: 0.6)
-}
-
-private let playerColors: [Color] = [
-    .blue, .red, .green, .orange, .purple, .brown, .cyan, .mint, .pink, .yellow
-]
-
-private func colorForPlayer(_ player: Player) -> Color {
-    let idx = abs(player.id.hashValue) % playerColors.count
-    return playerColors[idx]
+    return tileColors[type] ?? .gray
 }
 
 struct MapView: View {
     @Environment(GameState.self) private var state
 
-    // Zoom: default 4.0 → tileW=256, tileH=128 (2× closer than the old 2.0 default).
-    @State private var zoomScale: Double = 4.0
+    @State private var zoomScale: Double = 2.0
     private let minZoom: Double = 0.5
     private let maxZoom: Double = 5.0
 
@@ -192,25 +173,29 @@ struct MapView: View {
         let canvasSize: CGSize
         let playerColorById: [String: Color]
         let unitsByTile: [String: [FreeColGame.Unit]]
+        let colonyByTile: [String: Colony]
+        let tileIndex: TileSpatialIndex
         let visibleTileIds: Set<String>
     }
 
     private func renderData(for game: Game) -> RenderData? {
+        let signpostID = OSSignpostID(log: mapRenderLog)
+        os_signpost(.begin, log: mapRenderLog, name: "RenderDataBuild", signpostID: signpostID)
+        defer {
+            os_signpost(.end, log: mapRenderLog, name: "RenderDataBuild", signpostID: signpostID)
+        }
+
         guard game.map != nil else { return nil }
         let tiles = Array(game.tiles.values).sorted {
             if $0.y == $1.y { return $0.x < $1.x }
             return $0.y < $1.y
         }
         guard !tiles.isEmpty else { return nil }
-        let colW = tileW / 2
-        let rowH = tileH / 2
         let maxCol = tiles.map(\.x).max() ?? 0
         let maxRow = tiles.map(\.y).max() ?? 0
-        let canvasW = Double(maxCol + 2) * colW + tileW
-        let canvasH = Double(maxRow + 1) * rowH + tileH
 
         let playerColorById: [String: Color] = Dictionary(
-            uniqueKeysWithValues: game.players.values.map { ($0.id, colorForPlayer($0)) }
+            uniqueKeysWithValues: game.players.values.map { ($0.id, state.playerColor(for: $0.id)) }
         )
         let visibleTileIds: Set<String>
         if let localPlayerId = state.localPlayerId {
@@ -219,31 +204,28 @@ struct MapView: View {
             visibleTileIds = Set(tiles.map(\.id))
         }
 
-        // Build a tile-keyed unit map, resolving indirect locations:
-        // - Unit directly on tile: location == tileId
-        // - Unit on carrier (ship): location == carrierId → carrier.location == tileId
-        // - Unit in colony building: location == colony/buildingId → colony.tileId
+        // Passengers and indoor workers are shown in their carrier/colony inspector.
         var unitsByTile: [String: [FreeColGame.Unit]] = [:]
         for unit in game.units.values {
             guard let loc = unit.location else { continue }
             if game.tiles[loc] != nil {
                 unitsByTile[loc, default: []].append(unit)
-            } else if let carrier = game.units[loc],
-                      let carrierLoc = carrier.location,
-                      game.tiles[carrierLoc] != nil {
-                // Embarked on a ship — show on the ship's tile
-                unitsByTile[carrierLoc, default: []].append(unit)
-            } else if let colony = game.colonies[loc], let tileId = colony.tileId {
-                // Working inside a colony building
-                unitsByTile[tileId, default: []].append(unit)
             }
+        }
+
+        var colonyByTile: [String: Colony] = [:]
+        for colony in game.colonies.values {
+            guard let tileId = colony.tileId, colonyByTile[tileId] == nil else { continue }
+            colonyByTile[tileId] = colony
         }
 
         return RenderData(
             tiles: tiles,
-            canvasSize: CGSize(width: canvasW, height: canvasH),
+            canvasSize: MapGeometry.canvasSize(maxX: maxCol, maxY: maxRow, tileW: tileW, tileH: tileH),
             playerColorById: playerColorById,
             unitsByTile: unitsByTile,
+            colonyByTile: colonyByTile,
+            tileIndex: TileSpatialIndex(sortedTiles: tiles),
             visibleTileIds: visibleTileIds
         )
     }
@@ -254,9 +236,20 @@ struct MapView: View {
                 zoomControls
                 GeometryReader { geo in
                     ZStack {
-                        Canvas { ctx, _ in
+                        Canvas { ctx, size in
+                        let signpostID = OSSignpostID(log: mapRenderLog)
+                        os_signpost(.begin, log: mapRenderLog, name: "CanvasCommands", signpostID: signpostID)
+                        defer {
+                            os_signpost(.end, log: mapRenderLog, name: "CanvasCommands", signpostID: signpostID)
+                        }
+
                         ctx.translateBy(x: -camera.x, y: -camera.y)
-                        for tile in data.tiles {
+                        let visibleTiles = data.tileIndex.visibleTiles(
+                            in: CGRect(origin: camera, size: size),
+                            tileW: tileW,
+                            tileH: tileH
+                        )
+                        for tile in visibleTiles {
                             let origin = tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
                             let verts = diamondVertices(at: origin, tileW: tileW, tileH: tileH)
                             var path = Path()
@@ -284,15 +277,26 @@ struct MapView: View {
                                 }
                                 continue
                             }
-                            if tile.id == state.selectedTileId {
-                                ctx.fill(path, with: .color(.yellow))
-                            } else if let nsImg = TileImageCache.shared.terrainImage(forType: tile.type) {
+                            if let nsImg = TileImageCache.shared.terrainImage(forType: tile.type) {
                                 var clipped = ctx
                                 clipped.clip(to: path)
                                 clipped.draw(Image(nsImage: nsImg), in: tileRect)
                             } else {
                                 ctx.fill(path, with: .color(colorForTile(tile.type)))
                             }
+                            if ["model.tile.ocean", "model.tile.lake", "model.tile.highSeas", "model.tile.greatRiver"]
+                                .contains(tile.type ?? "") {
+                                for beach in TileImageCache.shared.beachImages(style: tile.style) {
+                                    ctx.draw(Image(nsImage: beach), in: tileRect)
+                                }
+                            }
+                            if let overlay = TileImageCache.shared.terrainOverlay(forType: tile.type) {
+                                let height = tileW * overlay.size.height / max(1, overlay.size.width)
+                                ctx.draw(Image(nsImage: overlay), in: CGRect(
+                                    x: tileRect.minX, y: tileRect.maxY - height, width: tileW, height: height
+                                ))
+                            }
+                            drawImprovements(tile, at: origin, context: &ctx)
                             // Explored but not currently visible: dim like the Java RescaleOp(0.8).
                             if isDimmed {
                                 ctx.fill(path, with: .color(.black.opacity(0.2)))
@@ -307,22 +311,20 @@ struct MapView: View {
                             if state.showMapGrid {
                                 ctx.stroke(path, with: .color(.black.opacity(0.25)), lineWidth: 0.5)
                             }
-
-                            // --- Colony label ---
-                            if let colony = game.colonies.values.first(where: { $0.tileId == tile.id }) {
-                                let labelText = "\(colony.name ?? "?") (\(colony.unitCount))"
-                                let label = Text(labelText).font(.system(size: max(8, tileW * 0.12)))
-                                    .foregroundColor(.white)
-                                ctx.draw(label, at: origin, anchor: .center)
+                            if tile.id == state.selectedTileId {
+                                ctx.stroke(path, with: .color(.white), lineWidth: 3)
+                                ctx.stroke(path, with: .color(.yellow), lineWidth: 1)
                             }
-                            if let settlementInfo = tile.settlement {
+
+                            let hasSettlement = tile.settlement != nil || data.colonyByTile[tile.id] != nil
+                            if let settlementInfo = tile.settlement ?? data.colonyByTile[tile.id]?.id {
                                 let kind = settlementKind(for: settlementInfo, in: game)
                                 if let nsImg = TileImageCache.shared.settlementImage(for: kind) {
                                     let fitted = fitSize(nsImg.size,
                                                          into: CGSize(width: tileW * 0.6,
                                                                       height: tileH * 0.75))
                                     let settlementRect = CGRect(
-                                        x: origin.x - fitted.width / 2,
+                                        x: origin.x - fitted.width / 2 - (data.unitsByTile[tile.id]?.isEmpty == false ? tileW * 0.16 : 0),
                                         y: origin.y - fitted.height * 0.65,
                                         width: fitted.width,
                                         height: fitted.height
@@ -341,12 +343,10 @@ struct MapView: View {
 
                             // --- Units ---
                             if isVisible || !showFog, let units = data.unitsByTile[tile.id] {
-                                let count = units.count
-                                for (i, unit) in units.enumerated() {
+                                let sorted = units.sorted { $0.id < $1.id }
+                                if let unit = sorted.first(where: { $0.id == state.selectedUnitId }) ?? sorted.first {
                                     let r: Double = max(5, tileH * 0.14)
-                                    let spacing: Double = min(r * 2.5, tileW / Double(max(count, 1)))
-                                    let startX = origin.x - spacing * Double(count - 1) / 2.0
-                                    let ux = startX + spacing * Double(i)
+                                    let ux = origin.x + (hasSettlement ? tileW * 0.24 : 0)
                                     let uy = origin.y
 
                                     let isSelected = unit.id == state.selectedUnitId
@@ -373,23 +373,119 @@ struct MapView: View {
                                         )
                                         ctx.draw(Image(nsImage: nsImg), in: spriteRect)
                                     }
+                                    let badge = CGRect(x: ux + r, y: uy - tileH * 0.55,
+                                                       width: max(14, tileW * 0.16), height: max(12, tileH * 0.3))
+                                    ctx.fill(Path(roundedRect: badge, cornerRadius: 3), with: .color(ownerColor))
+                                    ctx.stroke(Path(roundedRect: badge, cornerRadius: 3), with: .color(.black), lineWidth: 1)
+                                    ctx.draw(Text("\(units.count)").font(.system(size: max(9, tileW * 0.09), weight: .bold))
+                                        .foregroundColor(.white), at: CGPoint(x: badge.midX, y: badge.midY))
+                                }
+                            }
+
+                            if state.mapOverlay == .resources,
+                               (isVisible || !showFog),
+                               let resource = tile.resources.first {
+                                let marker = Path(ellipseIn: CGRect(
+                                    x: origin.x - 7,
+                                    y: origin.y + tileH * 0.18,
+                                    width: 14,
+                                    height: 14
+                                ))
+                                ctx.fill(marker, with: .color(.orange))
+                                ctx.stroke(marker, with: .color(.black), lineWidth: 1)
+                                let label = Text("\(GameLabels.name(resource.type ?? resource.id)) ×\(resource.quantity)")
+                                    .font(.system(size: max(8, tileW * 0.055), weight: .bold))
+                                    .foregroundColor(.white)
+                                ctx.draw(label, at: CGPoint(x: origin.x, y: origin.y + tileH * 0.4))
+                            }
+                        }
+
+                        // Labels must follow all sprites so later tiles cannot paint over them.
+                        for tile in visibleTiles {
+                            guard tile.type != nil, let colony = data.colonyByTile[tile.id] else { continue }
+                            let origin = tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
+                            let label = Text("\(colony.name ?? "?") · Bevölkerung: \(state.colonyPopulation(colony))")
+                                .font(.system(size: max(8, tileW * 0.10), weight: .semibold))
+                                .foregroundColor(.white)
+                            let resolved = ctx.resolve(label)
+                            let measured = resolved.measure(in: CGSize(width: tileW * 2, height: tileH))
+                            let rect = CGRect(x: origin.x - measured.width / 2 - 4,
+                                              y: origin.y + tileH * 0.3,
+                                              width: measured.width + 8, height: measured.height + 4)
+                            ctx.fill(Path(roundedRect: rect, cornerRadius: 3), with: .color(.black.opacity(0.8)))
+                            ctx.draw(resolved, at: CGPoint(x: rect.midX, y: rect.midY))
+                        }
+
+                        if state.mapOverlay == .tradeRoutes {
+                            let routeColors: [Color] = [.cyan, .orange, .pink, .green, .purple]
+                            for (routeIndex, route) in state.localPlayerTradeRoutes.enumerated() {
+                                let points = route.stops.compactMap { stop -> CGPoint? in
+                                    guard let locationId = stop.locationId,
+                                          let tileId = game.tiles[locationId] != nil
+                                            ? locationId
+                                            : game.colonies[locationId]?.tileId,
+                                          let tile = game.tiles[tileId],
+                                          data.visibleTileIds.contains(tileId) || !state.showFogOfWar else {
+                                        return nil
+                                    }
+                                    return tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
+                                }
+                                guard points.count > 1 else { continue }
+                                var path = Path()
+                                path.move(to: points[0])
+                                for point in points.dropFirst() {
+                                    path.addLine(to: point)
+                                }
+                                path.addLine(to: points[0])
+                                let color = routeColors[routeIndex % routeColors.count]
+                                ctx.stroke(path, with: .color(color), style: StrokeStyle(
+                                    lineWidth: max(2, tileW * 0.025),
+                                    dash: [8, 5]
+                                ))
+                                for point in points {
+                                    let marker = Path(ellipseIn: CGRect(
+                                        x: point.x - 5, y: point.y - 5, width: 10, height: 10
+                                    ))
+                                    ctx.fill(marker, with: .color(color))
+                                    ctx.stroke(marker, with: .color(.black), lineWidth: 1)
                                 }
                             }
                         }
 
-                        if let selectedUnitId = state.selectedUnitId,
+                        if state.mapOverlay == .paths,
+                           let selectedUnitId = state.selectedUnitId,
                            let selectedUnit = game.units[selectedUnitId],
                            let destinationTileId = selectedUnit.destination,
-                           let destinationTile = data.tiles.first(where: { $0.id == destinationTileId }),
+                           let destinationTile = game.tiles[destinationTileId],
                            let sourceTileId = resolveUnitTileId(selectedUnit, in: game),
-                           let sourceTile = data.tiles.first(where: { $0.id == sourceTileId }) {
+                           let sourceTile = game.tiles[sourceTileId] {
                             let sourceOrigin = tileOrigin(x: sourceTile.x, y: sourceTile.y, tileW: tileW, tileH: tileH)
-                            let destinationOrigin = tileOrigin(x: destinationTile.x, y: destinationTile.y, tileW: tileW, tileH: tileH)
-
-                            if sourceTileId != destinationTileId {
-                                var previewPath = Path()
-                                previewPath.move(to: sourceOrigin)
-                                previewPath.addLine(to: destinationOrigin)
+                            var previewPath = Path()
+                            previewPath.move(to: sourceOrigin)
+                            var currentTileId = sourceTileId
+                            var reachedDestination = false
+                            for _ in 0..<data.tiles.count {
+                                guard let nextTileId = game.nextPathStep(
+                                    from: currentTileId,
+                                    to: destinationTileId,
+                                    canTraverse: { _, next in
+                                        !state.showFogOfWar || data.visibleTileIds.contains(next)
+                                    }
+                                ), let nextTile = game.tiles[nextTileId] else { break }
+                                currentTileId = nextTileId
+                                let nextOrigin = tileOrigin(
+                                    x: nextTile.x,
+                                    y: nextTile.y,
+                                    tileW: tileW,
+                                    tileH: tileH
+                                )
+                                previewPath.addLine(to: nextOrigin)
+                                if nextTileId == destinationTileId {
+                                    reachedDestination = true
+                                    break
+                                }
+                            }
+                            if reachedDestination {
                                 ctx.stroke(
                                     previewPath,
                                     with: .color(.yellow.opacity(0.9)),
@@ -397,6 +493,12 @@ struct MapView: View {
                                 )
                             }
 
+                            let destinationOrigin = tileOrigin(
+                                x: destinationTile.x,
+                                y: destinationTile.y,
+                                tileW: tileW,
+                                tileH: tileH
+                            )
                             let markerSize = max(10, tileW * 0.15)
                             let markerRect = CGRect(
                                 x: destinationOrigin.x - markerSize / 2,
@@ -409,8 +511,8 @@ struct MapView: View {
                         }
 
                         if let cue = state.mapAnimationCue,
-                           let sourceTile = data.tiles.first(where: { $0.id == cue.sourceTileId }),
-                           let targetTile = data.tiles.first(where: { $0.id == cue.targetTileId }) {
+                           let sourceTile = game.tiles[cue.sourceTileId],
+                           let targetTile = game.tiles[cue.targetTileId] {
                             let source = tileOrigin(x: sourceTile.x, y: sourceTile.y, tileW: tileW, tileH: tileH)
                             let target = tileOrigin(x: targetTile.x, y: targetTile.y, tileW: tileW, tileH: tileH)
 
@@ -441,16 +543,6 @@ struct MapView: View {
                             ctx.stroke(pulse, with: .color(color), lineWidth: 2)
                         }
 
-                        // Selection highlight outline
-                        if let selId = state.selectedTileId,
-                           let selTile = data.tiles.first(where: { $0.id == selId }) {
-                            let origin = tileOrigin(x: selTile.x, y: selTile.y, tileW: tileW, tileH: tileH)
-                            let verts = diamondVertices(at: origin, tileW: tileW, tileH: tileH)
-                            var selPath = Path()
-                            selPath.addLines(verts)
-                            selPath.closeSubpath()
-                            ctx.stroke(selPath, with: .color(.white), lineWidth: 3)
-                        }
                             }
                             .frame(width: geo.size.width, height: geo.size.height)
                             .background(Color(white: 0.08))
@@ -459,12 +551,18 @@ struct MapView: View {
                                 onLeftClick: { location in
                                     let canvasPoint = CGPoint(x: location.x + camera.x,
                                                               y: location.y + camera.y)
-                                    handleLeftClick(at: canvasPoint, tiles: data.tiles, game: game)
+                                    handleLeftClick(at: canvasPoint, tileIndex: data.tileIndex, game: game)
                                 },
                                 onRightClick: { location in
                                     let canvasPoint = CGPoint(x: location.x + camera.x,
                                                               y: location.y + camera.y)
-                                    handleRightClick(at: canvasPoint, tiles: data.tiles, game: game)
+                                    handleRightClick(at: canvasPoint, tileIndex: data.tileIndex)
+                                },
+                                onDoubleClick: { location in
+                                    let point = CGPoint(x: location.x + camera.x, y: location.y + camera.y)
+                                    if let tile = data.tileIndex.hitTest(location: point, tileW: tileW, tileH: tileH) {
+                                        state.selectMapTile(tile.id, openColony: true)
+                                    }
                                 },
                                 onDrag: { delta in
                                     camera = clampCamera(
@@ -499,26 +597,27 @@ struct MapView: View {
                     })
                     .onAppear {
                         viewportSize = geo.size
-                        centerOnSelectedUnit(data: data)
+                        centerOnSelectedUnit(data: data, game: game)
                     }
                     .onChange(of: geo.size) { _, newSize in
+                        camera = MapGeometry.resizedCamera(camera, from: viewportSize, to: newSize,
+                                                           canvas: data.canvasSize)
                         viewportSize = newSize
-                        camera = clampCamera(camera, canvas: data.canvasSize)
                     }
                     .onChange(of: zoomScale) { _, _ in
-                        centerOnSelectedUnit(data: data)
+                        centerOnSelectedUnit(data: data, game: game)
                     }
                     .onChange(of: state.selectedUnitTileId) { _, _ in
                         // Keep the camera on the active unit as it moves,
                         // but do not jump when the user merely inspects tiles.
-                        centerOnSelectedUnit(data: data)
+                        centerOnSelectedUnit(data: data, game: game)
                     }
                     .onChange(of: state.gameUpdateID) { _, _ in
-                        centerOnSelectedUnit(data: data)
+                        centerOnSelectedUnit(data: data, game: game)
                     }
                     .onChange(of: state.requestedMapScrollTileId) { _, newValue in
                         if let tileId = newValue {
-                            centerCamera(on: tileId, data: data)
+                            centerCamera(on: tileId, data: data, game: game)
                             state.requestedMapScrollTileId = nil
                         }
                     }
@@ -554,16 +653,42 @@ struct MapView: View {
             Button {
                 zoomScale = 2.0
             } label: {
-                Text("Reset")
+                Text("Zurücksetzen")
                     .font(.caption)
             }
             .buttonStyle(.plain)
 
+            Menu {
+                ForEach(GameState.MapOverlay.allCases) { overlay in
+                    Button {
+                        state.mapOverlay = overlay
+                    } label: {
+                        if state.mapOverlay == overlay {
+                            Label(overlay.title, systemImage: "checkmark")
+                        } else {
+                            Text(overlay.title)
+                        }
+                    }
+                }
+            } label: {
+                Label(state.mapOverlay.title, systemImage: "square.3.layers.3d")
+                    .font(.caption)
+            }
             Spacer()
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(Color(white: 0.12))
+        .help(mapOverlayLegend)
+    }
+
+    private var mapOverlayLegend: String {
+        switch state.mapOverlay {
+        case .none: return "Overlays off"
+        case .resources: return "Orange marker: resource"
+        case .tradeRoutes: return "Dashed colors: trade routes"
+        case .paths: return "Yellow line: selected unit path"
+        }
     }
 
     private func settlementKind(for settlementId: String, in game: Game) -> SettlementKind {
@@ -588,25 +713,43 @@ struct MapView: View {
             .sorted { $0.id < $1.id }
     }
 
-    private func handleLeftClick(at location: CGPoint, tiles: [Tile], game: Game) {
-        guard let tappedTile = hitTest(location: location, tiles: tiles, tileW: tileW, tileH: tileH) else { return }
-        let units = localUnits(onTile: tappedTile.id, in: game)
-        guard !units.isEmpty else {
-            state.selectUnit(nil, onTile: tappedTile.id)
-            return
-        }
-        // Cycle through stacked units (e.g. ship + cargo) on repeated clicks.
-        let next: FreeColGame.Unit
-        if let currentId = state.selectedUnitId,
-           let index = units.firstIndex(where: { $0.id == currentId }) {
-            next = units[(index + 1) % units.count]
-        } else {
-            next = units[0]
-        }
-        state.selectUnit(next.id, onTile: tappedTile.id)
+    private func handleLeftClick(at location: CGPoint, tileIndex: TileSpatialIndex, game: Game) {
+        guard let tappedTile = tileIndex.hitTest(location: location, tileW: tileW, tileH: tileH) else { return }
+        state.selectMapTile(tappedTile.id)
     }
 
     /// Scale an image's size down to fit within `maxSize`, preserving aspect ratio.
+    private func drawImprovements(_ tile: Tile, at origin: CGPoint, context: inout GraphicsContext) {
+        for improvement in tile.improvements where improvement.turns == 0 {
+            if improvement.type == "model.improvement.plow" {
+                for offset in [-0.12, 0.0, 0.12] {
+                    var furrow = Path()
+                    furrow.move(to: CGPoint(x: origin.x - tileW * 0.22, y: origin.y + tileH * offset))
+                    furrow.addLine(to: CGPoint(x: origin.x + tileW * 0.1, y: origin.y + tileH * (offset + 0.16)))
+                    context.stroke(furrow, with: .color(.brown.opacity(0.7)), lineWidth: max(1, zoomScale))
+                }
+            }
+            let isRoad = improvement.type == "model.improvement.road"
+            let isRiver = improvement.type == "model.improvement.river"
+            guard isRoad || isRiver, let style = improvement.style else { continue }
+            let directions: [CGPoint] = isRoad
+                ? [CGPoint(x: 0, y: -0.5), CGPoint(x: 0.25, y: -0.25),
+                   CGPoint(x: 0.5, y: 0), CGPoint(x: 0.25, y: 0.25),
+                   CGPoint(x: 0, y: 0.5), CGPoint(x: -0.25, y: 0.25),
+                   CGPoint(x: -0.5, y: 0), CGPoint(x: -0.25, y: -0.25)]
+                : [CGPoint(x: 0.25, y: -0.25), CGPoint(x: 0.25, y: 0.25),
+                   CGPoint(x: -0.25, y: 0.25), CGPoint(x: -0.25, y: -0.25)]
+            var route = Path()
+            for (index, connection) in style.enumerated() where connection != "0" && index < directions.count {
+                route.move(to: origin)
+                route.addLine(to: CGPoint(x: origin.x + tileW * directions[index].x,
+                                         y: origin.y + tileH * directions[index].y))
+            }
+            context.stroke(route, with: .color(isRiver ? .cyan.opacity(0.8) : .brown),
+                           style: StrokeStyle(lineWidth: max(1.5, zoomScale * (isRiver ? 2 : 1)), lineCap: .round))
+        }
+    }
+
     private func fitSize(_ size: CGSize, into maxSize: CGSize) -> CGSize {
         guard size.width > 0, size.height > 0 else { return maxSize }
         let scale = min(maxSize.width / size.width, maxSize.height / size.height)
@@ -620,9 +763,9 @@ struct MapView: View {
     }
 
     /// Move the camera so the given tile is centered in the viewport.
-    private func centerCamera(on tileId: String, data: RenderData) {
+    private func centerCamera(on tileId: String, data: RenderData, game: Game) {
         guard viewportSize.width > 0,
-              let tile = data.tiles.first(where: { $0.id == tileId }) else { return }
+              let tile = game.tiles[tileId] else { return }
         let origin = tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
         camera = clampCamera(
             CGPoint(x: origin.x - viewportSize.width / 2,
@@ -632,26 +775,14 @@ struct MapView: View {
     }
 
     /// Keep the camera on the active unit.
-    private func centerOnSelectedUnit(data: RenderData) {
+    private func centerOnSelectedUnit(data: RenderData, game: Game) {
         guard let tileId = state.selectedUnitTileId else { return }
-        centerCamera(on: tileId, data: data)
+        centerCamera(on: tileId, data: data, game: game)
     }
 
-    private func handleRightClick(at location: CGPoint, tiles: [Tile], game: Game) {
-        guard let tappedTile = hitTest(location: location, tiles: tiles, tileW: tileW, tileH: tileH) else { return }
+    private func handleRightClick(at location: CGPoint, tileIndex: TileSpatialIndex) {
+        guard let tappedTile = tileIndex.hitTest(location: location, tileW: tileW, tileH: tileH) else { return }
 
-        if state.selectedUnitId == nil,
-           let unit = localUnits(onTile: tappedTile.id, in: game).first {
-            // Right-clicking an own unit without a selection selects it first.
-            state.selectUnit(unit.id, onTile: tappedTile.id)
-        } else if let selectedUnitId = state.selectedUnitId {
-            // Keep the selected unit but retarget the tile for the popup.
-            state.selectUnit(selectedUnitId, onTile: tappedTile.id)
-        } else {
-            state.selectUnit(nil, onTile: tappedTile.id)
-        }
-
-        // Java shows a TilePopup on right-click; movement is an entry in it.
-        state.openTileActions(tappedTile.id)
+        state.rightClickMapTile(tappedTile.id, showMenu: NSEvent.modifierFlags.contains(.option))
     }
 }

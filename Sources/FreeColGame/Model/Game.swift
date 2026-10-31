@@ -84,11 +84,7 @@ public final class Game: @unchecked Sendable {
                     try loadUnitTree(unitChild)
                 }
             case "colony", "indianSettlement":
-                let colony = try Colony(id: child.attributes["id"] ?? UUID().uuidString,
-                                        attributes: child.attributes,
-                                        children: child.children,
-                                        game: self)
-                colonies[colony.id] = colony
+                try loadSettlementTree(child)
             case "tradeRoute":
                 try loadTradeRoute(child)
             case "nationOptions":
@@ -128,16 +124,11 @@ public final class Game: @unchecked Sendable {
                         try loadUnitTree(nestedObject)
                     case "colony", "indianSettlement":
                         guard let settlementId = nestedObject.attributes["id"] else { continue }
-                        if var existing = colonies[settlementId] {
+                        if var existing = colonies[settlementId], nestedObject.children.isEmpty {
                             existing.applyPartial(attributes: nestedObject.attributes)
                             colonies[settlementId] = existing
                         } else {
-                            var settlement = try Colony(id: settlementId,
-                                                        attributes: nestedObject.attributes,
-                                                        children: nestedObject.children,
-                                                        game: self)
-                            if settlement.tileId == nil { settlement.tileId = tile.id }
-                            colonies[settlementId] = settlement
+                            try loadSettlementTree(nestedObject, tileId: tile.id)
                         }
                     case "tileItemContainer":
                         break
@@ -161,11 +152,11 @@ public final class Game: @unchecked Sendable {
                 guard let regionId = child.attributes["id"] else { continue }
                 regions[regionId] = GameRegion(id: regionId, attributes: child.attributes)
             case "colony", "indianSettlement":
-                let colony = try Colony(id: child.attributes["id"] ?? UUID().uuidString,
-                                        attributes: child.attributes,
-                                        children: child.children,
-                                        game: self)
-                colonies[colony.id] = colony
+                try loadSettlementTree(child)
+            case "building", "colonyTile":
+                for unit in child.children where unit.tag == "unit" {
+                    try loadUnitTree(unit)
+                }
             case "tradeRoute":
                 try loadTradeRoute(child)
             case "game":
@@ -263,9 +254,18 @@ public final class Game: @unchecked Sendable {
         for objectId in ids {
             players.removeValue(forKey: objectId)
             units.removeValue(forKey: objectId)
-            colonies.removeValue(forKey: objectId)
+            let removedColony = colonies.removeValue(forKey: objectId)
             tradeRoutes.removeValue(forKey: objectId)
             tiles.removeValue(forKey: objectId)
+
+            if removedColony != nil {
+                let tileIds = Array(tiles.keys)
+                for tileId in tileIds {
+                    guard var tile = tiles[tileId], tile.settlement == objectId else { continue }
+                    tile.settlement = nil
+                    tiles[tileId] = tile
+                }
+            }
 
             // Defensive cleanup: clear dangling references on remaining units.
             let unitIds = Array(units.keys)
@@ -827,19 +827,7 @@ public final class Game: @unchecked Sendable {
                     case "unit":
                         try loadUnitTree(tileChild)
                     case "colony", "indianSettlement":
-                        let colony = try Colony(id: tileChild.attributes["id"] ?? UUID().uuidString,
-                                                attributes: tileChild.attributes,
-                                                children: tileChild.children,
-                                                game: self)
-                        colonies[colony.id] = colony
-                        // Register units working inside this colony
-                        for colChild in tileChild.children where colChild.tag == "unit" {
-                            let unit = try Unit(id: colChild.attributes["id"] ?? UUID().uuidString,
-                                                attributes: colChild.attributes,
-                                                children: colChild.children,
-                                                game: self)
-                            units[unit.id] = unit
-                        }
+                        try loadSettlementTree(tileChild, tileId: tile.id)
                     default:
                         break
                     }
@@ -893,6 +881,11 @@ public final class Game: @unchecked Sendable {
         if let colony = colonies[location] {
             return colony.tileId
         }
+        if let colony = colonies.values.first(where: {
+            $0.buildings.contains { $0.id == location } || $0.workTiles.contains { $0.id == location }
+        }) {
+            return colony.tileId
+        }
         return nil
     }
 
@@ -904,13 +897,34 @@ public final class Game: @unchecked Sendable {
     private func extractRemoveIds(_ parsed: ParsedMessage) -> [String] {
         var ids: [String] = []
         for (key, value) in parsed.attributes {
-            if key == "divert" {
-                ids.append(value)
-            } else if key.hasPrefix("array_") {
+            if key.hasPrefix("array_") {
                 ids.append(value)
             }
         }
+        let count = parsed.attributes.int("xLength", default: 0)
+        for index in 0..<max(count, 0) {
+            if let id = parsed.attributes["x\(index)"] {
+                ids.append(id)
+            }
+        }
         return ids
+    }
+
+    private func loadSettlementTree(_ parsed: ParsedMessage, tileId: String? = nil) throws {
+        let colonyId = parsed.attributes["id"] ?? UUID().uuidString
+        var colony = try Colony(id: colonyId, attributes: parsed.attributes,
+                                children: parsed.children, game: self)
+        if colony.tileId == nil { colony.tileId = tileId ?? colonies[colonyId]?.tileId }
+        colonies[colonyId] = colony
+        for child in parsed.children {
+            if child.tag == "unit" {
+                try loadUnitTree(child)
+            } else if child.tag == "building" || child.tag == "colonyTile" {
+                for unit in child.children where unit.tag == "unit" {
+                    try loadUnitTree(unit)
+                }
+            }
+        }
     }
 
     private func loadUnitTree(_ parsed: ParsedMessage) throws {
@@ -941,9 +955,14 @@ public final class Game: @unchecked Sendable {
                                 children: parsed.children,
                                 game: self)
         players[player.id] = player
-        // Units in Europe / high seas appear as direct children of <player>.
-        for child in parsed.children where child.tag == "unit" {
-            try loadUnitTree(child)
+        for child in parsed.children {
+            if child.tag == "unit" {
+                try loadUnitTree(child)
+            } else if child.tag == "europe" || child.tag == "highSeas" {
+                for unit in child.children where unit.tag == "unit" {
+                    try loadUnitTree(unit)
+                }
+            }
         }
     }
 

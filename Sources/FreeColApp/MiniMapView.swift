@@ -8,8 +8,8 @@ struct MiniMapView: View {
     @Environment(GameState.self) private var state
     var viewport: MapViewportInfo?
 
-    private let minimapWidth: Double = 160
-    private let maxMiniHeight: Double = 120
+    var minimapWidth: Double = 160
+    var maxMiniHeight: Double = 120
 
     private struct MiniData {
         let tiles: [Tile]
@@ -98,6 +98,7 @@ struct MiniMapView: View {
                     }
                 }
                 .frame(width: minimapWidth, height: minimapHeight(for: data))
+                .clipped()
                 .background(Color.black.opacity(0.4))
                 .contentShape(Rectangle())
                 .gesture(
@@ -124,16 +125,13 @@ struct MiniMapView: View {
         guard !tiles.isEmpty else { return nil }
         let maxCol = tiles.map(\.x).max() ?? 0
         let maxRow = tiles.map(\.y).max() ?? 0
-        let colW = 32.0
-        let rowH = 16.0
-        let canvasW = Double(maxCol + 2) * colW + 64
-        let canvasH = Double(maxRow + 1) * rowH + 32
+        let canvas = MapGeometry.canvasSize(maxX: maxCol, maxY: maxRow, tileW: 64, tileH: 32)
         // Aspect-fit: fit both the width and the height so the whole map is
         // visible and the viewport rectangle stays inside the minimap.
-        let scale = min(minimapWidth / canvasW, maxMiniHeight / canvasH)
+        let scale = min(minimapWidth / canvas.width, maxMiniHeight / canvas.height)
 
         let playerColors: [String: Color] = Dictionary(
-            uniqueKeysWithValues: game.players.values.map { ($0.id, randomColor(for: $0.id)) }
+            uniqueKeysWithValues: game.players.values.map { ($0.id, state.playerColor(for: $0.id)) }
         )
 
         var unitsByTile: [String: [FreeColGame.Unit]] = [:]
@@ -161,7 +159,7 @@ struct MiniMapView: View {
             scale: scale,
             tileW: 64 * scale,
             tileH: 32 * scale,
-            canvasSize: CGSize(width: canvasW, height: canvasH),
+            canvasSize: canvas,
             visibleTileIds: visibleTileIds,
             unitsByTile: unitsByTile,
             playerColors: playerColors,
@@ -174,13 +172,7 @@ struct MiniMapView: View {
     }
 
     private func miniOrigin(tile: Tile, data: MiniData) -> CGPoint {
-        let colW = data.tileW / 2
-        let rowH = data.tileH / 2
-        let offsetX = tile.y.isMultiple(of: 2) ? 0.0 : colW
-        return CGPoint(
-            x: Double(tile.x) * colW + offsetX + colW,
-            y: Double(tile.y) * rowH + rowH
-        )
+        MapGeometry.origin(x: tile.x, y: tile.y, tileW: data.tileW, tileH: data.tileH)
     }
 
     private func miniDiamond(at origin: CGPoint, tileW: Double, tileH: Double) -> [CGPoint] {
@@ -232,9 +224,4 @@ struct MiniMapView: View {
         return colors[type] ?? .gray
     }
 
-    private func randomColor(for playerId: String) -> Color {
-        let colors: [Color] = [.blue, .red, .green, .orange, .purple, .brown, .cyan, .mint, .pink, .yellow]
-        let idx = abs(playerId.hashValue) % colors.count
-        return colors[idx]
-    }
 }

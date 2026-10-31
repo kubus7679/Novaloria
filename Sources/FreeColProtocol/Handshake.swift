@@ -78,7 +78,7 @@ public enum Handshake {
             FreeColLogger.shared.info("Server state: \(raw)")
             gameState = state
         case "vacantPlayers":
-            FreeColLogger.shared.info("Vacant players: \(parsed.attributes)")
+            FreeColLogger.shared.info("Received vacant player list")
             vacantPlayers = parsed
         default:
             FreeColLogger.shared.debug("Ignoring unexpected initial message: <\(parsed.tag)>")
@@ -93,7 +93,7 @@ public enum Handshake {
         singlePlayer: Bool = true,
         currentPlayer: Bool = false
     ) async throws -> LoginResult {
-        FreeColLogger.shared.info("Sending login: user=\(userName) nation=\(nationId)")
+        FreeColLogger.shared.info("Sending login request")
 
         let loginMessage = ParsedMessage(
             tag: "login",
@@ -119,11 +119,11 @@ public enum Handshake {
               let nation = attrs["nationId"],
               let rawState = attrs["state"],
               let state = ServerState(rawValue: rawState) else {
-            FreeColLogger.shared.error("Malformed login reply: attributes=\(attrs)")
+            FreeColLogger.shared.error("Malformed login reply")
             throw FreeColProtocolError.invalidState("Malformed login reply")
         }
 
-        FreeColLogger.shared.info("Login result: player=\(playerName) nation=\(nation) state=\(rawState)")
+        FreeColLogger.shared.info("Login accepted (state=\(rawState))")
 
         let game = loginChild.children.first { $0.tag == "game" }
         let player = loginChild.children.first { $0.tag == "player" }

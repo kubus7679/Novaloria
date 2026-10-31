@@ -193,3 +193,67 @@ Erster echter Lauf der gesamten Suite gegen den Java-Server (Docker). Ergebnis u
 - [x] 85 Swift-Tests und `swift build --target FreeColApp` erfolgreich; alle 11 Java-
   E2E-Proben ohne Skip oder Fehler.
 - [ ] Native UI-Sichtprüfung für Transit-/Ankunftsanzeige und Einheitenwahl.
+
+## Phase 94 — Kolonie aufgeben (Java-E2E)
+
+- [x] Deterministische Abandonment-Fixture aus dem Szenario-Spielstand erzeugt.
+- [x] Java-E2E verifiziert `abandonColony`, Entfernung der Kolonie und Freigabe des
+  besetzten Tiles.
+- [x] Java sendet Lösch-IDs als `xLength`/`x0`; `Game.applyRemove` verarbeitet dieses
+  Array-Format nun und räumt Settlement-Referenzen auf dem Tile ab.
+
+## Phase 95 — Diplomatie-Tiefe und Antwortverifikation
+
+- [ ] Offen: Der Java-Server liefert im deterministischen Einzelspieler-Szenario keine
+  AI-Antwort innerhalb des Probe-Zeitfensters. Die Probe klassifiziert fehlende Antworten
+  jetzt als Skip statt als Pass. Geschenk, Tribut und Haltungswechsel sind deshalb noch
+  nicht gegen eine tatsächlich angenommene Verhandlung verifiziert.
+
+## Phase 96 — Konkreter Europa-Recruit-Slot
+
+- [x] Recruitment-E2E verwendet `emigrateUnit slot=1` und prüft, dass der konkrete
+  angebotene Recruit-Typ in Europa angelegt wird sowie der Goldbestand stimmt.
+- [x] Fountain-of-Youth-Antwort mit ausgewähltem Slot 1 bleibt über die bestehende
+  Mock-Server-Protokollprobe abgedeckt.
+
+## Phase 97 — CLI-Refactor (erster Schritt)
+
+- [x] Test-Utilities/Delegate in `ProbeSupport.swift`, Offline-Tests in `OfflineTests.swift`
+  und Smoke-/Gameplay-/Reject-/Trade-Route-Proben in `Probes/LegacyE2EProbes.swift`
+  ausgelagert.
+- [ ] Die verbleibenden Mock-Server-Integrationstests und Legacy-Proben aus `main.swift`
+  ziehen; gemeinsame Login-/Turn-Helfer extrahieren.
+
+## Phase 98 — Kolonieproduktion und Build-Queue
+
+- [x] Produktionsvorschau mit Anforderungen, Lagerbestand, geschätztem Output und ETA
+  bereits in `ColonyPanelView` vorhanden.
+- [x] Build-Queue-Reihenfolge über Up/Down priorisierbar; Änderungen werden gesammelt
+  und über `setBuildQueue` an den Server gesendet.
+
+## Phase 99 — Einheitsdetails
+
+- [x] Java-Attribut `experience` in das Unit-Modell übernommen.
+- [x] Detail-Popover zeigt Erfahrung, Rolle, Trefferpunkte, vererbte Fähigkeiten,
+  Güterladung und transportierte Einheiten.
+
+## Phase 100 — Karten-Overlays
+
+- [x] Umschaltbare Overlays für sichtbare Ressourcen, lokale Handelsrouten und
+  Einheitenziele/Pfade ergänzt.
+- [x] Ressourcenmarker respektieren Fog of War; Routen werden nur auf sichtbaren
+  Kartenabschnitten gezeichnet. Minimap und Zoom bleiben erhalten.
+
+## Phase 101 — Berichte filtern, sortieren und exportieren
+
+- [x] Globale Textfilterung und aufsteigende/absteigende Sortierung für Berichtstabellen.
+- [x] Sichtbare Tabellen des aktiven Berichts als korrekt gequotetes UTF-8-CSV exportierbar.
+- [x] Speicherfehler beim Export werden im UI angezeigt.
+
+## Phase 102 — Wiederverbindung und Aktionsprüfung
+
+- [x] Bei unerwartetem Remote-Abbruch bis zu fünf automatische Reconnect-Versuche mit
+  Statusanzeige; danach explizite Fehlermeldung.
+- [x] Nicht bestätigte Kernaktionen werden nach Transportabbruch zur manuellen Prüfung
+  angeboten, einzeln erneut gesendet oder verworfen; keine blinde automatische Replay.
+- [x] Gezielter Reconnect-/UI-Test gegen einen realen Java-Server bleibt offen.

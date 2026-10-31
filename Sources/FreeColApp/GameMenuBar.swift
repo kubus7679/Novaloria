@@ -30,93 +30,106 @@ struct GameMenuBar: View {
     // MARK: - Game
 
     private var gameMenu: some View {
-        Menu("Game") {
-            Button("End Turn") { state.requestEndTurn() }
+        Menu("Spiel") {
+            Button("Zug beenden") { state.requestEndTurn() }
                 .disabled(!state.canEndTurn)
             Divider()
             Button("Chat…") { onChat() }
-            Button("Declare Independence…") { onIndependence() }
+            Button("Unabhängigkeit erklären…") { onIndependence() }
                 .disabled(!state.isLocalPlayersTurn)
-            Button("Retire…") { state.retireGame() }
+            Button("Aufgeben…") { state.retireGame() }
                 .disabled(!state.isGameEnded && !state.isLocalPlayersTurn)
             Divider()
-            Button("High Scores") {
+            Button("Bestenliste") {
                 state.requestedReport = .highScores
                 onReports()
             }
             Button("Status…") { state.showStatusPanel = true }
-            Button("Preferences…") { onPreferences() }
+            Button("Einstellungen…") { onPreferences() }
             Divider()
-            Button("Disconnect") { state.disconnect() }
+            Button("Verbindung trennen") { state.disconnect() }
         }
     }
 
     // MARK: - View
 
     private var viewMenu: some View {
-        Menu("View") {
-            Toggle("Map Grid", isOn: Binding(
+        Menu("Ansicht") {
+            Toggle("Kartenraster", isOn: Binding(
                 get: { state.showMapGrid },
                 set: { _ in state.toggleMapGrid() }
             ))
-            Toggle("Borders", isOn: Binding(
+            Toggle("Grenzen", isOn: Binding(
                 get: { state.showBorders },
                 set: { _ in state.toggleBorders() }
             ))
-            Toggle("Fog of War", isOn: Binding(
+            Toggle("Nebel des Krieges", isOn: Binding(
                 get: { state.showFogOfWar },
                 set: { _ in state.toggleFogOfWar() }
             ))
             Divider()
-            Button("Europe…") { state.openEuropePanel() }
+            Button("Europa…") { state.openEuropePanel() }
                 .disabled(state.localPlayer?.europe == nil)
-            Button("Find Settlement…") { onFindSettlement() }
+            Button("Kolonie öffnen…") { state.openColonyPanel() }
+                .disabled(state.selectedColony == nil)
+            Button("Siedlung suchen…") { onFindSettlement() }
+            Button("Auswahl zentrieren") {
+                if let tileId = state.selectedUnitTileId ?? state.selectedTileId {
+                    state.requestMapScroll(to: tileId)
+                }
+            }
+            .disabled(state.selectedUnitTileId == nil && state.selectedTileId == nil)
         }
     }
 
     // MARK: - Orders
 
     private var ordersMenu: some View {
-        Menu("Orders") {
-            Button("Wait") { state.setSelectedUnitState(.skipped) }
+        Menu("Befehle") {
+            Button("Bewegen…") { state.beginChoosingMoveDestination() }
+                .disabled(!state.canChooseMoveDestination)
+            Divider()
+            Button("Warten") { state.setSelectedUnitState(.skipped) }
                 .disabled(!state.canChangeSelectedUnitState(to: .skipped))
-            Button("Skip") { state.setSelectedUnitState(.skipped) }
+            Button("Überspringen") { state.setSelectedUnitState(.skipped) }
                 .disabled(!state.canChangeSelectedUnitState(to: .skipped))
-            Button("Sentry") { state.setSelectedUnitState(.sentry) }
+            Button("Wache") { state.setSelectedUnitState(.sentry) }
                 .disabled(!state.canChangeSelectedUnitState(to: .sentry))
-            Button("Fortify") { state.setSelectedUnitState(.fortifying) }
+            Button("Befestigen") { state.setSelectedUnitState(.fortifying) }
                 .disabled(!state.canChangeSelectedUnitState(to: .fortifying))
             Divider()
-            Button("Build Colony") { state.buildColony(name: "New Colony") }
+            Button("Kolonie gründen") { state.buildColony(name: state.suggestedColonyName) }
                 .disabled(!state.canBuildSelectedColony)
-            Button("Join Colony") { state.joinSelectedColony() }
+            Button("In der Kolonie arbeiten") { state.joinSelectedColony() }
                 .disabled(!state.canJoinSelectedColony)
-            Button("Disband Unit") { state.disbandSelectedUnit() }
+            Menu("Verwalten") {
+                Button("Einheit auflösen…", role: .destructive) { state.disbandSelectedUnit() }
                 .disabled(!state.canDisbandSelectedUnit)
+            }
             Divider()
-            Button("Set Destination (Selected Tile)") {
+            Button("Ausgewähltes Feld als Ziel") {
                 if let tileId = state.selectedTileId {
                     state.setSelectedUnitDestination(to: tileId)
                 }
             }
             .disabled(!state.canSetDestinationToSelectedTile)
-            Button("Clear Destination") { state.clearSelectedUnitDestination() }
+            Button("Ziel löschen") { state.clearSelectedUnitDestination() }
                 .disabled(!state.canClearSelectedUnitDestination)
-            Button("Clear Orders") { state.clearSelectedUnitOrders() }
+            Button("Befehle löschen") { state.clearSelectedUnitOrders() }
                 .disabled(!state.canClearSelectedUnitOrders)
-            Button("Go To Europe") { state.sendSelectedUnitToEurope() }
+            Button("Nach Europa") { state.sendSelectedUnitToEurope() }
                 .disabled(!state.canSendSelectedUnitToEurope)
             Divider()
-            Button("Next Unit") { state.selectNextUnit() }
+            Button("Nächste Einheit") { state.selectNextUnit() }
                 .disabled(state.selectableLocalUnits.isEmpty)
-            Button("Previous Unit") { state.selectPreviousUnit() }
+            Button("Vorherige Einheit") { state.selectPreviousUnit() }
                 .disabled(state.selectableLocalUnits.isEmpty)
-            Button("Next Unit Needing Orders") {
+            Button("Nächste Einheit ohne Befehl") {
                 state.selectAdjacentUnit(forward: true, onlyAwaitingOrders: true)
             }
             .disabled(state.unitsAwaitingOrders.isEmpty)
             Divider()
-            Button("Trade Routes…") { onTradeRoutes() }
+            Button("Handelsrouten…") { onTradeRoutes() }
                 .disabled(!state.canManageTradeRoutes)
         }
     }
@@ -124,7 +137,7 @@ struct GameMenuBar: View {
     // MARK: - Report
 
     private var reportMenu: some View {
-        Menu("Report") {
+        Menu("Berichte") {
             ForEach(ReportKind.allCases) { kind in
                 Button(kind.title) {
                     state.requestedReport = kind
@@ -137,8 +150,8 @@ struct GameMenuBar: View {
     // MARK: - Colopedia
 
     private var colopediaMenu: some View {
-        Menu("Colopedia") {
-            Button("Open Colopedia…") { onColopedia() }
+        Menu("Colopädie") {
+            Button("Colopädie öffnen…") { onColopedia() }
         }
     }
 }

@@ -4,6 +4,7 @@ import FreeColGame
 /// Review a diplomatic proposal, accept/reject it, or build a counter-proposal.
 struct DiplomacyView: View {
     @Environment(GameState.self) private var state
+    @Environment(\.dismiss) private var dismiss
 
     @State private var drafts: [DiplomaticClauseDraft] = []
     @State private var newKind: DiplomaticClauseKind = .gold
@@ -29,12 +30,17 @@ struct DiplomacyView: View {
                         .buttonStyle(.bordered)
                     Button("Accept") { state.acceptDiplomacy() }
                         .buttonStyle(.borderedProminent)
-                } else {
-                    Button("Close") { state.clearPendingDecision() }
-                        .buttonStyle(.bordered)
                 }
+                Button("Close") {
+                    if !state.pendingDiplomacyIsIncoming { state.clearPendingDecision() }
+                    dismiss()
+                }
+                .buttonStyle(.bordered)
+                .keyboardShortcut(.cancelAction)
             }
 
+            ScrollView([.horizontal, .vertical]) {
+                VStack(alignment: .leading, spacing: 12) {
             if let proposal = state.pendingDiplomacy {
                 HStack(spacing: 12) {
                     Text("Context: \(proposal.context ?? "?")")
@@ -73,10 +79,13 @@ struct DiplomacyView: View {
                     .foregroundColor(.secondary)
             }
 
-            Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
         .padding(16)
-        .frame(minWidth: 520, minHeight: 480)
+        .frame(minWidth: 640, idealWidth: 820,
+               minHeight: 400, idealHeight: 640, maxHeight: 760)
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear { syncDrafts() }
         .onChange(of: state.pendingServerDecision?.type) { _, _ in syncDrafts() }

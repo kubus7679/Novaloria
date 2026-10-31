@@ -9,6 +9,8 @@ public enum FreeColProtocolError: Error {
     case timeout
     case serverError(String)
     case invalidState(String)
+    case invalidUTF8Message
+    case resourceLimitExceeded(String)
 }
 
 extension FreeColProtocolError: LocalizedError {
@@ -31,6 +33,10 @@ extension FreeColProtocolError: LocalizedError {
             return "Server error: \(msg)"
         case .invalidState(let msg):
             return "Protocol error: \(msg)"
+        case .invalidUTF8Message:
+            return "Protocol error: incoming message is not valid UTF-8"
+        case .resourceLimitExceeded(let msg):
+            return "Protocol resource limit exceeded: \(msg)"
         }
     }
 }

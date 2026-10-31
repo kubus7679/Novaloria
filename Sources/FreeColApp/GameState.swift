@@ -31,6 +31,7 @@ final class GameState {
     enum Phase: CustomStringConvertible {
         case disconnected
         case connecting
+        case reconnecting
         case login
         case lobby
         case inGame
@@ -39,6 +40,7 @@ final class GameState {
             switch self {
             case .disconnected: return "Disconnected"
             case .connecting: return "Connecting…"
+            case .reconnecting: return "Reconnecting…"
             case .login: return "Login"
             case .lobby: return "Lobby"
             case .inGame: return "In Game"
@@ -59,6 +61,41 @@ final class GameState {
         case foundingFather
         case scoutReport
         case incite
+    }
+
+    enum MapOverlay: String, CaseIterable, Identifiable {
+        case none
+        case resources
+        case tradeRoutes
+        case paths
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .none: return "Keine"
+            case .resources: return "Ressourcen"
+            case .tradeRoutes: return "Handelsrouten"
+            case .paths: return "Wege"
+            }
+        }
+    }
+
+    struct QueuedGameplayAction: Identifiable {
+        let id: UUID
+        let message: ParsedMessage
+
+        var title: String {
+            switch message.tag {
+            case "move": return "Move unit"
+            case "attack": return "Attack"
+            case "endTurn": return "End turn"
+            case "abandonColony": return "Abandon colony"
+            case "buildColony": return "Build colony"
+            case "disbandUnit": return "Disband unit"
+            default: return message.tag
+            }
+        }
     }
 
     struct PendingServerDecision {
@@ -431,13 +468,29 @@ final class GameState {
     var usesLocalServer: Bool { server != nil }
     private var messageLoopTask: Task<Void, Never>?
     private var localServerTask: Task<Void, Never>?
-    private(set) var cachedGame: Game?
+    private var gameStorage: Game?
+    private(set) var cachedGame: Game? {
+        get {
+            // Model objects mutate in place; every derived UI query must observe their revision.
+            _ = gameUpdateID
+            return gameStorage
+        }
+        set { gameStorage = newValue }
+    }
     var autoExecuteTradeRoutes: Bool = false
     var gameUpdateID: Int = 0
     var selectedUnitId: String?
     var selectedTileId: String?
+    var isChoosingMoveDestination: Bool = false
+    private(set) var movingUnitId: String?
+    private var movementTask: Task<Void, Never>?
     var isReadyToStart: Bool = false
     private var localPlayerName: String?
+    private var remoteHost: String?
+    private var remotePort: Int?
+    private var reconnectTask: Task<Void, Never>?
+    private var userRequestedDisconnect = false
+    var queuedGameplayActions: [QueuedGameplayAction] = []
     private var cachedLocalPlayerId: String?
     private var localNationId: String?
     private var localNationTypeId: String?
@@ -465,6 +518,7 @@ final class GameState {
     var showMapGrid: Bool = true
     var showFogOfWar: Bool = true
     var showBorders: Bool = true
+    var mapOverlay: MapOverlay = .none
     var showEuropePanel: Bool = false
     var showColonyPanel: Bool = false
     var showDebugPanel: Bool = false
@@ -489,19 +543,30 @@ final class GameState {
     func toggleMapGrid() { showMapGrid.toggle() }
     func toggleFogOfWar() { showFogOfWar.toggle() }
     func toggleBorders() { showBorders.toggle() }
-    func openEuropePanel() { showEuropePanel = true }
+    func openEuropePanel() {
+        isChoosingMoveDestination = false
+        closeTileActions()
+        showEuropePanel = true
+    }
     func closeEuropePanel() { showEuropePanel = false }
-    func openColonyPanel() { showColonyPanel = true }
-    /// Select a colony by id (e.g. from a spy result) and open its panel.
-    func openColonyPanel(colonyId: String) {
-        guard let colony = cachedGame?.colonies[colonyId] else {
-            showColonyPanel = true
+    func openColonyPanel() {
+        guard selectedColony != nil else {
+            errorMessage = "Bitte eine Kolonie auf der Karte auswaehlen."
             return
         }
-        if let tileId = colony.tileId {
-            selectedTileId = tileId
-        }
+        closeTileActions()
+        isChoosingMoveDestination = false
         showColonyPanel = true
+    }
+    /// Select a colony by id (e.g. from a spy result) and open its panel.
+    func openColonyPanel(colonyId: String) {
+        guard let colony = cachedGame?.colonies[colonyId],
+              let tileId = colony.tileId else {
+            errorMessage = "Die Kolonie ist auf der Karte nicht verfuegbar."
+            return
+        }
+        selectedTileId = tileId
+        openColonyPanel()
     }
     func closeColonyPanel() { showColonyPanel = false }
     func openDebugPanel() { showDebugPanel = true }
@@ -573,17 +638,17 @@ final class GameState {
 
     var europeUnits: [FreeColGame.Unit] {
         guard let game = cachedGame,
-              let localPlayerId = resolveLocalPlayerId() else {
+              let localPlayerId = resolveLocalPlayerId(),
+              let europeId = localPlayer?.europe?.id else {
             return []
         }
         return game.units.values
-            .filter { $0.owner == localPlayerId && resolveUnitTileId($0, in: game) == nil }
+            .filter { $0.owner == localPlayerId && $0.location == europeId }
             .sorted { $0.id < $1.id }
     }
 
     var europeCarrierUnits: [FreeColGame.Unit] {
-        let carriers = europeUnits.filter { isCarrierUnit($0) }
-        return carriers.isEmpty ? europeUnits : carriers
+        europeUnits.filter { isCarrierUnit($0) }
     }
 
     /// Naval flag preferring the specification ability, heuristic as fallback.
@@ -753,7 +818,7 @@ final class GameState {
     }
 
     var canEndTurn: Bool {
-        phase == .inGame && isLocalPlayersTurn && !isGameEnded && !isEndingTurn
+        phase == .inGame && isLocalPlayersTurn && !isGameEnded && !isEndingTurn && movingUnitId == nil
     }
 
     /// True while the local player still has an active unit with moves left.
@@ -975,9 +1040,12 @@ final class GameState {
         }
         let colonyId = colony.id
         let colonyTileId = colony.tileId
+        let workLocationIds = Set(colony.buildings.map(\.id) + colony.workTiles.map(\.id))
         return game.units.values
             .filter { unit in
-                unit.location == colonyId || (colonyTileId != nil && unit.location == colonyTileId)
+                unit.location == colonyId
+                    || (colonyTileId != nil && unit.location == colonyTileId)
+                    || unit.location.map { workLocationIds.contains($0) } == true
             }
             .sorted { $0.id < $1.id }
     }
@@ -1000,6 +1068,25 @@ final class GameState {
 
     /// Goods types a colony worker can produce/refine.
     var selectedColonyWorkTypeCandidates: [(id: String, label: String)] {
+        guard let colony = selectedColony, let workerId = selectedColonyWorkerUnitId,
+              let worker = cachedGame?.units[workerId], let location = worker.location else { return [] }
+        return colonyWorkOutputs(at: location, in: colony).filter { $0.value > 0 }
+            .map { (id: $0.key, label: goodsDisplayName($0.key)) }.sorted { $0.label < $1.label }
+    }
+
+    private func colonyWorkOutputs(at location: String, in colony: Colony) -> [String: Int] {
+        guard let specification = cachedGame?.specification else { return [:] }
+        if let building = colony.buildings.first(where: { $0.id == location }),
+           let type = building.buildingType {
+            return specification.buildingTypes[type]?.productionOutputs ?? [:]
+        } else if let location = colony.workTiles.first(where: { $0.id == location }),
+                  let tileId = location.tileId, let type = cachedGame?.tiles[tileId]?.type {
+            return specification.tileTypes[type]?.workerOutputs ?? [:]
+        }
+        return [:]
+    }
+
+    var colonyGoodsCandidates: [(id: String, label: String)] {
         guard let specification = cachedGame?.specification else { return [] }
         return specification.goodsTypes.values
             .map { (id: $0.id, label: goodsDisplayName($0.id)) }
@@ -1015,7 +1102,10 @@ final class GameState {
             candidates.append((id: building.id, label: buildingDisplayName(id)))
         }
         for tile in colony.workTiles {
-            let label = tile.tileId.map { "Tile \($0)" } ?? "Tile \(tile.id)"
+            guard colonyWorkLocationUnavailableReason(tile.id) == nil else { continue }
+            let label = tile.tileId.flatMap { cachedGame?.tiles[$0] }.map {
+                "\($0.type.map(GameLabels.name) ?? "Gelände") (\($0.x), \($0.y))"
+            } ?? "Koloniefeld"
             candidates.append((id: tile.id, label: label))
         }
         return candidates.sorted { $0.label < $1.label }
@@ -1029,7 +1119,7 @@ final class GameState {
               let specification = cachedGame?.specification else {
             return []
         }
-        let population = max(colony.unitCount, selectedColonyUnits.count)
+        let population = colonyPopulation(colony)
         return Self.buildableBuildingCandidates(colony: colony,
                                                 specification: specification,
                                                 population: population)
@@ -1077,7 +1167,7 @@ final class GameState {
 
     func startLocal(userName: String, nationId: String) {
         guard case .disconnected = phase else { return }
-        FreeColLogger.shared.info("Starting local game: user=\(userName) nation=\(nationId)")
+        FreeColLogger.shared.info("Starting local game")
         resetSessionState()
         localPlayerName = userName
         phase = .connecting
@@ -1168,6 +1258,9 @@ final class GameState {
 
     func connect(host: String, port: Int) {
         guard case .disconnected = phase else { return }
+        userRequestedDisconnect = false
+        remoteHost = host
+        remotePort = port
         FreeColLogger.shared.info("Connecting to \(host):\(port)...")
         resetSessionState()
         phase = .connecting
@@ -1198,7 +1291,7 @@ final class GameState {
 
     func login(userName: String, nationId: String) {
         guard case .login = phase, let client = client else { return }
-        FreeColLogger.shared.info("Logging in: user=\(userName) nation=\(nationId)")
+        FreeColLogger.shared.info("Logging in")
         errorMessage = nil
         localPlayerName = userName
         phase = .connecting
@@ -1221,6 +1314,10 @@ final class GameState {
     }
 
     func disconnect() {
+        userRequestedDisconnect = true
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        queuedGameplayActions.removeAll()
         messageLoopTask?.cancel()
         messageLoopTask = nil
         localServerTask?.cancel()
@@ -2341,6 +2438,9 @@ final class GameState {
     }
 
     private func resetSessionState() {
+        movementTask?.cancel()
+        movementTask = nil
+        movingUnitId = nil
         errorMessage = nil
         vacantPlayers = nil
         serverState = nil
@@ -2348,6 +2448,12 @@ final class GameState {
         gameUpdateID = 0
         selectedUnitId = nil
         selectedTileId = nil
+        isChoosingMoveDestination = false
+        showEuropePanel = false
+        showColonyPanel = false
+        showDebugPanel = false
+        showStatusPanel = false
+        tileActionTileId = nil
         isReadyToStart = false
         localPlayerName = nil
         cachedLocalPlayerId = nil
@@ -2990,7 +3096,8 @@ final class GameState {
     /// implements the fire-and-forget subset, so retain that transport locally.
     private func sendCoreGameplayAction(
         _ message: ParsedMessage,
-        timeout: TimeInterval? = nil
+        timeout: TimeInterval? = nil,
+        queueIfDisconnected: Bool = true
     ) async throws {
         guard let client else { throw FreeColProtocolError.disconnected }
         if usesLocalServer {
@@ -3000,7 +3107,22 @@ final class GameState {
                 _ = try await client.ask(message: message, timeout: timeout ?? Self.coreGameplayAskTimeout)
             } catch FreeColProtocolError.serverError(let raw) {
                 throw UserFacingActionError(message: Self.userFacingServerError(raw))
+            } catch {
+                if queueIfDisconnected, Self.isTransportDisconnect(error) {
+                    queuedGameplayActions.append(QueuedGameplayAction(id: UUID(), message: message))
+                }
+                throw error
             }
+        }
+    }
+
+    private nonisolated static func isTransportDisconnect(_ error: Error) -> Bool {
+        guard let protocolError = error as? FreeColProtocolError else { return false }
+        switch protocolError {
+        case .disconnected, .connectionFailed(_):
+            return true
+        default:
+            return false
         }
     }
 
@@ -3013,32 +3135,7 @@ final class GameState {
     /// Map raw Java server rejection texts (`ServerAPI` clientError) to user-facing messages.
     /// Unknown texts are passed through so no server information is lost.
     nonisolated static func userFacingServerError(_ raw: String) -> String {
-        if raw.contains("ServerUnit") {
-            return "Die Einheit ist auf dem Server nicht bekannt."
-        }
-        if raw.contains("Illegal move") {
-            return "Diese Bewegung ist nicht erlaubt."
-        }
-        if raw.contains("can not build colony") {
-            return "Die Einheit kann hier keine Kolonie gründen."
-        }
-        if raw.contains("Non-unique colony name") {
-            return "Der Koloniename ist bereits vergeben."
-        }
-        if raw.contains("Null colony name") {
-            return "Bitte einen Kolonienamen eingeben."
-        }
-        // Turn gating rejections
-        if raw.localizedCaseInsensitiveContains("not the current player") ||
-           raw.localizedCaseInsensitiveContains("not your turn") ||
-           raw.localizedCaseInsensitiveContains("not allowed to end turn") {
-            return "Du bist nicht am Zug. Bitte warte auf deinen nächsten Zug."
-        }
-        if raw.localizedCaseInsensitiveContains("end turn") &&
-           (raw.localizedCaseInsensitiveContains("fail") || raw.localizedCaseInsensitiveContains("reject")) {
-            return "Der Zug konnte nicht beendet werden. Bitte versuche es erneut."
-        }
-        return "Der Server hat die Aktion abgelehnt: \(raw)"
+        ServerErrorMessage.userFacing(raw)
     }
 
     nonisolated static func endTurnSafetyTimeout(localServer: Bool, askTimeout: TimeInterval) -> TimeInterval {
@@ -3090,8 +3187,79 @@ final class GameState {
     }
 
     func selectUnit(_ unitId: String?, onTile tileId: String?) {
+        isChoosingMoveDestination = false
         selectedUnitId = unitId
         selectedTileId = tileId
+    }
+
+    func selectMapTile(_ tileId: String, openColony: Bool = false) {
+        guard let game = cachedGame, game.tiles[tileId] != nil else {
+            errorMessage = "Das Kartenfeld ist nicht verfuegbar."
+            return
+        }
+
+        closeTileActions()
+        if isChoosingMoveDestination {
+            isChoosingMoveDestination = false
+            moveSelectedUnitTo(destinationTileId: tileId)
+            return
+        }
+        selectedTileId = tileId
+        if openColony, selectedColony != nil {
+            openColonyPanel()
+            return
+        }
+        guard let localPlayerId else { return }
+
+        let units = game.units.values
+            .filter { $0.owner == localPlayerId && $0.location == tileId }
+            .sorted { $0.id < $1.id }
+        if !units.isEmpty {
+            if let index = units.firstIndex(where: { $0.id == selectedUnitId }) {
+                selectedUnitId = units[(index + 1) % units.count].id
+            } else {
+                selectedUnitId = units[0].id
+            }
+        }
+    }
+
+    func rightClickMapTile(_ tileId: String, showMenu: Bool = false) {
+        guard cachedGame?.tiles[tileId] != nil else {
+            errorMessage = "Das Kartenfeld ist nicht verfügbar."
+            return
+        }
+        if selectedUnitId != nil, !showMenu {
+            closeTileActions()
+            isChoosingMoveDestination = false
+            moveSelectedUnitTo(destinationTileId: tileId)
+        } else {
+            selectedTileId = tileId
+            openTileActions(tileId)
+        }
+    }
+
+    var canChooseMoveDestination: Bool {
+        guard phase == .inGame, isLocalPlayersTurn, movingUnitId == nil,
+              let localPlayerId,
+              let unit = selectedUnit, unit.owner == localPlayerId,
+              unit.movesLeft > 0, unit.state == .active,
+              let location = unit.location, cachedGame?.tiles[location] != nil else {
+            return false
+        }
+        return true
+    }
+
+    func beginChoosingMoveDestination() {
+        guard canChooseMoveDestination else {
+            errorMessage = "Diese Einheit kann gerade nicht bewegt werden."
+            return
+        }
+        closeTileActions()
+        isChoosingMoveDestination = true
+    }
+
+    func cancelChoosingMoveDestination() {
+        isChoosingMoveDestination = false
     }
 
     // MARK: Phase 56 - tile popup
@@ -3113,43 +3281,17 @@ final class GameState {
     }
 
     func moveSelectedUnit(to destinationTileId: String) {
-        guard canMoveSelectedUnit(to: destinationTileId),
-              let unitId = selectedUnitId,
-              let unit = cachedGame?.units[unitId],
-              let game = cachedGame else {
+        guard canMoveSelectedUnit(to: destinationTileId) else {
             errorMessage = "Ungueltige Bewegung."
             return
         }
-        guard let sourceTileId = resolveUnitTileId(unit, in: game),
-              let dir = attackDirection(fromTileId: sourceTileId, toTileId: destinationTileId, in: game) else {
-            errorMessage = "Ziel nicht benachbart."
-            return
-        }
-        errorMessage = nil
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "move",
-                    attributes: ["direction": dir, "unit": unitId],
-                    children: []
-                )
-                // For local games (MockServer), directly update the game model.
-                if server != nil {
-                    game.moveUnit(unitId, to: destinationTileId)
-                    reconcileSelectionWithGame()
-                    gameUpdateID += 1
-                }
-                try await sendCoreGameplayAction(msg)
-                selectUnit(unitId, onTile: destinationTileId)
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-        }
+        startMovingSelectedUnit(to: destinationTileId)
     }
 
     func canMoveSelectedUnitTo(destinationTileId: String) -> Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,
+              movingUnitId == nil,
               let game = cachedGame,
               let unitId = selectedUnitId,
               let unit = game.units[unitId],
@@ -3168,25 +3310,70 @@ final class GameState {
 
     func moveSelectedUnitTo(destinationTileId: String) {
         guard canMoveSelectedUnitTo(destinationTileId: destinationTileId),
-              let unitId = selectedUnitId,
-              let unit = cachedGame?.units[unitId],
+              let unit = selectedUnit,
               let game = cachedGame else {
             errorMessage = "Ziel kann nicht erreicht werden."
             return
         }
-        // Adjacent target: regular one-step move.
-        if canMoveSelectedUnit(to: destinationTileId) {
-            moveSelectedUnit(to: destinationTileId)
+        guard nextStepTowardDestination(for: unit, destinationTileId: destinationTileId, in: game) != nil else {
+            errorMessage = "Kein begehbarer Weg zum Ziel verfügbar."
             return
         }
-        // Distant target: take one legal step along the shortest known path.
-        guard let nextStepTileId = nextStepTowardDestination(for: unit, destinationTileId: destinationTileId, in: game) else {
-            errorMessage = "Kein gueltiger Schritt zum Ziel verfuegbar."
-            return
-        }
-        errorMessage = nil
+        startMovingSelectedUnit(to: destinationTileId)
+    }
 
-        moveSelectedUnit(to: nextStepTileId)
+    private func startMovingSelectedUnit(to destinationTileId: String) {
+        guard movingUnitId == nil, let unitId = selectedUnitId, let game = cachedGame else { return }
+        errorMessage = nil
+        movingUnitId = unitId
+        movementTask = Task {
+            defer {
+                if movingUnitId == unitId {
+                    movingUnitId = nil
+                    movementTask = nil
+                }
+            }
+            do {
+                // A distant order remains visible when this turn's movement is exhausted.
+                if let source = game.units[unitId]?.location,
+                   attackDirection(fromTileId: source, toTileId: destinationTileId, in: game) == nil {
+                    try await sendCoreGameplayAction(ParsedMessage(tag: "setDestination", attributes: [
+                        "unit": unitId, "destination": destinationTileId,
+                    ], children: []), queueIfDisconnected: false)
+                    if usesLocalServer {
+                        game.setUnitDestination(unitId: unitId, destinationId: destinationTileId)
+                        gameUpdateID += 1
+                    }
+                }
+                while !Task.isCancelled, cachedGame === game, isLocalPlayersTurn,
+                      let unit = game.units[unitId], unit.movesLeft > 0, unit.state == .active,
+                      let source = unit.location, game.tiles[source] != nil, source != destinationTileId {
+                    guard let next = nextStepTowardDestination(for: unit, destinationTileId: destinationTileId, in: game),
+                          let direction = attackDirection(fromTileId: source, toTileId: next, in: game) else {
+                        throw UserFacingActionError(message: "Der weitere Weg zum Ziel ist blockiert.")
+                    }
+                    try Task.checkCancellation()
+                    try await sendCoreGameplayAction(ParsedMessage(tag: "move", attributes: [
+                        "unit": unitId, "direction": direction,
+                    ], children: []), queueIfDisconnected: false)
+                    if usesLocalServer {
+                        game.moveUnit(unitId, to: next)
+                        gameUpdateID += 1
+                    }
+                    guard !Task.isCancelled, cachedGame === game else { return }
+                    guard game.units[unitId]?.location != source else {
+                        throw UserFacingActionError(message: "Die Bewegung wurde vom Server nicht ausgeführt.")
+                    }
+                    if selectedUnitId == unitId {
+                        selectedTileId = game.units[unitId]?.location
+                    }
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 
 
@@ -3589,10 +3776,17 @@ final class GameState {
 
     /// Pioneer improvements the selected unit could build.
     var selectedUnitImprovementCandidates: [(id: String, label: String)] {
-        guard let specification = cachedGame?.specification else { return [] }
+        guard let game = cachedGame, let specification = game.specification,
+              let unit = selectedUnit, canUnitWorkInColony(unit),
+              let location = unit.location, game.tiles[location] != nil else { return [] }
         return specification.improvementTypes.values
-            .filter { !$0.isNatural }
-            .map { (id: $0.id, label: $0.displayName) }
+            .filter {
+                !$0.isNatural && ($0.requiredRole.map { $0 == unit.role }
+                    ?? (unit.role == "model.role.pioneer"
+                        || specification.effectiveAbility(unitTypeId: unit.unitType ?? "",
+                            abilityId: "model.ability.improveTerrain") == true))
+            }
+            .map { (id: $0.id, label: GameLabels.name($0.id)) }
             .sorted { $0.label < $1.label }
     }
 
@@ -3612,7 +3806,7 @@ final class GameState {
               unit.movesLeft > 0 else {
             return false
         }
-        return resolveUnitTileId(unit, in: game) != nil
+        return !selectedUnitImprovementCandidates.isEmpty
     }
 
     /// Order the selected pioneer to build a tile improvement on its tile.
@@ -3623,6 +3817,7 @@ final class GameState {
             return
         }
         guard canChangeSelectedUnitWorkImprovement,
+              selectedUnitImprovementCandidates.contains(where: { $0.id == trimmed }),
               let unitId = selectedUnitId,
               let game = cachedGame else {
             errorMessage = "Verbesserung nicht moeglich."
@@ -3640,7 +3835,7 @@ final class GameState {
                     game.changeUnitWorkImprovementType(unitId: unitId, improvementTypeId: trimmed)
                     gameUpdateID += 1
                 }
-                try await client?.send(message: msg)
+                try await sendCoreGameplayAction(msg, queueIfDisconnected: false)
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -3791,8 +3986,9 @@ final class GameState {
         }
         guard canManageSelectedColony,
               let unitId = selectedColonyWorkerUnitId,
+              selectedColonyWorkTypeCandidates.contains(where: { $0.id == trimmed }),
               let game = cachedGame else {
-            errorMessage = "WorkType-Wechsel nicht moeglich."
+            errorMessage = "Diese Ware kann am ausgewählten Arbeitsplatz nicht produziert werden."
             return
         }
         errorMessage = nil
@@ -3809,7 +4005,7 @@ final class GameState {
                     game.changeUnitWorkType(unitId: unitId, workTypeId: trimmed)
                     gameUpdateID += 1
                 }
-                try await client?.send(message: msg)
+                try await sendCoreGameplayAction(msg, queueIfDisconnected: false)
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -4017,35 +4213,60 @@ final class GameState {
             errorMessage = "Einheit arbeitet bereits dort."
             return
         }
+        if let reason = colonyWorkLocationUnavailableReason(trimmed) {
+            errorMessage = reason
+            return
+        }
         errorMessage = nil
 
+        guard selectedColonyWorkLocationCandidates.contains(where: { $0.id == trimmed }),
+              unit.owner == colony.owner, canUnitWorkInColony(unit) else {
+            errorMessage = "Dieser Arbeitsplatz ist für die Einheit nicht verfügbar."
+            return
+        }
         // Build the arrangement list: the target's occupant (if any) swaps to
         // the unit's previous location, then the unit moves to the target.
         var arrangements: [(unit: String, loc: String, work: String?, role: String?, count: Int)] = []
         let previousLocation = unit.location ?? colony.tileId ?? colony.id
-        if let occupant = selectedColonyUnits.first(where: {
+        func workType(for worker: FreeColGame.Unit, at location: String) -> String? {
+            let outputs = colonyWorkOutputs(at: location, in: colony).filter { $0.value > 0 }
+            if let current = worker.workType, outputs[current] != nil { return current }
+            return outputs.sorted {
+                $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value
+            }.first?.key
+        }
+        if colony.workTiles.contains(where: { $0.id == trimmed }),
+           let occupant = selectedColonyUnits.first(where: {
             $0.id != unitId && $0.location == trimmed
         }) {
             arrangements.append((
                 unit: occupant.id,
                 loc: previousLocation,
-                work: occupant.workType,
-                role: occupant.role ?? "model.role.default",
-                count: occupant.roleCount
+                work: workType(for: occupant, at: previousLocation),
+                role: previousLocation == colony.tileId ? occupant.role : "model.role.default",
+                count: previousLocation == colony.tileId ? occupant.roleCount : 0
             ))
         }
         arrangements.append((
             unit: unitId,
             loc: trimmed,
-            work: unit.workType,
-            role: unit.role ?? "model.role.default",
-            count: unit.roleCount
+            work: workType(for: unit, at: trimmed),
+            role: "model.role.default",
+            count: 0
         ))
 
         Task {
             do {
-                let msg = Self.rearrangeColonyMessage(colonyId: colony.id,
-                                                      arrangements: arrangements)
+                if let location = colony.workTiles.first(where: { $0.id == trimmed }),
+                   let tileId = location.tileId, let tile = game.tiles[tileId],
+                   tile.owner == nil, !usesLocalServer {
+                    try await sendCoreGameplayAction(ParsedMessage(tag: "claimLand", attributes: [
+                        "claimant": colony.id, "tile": tileId, "price": "0",
+                    ], children: []), queueIfDisconnected: false)
+                }
+                let msg = arrangements.count > 1
+                    ? Self.rearrangeColonyMessage(colonyId: colony.id, arrangements: arrangements)
+                    : ParsedMessage(tag: "work", attributes: ["unit": unitId, "workLocation": trimmed], children: [])
                 if server != nil {
                     for arrangement in arrangements {
                         game.setUnitWorkLocation(unitId: arrangement.unit,
@@ -4053,7 +4274,7 @@ final class GameState {
                     }
                     gameUpdateID += 1
                 }
-                try await client?.send(message: msg)
+                try await sendCoreGameplayAction(msg, queueIfDisconnected: false)
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -4115,7 +4336,7 @@ final class GameState {
                     game.renameColony(colonyId: colony.id, newName: trimmed)
                     gameUpdateID += 1
                 }
-                try await client?.send(message: msg)
+                try await sendCoreGameplayAction(msg, queueIfDisconnected: false)
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -4284,26 +4505,58 @@ final class GameState {
     }
 
     func unitDisplayName(_ typeId: String) -> String {
-        if let name = cachedGame?.specification?.unitTypes[typeId]?.displayName, !name.isEmpty {
-            return name
+        GameLabels.name(typeId, fallback: cachedGame?.specification?.unitTypes[typeId]?.displayName)
+    }
+
+    func playerColor(for playerId: String) -> Color {
+        switch cachedGame?.players[playerId]?.nationId {
+        case "model.nation.french": return .blue
+        case "model.nation.english": return .red
+        case "model.nation.dutch": return .orange
+        case "model.nation.spanish": return .yellow
+        case "model.nation.portuguese": return .green
+        case "model.nation.danish": return .brown
+        case "model.nation.swedish": return .cyan
+        case "model.nation.russian": return .purple
+        default:
+            let colors: [Color] = [.blue, .red, .green, .orange, .purple, .brown, .cyan, .mint]
+            let value = playerId.utf8.reduce(UInt64(0)) { ($0 &* 31) &+ UInt64($1) }
+            return colors[Int(value % UInt64(colors.count))]
         }
-        return typeId.split(separator: ".").last.map(String.init) ?? typeId
+    }
+
+    var europeRecruitmentCost: Int? {
+        guard let player = localPlayer, let europe = player.europe,
+              let required = player.immigrationRequired, required > 0 else { return nil }
+        if player.immigration >= required { return 0 }
+        return max(europe.recruitLowerCap,
+                   europe.recruitPrice * max(0, required - player.immigration) / required)
+    }
+
+    var canRecruitInEurope: Bool {
+        guard isLocalPlayersTurn, let cost = europeRecruitmentCost, let player = localPlayer else { return false }
+        return player.gold >= cost && player.europe?.recruitable.isEmpty == false
+    }
+
+    var canChooseEuropeRecruit: Bool {
+        europeRecruitmentCost != 0 || localPlayer?.abilities["model.ability.selectRecruit"] == true
     }
 
     /// Recruit an emigrant from a Europe slot (1-based; 0 picks at random).
     func recruitUnitInEurope(slot: Int) {
         guard phase == .inGame,
               isLocalPlayersTurn,
-              localPlayer != nil else {
+              canRecruitInEurope else {
             errorMessage = "Rekrutierung nicht möglich."
             return
         }
-        guard slot >= 0 else {
+        guard slot >= 0, slot <= min(3, localPlayer?.europe?.recruitable.count ?? 0),
+              slot == 0 || canChooseEuropeRecruit else {
             errorMessage = "Ungültiger Slot."
             return
         }
         errorMessage = nil
-        let price = localPlayer?.europe?.recruitPrice ?? 0
+        let price = europeRecruitmentCost ?? 0
         purchasesRecruits += 1
         purchasesTotal += price
         Task {
@@ -4633,9 +4886,9 @@ final class GameState {
     }
 
     func equipSelectedUnitForRole(_ roleId: String, count: Int) {
-        guard canEquipSelectedUnitForRole,
-              let unitId = selectedUnitId,
-              let game = cachedGame else {
+        guard roleId == "model.role.missionary", count == 1,
+              canEquipSelectedUnitForRole,
+              let unitId = selectedUnitId else {
             errorMessage = "Unit kann diese Rolle nicht annehmen."
             return
         }
@@ -4653,7 +4906,7 @@ final class GameState {
                     ],
                     children: []
                 )
-                try await client?.send(message: msg)
+                try await sendCoreGameplayAction(msg, queueIfDisconnected: false)
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -4698,10 +4951,24 @@ final class GameState {
               let unitId = selectedUnitId,
               let unit = game.units[unitId],
               let localPlayerId = resolveLocalPlayerId(),
-              unit.owner == localPlayerId else {
+              unit.owner == localPlayerId,
+              canUnitWorkInColony(unit),
+              unit.role != "model.role.missionary" else {
             return false
         }
-        return true
+        if game.specification?.effectiveAbility(unitTypeId: unit.unitType ?? "",
+                                                abilityId: "model.ability.canBeEquipped") == false {
+            return false
+        }
+        if unit.location == localPlayer?.europe?.id { return true }
+        guard let tileId = resolveUnitTileId(unit, in: game),
+              let colony = game.colonies.values.first(where: {
+                  $0.tileId == tileId && $0.owner == localPlayerId
+              }) else { return false }
+        return unit.unitType == "model.unit.jesuitMissionary"
+            || colony.buildings.contains {
+                ["model.building.church", "model.building.cathedral"].contains($0.buildingType ?? "")
+            }
     }
 
     var canSendMissionaryAction: Bool {
@@ -5468,14 +5735,8 @@ final class GameState {
                 }
                 return
             }
-            if let loc = unit.location, game.tiles[loc] != nil {
-                selectedTileId = loc
-            } else if let carrierId = unit.location,
-                      let carrier = game.units[carrierId],
-                      let carrierTile = carrier.location,
-                      game.tiles[carrierTile] != nil {
-                // Keep embarked units selectable by projecting selection onto carrier tile.
-                selectedTileId = carrierTile
+            if let tileId = resolveUnitTileId(unit, in: game) {
+                selectedTileId = tileId
             } else {
                 selectedUnitId = nil
                 selectedTileId = nil
@@ -5533,16 +5794,7 @@ final class GameState {
     }
 
     func resolveUnitTileId(_ unit: FreeColGame.Unit, in game: Game) -> String? {
-        if let loc = unit.location, game.tiles[loc] != nil {
-            return loc
-        }
-        if let carrierId = unit.location,
-           let carrier = game.units[carrierId],
-           let carrierTile = carrier.location,
-           game.tiles[carrierTile] != nil {
-            return carrierTile
-        }
-        return nil
+        game.resolvedTileId(for: unit)
     }
 
     private func hasHostileUnit(onTile tileId: String, in game: Game, friendlyOwner: String) -> Bool {
@@ -5588,43 +5840,20 @@ final class GameState {
 
     private func nextStepTowardDestination(for unit: FreeColGame.Unit, destinationTileId: String, in game: Game) -> String? {
         guard let sourceTileId = resolveUnitTileId(unit, in: game),
-              let source = game.tiles[sourceTileId],
-              let destination = game.tiles[destinationTileId] else {
+              game.tiles[destinationTileId] != nil else {
             return nil
         }
-
-        if let pathStep = game.nextPathStep(from: sourceTileId, to: destinationTileId, canTraverse: { currentTileId, nextTileId in
-            attackDirection(fromTileId: currentTileId, toTileId: nextTileId, in: game) != nil
-        }) {
-            return pathStep
-        }
-
-        let neighborDeltas: [(Int, Int)] = source.y.isMultiple(of: 2)
-            ? [(0, -2), (0, -1), (1, 0), (0, 1), (0, 2), (-1, 1), (-1, 0), (-1, -1)]
-            : [(0, -2), (1, -1), (1, 0), (1, 1), (0, 2), (0, 1), (-1, 0), (0, -1)]
-
-        func score(x: Int, y: Int) -> Int {
-            abs(destination.x - x) + abs(destination.y - y)
-        }
-
-        var bestTileId: String?
-        var bestScore: Int = .max
-        for (dx, dy) in neighborDeltas {
-            let nx = source.x + dx
-            let ny = source.y + dy
-            guard let neighbor = game.tiles.values.first(where: { $0.x == nx && $0.y == ny }) else {
-                continue
+        return game.nextPathStep(from: sourceTileId, to: destinationTileId) { _, next in
+            guard let tile = game.tiles[next], let type = tile.type, let owner = unit.owner,
+                  !hasHostileUnit(onTile: next, in: game, friendlyOwner: owner),
+                  !game.colonies.values.contains(where: { $0.tileId == next && $0.owner != owner }) else { return false }
+            let water = game.specification?.tileTypes[type]?.isWater
+                ?? ["model.tile.ocean", "model.tile.highSeas", "model.tile.lake", "model.tile.greatRiver"].contains(type)
+            if isNavalUnit(unit) {
+                return water || game.colonies.values.contains { $0.tileId == next && $0.owner == owner }
             }
-            guard canMoveSelectedUnit(to: neighbor.id) else {
-                continue
-            }
-            let candidateScore = score(x: nx, y: ny)
-            if candidateScore < bestScore {
-                bestScore = candidateScore
-                bestTileId = neighbor.id
-            }
+            return !water
         }
-        return bestTileId
     }
 
     private func isValidDirection(_ direction: String) -> Bool {
@@ -5712,11 +5941,76 @@ final class GameState {
     private func startMessageLoop(client: FreeColClient, server: MockServer? = nil) {
         messageLoopTask = Task {
             await client.startMessageLoop()
-            if !Task.isCancelled {
-                self.errorMessage = "Disconnected from server"
-                self.disconnect()
+        }
+    }
+
+    func handleUnexpectedDisconnect(error: Error?) {
+        guard !userRequestedDisconnect,
+              !usesLocalServer,
+              let remoteHost,
+              let remotePort,
+              let localPlayerName,
+              let localNationId,
+              reconnectTask == nil else {
+            if !userRequestedDisconnect {
+                errorMessage = error?.localizedDescription ?? "Disconnected"
+            }
+            return
+        }
+
+        errorMessage = nil
+        phase = .reconnecting
+        statusMessage = "Connection lost. Reconnecting…"
+        reconnectTask = Task { [weak self] in
+            guard let self else { return }
+            for attempt in 1...5 {
+                if Task.isCancelled { return }
+                self.statusMessage = "Reconnecting (attempt \(attempt)/5)…"
+                if attempt > 1 {
+                    try? await Task.sleep(nanoseconds: UInt64(attempt - 1) * 1_000_000_000)
+                }
+                if Task.isCancelled { return }
+                do {
+                    let newClient = FreeColClient(host: remoteHost, port: remotePort)
+                    let newBridge = ClientBridge(gameState: self)
+                    await newClient.setDelegate(newBridge)
+                    try await newClient.connect()
+                    self.vacantPlayers = await newClient.initialVacantPlayers
+                    self.serverState = await newClient.initialGameState
+                    let result = try await newClient.login(userName: localPlayerName, nationId: localNationId)
+                    self.client = newClient
+                    self.bridge = newBridge
+                    self.applyLoginResult(result)
+                    self.cachedGame = await newClient.game
+                    self.statusMessage = "Reconnected. Review queued actions before resending."
+                    self.reconnectTask = nil
+                    self.startMessageLoop(client: newClient)
+                    return
+                } catch {
+                    FreeColLogger.shared.info("Reconnect attempt \(attempt) failed: \(error)")
+                }
+            }
+            self.reconnectTask = nil
+            self.phase = .disconnected
+            self.statusMessage = ""
+            self.errorMessage = "Could not reconnect after 5 attempts."
+        }
+    }
+
+    func resendQueuedGameplayAction(_ action: QueuedGameplayAction) {
+        guard phase == .inGame else { return }
+        Task {
+            do {
+                try await sendCoreGameplayAction(action.message, queueIfDisconnected: false)
+                queuedGameplayActions.removeAll { $0.id == action.id }
+            } catch {
+                errorMessage = error.localizedDescription
             }
         }
+    }
+
+    func discardQueuedGameplayAction(_ action: QueuedGameplayAction) {
+        queuedGameplayActions.removeAll { $0.id == action.id }
     }
 }
 
@@ -5782,8 +6076,7 @@ private final class ClientBridge: ClientDelegate {
     nonisolated func clientDidDisconnect(error: Error?) {
         guard let gs = gameState else { return }
         Task { @MainActor in
-            gs.errorMessage = error?.localizedDescription ?? "Disconnected"
-            gs.disconnect()
+            gs.handleUnexpectedDisconnect(error: error)
         }
     }
 

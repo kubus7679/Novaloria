@@ -1,4 +1,5 @@
 import XCTest
+import SwiftUI
 @testable import FreeColProtocol
 import FreeColGame
 @testable import FreeColApp
@@ -31,6 +32,44 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(parsed.attributes["userName"], "Alice")
         XCTAssertEqual(parsed.children.count, 1)
         XCTAssertEqual(parsed.children[0].tag, "game")
+    }
+
+    func testLineFramerPreservesUTF8AcrossChunksAndFrames() throws {
+        let bytes = Array(Data("<chat name=\"café\"/>\n<endTurn/>\n".utf8))
+        let splitIndex = try XCTUnwrap(bytes.firstIndex(of: 0xC3)).advanced(by: 1)
+        var framer = LineFramer()
+
+        XCTAssertTrue(try framer.append(Data(bytes[..<splitIndex])).isEmpty)
+        XCTAssertEqual(
+            try framer.append(Data(bytes[splitIndex...])),
+            ["<chat name=\"café\"/>", "<endTurn/>"]
+        )
+        XCTAssertNil(try framer.finish())
+    }
+
+    func testLineFramerRejectsOversizedAndInvalidUTF8Frames() throws {
+        var sizeLimitedFramer = LineFramer(maximumLineBytes: 4)
+        XCTAssertThrowsError(try sizeLimitedFramer.append(Data("12345".utf8)))
+
+        var invalidUTF8Framer = LineFramer()
+        XCTAssertThrowsError(try invalidUTF8Framer.append(Data([0xFF, 0x0A])))
+    }
+
+    func testXMLDecoderRejectsExcessiveNesting() {
+        let openTags = String(repeating: "<node>", count: ProtocolLimits.maximumXMLDepth + 1)
+        let closeTags = String(repeating: "</node>", count: ProtocolLimits.maximumXMLDepth + 1)
+        XCTAssertThrowsError(try XMLDecoder.decode(openTags + closeTags))
+    }
+
+    func testConnectionRejectsInvalidPortBeforeConnecting() async {
+        do {
+            try await Connection(port: Int.max).connect()
+            XCTFail("An out-of-range port must not start a connection")
+        } catch FreeColProtocolError.invalidState(let message) {
+            XCTAssertEqual(message, "Port must be between 1 and 65535")
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
     }
 
     func testEncodeTrivial() throws {
@@ -79,6 +118,18 @@ final class FreeColProtocolTests: XCTestCase {
             attributes: ["message": "a < b & c > d"]
         )
         XCTAssertEqual(xml, #"<chat message="a &lt; b &amp; c &gt; d"/>"#)
+    }
+
+    func testXmlEscapingPreservesLineBreaksInsideSingleWireFrame() throws {
+        let value = "first\nsecond\rthird\ttab"
+        let xml = XMLEncoder.encode(tag: "chat", attributes: ["message": value])
+
+        XCTAssertEqual(
+            xml,
+            #"<chat message="first&#10;second&#13;third&#9;tab"/>"#
+        )
+        XCTAssertFalse(xml.contains("\n"))
+        XCTAssertEqual(try XMLDecoder.decode(xml).attributes["message"], value)
     }
 
     func testMessageRegistry() throws {
@@ -1467,7 +1518,7 @@ final class FreeColProtocolTests: XCTestCase {
             </tile>
           </map>
           <unit id="unit-1" owner="player-1" location="tile-0-0"
-                workImprovementType="model.improvement.plow" workLeft="3"/>
+                workImprovementType="model.improvement.plow" workLeft="3" experience="17"/>
         </game>
         """)
         try game.load(from: parsed)
@@ -1479,6 +1530,7 @@ final class FreeColProtocolTests: XCTestCase {
         let unit = try XCTUnwrap(game.units["unit-1"])
         XCTAssertEqual(unit.workLeft, 3)
         XCTAssertEqual(unit.workImprovementType, "model.improvement.plow")
+        XCTAssertEqual(unit.experience, 17)
     }
 
     func testSpecificationParsesImprovementTypes() throws {
@@ -1666,12 +1718,46 @@ final class FreeColProtocolTests: XCTestCase {
         state.installGame(game)
         state.selectUnit("unit-1", onTile: "tile-0")
 
-        try game.applyRemove(ParsedMessage(tag: "remove", attributes: ["divert": "unit-1"], children: []))
+        try game.applyRemove(ParsedMessage(
+            tag: "remove",
+            attributes: ["xLength": "1", "x0": "unit-1", "divert": "tile-0"],
+            children: []
+        ))
         XCTAssertFalse(state.canMoveSelectedUnit(to: "tile-1"), "removed selections must not remain actionable")
         state.syncAfterModelUpdate()
 
         XCTAssertEqual(state.selectedUnitId, "unit-2")
         XCTAssertEqual(state.selectedTileId, "tile-0")
+    }
+
+    func testJavaRemoveArrayRemovesColonyAndItsTileReference() throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1">
+          <player id="player-1" username="Alice"/>
+          <map id="map-1" width="1" height="1">
+            <tile id="tile-0" x="0" y="0" type="model.tile.plains"
+                  owner="player-1" owningSettlement="colony-1">
+              <colony id="colony-1"/>
+            </tile>
+          </map>
+          <colony id="colony-1" name="Alpha" owner="player-1"
+                  tile="tile-0" settlementType="model.settlement.colony"/>
+        </game>
+        """)
+        try game.load(from: parsed)
+        XCTAssertNotNil(game.colonies["colony-1"])
+        XCTAssertEqual(game.tiles["tile-0"]?.settlement, "colony-1")
+
+        try game.applyRemove(ParsedMessage(
+            tag: "remove",
+            attributes: ["xLength": "1", "x0": "colony-1", "divert": "tile-0"],
+            children: []
+        ))
+
+        XCTAssertNil(game.colonies["colony-1"])
+        XCTAssertNotNil(game.tiles["tile-0"], "divert identifies a surviving object, not a removal")
+        XCTAssertNil(game.tiles["tile-0"]?.settlement)
     }
 
     @MainActor
@@ -1729,6 +1815,268 @@ final class FreeColProtocolTests: XCTestCase {
             GameState.userFacingServerError("something new"),
             "Der Server hat die Aktion abgelehnt: something new"
         )
+    }
+
+    func testServerErrorMappingIsIndependentOfGameState() {
+        XCTAssertEqual(
+            ServerErrorMessage.userFacing("Not allowed to end turn for current player"),
+            "Du bist nicht am Zug. Bitte warte auf deinen nächsten Zug."
+        )
+        XCTAssertEqual(
+            ServerErrorMessage.userFacing("Null colony name"),
+            "Bitte einen Kolonienamen eingeben."
+        )
+        XCTAssertEqual(
+            ServerErrorMessage.userFacing("unexpected server detail"),
+            "Der Server hat die Aktion abgelehnt: unexpected server detail"
+        )
+    }
+
+    func testTileSpatialIndexHitTestingAndViewportCulling() throws {
+        let game = Game()
+        var tiles: [Tile] = []
+        for y in 0..<8 {
+            for x in 0..<10 {
+                tiles.append(try Tile(
+                    id: "tile-\(x)-\(y)",
+                    attributes: ["x": "\(x)", "y": "\(y)"],
+                    children: [],
+                    game: game
+                ))
+            }
+        }
+        let index = TileSpatialIndex(tiles: tiles)
+        let unorderedIndex = TileSpatialIndex(tiles: Array(tiles.reversed()))
+
+        XCTAssertEqual(
+            index.hitTest(location: CGPoint(x: 192, y: 32), tileW: 64, tileH: 32)?.id,
+            "tile-2-1"
+        )
+        XCTAssertEqual(
+            unorderedIndex.hitTest(location: CGPoint(x: 192, y: 32), tileW: 64, tileH: 32)?.id,
+            "tile-2-1"
+        )
+        XCTAssertNil(index.hitTest(location: CGPoint(x: -100, y: -100), tileW: 64, tileH: 32))
+
+        let visible = index.visibleTiles(
+            in: CGRect(x: 160, y: 16, width: 64, height: 32),
+            tileW: 64,
+            tileH: 32
+        )
+        XCTAssertTrue(visible.contains { $0.id == "tile-2-1" })
+        XCTAssertFalse(visible.contains { $0.id == "tile-9-7" })
+        XCTAssertLessThan(visible.count, tiles.count)
+
+        for y in stride(from: -16.0, through: 160.0, by: 8.0) {
+            for x in stride(from: -32.0, through: 256.0, by: 8.0) {
+                let expected = tiles.sorted {
+                    $0.y == $1.y ? $0.x < $1.x : $0.y < $1.y
+                }.reduce(nil as (Tile, Double)?) { best, tile in
+                    let stagger = tile.y.isMultiple(of: 2) ? 0.0 : 0.5
+                    let originX = (Double(tile.x) + 0.5 + stagger) * 64
+                    let originY = Double(tile.y + 1) * 16
+                    let score = abs(x - originX) / 32 + abs(y - originY) / 16
+                    guard score <= 1, score <= (best?.1 ?? .greatestFiniteMagnitude) else {
+                        return best
+                    }
+                    return (tile, score)
+                }?.0.id
+                XCTAssertEqual(
+                    index.hitTest(location: CGPoint(x: x, y: y), tileW: 64, tileH: 32)?.id,
+                    expected,
+                    "hit-test mismatch at (\(x), \(y))"
+                )
+            }
+        }
+
+        for rect in [
+            CGRect(x: 0, y: 0, width: 64, height: 32),
+            CGRect(x: 64, y: 32, width: 100, height: 80),
+            CGRect(x: 210, y: 100, width: 70, height: 60),
+        ] {
+            let expectedVisible = Set(tiles.filter { tile in
+                let stagger = tile.y.isMultiple(of: 2) ? 0.0 : 0.5
+                let origin = CGPoint(
+                    x: (Double(tile.x) + 0.5 + stagger) * 64,
+                    y: Double(tile.y + 1) * 16
+                )
+                return origin.x + 32 >= rect.minX
+                    && origin.x - 32 <= rect.maxX
+                    && origin.y + 16 >= rect.minY
+                    && origin.y - 16 <= rect.maxY
+            }.map(\.id))
+            let actualVisible = Set(index.visibleTiles(in: rect, tileW: 64, tileH: 32).map(\.id))
+            XCTAssertEqual(actualVisible, expectedVisible)
+        }
+    }
+
+    func testTileSpatialIndexQueryPerformanceOnStandardMap() throws {
+        try measureTileSelectionPerformance(width: 80, height: 100, useSpatialIndex: true)
+    }
+
+    func testTileLinearScanPerformanceOnStandardMap() throws {
+        try measureTileSelectionPerformance(width: 80, height: 100, useSpatialIndex: false)
+    }
+
+    func testTileSpatialIndexQueryPerformanceOnLargeMap() throws {
+        try measureTileSelectionPerformance(width: 160, height: 200, useSpatialIndex: true)
+    }
+
+    func testTileLinearScanPerformanceOnLargeMap() throws {
+        try measureTileSelectionPerformance(width: 160, height: 200, useSpatialIndex: false)
+    }
+
+    func testTileIndexedCanvasWorkloadOnStandardMap() throws {
+        try measureTileCanvasWorkload(width: 80, height: 100, useSpatialIndex: true)
+    }
+
+    func testTileLinearCanvasWorkloadOnStandardMap() throws {
+        try measureTileCanvasWorkload(width: 80, height: 100, useSpatialIndex: false)
+    }
+
+    func testTileIndexedCanvasWorkloadOnLargeMap() throws {
+        try measureTileCanvasWorkload(width: 160, height: 200, useSpatialIndex: true)
+    }
+
+    func testTileLinearCanvasWorkloadOnLargeMap() throws {
+        try measureTileCanvasWorkload(width: 160, height: 200, useSpatialIndex: false)
+    }
+
+    private func measureTileSelectionPerformance(
+        width: Int,
+        height: Int,
+        useSpatialIndex: Bool
+    ) throws {
+        let game = Game()
+        var tiles: [Tile] = []
+        tiles.reserveCapacity(width * height)
+        for y in 0..<height {
+            for x in 0..<width {
+                tiles.append(try Tile(
+                    id: "tile-\(x)-\(y)",
+                    attributes: ["x": "\(x)", "y": "\(y)"],
+                    children: [],
+                    game: game
+                ))
+            }
+        }
+
+        let rect = CGRect(x: 1200, y: 1200, width: 1200, height: 800)
+        let tileW = 256.0
+        let tileH = 128.0
+        let spatialIndex = TileSpatialIndex(sortedTiles: tiles)
+        let visibleWithLinearScan = {
+            tiles.filter { tile in
+                let stagger = tile.y.isMultiple(of: 2) ? 0.0 : 0.5
+                let originX = (Double(tile.x) + 0.5 + stagger) * tileW
+                let originY = Double(tile.y + 1) * tileH / 2
+                return originX + tileW / 2 >= rect.minX
+                    && originX - tileW / 2 <= rect.maxX
+                    && originY + tileH / 2 >= rect.minY
+                    && originY - tileH / 2 <= rect.maxY
+            }
+        }
+        let expectedVisibleIds = Set(
+            spatialIndex.visibleTiles(in: rect, tileW: tileW, tileH: tileH).map(\.id)
+        )
+        XCTAssertFalse(expectedVisibleIds.isEmpty)
+        XCTAssertEqual(Set(visibleWithLinearScan().map(\.id)), expectedVisibleIds)
+
+        if useSpatialIndex {
+            measure(metrics: [XCTClockMetric()]) {
+                let visible = spatialIndex.visibleTiles(in: rect, tileW: tileW, tileH: tileH)
+                XCTAssertEqual(visible.count, expectedVisibleIds.count)
+            }
+        } else {
+            measure(metrics: [XCTClockMetric()]) {
+                XCTAssertEqual(visibleWithLinearScan().count, expectedVisibleIds.count)
+            }
+        }
+    }
+
+    private func measureTileCanvasWorkload(
+        width: Int,
+        height: Int,
+        useSpatialIndex: Bool
+    ) throws {
+        let game = Game()
+        var tiles: [Tile] = []
+        tiles.reserveCapacity(width * height)
+        for y in 0..<height {
+            for x in 0..<width {
+                tiles.append(try Tile(
+                    id: "tile-\(x)-\(y)",
+                    attributes: ["x": "\(x)", "y": "\(y)"],
+                    children: [],
+                    game: game
+                ))
+            }
+        }
+
+        let rect = CGRect(x: 1200, y: 1200, width: 1200, height: 800)
+        let tileW = 256.0
+        let tileH = 128.0
+        let expectedVisibleCount = tiles.filter { tile in
+            let stagger = tile.y.isMultiple(of: 2) ? 0.0 : 0.5
+            let originX = (Double(tile.x) + 0.5 + stagger) * tileW
+            let originY = Double(tile.y + 1) * tileH / 2
+            return originX + tileW / 2 >= rect.minX
+                && originX - tileW / 2 <= rect.maxX
+                && originY + tileH / 2 >= rect.minY
+                && originY - tileH / 2 <= rect.maxY
+        }.count
+        XCTAssertGreaterThan(expectedVisibleCount, 0)
+
+        measure(metrics: [XCTClockMetric(), XCTMemoryMetric()]) {
+            let sortedTiles = tiles.sorted {
+                $0.y == $1.y ? $0.x < $1.x : $0.y < $1.y
+            }
+            let visible: [Tile]
+            if useSpatialIndex {
+                visible = TileSpatialIndex(sortedTiles: sortedTiles).visibleTiles(
+                    in: rect,
+                    tileW: tileW,
+                    tileH: tileH
+                )
+            } else {
+                visible = sortedTiles.filter { tile in
+                    let stagger = tile.y.isMultiple(of: 2) ? 0.0 : 0.5
+                    let originX = (Double(tile.x) + 0.5 + stagger) * tileW
+                    let originY = Double(tile.y + 1) * tileH / 2
+                    return originX + tileW / 2 >= rect.minX
+                        && originX - tileW / 2 <= rect.maxX
+                        && originY + tileH / 2 >= rect.minY
+                        && originY - tileH / 2 <= rect.maxY
+                }
+            }
+            let tilesToDraw = useSpatialIndex ? visible : sortedTiles
+            let pathWidth = consumeTilePaths(tilesToDraw, tileW: tileW, tileH: tileH)
+            XCTAssertGreaterThan(pathWidth, 0)
+            if useSpatialIndex {
+                XCTAssertEqual(visible.count, expectedVisibleCount)
+            } else {
+                XCTAssertEqual(tilesToDraw.count, width * height)
+            }
+        }
+    }
+
+    private func consumeTilePaths(_ tiles: [Tile], tileW: Double, tileH: Double) -> Double {
+        tiles.reduce(0) { totalWidth, tile in
+            let stagger = tile.y.isMultiple(of: 2) ? 0.0 : 0.5
+            let origin = CGPoint(
+                x: (Double(tile.x) + 0.5 + stagger) * tileW,
+                y: Double(tile.y + 1) * tileH / 2
+            )
+            var path = Path()
+            path.addLines([
+                CGPoint(x: origin.x, y: origin.y - tileH / 2),
+                CGPoint(x: origin.x + tileW / 2, y: origin.y),
+                CGPoint(x: origin.x, y: origin.y + tileH / 2),
+                CGPoint(x: origin.x - tileW / 2, y: origin.y),
+            ])
+            path.closeSubpath()
+            return totalWidth + path.boundingRect.width
+        }
     }
 
     // MARK: Phase 57 - founding fathers and reports
@@ -1818,7 +2166,7 @@ final class FreeColProtocolTests: XCTestCase {
         state.installGame(game)
 
         let requirements = try XCTUnwrap(state.colonyBuildRequirements(colony))
-        XCTAssertEqual(requirements.target, "Warehouse")
+        XCTAssertEqual(requirements.target, "Lagerhaus")
         XCTAssertEqual(requirements.items.first?.id, "model.goods.lumber")
         XCTAssertEqual(requirements.items.first?.required, 60)
         XCTAssertEqual(requirements.items.first?.stored, 12)
@@ -1967,7 +2315,7 @@ final class FreeColProtocolTests: XCTestCase {
         let game = Game()
         let parsed = try XMLDecoder.decode("""
         <game id="game-1" clientUserName="Alice">
-          <player id="player-1" username="Alice" gold="1000">
+          <player id="player-1" username="Alice" gold="1000" immigrationRequired="12">
             <europe id="player-1-europe" owner="player-1" recruitPrice="120">
               <recruit id="model.unit.freeColonist" role="model.role.default" number="2"/>
               <unitPrice unitType="model.unit.artillery" price="500"/>
@@ -1989,7 +2337,7 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(state.purchasableEuropeUnits.map(\.unitType),
                        ["model.unit.artillery", "model.unit.frigate"])
         XCTAssertEqual(state.purchasableEuropeUnits.first?.price, 500)
-        XCTAssertEqual(state.unitDisplayName("model.unit.artillery"), "Artillery")
+        XCTAssertEqual(state.unitDisplayName("model.unit.artillery"), "Artillerie")
 
         state.recruitUnitInEurope(slot: 1)
         try await Task.sleep(nanoseconds: 50_000_000)

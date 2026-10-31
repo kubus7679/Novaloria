@@ -14,6 +14,7 @@ struct ChatPanelView: View {
                     .font(.title3.bold())
                 Spacer()
                 Button("Close") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
             }
 
             ScrollViewReader { proxy in

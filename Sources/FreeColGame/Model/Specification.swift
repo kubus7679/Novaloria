@@ -182,17 +182,20 @@ public struct TileTypeInfo: @unchecked Sendable {
     public var canSettle: Bool
     public var centerOutputs: [String: Int]
     public var centerInputs: [String: Int]
+    public var workerOutputs: [String: Int]
 
     public init(id: String,
                 isWater: Bool = false,
                 canSettle: Bool = true,
                 centerOutputs: [String: Int] = [:],
-                centerInputs: [String: Int] = [:]) {
+                centerInputs: [String: Int] = [:],
+                workerOutputs: [String: Int] = [:]) {
         self.id = id
         self.isWater = isWater
         self.canSettle = canSettle
         self.centerOutputs = centerOutputs
         self.centerInputs = centerInputs
+        self.workerOutputs = workerOutputs
     }
 }
 
@@ -329,7 +332,7 @@ public final class Specification: @unchecked Sendable {
     }
 
     /// Walk the `extends` chain for an ability value (own value wins).
-    private func effectiveAbility(unitTypeId: String,
+    public func effectiveAbility(unitTypeId: String,
                                   abilityId: String,
                                   visited: Set<String> = []) -> Bool? {
         guard !visited.contains(unitTypeId), let info = unitTypes[unitTypeId] else {
@@ -363,15 +366,20 @@ public final class Specification: @unchecked Sendable {
             }
             var outputs: [String: Int] = [:]
             var inputs: [String: Int] = [:]
+            var workerOutputs: [String: Int] = [:]
             for production in child.children where production.tag == "production" {
                 // The unattended block is the colony-center production.
-                guard production.attributes.bool("unattended", default: false) else { continue }
+                let unattended = production.attributes.bool("unattended", default: false)
                 for item in production.children {
                     guard let goodsType = item.attributes["goods-type"] ?? item.attributes["id"] else { continue }
                     let value = item.attributes.int("value")
                     if item.tag == "output" {
-                        outputs[goodsType, default: 0] += value
-                    } else if item.tag == "input" {
+                        if unattended {
+                            outputs[goodsType, default: 0] += value
+                        } else {
+                            workerOutputs[goodsType] = max(workerOutputs[goodsType] ?? 0, value)
+                        }
+                    } else if item.tag == "input", unattended {
                         inputs[goodsType, default: 0] += value
                     }
                 }
@@ -380,7 +388,8 @@ public final class Specification: @unchecked Sendable {
                                              isWater: child.attributes.bool("is-water", default: false),
                                              canSettle: child.attributes.bool("can-settle", default: true),
                                              centerOutputs: outputs,
-                                             centerInputs: inputs)
+                                             centerInputs: inputs,
+                                             workerOutputs: workerOutputs)
             collectTileTypes(from: child)
         }
     }

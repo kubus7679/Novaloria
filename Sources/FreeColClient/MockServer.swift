@@ -7,11 +7,12 @@ public actor MockServer {
     private var continuation: AsyncStream<String>.Continuation?
     private var pendingMessages: [String] = []
 
-    public var port: Int { serverIOWrapper.port }
+    public nonisolated let port: Int
 
     public init() {
         let wrapper = ServerIO()
         self.serverIOWrapper = wrapper
+        self.port = wrapper.port
         var cont: AsyncStream<String>.Continuation?
         self.stream = AsyncStream { cont = $0 }
         self.continuation = cont
@@ -30,7 +31,7 @@ public actor MockServer {
         switch result {
         case .lines(let lines):
             for line in lines {
-                FreeColLogger.shared.debug("MockServer <<< \(line.prefix(200))")
+                FreeColLogger.shared.debug("MockServer received protocol frame (\(line.utf8.count) bytes)")
                 continuation?.yield(line)
             }
         case .disconnected:
@@ -40,7 +41,7 @@ public actor MockServer {
     }
 
     public func send(_ xml: String) {
-        FreeColLogger.shared.debug("MockServer queuing: \(xml.prefix(200))")
+        FreeColLogger.shared.debug("MockServer queuing protocol frame (\(xml.utf8.count) bytes)")
         pendingMessages.append(xml)
     }
 
@@ -53,7 +54,7 @@ public actor MockServer {
 
     public func nextLine() async throws -> String {
         for await line in stream {
-            FreeColLogger.shared.debug("MockServer <<< \(line.prefix(200))")
+            FreeColLogger.shared.debug("MockServer received protocol frame (\(line.utf8.count) bytes)")
             return line
         }
         throw FreeColProtocolError.disconnected
@@ -82,7 +83,7 @@ public actor MockServer {
             throw FreeColProtocolError.invalidState("Expected question with login")
         }
 
-        FreeColLogger.shared.info("MockServer received login for user=\(lc.attributes["userName"] ?? "?")")
+        FreeColLogger.shared.info("MockServer received login")
 
         let flatGameXML = gameResponse
             .components(separatedBy: .newlines)

@@ -1,7 +1,72 @@
 import FreeColClient
 import FreeColGame
+import Foundation
 
 extension GameState {
+    func canUnitWorkInColony(_ unit: FreeColGame.Unit) -> Bool {
+        guard let type = unit.unitType else { return false }
+        if let person = cachedGame?.specification?.effectiveAbility(
+            unitTypeId: type, abilityId: "model.ability.person"
+        ) { return person }
+        let short = type.split(separator: ".").last.map(String.init) ?? type
+        return short.lowercased().contains("colonist")
+            || short.hasPrefix("expert") || short.hasPrefix("master")
+            || ["hardyPioneer", "veteranSoldier", "jesuitMissionary", "firebrandPreacher",
+                "elderStatesman", "seasonedScout", "pettyCriminal", "indenturedServant",
+                "convertedNative"].contains(short)
+    }
+
+    var selectedColonyTerrain: [ColonyTerrainField] {
+        guard let game = cachedGame, let colony = selectedColony,
+              let tileId = colony.tileId, let center = game.tiles[tileId] else { return [] }
+        let origin = MapGeometry.origin(x: center.x, y: center.y, tileW: 1, tileH: 1)
+        return ([tileId] + game.neighborTileIds(of: tileId)).compactMap { id in
+            guard let tile = game.tiles[id] else { return nil }
+            let point = MapGeometry.origin(x: tile.x, y: tile.y, tileW: 1, tileH: 1)
+            let location = colony.workTiles.first(where: { $0.tileId == id })
+            let reason: String?
+            if id == tileId {
+                reason = "Das Zentrum wird automatisch bewirtschaftet."
+            } else if let location {
+                reason = colonyWorkLocationUnavailableReason(location.id)
+            } else {
+                reason = "Für dieses Feld fehlt der Arbeitsplatz in den Serverdaten."
+            }
+            return ColonyTerrainField(
+                tile: tile, offset: CGPoint(x: point.x - origin.x, y: point.y - origin.y),
+                workLocationId: location?.id,
+                workers: location.map { location in
+                    selectedColonyUnits.filter { $0.location == location.id }
+                } ?? [],
+                unavailableReason: reason
+            )
+        }
+    }
+
+    func colonyWorkLocationUnavailableReason(_ locationId: String) -> String? {
+        guard let colony = selectedColony, let game = cachedGame else { return "Keine Kolonie ausgewählt." }
+        if colony.buildings.contains(where: { $0.id == locationId }) { return nil }
+        guard let location = colony.workTiles.first(where: { $0.id == locationId }),
+              let tileId = location.tileId, let tile = game.tiles[tileId] else {
+            return "Dieser Arbeitsplatz ist nicht verfügbar."
+        }
+        if tileId == colony.tileId { return "Das Zentrum wird automatisch bewirtschaftet." }
+        if tile.type == nil { return "Das Gelände ist unbekannt." }
+        if tile.lostCityRumourType != nil { return "Die Ruinen müssen zuerst erkundet werden." }
+        if let owner = tile.owner, owner != colony.owner { return "Dieses Land gehört einem anderen Volk." }
+        if let settlement = tile.owningSettlement, settlement != colony.id {
+            return "Dieses Feld gehört zu einer anderen Siedlung."
+        }
+        let isWater = game.specification?.tileTypes[tile.type ?? ""]?.isWater
+            ?? ["model.tile.ocean", "model.tile.highSeas", "model.tile.lake", "model.tile.greatRiver"].contains(tile.type ?? "")
+        if isWater, !colony.buildings.contains(where: {
+            ["model.building.docks", "model.building.drydock", "model.building.shipyard"].contains($0.buildingType ?? "")
+        }) {
+            return "Für Wasserfelder werden Docks benötigt."
+        }
+        return nil
+    }
+
     // MARK: - Colony build and goods queries
 
     /// Build queue of the selected colony, already known to the server.
@@ -11,18 +76,12 @@ extension GameState {
 
     /// Human-readable building name for a `model.building.*` id.
     func buildingDisplayName(_ typeId: String) -> String {
-        if let info = cachedGame?.specification?.buildingTypes[typeId] {
-            return info.displayName
-        }
-        return typeId.split(separator: ".").last.map(String.init) ?? typeId
+        GameLabels.name(typeId, fallback: cachedGame?.specification?.buildingTypes[typeId]?.displayName)
     }
 
     /// Human-readable goods name for a `model.goods.*` id.
     func goodsDisplayName(_ typeId: String) -> String {
-        if let name = cachedGame?.specification?.goodsTypes[typeId]?.name, !name.isEmpty {
-            return name
-        }
-        return typeId.split(separator: ".").last.map(String.init) ?? typeId
+        GameLabels.name(typeId, fallback: cachedGame?.specification?.goodsTypes[typeId]?.name)
     }
 
     /// Goods type used for construction progress (FreeCol "building materials").
@@ -148,6 +207,10 @@ extension GameState {
             .sorted { $0.id < $1.id }
     }
 
+    func colonyPopulation(_ colony: Colony) -> Int {
+        max(colony.unitCount, colonyWorkerUnits(colony).count)
+    }
+
     /// Net production estimate for a colony, with display names.
     func colonyProductionSummary(_ colony: Colony) -> [(id: String, label: String, amount: Int)] {
         guard let specification = cachedGame?.specification else { return [] }
@@ -228,10 +291,11 @@ extension GameState {
     var selectedColonyWorkerUnitId: String? {
         guard canManageSelectedColony else { return nil }
         if let unit = selectedUnit,
+           canUnitWorkInColony(unit),
            selectedColonyUnits.contains(where: { $0.id == unit.id }) {
             return unit.id
         }
-        return selectedColonyUnits.first?.id
+        return selectedColonyUnits.first(where: { canUnitWorkInColony($0) })?.id
     }
 
     var canPutSelectedColonyWorkerOutside: Bool {

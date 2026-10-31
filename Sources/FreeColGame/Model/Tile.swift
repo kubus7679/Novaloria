@@ -8,13 +8,15 @@ public struct TileImprovement: Sendable, Identifiable {
     public var turns: Int
     public var magnitude: Int
     public var virtual: Bool
+    public var style: String?
 
-    public init(id: String, type: String?, turns: Int, magnitude: Int, virtual: Bool) {
+    public init(id: String, type: String?, turns: Int, magnitude: Int, virtual: Bool, style: String? = nil) {
         self.id = id
         self.type = type
         self.turns = turns
         self.magnitude = magnitude
         self.virtual = virtual
+        self.style = style
     }
 }
 
@@ -82,7 +84,8 @@ public struct Tile: GameObject, Identifiable {
                             type: item.attributes["type"],
                             turns: item.attributes.int("turns"),
                             magnitude: item.attributes.int("magnitude"),
-                            virtual: item.attributes.bool("virtual", default: false)
+                            virtual: item.attributes.bool("virtual", default: false),
+                            style: item.attributes["style"]
                         ))
                     case "resource":
                         resources.append(TileResource(

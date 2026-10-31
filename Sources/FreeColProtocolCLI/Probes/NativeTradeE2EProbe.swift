@@ -10,15 +10,9 @@ func nativeTradeE2EProbe() async throws {
     let delegate = TestDelegate()
     await client.setDelegate(delegate)
 
-    try await client.connect()
-    let vacant = await client.initialVacantPlayers
-    let nationId = vacant?.children.first?.attributes["nationId"]
-        ?? vacant?.children.first?.attributes["id"]
-        ?? "model.nation.dutch"
     let userName = ProcessInfo.processInfo.environment["REAL_SERVER_USERNAME"]
         ?? "CopilotNativeTrade-\(Int(Date().timeIntervalSince1970))"
-
-    let result = try await client.login(userName: userName, nationId: nationId)
+    let result = try await connectAndLogin(client, userName: userName)
     if result.serverState == .preGame {
         try await client.send(message: ParsedMessage(
             tag: "updateGameOptions",
@@ -116,17 +110,6 @@ func nativeTradeE2EProbe() async throws {
             }
         }
 
-        func endTurnAndWait() async throws {
-            let turnBefore = await client.game.turn.number
-            _ = try await client.ask(message: ParsedMessage(tag: "endTurn", attributes: [:], children: []), timeout: 45)
-            for _ in 0..<60 {
-                let current = await client.game
-                if current.turn.number > turnBefore && current.currentPlayerId == localPlayerId { return }
-                try await Task.sleep(nanoseconds: 500_000_000)
-            }
-            throw TestError(message: "local player's turn did not return after endTurn")
-        }
-
         let directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 
         func isWaterTile(_ tile: FreeColGame.Tile) -> Bool {
@@ -210,7 +193,7 @@ func nativeTradeE2EProbe() async throws {
                     continue
                 }
                 if carrier.movesLeft <= 0 {
-                    try await endTurnAndWait()
+                    try await endTurnAndWait(client: client, localPlayerId: localPlayerId, maxPolls: 60)
                     continue
                 }
 
@@ -254,7 +237,7 @@ func nativeTradeE2EProbe() async throws {
                 if !moved {
                     game = await client.game
                     if (game.units[carrierId]?.movesLeft ?? 0) <= 0 {
-                        try await endTurnAndWait()
+                        try await endTurnAndWait(client: client, localPlayerId: localPlayerId, maxPolls: 60)
                     } else {
                         explorationHeading = (explorationHeading + 1) % directions.count
                     }
@@ -283,7 +266,7 @@ func nativeTradeE2EProbe() async throws {
                     game = await client.game
                     if let location = game.units[carrierId]?.location,
                        game.tiles[location] != nil { break }
-                    try await endTurnAndWait()
+                    try await endTurnAndWait(client: client, localPlayerId: localPlayerId, maxPolls: 60)
                 }
                 game = await client.game
                 guard let location = game.units[carrierId]?.location,
@@ -298,7 +281,7 @@ func nativeTradeE2EProbe() async throws {
             }
             game = await client.game
             if (game.units[traderId]?.movesLeft ?? 0) <= 0 {
-                try await endTurnAndWait()
+                try await endTurnAndWait(client: client, localPlayerId: localPlayerId, maxPolls: 60)
                 game = await client.game
             }
             guard let currentCarrier = game.units[carrierId],
@@ -346,7 +329,7 @@ func nativeTradeE2EProbe() async throws {
             }
 
             if unit.movesLeft <= 0 {
-                try await endTurnAndWait()
+                try await endTurnAndWait(client: client, localPlayerId: localPlayerId, maxPolls: 60)
                 continue
             }
 
@@ -385,7 +368,7 @@ func nativeTradeE2EProbe() async throws {
             }
 
             if !moved {
-                try await endTurnAndWait()
+                try await endTurnAndWait(client: client, localPlayerId: localPlayerId, maxPolls: 60)
                 previousTileId = nil
             }
         }
@@ -447,7 +430,7 @@ func nativeTradeE2EProbe() async throws {
         // Open native trade session.
         game = await client.game
         if (game.units[traderId]?.movesLeft ?? 0) <= 0 {
-            try await endTurnAndWait()
+            try await endTurnAndWait(client: client, localPlayerId: localPlayerId, maxPolls: 60)
             game = await client.game
         }
         guard (game.units[traderId]?.movesLeft ?? 0) > 0 else {

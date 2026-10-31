@@ -55,6 +55,11 @@ struct LoginView: View {
         availableNations.map(\.id)
     }
 
+    private var validPort: Int? {
+        guard let port = Int(portString), (1...65_535).contains(port) else { return nil }
+        return port
+    }
+
     private func syncSelectedNation() {
         let ids = availableNationIds
         guard !ids.isEmpty else {
@@ -137,13 +142,19 @@ struct LoginView: View {
                             .disabled(state.phase != .disconnected)
                         Spacer()
                     }
+                    if state.phase == .disconnected, validPort == nil {
+                        Text("Enter a port between 1 and 65535.")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
                     HStack(spacing: 12) {
                         if state.phase == .disconnected {
                             Button("Connect") {
-                                let p = Int(portString) ?? 3541
-                                state.connect(host: host, port: p)
+                                guard let validPort else { return }
+                                state.connect(host: host, port: validPort)
                             }
                             .buttonStyle(.borderedProminent)
+                            .disabled(validPort == nil)
 
                             Button("Local Game") {
                                 state.startLocal(userName: userName, nationId: selectedNation)
@@ -156,6 +167,13 @@ struct LoginView: View {
                             .buttonStyle(.bordered)
                         }
                     }
+                    Label(
+                        "Server traffic is unencrypted. Use only on a trusted network.",
+                        systemImage: "lock.open"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.vertical, 4)
             }

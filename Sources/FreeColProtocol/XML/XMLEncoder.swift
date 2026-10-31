@@ -25,5 +25,8 @@ public enum XMLEncoder {
             .replacingOccurrences(of: "'", with: "&apos;")
             .replacingOccurrences(of: "<", with: "&lt;")
             .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\r", with: "&#13;")
+            .replacingOccurrences(of: "\n", with: "&#10;")
+            .replacingOccurrences(of: "\t", with: "&#9;")
     }
 }

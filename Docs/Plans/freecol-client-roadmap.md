@@ -4,10 +4,11 @@
 > angebunden. „Spielbar wie der Java-Client" ist damit noch nicht erreicht.
 > Die verifizierten Restlücken stehen in
 > `Docs/Plans/playability-roadmap-54-57.md` (Phasen 54–65) sowie die
-> Economy-/Colony-Management-Follow-ups der Phasen 66–91. Echt gegen den
-> Java-Server validiert sind alle 11 Proben (smoke, deep, gameplay, reject,
-> traderoute, multiplayer, Native Trade, Diplomatie, Kampf, Missionar/Spionage,
-> Recruitment); `STRICT_SKIPS=1` läuft ohne Skip oder Fehler. Die native UI-
+> Economy-/Colony-Management-Follow-ups der Phasen 66–102. Im aktuellen Java-Lauf
+> bestehen 11 von 12 Proben (smoke, deep, gameplay, reject, traderoute, multiplayer,
+> Native Trade, abandon, combat, missionary/spy, recruitment); Diplomatie wird
+> übersprungen, weil keine AI-Antwort beobachtet wird. `STRICT_SKIPS=1` deckt diesen
+> offenen Fall auf. Die native UI-
 > Sichtprüfung der Transit-/Ankunftsanzeige steht noch aus.
 
 ## Phase 1: Colony and Unit UX completion
@@ -211,13 +212,26 @@
       Probe skips when no missionary/scout units or reachable targets. See
       `phase89-missionary-spy-e2e-plan.md`.
 - [x] **90 Recruitment & Europe purchase E2E** — `moveTo` Europe, `emigrateUnit`,
-      `trainUnitInEurope` verified against Java without skip. See
+      `trainUnitInEurope` verified against Java without skip; concrete recruit slot 1
+      is asserted against the offered unit type. See
       `phase90-recruitment-immigration-e2e-plan.md`.
 - [x] **91 Real E2E validation & client model fixes** — first real run of the
       whole suite; fixed `<highSeas>`/`<europe>` updates, specification-based
       Europe unit prices, flawed trade-route/multiplayer/prompt probes; E2E
       script now reports passed/skipped/failed. Phases 87–89 remain
       unverified (probes skip). See `plans.md`.
+- [x] **94 Colony abandonment E2E** — deterministic empty-colony fixture verifies
+      server removal and tile release; Java `remove xLength/x0` arrays are now
+      applied to the client model.
+- [ ] **95 Diplomacy depth** — AI response is explicitly a skip when absent; gifts,
+      tribute and stance acceptance remain unverified against a completed Java
+      negotiation. See `next-phases-plan.md`.
+- [x] **96 Specific emigration slot** — recruit from Java Europe slot 1 and assert the
+      selected offer and gold change; Fountain-of-Youth slot selection remains covered
+      by the MockServer decision-action contract.
+- [x] **97 CLI refactor, first step** — shared test support, offline tests and legacy
+      server probes moved out of `main.swift`; remaining integration tests still need
+      extraction. See `plans.md`.
 
 ## Suggested order
 

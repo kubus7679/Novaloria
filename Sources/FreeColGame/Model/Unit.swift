@@ -26,6 +26,7 @@ public struct Unit: GameObject, PartiallyUpdatable, Identifiable {
     public var state: UnitState = .active
     public var role: String?
     public var roleCount: Int = 0
+    public var experience: Int = 0
     public var hitPoints: Int = 0
     public var treasureAmount: Int = 0
     public var workType: String?
@@ -65,6 +66,7 @@ public struct Unit: GameObject, PartiallyUpdatable, Identifiable {
         if let v = attributes["state"], let s = UnitState(rawValue: v) { state = s }
         if let v = attributes["role"] { role = v }
         roleCount = attributes.int("roleCount", default: roleCount)
+        experience = attributes.int("experience", default: experience)
         hitPoints = attributes.int("hitPoints", default: hitPoints)
         treasureAmount = attributes.int("treasureAmount", default: treasureAmount)
         if let v = attributes["workType"] { workType = v }

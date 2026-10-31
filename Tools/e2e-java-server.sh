@@ -111,7 +111,7 @@ run_probe() {
   if [ "$status" -ne 0 ] || grep -q "^  FAIL" "$log"; then
     FAILED+=("$name")
     tail -n 25 "$log"
-  elif grep -q "skipped" "$log"; then
+  elif grep -Eq '(^|[[:space:]])SKIP[[:space:]]|skipped:|skipped -|^[0-9]+ passed, [1-9][0-9]* skipped' "$log"; then
     SKIPPED+=("$name")
   else
     PASSED+=("$name")
@@ -133,6 +133,8 @@ run_probe multiplayer "Multiplayer Turn Gating probe (2+ players, turn ownership
   REAL_SERVER_MULTIPLAYER_E2E=1 REAL_SERVER_PLAYER_COUNT=2
 run_probe nativetrade "Native Trade Session probe (open/buy/haggle/close against real settlement)" "--load-savegame|/fixtures/native-trade.fsg" \
   REAL_SERVER_NATIVE_TRADE_E2E=1 REAL_SERVER_USERNAME=FreeColE2ENativeTrade
+run_probe abandon "Colony abandonment probe (remove empty colony and release tile)" "--load-savegame|/fixtures/abandon-e2e.fsg" \
+  REAL_SERVER_USERNAME=FreeColE2ENativeTrade REAL_SERVER_ABANDON_E2E=1
 run_probe diplomacy "Diplomacy probe (proposal to European AI, async response handling)" "--load-savegame|/fixtures/scenario-e2e.fsg" \
   REAL_SERVER_USERNAME=FreeColE2ENativeTrade REAL_SERVER_SCENARIO_FIXTURE=1 REAL_SERVER_DIPLOMACY_E2E=1
 run_probe combat "Combat probe (attack enemy unit, verify combat result)" "--load-savegame|/fixtures/scenario-e2e.fsg" \

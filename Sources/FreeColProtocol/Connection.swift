@@ -7,24 +7,32 @@ public actor Connection {
     private var connection: NWConnection?
     private var continuation: AsyncStream<String>.Continuation?
     private let stream: AsyncStream<String>
+    private var terminalError: Error?
     private var nextReplyId = 0
     private var pending: [Int: CheckedContinuation<ParsedMessage, Error>] = [:]
     private var isDispatching = false
-    private var receiveBuffer = ""
+    private var lineFramer = LineFramer()
 
     public init(host: String = "localhost", port: Int = 3541) {
         self.host = host
         self.port = port
         var cont: AsyncStream<String>.Continuation?
-        self.stream = AsyncStream { cont = $0 }
+        self.stream = AsyncStream(
+            bufferingPolicy: .bufferingOldest(ProtocolLimits.maximumQueuedFrames)
+        ) { cont = $0 }
         self.continuation = cont
         FreeColLogger.shared.debug("Connection init \(host):\(port)")
     }
 
     public func connect() async throws {
+        guard let rawPort = UInt16(exactly: port),
+              rawPort != 0,
+              let networkPort = NWEndpoint.Port(rawValue: rawPort) else {
+            throw FreeColProtocolError.invalidState("Port must be between 1 and 65535")
+        }
         let endpoint = NWEndpoint.hostPort(
             host: NWEndpoint.Host(host),
-            port: NWEndpoint.Port(rawValue: UInt16(port))!
+            port: networkPort
         )
         FreeColLogger.shared.info("Connecting to \(host):\(port)...")
         let conn = NWConnection(to: endpoint, using: .tcp)
@@ -71,6 +79,7 @@ public actor Connection {
 
     public func disconnect() {
         FreeColLogger.shared.info("Disconnecting from \(host):\(port)")
+        terminalError = FreeColProtocolError.disconnected
         connection?.cancel()
         connection = nil
         continuation?.finish()
@@ -94,14 +103,24 @@ public actor Connection {
         guard let conn = connection, conn.state == .ready else {
             throw FreeColProtocolError.disconnected
         }
-        let data = Data((xml + "\n").utf8)
+        guard !xml.contains("\n") else {
+            throw FreeColProtocolError.invalidState("Protocol messages must be single-line")
+        }
+        guard xml.utf8.count <= ProtocolLimits.maximumFrameBytes else {
+            throw FreeColProtocolError.resourceLimitExceeded(
+                "message exceeds \(ProtocolLimits.maximumFrameBytes) bytes"
+            )
+        }
+        var data = Data(xml.utf8)
+        data.append(0x0A)
+        let frameSize = data.count - 1
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
             conn.send(content: data, completion: .contentProcessed { error in
                 if let error {
                     FreeColLogger.shared.error("Send failed: \(error)")
                     cont.resume(throwing: FreeColProtocolError.connectionFailed(error))
                 } else {
-                    FreeColLogger.shared.debug("Sent \(xml.prefix(200))")
+                    FreeColLogger.shared.debug("Sent protocol frame (\(frameSize) bytes)")
                     cont.resume()
                 }
             })
@@ -136,12 +155,12 @@ public actor Connection {
                     do {
                         try await self.send(message: question)
                     } catch {
-                        await self.failPending(replyId, error: error)
+                        self.failPending(replyId, error: error)
                     }
                 }
                 Task {
                     try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
-                    await self.failPending(replyId, error: FreeColProtocolError.timeout)
+                    self.failPending(replyId, error: FreeColProtocolError.timeout)
                 }
             }
         }
@@ -211,11 +230,11 @@ public actor Connection {
 
     public func nextLine() async throws -> String {
         for await line in stream {
-            FreeColLogger.shared.debug("<<< \(line.prefix(200))")
+            FreeColLogger.shared.debug("<<< received protocol frame (\(line.utf8.count) bytes)")
             return line
         }
         FreeColLogger.shared.error("Stream ended (disconnected)")
-        throw FreeColProtocolError.disconnected
+        throw terminalError ?? FreeColProtocolError.disconnected
     }
 
     public func nextLine(timeout: TimeInterval) async throws -> String? {
@@ -236,7 +255,9 @@ public actor Connection {
     }
 
     private func handleDisconnect(_ error: Error) {
+        guard terminalError == nil else { return }
         FreeColLogger.shared.error("Connection error: \(error)")
+        terminalError = error
         continuation?.finish()
         for (_, c) in pending {
             c.resume(throwing: FreeColProtocolError.connectionFailed(error))
@@ -247,45 +268,88 @@ public actor Connection {
     private func receiveLoop(_ conn: NWConnection) {
         conn.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
             guard let self else { return }
-
-            if let data, !data.isEmpty {
-                let text = String(decoding: data, as: UTF8.self)
-                FreeColLogger.shared.debug("Received \(data.count) bytes")
-                receiveBuffer += text
-                // Yield complete lines (separated by \n), keep remainder in buffer
-                var i = receiveBuffer.startIndex
-                while true {
-                    if let j = receiveBuffer[i...].firstIndex(of: "\n") {
-                        let line = String(receiveBuffer[i..<j])
-                        FreeColLogger.shared.debug("<<< \(line.prefix(300))")
-                        self.continuation?.yield(line)
-                        i = receiveBuffer.index(after: j)
-                    } else {
-                        break
-                    }
-                }
-                receiveBuffer = String(receiveBuffer[i...])
-                if !receiveBuffer.isEmpty {
-                    FreeColLogger.shared.debug("Buffer retains \(receiveBuffer.count) unlined bytes")
-                }
+            Task {
+                await self.handleReceivedData(data, isComplete: isComplete, error: error, from: conn)
             }
+        }
+    }
 
-            if isComplete || error != nil {
-                // Flush any remaining buffered content
-                if !receiveBuffer.isEmpty {
-                    FreeColLogger.shared.debug("Flushing final buffer: \(receiveBuffer.prefix(300))")
-                    self.continuation?.yield(receiveBuffer)
-                    receiveBuffer = ""
+    private func handleReceivedData(
+        _ data: Data?,
+        isComplete: Bool,
+        error: NWError?,
+        from conn: NWConnection
+    ) {
+        if let data, !data.isEmpty {
+            FreeColLogger.shared.debug("Received \(data.count) bytes")
+            do {
+                for line in try lineFramer.append(data) {
+                    FreeColLogger.shared.debug(
+                        "<<< received protocol frame (\(line.utf8.count) bytes)"
+                    )
+                    guard enqueue(line, on: conn) else { return }
                 }
-                if let error {
-                    FreeColLogger.shared.error("Receive error: \(error)")
+                let bufferedByteCount = lineFramer.bufferedData.count
+                if bufferedByteCount > 0 {
+                    FreeColLogger.shared.debug("Buffer retains \(bufferedByteCount) unlined bytes")
                 }
-                FreeColLogger.shared.info("Receive stream ended")
-                self.continuation?.finish()
+            } catch {
+                FreeColLogger.shared.error("Invalid incoming frame: \(error.localizedDescription)")
+                conn.cancel()
+                handleDisconnect(error)
                 return
             }
+        }
 
-            self.receiveLoop(conn)
+        if isComplete || error != nil {
+            do {
+                if let finalLine = try lineFramer.finish() {
+                    FreeColLogger.shared.debug(
+                        "Flushing final protocol frame (\(finalLine.utf8.count) bytes)"
+                    )
+                    guard enqueue(finalLine, on: conn) else { return }
+                }
+            } catch {
+                FreeColLogger.shared.error("Invalid final frame: \(error.localizedDescription)")
+                handleDisconnect(error)
+                return
+            }
+            if let error {
+                FreeColLogger.shared.error("Receive error: \(error)")
+            }
+            FreeColLogger.shared.info("Receive stream ended")
+            handleDisconnect(error ?? FreeColProtocolError.disconnected)
+            return
+        }
+
+        receiveLoop(conn)
+    }
+
+    private func enqueue(_ line: String, on conn: NWConnection) -> Bool {
+        guard let continuation else {
+            let error = FreeColProtocolError.invalidState("Protocol stream is unavailable")
+            conn.cancel()
+            handleDisconnect(error)
+            return false
+        }
+        switch continuation.yield(line) {
+        case .enqueued:
+            return true
+        case .dropped:
+            let error = FreeColProtocolError.resourceLimitExceeded(
+                "too many queued protocol frames"
+            )
+            FreeColLogger.shared.error("Incoming frame queue limit exceeded")
+            conn.cancel()
+            handleDisconnect(error)
+            return false
+        case .terminated:
+            return false
+        @unknown default:
+            let error = FreeColProtocolError.invalidState("Unknown protocol stream state")
+            conn.cancel()
+            handleDisconnect(error)
+            return false
         }
     }
 }

@@ -6,7 +6,6 @@ struct GameView: View {
     @Environment(GameState.self) private var state
 
     @State private var colonyName: String = "New Amsterdam"
-    @State private var lastColonyTileId: String?
     @State private var mapViewport: MapViewportInfo?
     @State private var selectedLootTypes: Set<String> = []
     @State private var namePromptText: String = ""
@@ -22,38 +21,37 @@ struct GameView: View {
     @State private var showFindSettlement = false
     @State private var findSettlementQuery = ""
     @State private var showTradeRoutes = false
+    @State private var queuedActionToConfirm: GameState.QueuedGameplayAction?
+    @State private var showQueuedActionConfirmation = false
 
     var body: some View {
-        ZStack {
-            Color(white: 0.08)
-                .ignoresSafeArea()
-            MapView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            VStack(spacing: 0) {
+        VStack(spacing: 0) {
+            ScrollView(.horizontal) {
                 topBar
-                Spacer()
             }
-        }
-        .overlay(alignment: .bottom) {
-            OrderButtonBar()
-                .padding(.bottom, 8)
-        }
-        .overlay(alignment: .top) {
+            .fixedSize(horizontal: false, vertical: true)
+
             if let pending = state.pendingServerDecision {
-                pendingDecisionView(for: pending)
-                    .padding(.top, 8)
+                if pending.type == .foundingFather {
+                    FoundingFatherSelectionView(
+                        options: state.pendingFoundingFathers,
+                        canChoose: state.canRespondToPendingDecision(),
+                        onChoose: state.choosePendingFoundingFather
+                    )
+                } else {
+                    ScrollView {
+                        pendingDecisionView(for: pending)
+                            .frame(maxWidth: .infinity)
+                            .padding(8)
+                    }
+                    .frame(maxHeight: 180)
+                    .clipped()
+                }
             }
-        }
-        .overlay(alignment: .bottomLeading) {
-            MiniMapView(viewport: mapViewport)
-                .frame(width: 160)
-                .padding(8)
-        }
-        .overlay(alignment: .bottomTrailing) {
-            InfoPanelView()
-                .padding(8)
-        }
-        .overlay(alignment: .top) {
+            if !state.queuedGameplayActions.isEmpty {
+                ScrollView { queuedActionsPanel }
+                    .frame(maxHeight: 130)
+            }
             if let err = state.errorMessage, !err.isEmpty {
                 Text(err)
                     .font(.caption)
@@ -61,117 +59,214 @@ struct GameView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity)
                     .background(Color.red.opacity(0.85))
-                    .cornerRadius(8)
-                    .padding(.top, 40)
                     .onTapGesture { state.errorMessage = nil }
             }
-        }
-        .overlay(alignment: .topTrailing) {
-            if state.selectedUnit != nil {
-                unitQuickActions
-                    .padding(.trailing, 8)
-                    .padding(.top, 44)
+            if state.isChoosingMoveDestination {
+                HStack {
+                    Text("Bewegen: Zielfeld auf der Karte anklicken.")
+                    Spacer()
+                    Button("Abbrechen") { state.cancelChoosingMoveDestination() }
+                        .keyboardShortcut(.cancelAction)
+                }
+                .font(.callout)
+                .padding(8)
+                .background(Color.accentColor.opacity(0.2))
             }
+
+            HStack(spacing: 0) {
+                MapView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .overlay(alignment: .topTrailing) {
+                        if let tileId = state.tileActionTileId {
+                            GeometryReader { geo in
+                                ScrollView {
+                                    TilePopupView(tileId: tileId)
+                                }
+                                .frame(width: 240, height: max(0, min(520, geo.size.height - 16)))
+                                .padding(8)
+                                .frame(maxWidth: .infinity, alignment: .trailing)
+                            }
+                        }
+                    }
+                Divider()
+                if state.selectedUnit != nil {
+                    unitQuickActions
+                        .frame(width: 260)
+                } else {
+                    ScrollView { InfoPanelView() }
+                        .frame(width: 260)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            Divider()
+            HStack(spacing: 12) {
+                MiniMapView(viewport: mapViewport, minimapWidth: 140, maxMiniHeight: 72)
+                    .frame(width: 140, height: 72)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(state.turnStatusDescription)
+                        .font(.headline)
+                    Text("\(state.unitsAwaitingOrders.count) Einheiten ohne Befehl")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button("Zugbericht (\(state.localPlayerModelMessages.count))") {
+                        state.requestedReport = .turn
+                        showReports = true
+                    }
+                }
+                Spacer(minLength: 0)
+                VStack(alignment: .trailing, spacing: 6) {
+                    HStack {
+                        Button("Kolonie") { state.openColonyPanel() }
+                            .disabled(state.selectedColony == nil)
+                        Button("Nächste Einheit") { state.selectNextUnit() }
+                            .disabled(state.selectableLocalUnits.isEmpty)
+                    }
+                    Button("Zug beenden") { state.requestEndTurn() }
+                        .buttonStyle(GameActionButtonStyle())
+                        .disabled(!state.canEndTurn)
+                        .help("Vor dem Zugende werden Einheiten ohne Befehl angezeigt.")
+                }
+            }
+            .padding(8)
+            .background(Color(NSColor.controlBackgroundColor))
         }
-        .sheet(isPresented: Binding(
-            get: { state.showEuropePanel },
-            set: { state.showEuropePanel = $0 }
-        )) {
+        .background(Color(white: 0.08))
+        .sheet(
+            isPresented: Binding(
+                get: { state.showEuropePanel },
+                set: { state.showEuropePanel = $0 }
+            )
+        ) {
             EuropePanelView()
+                .frame(idealWidth: 760)
         }
-        .sheet(isPresented: Binding(
-            get: { state.showColonyPanel && state.selectedColony != nil },
-            set: { if !$0 { state.closeColonyPanel() } }
-        )) {
+
+        .sheet(
+            isPresented: Binding(
+                get: { state.showColonyPanel && state.selectedColony != nil },
+                set: { if !$0 { state.closeColonyPanel() } }
+            )
+        ) {
             if let selectedColony = state.selectedColony, let game = state.game {
                 VStack(spacing: 0) {
                     HStack {
                         Text(selectedColony.name ?? "Colony")
                             .font(.title.bold())
                         Spacer()
-                        Button("Close") { state.closeColonyPanel() }
+                        Button("Schließen") { state.closeColonyPanel() }
                             .buttonStyle(.bordered)
+                            .keyboardShortcut(.cancelAction)
                     }
                     .padding()
+                    if let error = state.errorMessage {
+                        Text(error)
+                            .font(.callout)
+                            .foregroundStyle(.red)
+                            .textSelection(.enabled)
+                            .padding(.horizontal)
+                            .accessibilityIdentifier("colony-error")
+                    }
                     Divider()
-                    ScrollView {
-                        ColonyPanelView(
-                    colony: selectedColony,
-                    ownerName: game.players[selectedColony.owner ?? ""]?.name ?? "Unknown",
-                    units: state.selectedColonyUnits,
-                    canManage: state.canManageSelectedColony,
-                    selectedWorkerUnitId: state.selectedColonyWorkerUnitId,
-                    onChangeWorkType: { workTypeId in
-                        state.changeSelectedColonyWorkerWorkType(workTypeId)
-                    },
-                    onChangeWorkImprovementType: { improvementTypeId in
-                        state.changeSelectedColonyWorkerWorkImprovementType(improvementTypeId)
-                    },
-                    onClearSpeciality: {
-                        state.clearSelectedColonyWorkerSpeciality()
-                    },
-                    onAssignTeacher: { teacherId in
-                        state.assignTeacherToSelectedColonyWorker(teacherId)
-                    },
-                    onClearTeacher: {
-                        state.clearTeacherForSelectedColonyWorker()
-                    },
-                    onWorkAtLocation: { workLocationId in
-                        state.assignSelectedColonyWorker(to: workLocationId)
-                    },
-                    onRenameColony: { newName in
-                        state.renameSelectedColony(to: newName)
-                    },
-                    onPayForBuilding: {
-                        state.payForSelectedColonyBuilding()
-                    },
-                    onSetGoodsLevel: { data in
-                        state.setSelectedColonyGoodsLevel(data)
-                    },
-                    exportData: state.selectedColonyExportData,
-                    workLocationCandidates: state.selectedColonyWorkLocationCandidates,
-                    workTypeCandidates: state.selectedColonyWorkTypeCandidates,
-                    workImprovementCandidates: state.selectedColonyWorkImprovementCandidates,
-                    onAbandonColony: {
-                        state.abandonSelectedColony()
-                    },
-                    canAbandonColony: state.canAbandonSelectedColony,
-                    onSetBuildQueue: { queueIds in
-                        state.setSelectedColonyBuildQueue(queueIds)
-                    },
-                    onPutOutsideColony: {
-                        state.putSelectedColonyWorkerOutside()
-                    },
-                    canPutOutsideColony: state.canPutSelectedColonyWorkerOutside,
-                    selectedCarrierId: state.selectedColonyCarrierId,
-                    onLoadGoods: { typeId, amount in
-                        state.loadGoodsForSelectedColony(typeId: typeId, amount: amount)
-                    },
-                    onUnloadGoods: { typeId, amount in
-                        state.unloadGoodsFromSelectedCarrier(typeId: typeId, amount: amount)
-                    },
-                    buildableCandidates: state.selectedColonyBuildableCandidates,
-                    buildings: state.selectedColonyBuildings,
-                    currentBuildQueue: state.selectedColonyBuildQueue,
-                    buildingLabel: { state.buildingDisplayName($0) },
-                    storedGoods: state.selectedColonyStoredGoods,
-                    buildTargetLabel: state.selectedColonyBuildTarget?.label,
-                    buildRequirements: state.selectedColonyBuildRequirements,
-                    buildETATurns: state.selectedColonyEstimatedBuildTurns,
-                    estimatedBuildPerTurn: state.selectedColonyEstimatedBuildPerTurn,
-                    estimatedProduction: state.selectedColonyEstimatedProduction
-                )
+                    ColonyPanelView(
+                        colony: selectedColony,
+                        ownerName: game.players[selectedColony.owner ?? ""]?.name ?? "Unknown",
+                        units: state.selectedColonyUnits.filter { state.canUnitWorkInColony($0) },
+                        canManage: state.canManageSelectedColony,
+                        selectedWorkerUnitId: state.selectedColonyWorkerUnitId,
+                        population: state.colonyPopulation(selectedColony),
+                        terrainFields: state.selectedColonyTerrain,
+                        onSelectWorker: { unitId in
+                            state.selectUnit(unitId, onTile: selectedColony.tileId)
+                        },
+                        onChangeWorkType: { workTypeId in
+                            state.changeSelectedColonyWorkerWorkType(workTypeId)
+                        },
+                        onChangeWorkImprovementType: { improvementTypeId in
+                            state.changeSelectedColonyWorkerWorkImprovementType(improvementTypeId)
+                        },
+                        onClearSpeciality: {
+                            state.clearSelectedColonyWorkerSpeciality()
+                        },
+                        onAssignTeacher: { teacherId in
+                            state.assignTeacherToSelectedColonyWorker(teacherId)
+                        },
+                        onClearTeacher: {
+                            state.clearTeacherForSelectedColonyWorker()
+                        },
+                        onWorkAtLocation: { workLocationId in
+                            state.assignSelectedColonyWorker(to: workLocationId)
+                        },
+                        onRenameColony: { newName in
+                            state.renameSelectedColony(to: newName)
+                        },
+                        onPayForBuilding: {
+                            state.payForSelectedColonyBuilding()
+                        },
+                        onSetGoodsLevel: { data in
+                            state.setSelectedColonyGoodsLevel(data)
+                        },
+                        exportData: state.selectedColonyExportData,
+                        workLocationCandidates: state.selectedColonyWorkLocationCandidates,
+                        workTypeCandidates: state.selectedColonyWorkTypeCandidates,
+                        goodsCandidates: state.colonyGoodsCandidates,
+                        workImprovementCandidates: state.selectedColonyWorkImprovementCandidates,
+                        onAbandonColony: {
+                            state.abandonSelectedColony()
+                        },
+                        canAbandonColony: state.canAbandonSelectedColony,
+                        onSetBuildQueue: { queueIds in
+                            state.setSelectedColonyBuildQueue(queueIds)
+                        },
+                        onPutOutsideColony: {
+                            state.putSelectedColonyWorkerOutside()
+                        },
+                        canPutOutsideColony: state.canPutSelectedColonyWorkerOutside,
+                        selectedCarrierId: state.selectedColonyCarrierId,
+                        onLoadGoods: { typeId, amount in
+                            state.loadGoodsForSelectedColony(typeId: typeId, amount: amount)
+                        },
+                        onUnloadGoods: { typeId, amount in
+                            state.unloadGoodsFromSelectedCarrier(typeId: typeId, amount: amount)
+                        },
+                        buildableCandidates: state.selectedColonyBuildableCandidates,
+                        buildings: state.selectedColonyBuildings,
+                        currentBuildQueue: state.selectedColonyBuildQueue,
+                        buildingLabel: { state.buildingDisplayName($0) },
+                        storedGoods: state.selectedColonyStoredGoods,
+                        buildTargetLabel: state.selectedColonyBuildTarget?.label,
+                        buildRequirements: state.selectedColonyBuildRequirements,
+                        buildETATurns: state.selectedColonyEstimatedBuildTurns,
+                        estimatedBuildPerTurn: state.selectedColonyEstimatedBuildPerTurn,
+                        estimatedProduction: state.selectedColonyEstimatedProduction
+                    )
                 }
+                .frame(
+                    minWidth: 640, idealWidth: 820, maxWidth: 1100,
+                    minHeight: 400, idealHeight: 640, maxHeight: 760)
             }
         }
-        }
-        .sheet(isPresented: Binding(
-            get: { state.showDebugPanel },
-            set: { state.showDebugPanel = $0 }
-        )) {
-            DebugControlsView()
-                .frame(minWidth: 380, minHeight: 500)
+        .sheet(
+            isPresented: Binding(
+                get: { state.showDebugPanel },
+                set: { state.showDebugPanel = $0 }
+            )
+        ) {
+            VStack(spacing: 0) {
+                HStack {
+                    Text("Debug").font(.headline)
+                    Spacer()
+                    Button("Close") { state.closeDebugPanel() }
+                        .keyboardShortcut(.cancelAction)
+                }
+                .padding()
+                Divider()
+                DebugControlsView()
+            }
+            .frame(minWidth: 520, idealWidth: 640,
+                   minHeight: 400, idealHeight: 640, maxHeight: 760)
         }
         .sheet(isPresented: $showReports) {
             ReportPanelView()
@@ -232,17 +327,6 @@ struct GameView: View {
                 namePromptText = state.pendingTextPrompt?.defaultText ?? ""
             }
         }
-        .onChange(of: state.selectedColony?.tileId) { _, newValue in
-            // Clicking a colony tile on the map opens the colony panel (Java behaviour).
-            if let newValue, newValue != lastColonyTileId {
-                lastColonyTileId = newValue
-                if state.selectedUnit == nil {
-                    state.openColonyPanel()
-                }
-            } else if newValue == nil {
-                lastColonyTileId = nil
-            }
-        }
         .onPreferenceChange(MapViewportKey.self) { info in
             mapViewport = info
         }
@@ -258,20 +342,57 @@ struct GameView: View {
                 victoryOverlay
             }
         }
-        .overlay(alignment: .topTrailing) {
-            if let tileId = state.tileActionTileId {
-                TilePopupView(tileId: tileId)
-                    .padding(.trailing, 12)
-                    .padding(.top, 72)
+    }
+
+    @ViewBuilder
+    private var queuedActionsPanel: some View {
+        if !state.queuedGameplayActions.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Pending actions — review before resending")
+                    .font(.caption.bold())
+                ForEach(state.queuedGameplayActions) { action in
+                    HStack {
+                        Text(action.title)
+                            .font(.caption)
+                        Spacer()
+                        Button("Send again") {
+                            queuedActionToConfirm = action
+                            showQueuedActionConfirmation = true
+                        }
+                        .disabled(state.phase != .inGame)
+                        Button("Discard") {
+                            state.discardQueuedGameplayAction(action)
+                        }
+                    }
+                }
+            }
+            .padding(10)
+            .background(Color.black.opacity(0.82))
+            .foregroundColor(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .padding(8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .alert("Send action again?", isPresented: $showQueuedActionConfirmation) {
+                Button("Send again", role: .destructive) {
+                    if let action = queuedActionToConfirm {
+                        state.resendQueuedGameplayAction(action)
+                    }
+                    queuedActionToConfirm = nil
+                }
+                Button("Cancel", role: .cancel) {
+                    queuedActionToConfirm = nil
+                }
+            } message: {
+                Text("The server may already have processed this action before the connection was lost.")
             }
         }
     }
 
     private var endTurnDialog: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("End Turn?")
+            Text("Zug beenden?")
                 .font(.title3.bold())
-            Text("These units still have orders left:")
+            Text("Diese Einheiten haben noch keinen Befehl:")
                 .font(.caption)
                 .foregroundColor(.secondary)
             ScrollView {
@@ -285,10 +406,10 @@ struct GameView: View {
                             state.dismissEndTurnDialog()
                         } label: {
                             HStack {
-                                Text(shortUnitName(unit.unitType) ?? unit.id)
+                                Text(unit.unitType.map(state.unitDisplayName) ?? "Einheit")
                                     .font(.caption)
                                 Spacer()
-                                Text("MP \(unit.movesLeft)")
+                                Text("\(unit.movesLeft) Bewegungspunkte")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
                             }
@@ -300,8 +421,8 @@ struct GameView: View {
             .frame(maxHeight: 220)
             HStack {
                 Spacer()
-                Button("Cancel") { state.dismissEndTurnDialog() }
-                Button("End Turn Anyway") { state.confirmEndTurn() }
+                Button("Abbrechen") { state.dismissEndTurnDialog() }
+                Button("Trotzdem beenden") { state.confirmEndTurn() }
                     .buttonStyle(.borderedProminent)
             }
         }
@@ -323,7 +444,7 @@ struct GameView: View {
                     }
                     .buttonStyle(.borderedProminent)
                 }
-                Button("Disconnect") { state.disconnect() }
+                Button("Verbindung trennen") { state.disconnect() }
                     .buttonStyle(.bordered)
             }
         }
@@ -375,31 +496,27 @@ struct GameView: View {
             Divider().frame(height: 18)
             if let game = state.game {
                 let turnInfo = yearSeason(for: game.turn.number)
-                Text("Turn \(game.turn.number)")
+                Text("Runde \(game.turn.number)")
                     .font(.headline)
                 if let season = turnInfo.season {
                     Text("\(season) \(turnInfo.year)")
                         .font(.caption)
                 } else {
-                    Text("Year \(turnInfo.year)")
+                    Text("Jahr \(String(turnInfo.year))")
                         .font(.caption)
                 }
-                // Turn status with current player
-                Text(state.turnStatusDescription)
-                    .font(.subheadline.monospaced())
-                    .foregroundColor(state.isLocalPlayersTurn ? .green : .secondary)
                 if let local = state.localPlayer {
                     Text("Gold: \(local.gold)")
-                    Text("Tax: \(local.tax)%")
-                    Text("Score: \(local.score)")
+                    Text("Steuern: \(local.tax)%")
+                    Text("Punkte: \(local.score)")
                 }
             }
             Spacer()
             if state.highScoresReport != nil || state.nationSummaryReport != nil {
-                Button("Reports") { showReports = true }
+                Button("Berichte") { showReports = true }
                     .font(.caption)
             }
-            if !state.statusMessage.isEmpty {
+            if !state.statusMessage.isEmpty, state.pendingServerDecision == nil {
                 Text(state.statusMessage)
                     .foregroundColor(.secondary)
                     .font(.caption)
@@ -487,7 +604,7 @@ struct GameView: View {
                         .disabled(!state.canRespondToPendingDecision())
                 }
             case .foundingFather:
-                foundingFatherDecisionControls()
+                EmptyView()
             case .scoutReport:
                 Button("OK") { state.acknowledgePendingDecision() }
                     .buttonStyle(.borderedProminent)
@@ -510,27 +627,6 @@ struct GameView: View {
             RoundedRectangle(cornerRadius: 10)
                 .stroke(Color.gray.opacity(0.5), lineWidth: 1)
         )
-    }
-
-    @ViewBuilder
-    private func foundingFatherDecisionControls() -> some View {
-        let options = state.pendingFoundingFathers
-        if options.isEmpty {
-            Text("No candidates available.")
-                .font(.caption2)
-                .foregroundColor(.secondary)
-        } else {
-            ForEach(options) { option in
-                Button {
-                    state.choosePendingFoundingFather(option.fatherId)
-                } label: {
-                    Text("\(option.label) (\(option.typeKey.capitalized))")
-                        .font(.caption2)
-                }
-                .buttonStyle(.bordered)
-                .disabled(!state.canRespondToPendingDecision())
-            }
-        }
     }
 
     @ViewBuilder
@@ -666,9 +762,9 @@ struct GameView: View {
         let colonies = (state.game.map { Array($0.colonies.values) } ?? [])
             .sorted { ($0.name ?? "") < ($1.name ?? "") }
         return VStack(alignment: .leading, spacing: 12) {
-            Text("Find Settlement")
+            Text("Siedlung suchen")
                 .font(.title3.bold())
-            TextField("Search", text: $findSettlementQuery)
+            TextField("Suchen", text: $findSettlementQuery)
                 .textFieldStyle(.roundedBorder)
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
@@ -697,7 +793,7 @@ struct GameView: View {
             }
             HStack {
                 Spacer()
-                Button("Close") { showFindSettlement = false }
+                Button("Schließen") { showFindSettlement = false }
             }
         }
         .padding(16)
@@ -708,14 +804,50 @@ struct GameView: View {
     private var unitQuickActions: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 6) {
-                if let selected = state.selectedUnit {
-                    Text(selected.unitType ?? "Unit")
-                        .font(.caption.bold())
-                    Text("\(selected.state.rawValue) | \(selected.movesLeft) MP")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                if state.selectedUnit != nil {
+                    InfoPanelView()
+                    Divider()
 
-                    Button("Set Active") {
+                    Button("Bewegen…") { state.beginChoosingMoveDestination() }
+                        .buttonStyle(GameActionButtonStyle())
+                        .disabled(!state.canChooseMoveDestination)
+
+                    if let tileId = state.selectedTileId,
+                        state.canMoveSelectedUnitTo(destinationTileId: tileId)
+                    {
+                        Button("Zum ausgewählten Feld") {
+                            state.moveSelectedUnitTo(destinationTileId: tileId)
+                        }
+
+                        .buttonStyle(.bordered)
+                    }
+
+                    if state.selectedColony != nil {
+                        Button("Kolonie öffnen") { state.openColonyPanel() }
+                            .buttonStyle(.bordered)
+                    }
+
+                    Menu("Befehle") {
+                        Button("Warten") { state.setSelectedUnitState(.skipped) }
+                            .disabled(!state.canChangeSelectedUnitState(to: .skipped))
+                        Button("Wache") { state.setSelectedUnitState(.sentry) }
+                            .disabled(!state.canChangeSelectedUnitState(to: .sentry))
+                        Button("Befestigen") { state.setSelectedUnitState(.fortifying) }
+                            .disabled(!state.canChangeSelectedUnitState(to: .fortifying))
+                        Button("Befehle löschen") { state.clearSelectedUnitOrders() }
+                            .disabled(!state.canClearSelectedUnitOrders)
+                        Button("Nach Europa") { state.sendSelectedUnitToEurope() }
+                            .disabled(!state.canSendSelectedUnitToEurope)
+                        Divider()
+                        Button("Einheit auflösen…", role: .destructive) {
+                            state.disbandSelectedUnit()
+                        }
+                        .disabled(!state.canDisbandSelectedUnit)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .padding(.vertical, 6)
+
+                    Button("Aktivieren") {
                         state.setSelectedUnitState(.active)
                     }
                     .buttonStyle(.bordered)
@@ -723,13 +855,13 @@ struct GameView: View {
                     .disabled(!state.canChangeSelectedUnitState(to: .active))
 
                     if state.canBuildSelectedColony {
-                        TextField("Colony name", text: $colonyName)
+                        TextField("Koloniename", text: $colonyName)
                             .textFieldStyle(.roundedBorder)
                             .onAppear { colonyName = state.suggestedColonyName }
                             .onChange(of: state.selectedUnitId) { _, _ in
                                 colonyName = state.suggestedColonyName
                             }
-                        Button("Build Colony") {
+                        Button("Kolonie gründen") {
                             state.buildColony(name: colonyName)
                         }
                         .buttonStyle(.borderedProminent)
@@ -738,7 +870,7 @@ struct GameView: View {
                     }
 
                     if state.canJoinSelectedColony {
-                        Button("Join Colony") {
+                        Button("In der Kolonie arbeiten") {
                             state.joinSelectedColony()
                         }
                         .buttonStyle(.bordered)
@@ -747,7 +879,7 @@ struct GameView: View {
 
                     if !state.embarkCarrierOptions.isEmpty {
                         ForEach(state.embarkCarrierOptions, id: \.id) { carrier in
-                            Button("Embark on \(carrier.unitType ?? carrier.id)") {
+                            Button("An Bord: \(carrier.unitType.map(state.unitDisplayName) ?? "Transporter")") {
                                 state.embarkSelectedUnit(onCarrier: carrier.id)
                             }
                             .buttonStyle(.bordered)
@@ -756,31 +888,25 @@ struct GameView: View {
                     }
 
                     if state.canDisembarkSelectedUnit {
-                        Button("Disembark") {
+                        Button("Von Bord gehen") {
                             state.disembarkSelectedUnit()
                         }
                         .buttonStyle(.bordered)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
 
-                    if state.canDisbandSelectedUnit {
-                        Button("Disband Unit") {
-                            state.disbandSelectedUnit()
-                        }
-                        .buttonStyle(.bordered)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-
                     if let targetTileId = state.selectedTileId,
-                       state.canAttackSelectedUnitMelee(onTile: targetTileId) || state.canAttackSelectedUnitRanged(onTile: targetTileId) {
-                        Button("Attack (Melee)") {
+                        state.canAttackSelectedUnitMelee(onTile: targetTileId)
+                            || state.canAttackSelectedUnitRanged(onTile: targetTileId)
+                    {
+                        Button("Nahkampf") {
                             state.requestAttack(onTile: targetTileId, ranged: false)
                         }
                         .buttonStyle(.bordered)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .disabled(!state.canAttackSelectedUnitMelee(onTile: targetTileId))
 
-                        Button("Attack (Ranged)") {
+                        Button("Fernkampf") {
                             state.requestAttack(onTile: targetTileId, ranged: true)
                         }
                         .buttonStyle(.bordered)
@@ -788,7 +914,7 @@ struct GameView: View {
                         .disabled(!state.canAttackSelectedUnitRanged(onTile: targetTileId))
                     }
 
-                    Button("Set Destination (Selected Tile)") {
+                    Button("Ausgewähltes Feld als Ziel") {
                         if let tileId = state.selectedTileId {
                             state.setSelectedUnitDestination(to: tileId)
                         }
@@ -797,28 +923,30 @@ struct GameView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .disabled(!state.canSetDestinationToSelectedTile)
 
-                    Button("Clear Destination") {
+                    Button("Ziel löschen") {
                         state.clearSelectedUnitDestination()
                     }
                     .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .disabled(!state.canClearSelectedUnitDestination)
 
-                    Button("Equip Missionary") {
-                        state.equipSelectedUnitForRole("model.role.missionary", count: 1)
+                    if state.canEquipSelectedUnitForRole {
+                        Button("Als Missionar ausrüsten") {
+                            state.equipSelectedUnitForRole("model.role.missionary", count: 1)
+                        }
+                        .buttonStyle(.bordered)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .buttonStyle(.bordered)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .disabled(!state.canEquipSelectedUnitForRole)
 
                     if !state.selectedUnitCargoUnits.isEmpty {
-                        Text("Cargo")
+                        Text("Passagiere")
                             .font(.caption.bold())
                         ForEach(state.selectedUnitCargoUnits, id: \.id) { cargo in
-                            Button("Select \(cargo.unitType ?? cargo.id)") {
+                            Button("Auswählen: \(cargo.unitType.map(state.unitDisplayName) ?? "Einheit")") {
                                 let tileId = state.selectedUnit?.location
-                                state.selectUnit(cargo.id,
-                                                 onTile: tileId.flatMap { state.game?.tiles[$0] != nil ? $0 : nil })
+                                state.selectUnit(
+                                    cargo.id,
+                                    onTile: tileId.flatMap { state.game?.tiles[$0] != nil ? $0 : nil })
                             }
                             .buttonStyle(.bordered)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -826,14 +954,20 @@ struct GameView: View {
                     }
 
                     if !state.selectedUnitCargoGoods.isEmpty {
-                        Text("Carried Goods")
+                        Text("Ladung")
                             .font(.caption.bold())
                         ForEach(state.selectedUnitCargoGoods, id: \.id) { item in
-                            Button("Dump \(item.label) x\(item.amount)") {
-                                state.dumpSelectedUnitCargo(typeId: item.id, amount: item.amount)
+                            HStack {
+                                Text("\(item.label): \(item.amount)")
+                                Spacer()
+                                Menu {
+                                    Button("Ladung abwerfen…", role: .destructive) {
+                                        state.dumpSelectedUnitCargo(typeId: item.id, amount: item.amount)
+                                    }
+                                } label: {
+                                    Image(systemName: "ellipsis.circle")
+                                }
                             }
-                            .buttonStyle(.bordered)
-                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
 
@@ -854,8 +988,9 @@ struct GameView: View {
                                     state.demandTributeFromSettlement(direction: direction)
                                 }
                             }
-                            .disabled(!state.canDemandTributeWithSelectedUnit
-                                      || state.directionToAdjacentSettlement(target.settlementId) == nil)
+                            .disabled(
+                                !state.canDemandTributeWithSelectedUnit
+                                    || state.directionToAdjacentSettlement(target.settlementId) == nil)
 
                             Button("Spy") {
                                 state.spyOnNativeSettlement(settlementId: target.settlementId)
@@ -867,31 +1002,35 @@ struct GameView: View {
                                     state.scoutIndianSettlement(direction: direction)
                                 }
                             }
-                            .disabled(!state.canScoutIndianSettlement
-                                      || state.directionToAdjacentSettlement(target.settlementId) == nil)
+                            .disabled(
+                                !state.canScoutIndianSettlement
+                                    || state.directionToAdjacentSettlement(target.settlementId) == nil)
 
                             Button("Ask Skill") {
                                 if let direction = state.directionToAdjacentSettlement(target.settlementId) {
                                     state.askSkillAtSelectedUnit(direction: direction)
                                 }
                             }
-                            .disabled(!state.canAskSkillAtSelectedUnit
-                                      || state.directionToAdjacentSettlement(target.settlementId) == nil)
+                            .disabled(
+                                !state.canAskSkillAtSelectedUnit
+                                    || state.directionToAdjacentSettlement(target.settlementId) == nil)
 
                             Button("Learn Skill") {
                                 if let direction = state.directionToAdjacentSettlement(target.settlementId) {
                                     state.learnSkillAtSelectedUnit(direction: direction)
                                 }
                             }
-                            .disabled(!state.canLearnSkillAtSelectedUnit
-                                      || state.directionToAdjacentSettlement(target.settlementId) == nil)
+                            .disabled(
+                                !state.canLearnSkillAtSelectedUnit
+                                    || state.directionToAdjacentSettlement(target.settlementId) == nil)
 
                             Menu("Incite…") {
                                 ForEach(state.diplomacyVictimOptions(), id: \.id) { victim in
                                     Button(victim.label) {
-                                        state.inciteSettlement(settlementId: target.settlementId,
-                                                               enemyPlayerId: victim.id,
-                                                               gold: 0)
+                                        state.inciteSettlement(
+                                            settlementId: target.settlementId,
+                                            enemyPlayerId: victim.id,
+                                            gold: 0)
                                     }
                                 }
                             }
@@ -915,13 +1054,13 @@ struct GameView: View {
                 }
             }
             .padding(8)
-            .frame(maxWidth: 220)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .buttonStyle(.bordered)
             .background(Color(NSColor.windowBackgroundColor).opacity(0.95))
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .shadow(radius: 4)
         }
-        .frame(maxHeight: 340)
-        .scrollIndicators(.hidden)
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private func yearSeason(for turn: Int) -> (year: Int, season: String?) {
@@ -931,6 +1070,26 @@ struct GameView: View {
             return (raw, nil)
         }
         let delta = raw - 1600
-        return (1600 + delta / 2, delta % 2 == 0 ? "Spring" : "Autumn")
+        return (1600 + delta / 2, delta % 2 == 0 ? "Frühling" : "Herbst")
+    }
+}
+
+private struct GameActionButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .foregroundStyle(isEnabled ? Color.white : Color.secondary)
+            .background(
+                isEnabled
+                    ? Color.blue.opacity(configuration.isPressed ? 0.7 : 1)
+                    : Color.secondary.opacity(0.15), in: RoundedRectangle(cornerRadius: 6)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(isEnabled ? Color.white.opacity(0.35) : Color.clear, lineWidth: 1)
+            }
     }
 }

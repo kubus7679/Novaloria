@@ -10,15 +10,9 @@ func combatE2EProbe() async throws {
     let delegate = TestDelegate()
     await client.setDelegate(delegate)
 
-    try await client.connect()
-    let vacant = await client.initialVacantPlayers
-    let nationId = vacant?.children.first?.attributes["nationId"]
-        ?? vacant?.children.first?.attributes["id"]
-        ?? "model.nation.dutch"
     let userName = ProcessInfo.processInfo.environment["REAL_SERVER_USERNAME"]
         ?? "CopilotCombat-\(Int(Date().timeIntervalSince1970))"
-
-    let result = try await client.login(userName: userName, nationId: nationId)
+    let result = try await connectAndLogin(client, userName: userName)
     if result.serverState == .preGame {
         let mapGeneratorOptions = ParsedMessage(
             tag: "optionGroup",
@@ -188,17 +182,6 @@ func combatE2EProbe() async throws {
         }
     }
 
-    func endTurnAndWait() async throws {
-        let turnBefore = await client.game.turn.number
-        _ = try await client.ask(message: ParsedMessage(tag: "endTurn", attributes: [:], children: []), timeout: 45)
-        for _ in 0..<180 {
-            let current = await client.game
-            if current.turn.number > turnBefore && current.currentPlayerId == localPlayerId { return }
-            try await Task.sleep(nanoseconds: 500_000_000)
-        }
-        throw TestError(message: "local player's turn did not return after endTurn")
-    }
-
     // Try to find combat target for up to 15 turns
     var combatPerformed = false
     var colonyAttackPerformed = false
@@ -324,7 +307,7 @@ func combatE2EProbe() async throws {
             }
         }
         
-        try await endTurnAndWait()
+        try await endTurnAndWait(client: client, localPlayerId: localPlayerId)
     }
     
     if !combatPerformed && !colonyAttackPerformed {

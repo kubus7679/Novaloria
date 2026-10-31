@@ -15,6 +15,7 @@ struct NativeTradeView: View {
                     .font(.title2.bold())
                 Spacer()
                 Button("Close") { state.closeNativeTrade() }
+                    .keyboardShortcut(.cancelAction)
             }
 
             if let session = state.pendingNativeTrade {

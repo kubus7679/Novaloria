@@ -1,6 +1,21 @@
 import SwiftUI
 import FreeColGame
 import FreeColProtocol
+import AppKit
+
+private struct ReportTableSnapshot: Equatable {
+    let headers: [String]
+    let rows: [[String]]
+}
+
+private struct ReportTablePreferenceKey: PreferenceKey {
+    static var defaultValue: [ReportTableSnapshot] = []
+
+    static func reduce(value: inout [ReportTableSnapshot],
+                       nextValue: () -> [ReportTableSnapshot]) {
+        value.append(contentsOf: nextValue())
+    }
+}
 
 /// Report identifiers mirroring the Java client's `Report*Panel` set.
 enum ReportKind: String, CaseIterable, Identifiable {
@@ -28,25 +43,25 @@ enum ReportKind: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .colonies: return "Colonies"
-        case .unitTypes: return "Units"
-        case .military: return "Military"
-        case .naval: return "Naval"
-        case .cargo: return "Cargo"
-        case .trade: return "Trade"
-        case .foreignAffairs: return "Foreign Affairs"
-        case .indian: return "Indian"
-        case .exploration: return "Exploration"
-        case .turn: return "Turn"
-        case .highScores: return "High Scores"
-        case .financial: return "Financial"
-        case .continentalCongress: return "Continental Congress"
-        case .labour: return "Labour"
-        case .religious: return "Religious"
-        case .production: return "Production"
-        case .education: return "Education"
-        case .requirements: return "Requirements"
-        case .history: return "History"
+        case .colonies: return "Kolonien"
+        case .unitTypes: return "Einheiten"
+        case .military: return "Militär"
+        case .naval: return "Flotte"
+        case .cargo: return "Fracht"
+        case .trade: return "Handel"
+        case .foreignAffairs: return "Außenpolitik"
+        case .indian: return "Ureinwohner"
+        case .exploration: return "Erkundung"
+        case .turn: return "Zugbericht"
+        case .highScores: return "Bestenliste"
+        case .financial: return "Finanzen"
+        case .continentalCongress: return "Kontinentalkongress"
+        case .labour: return "Arbeit"
+        case .religious: return "Religion"
+        case .production: return "Produktion"
+        case .education: return "Ausbildung"
+        case .requirements: return "Bedarf"
+        case .history: return "Geschichte"
         }
     }
 }
@@ -58,9 +73,14 @@ struct ReportPanelView: View {
 
     @State private var selected: ReportKind = .colonies
     @State private var summaryPlayerId: String = ""
+    @State private var searchText = ""
+    @State private var sortAscending = true
+    @State private var tableSnapshots: [ReportTableSnapshot] = []
+    @State private var exportError: String?
 
     var body: some View {
         HStack(spacing: 0) {
+            ScrollView {
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(ReportKind.allCases) { kind in
                     Button {
@@ -79,6 +99,8 @@ struct ReportPanelView: View {
             }
             .frame(width: 160)
             .padding(8)
+            }
+            .frame(width: 176)
 
             Divider()
 
@@ -86,10 +108,22 @@ struct ReportPanelView: View {
                 HStack {
                     Text(selected.title)
                         .font(.title3.bold())
+                    TextField("Filter rows", text: $searchText)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 220)
+                    Button(sortAscending ? "Sort ↑" : "Sort ↓") {
+                        sortAscending.toggle()
+                    }
+                    .help("Sort rows by the first column")
+                    Button("Export CSV…") {
+                        exportCSV()
+                    }
+                    .disabled(tableSnapshots.isEmpty)
                     Spacer()
                     Button("Close") { dismiss() }
+                        .keyboardShortcut(.cancelAction)
                 }
-                ScrollView {
+                ScrollView([.horizontal, .vertical]) {
                     reportBody
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
@@ -101,6 +135,17 @@ struct ReportPanelView: View {
             if let requested = state.requestedReport {
                 selected = requested
             }
+        }
+        .onPreferenceChange(ReportTablePreferenceKey.self) {
+            tableSnapshots = $0
+        }
+        .alert("CSV export failed", isPresented: Binding(
+            get: { exportError != nil },
+            set: { if !$0 { exportError = nil } }
+        )) {
+            Button("OK") { exportError = nil }
+        } message: {
+            Text(exportError ?? "")
         }
     }
 
@@ -235,7 +280,7 @@ struct ReportPanelView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(carriers) { carrier in
                         let cargo = ownUnits.filter { $0.location == carrier.id }
-                        VStack(alignment: .leading, spacing: 2) {
+                        return VStack(alignment: .leading, spacing: 2) {
                             Text("\(shortName(carrier.unitType, prefix: "model.unit.")) (\(cargo.count))")
                                 .font(.caption.bold())
                             if cargo.isEmpty {
@@ -654,7 +699,19 @@ struct ReportPanelView: View {
     // MARK: - Building blocks
 
     private func table(headers: [String], widths: [Double], rows: [[String]]) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        let filteredRows = rows.filter { row in
+            searchText.isEmpty || row.contains {
+                $0.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+        let sortedRows = filteredRows.sorted { left, right in
+            let lhs = left.first ?? ""
+            let rhs = right.first ?? ""
+            return sortAscending
+                ? lhs.localizedStandardCompare(rhs) == .orderedAscending
+                : lhs.localizedStandardCompare(rhs) == .orderedDescending
+        }
+        return VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 0) {
                 ForEach(Array(headers.enumerated()), id: \.offset) { index, header in
                     Text(header)
@@ -663,7 +720,7 @@ struct ReportPanelView: View {
             }
             .font(.caption2.bold())
             .foregroundColor(.secondary)
-            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+            ForEach(Array(sortedRows.enumerated()), id: \.offset) { _, row in
                 HStack(spacing: 0) {
                     ForEach(Array(row.enumerated()), id: \.offset) { index, value in
                         Text(value)
@@ -675,6 +732,34 @@ struct ReportPanelView: View {
             }
         }
         .padding(.vertical, 4)
+        .preference(key: ReportTablePreferenceKey.self, value: [
+            ReportTableSnapshot(headers: headers, rows: sortedRows)
+        ])
+    }
+
+    private func exportCSV() {
+        guard !tableSnapshots.isEmpty else { return }
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "\(selected.rawValue)-turn-\(game?.turn.number ?? 0).csv"
+        panel.allowedContentTypes = [.commaSeparatedText]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        let csv = tableSnapshots.map { snapshot in
+            ([snapshot.headers] + snapshot.rows)
+                .map { row in row.map(csvField).joined(separator: ",") }
+                .joined(separator: "\n")
+        }
+        .joined(separator: "\n\n")
+
+        do {
+            try csv.write(to: url, atomically: true, encoding: .utf8)
+        } catch {
+            exportError = error.localizedDescription
+        }
+    }
+
+    private func csvField(_ value: String) -> String {
+        "\"\(value.replacingOccurrences(of: "\"", with: "\"\""))\""
     }
 
     private func row(_ label: String, _ value: String) -> some View {

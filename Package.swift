@@ -24,6 +24,10 @@ let package = Package(
                 .copy("Resources/units"),
                 .copy("Resources/settlements"),
                 .copy("Resources/order-buttons"),
+                .copy("Resources/object-names-de.json"),
+                .copy("Resources/colopedia-de.json"),
+                .copy("Resources/colopedia"),
+                .copy("Resources/FreeCol-COPYING"),
             ]
         ),
         .testTarget(

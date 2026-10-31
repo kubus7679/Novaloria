@@ -92,6 +92,7 @@ public struct Player: GameObject, PartiallyUpdatable, Identifiable {
     public var gold: Int = 0
     public var tax: Int = 0
     public var immigration: Int = 0
+    public var immigrationRequired: Int?
     public var liberty: Int = 0
     public var score: Int = 0
     public var newLandName: String?
@@ -124,6 +125,10 @@ public struct Player: GameObject, PartiallyUpdatable, Identifiable {
                 europe = Europe(id: child.attributes["id"] ?? "\(id)-europe",
                                 attributes: child.attributes,
                                 children: child.children)
+            case "ability":
+                if let ability = child.attributes["id"] {
+                    abilities[ability] = child.attributes.bool("value", default: true)
+                }
             case "market":
                 market = Market(attributes: child.attributes, children: child.children)
             case "stance":
@@ -178,6 +183,9 @@ public struct Player: GameObject, PartiallyUpdatable, Identifiable {
         gold = attributes.int("gold", default: gold)
         tax = attributes.int("tax", default: tax)
         immigration = attributes.int("immigration", default: immigration)
+        if let value = attributes["immigrationRequired"] {
+            immigrationRequired = Int(value)
+        }
         liberty = attributes.int("liberty", default: liberty)
         score = attributes.int("score", default: score)
         if let v = attributes["newLandName"] { newLandName = v }

@@ -10,15 +10,9 @@ func diplomacyE2EProbe() async throws {
     let delegate = TestDelegate()
     await client.setDelegate(delegate)
 
-    try await client.connect()
-    let vacant = await client.initialVacantPlayers
-    let nationId = vacant?.children.first?.attributes["nationId"]
-        ?? vacant?.children.first?.attributes["id"]
-        ?? "model.nation.dutch"
     let userName = ProcessInfo.processInfo.environment["REAL_SERVER_USERNAME"]
         ?? "CopilotDiplomacy-\(Int(Date().timeIntervalSince1970))"
-
-    let result = try await client.login(userName: userName, nationId: nationId)
+    let result = try await connectAndLogin(client, userName: userName)
     if result.serverState == .preGame {
         try await client.send(message: ParsedMessage(tag: "ready", attributes: ["value": "true"], children: []))
         try await client.send(message: ParsedMessage(tag: "requestLaunch", attributes: [:], children: []))
@@ -74,28 +68,16 @@ func diplomacyE2EProbe() async throws {
         }
 
         // Try to explore a bit if no adjacent AI colony is known.
-        func endTurnAndWait() async throws {
-            let turnBefore = await client.game.turn.number
-            _ = try await client.ask(message: ParsedMessage(tag: "endTurn", attributes: [:], children: []), timeout: 45)
-            for _ in 0..<180 {
-                let current = await client.game
-                if current.turn.number > turnBefore && current.currentPlayerId == localPlayerId { return }
-                try await Task.sleep(nanoseconds: 500_000_000)
-            }
-            throw TestError(message: "local player's turn did not return after endTurn")
-        }
-
         let scenarioFixture = ProcessInfo.processInfo.environment["REAL_SERVER_SCENARIO_FIXTURE"] == "1"
         for _ in 0..<(scenarioFixture ? 0 : 15) {
             if diplomacyTarget(in: game) != nil { break }
-            try await endTurnAndWait()
+            try await endTurnAndWait(client: client, localPlayerId: localPlayerId)
             game = await client.game
         }
 
         guard let target = diplomacyTarget(in: game) else {
-            print("    diplomacy skipped: no negotiable unit adjacent to a visible European AI colony after 15 turns")
             await client.disconnect()
-            return
+            throw ProbeSkipped(message: "no negotiable unit adjacent to a visible European AI colony")
         }
 
         print("    diplomacy target: colony \(target.colonyId) (owner \(target.ownerId))")
@@ -191,12 +173,14 @@ func diplomacyE2EProbe() async throws {
                 )
                 _ = try await client.ask(message: acceptance, timeout: 20)
                 print("    accepted AI counter-proposal")
-                if try await waitForPeaceWithAI() {
-                    print("    accepted counter-proposal applied: stance is PEACE")
+                guard try await waitForPeaceWithAI() else {
+                    throw TestError(message: "accepted AI counter-proposal but PEACE stance was not applied")
                 }
+                print("    accepted counter-proposal applied: stance is PEACE")
             }
         } else {
-            print("    no AI diplomacy response observed within 30s (tolerated)")
+            await client.disconnect()
+            throw ProbeSkipped(message: "Java server provided no AI response within 30s")
         }
 
         await client.disconnect()

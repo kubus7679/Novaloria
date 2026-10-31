@@ -57,6 +57,7 @@ struct TradeRoutePanelView: View {
                     state.createTradeRoute()
                 }
                 Button("Close") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
             }
             
             HStack {

@@ -12,6 +12,7 @@ struct PreferencesView: View {
                     .font(.title3.bold())
                 Spacer()
                 Button("Close") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
             }
 
             GroupBox("Display") {

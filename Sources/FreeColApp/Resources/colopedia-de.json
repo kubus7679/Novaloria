@@ -1,0 +1,5022 @@
+[
+  {
+    "id": "model.goods.food",
+    "category": "goods",
+    "title": "Nahrungsmittel",
+    "summary": "Nahrung ist zur Ernährung Eurer Kolonisten und zur Zucht von Pferden notwendig. Ein neuer Kolonist wird geboren, wenn eine Kolonie 200 oder mehr Einheiten Nahrung im Lager hat.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.food.png"
+  },
+  {
+    "id": "model.goods.grain",
+    "category": "goods",
+    "title": "Getreidekörner",
+    "summary": "Getreide, wie bspw. Weizen, Reis und Mais, ist die wichtigste Quelle an Nahrung für deine Kolonisten.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.grain.png"
+  },
+  {
+    "id": "model.goods.fish",
+    "category": "goods",
+    "title": "Fische",
+    "summary": "Fisch wird automatisch in Nahrung umgewandelt.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.fish.png"
+  },
+  {
+    "id": "model.goods.sugar",
+    "category": "goods",
+    "title": "Zucker",
+    "summary": "Zucker ist ein effektiver Süßstoff und kann auch zur Herstellung von Rum verwendet werden, der höhere Preise erzielt.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.sugar.png"
+  },
+  {
+    "id": "model.goods.tobacco",
+    "category": "goods",
+    "title": "Tabakblätter",
+    "summary": "Tabak kann direkt geraucht oder zur Herstellung von Zigarren verwendet werden, die höhere Preise erzielen.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.tobacco.png"
+  },
+  {
+    "id": "model.goods.cotton",
+    "category": "goods",
+    "title": "Baumwollballen",
+    "summary": "Baumwolle kann zur Herstellung von Stoff verwendet werden, der höhere Preise erzielt.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.cotton.png"
+  },
+  {
+    "id": "model.goods.furs",
+    "category": "goods",
+    "title": "Felle",
+    "summary": "Pelze können zur Herstellung von Mänteln verwendet werden.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.furs.png"
+  },
+  {
+    "id": "model.goods.lumber",
+    "category": "goods",
+    "title": "Holzscheite",
+    "summary": "Holz wird zur Konstruktion von Gebäuden und einigen Einheiten, wie zum Beispiel Schiffen, benötigt.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.lumber.png"
+  },
+  {
+    "id": "model.goods.ore",
+    "category": "goods",
+    "title": "Loren Erz",
+    "summary": "Erz ist notwendig, um Werkzeuge herzustellen. Diese finden zahlreich Verwendung.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.ore.png"
+  },
+  {
+    "id": "model.goods.silver",
+    "category": "goods",
+    "title": "Silberbarren",
+    "summary": "Silber ist ein wertvolles Metall, das hohe Preise erzielt.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.silver.png"
+  },
+  {
+    "id": "model.goods.horses",
+    "category": "goods",
+    "title": "Pferde",
+    "summary": "Pferde werden zum Erstellen von Späher- und Kavallerieeinheiten benötigt.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.food"
+    ],
+    "icon": "model.goods.horses.png"
+  },
+  {
+    "id": "model.goods.rum",
+    "category": "goods",
+    "title": "Pullen Rum",
+    "summary": "Rum ist eine Spirituose, die aus Zuckerrohr hergestellt wird. Als Luxusartikel erzielt er hohe Preise.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.sugar"
+    ],
+    "icon": "model.goods.rum.png"
+  },
+  {
+    "id": "model.goods.cigars",
+    "category": "goods",
+    "title": "Zigarren",
+    "summary": "Zigarren werden aus Tabak hergestellt. Als Luxusartikel erzielen sie hohe Preise.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.tobacco"
+    ],
+    "icon": "model.goods.cigars.png"
+  },
+  {
+    "id": "model.goods.cloth",
+    "category": "goods",
+    "title": "Stoffrollen",
+    "summary": "Stoff wird aus Baumwolle gefertigt.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.cotton"
+    ],
+    "icon": "model.goods.cloth.png"
+  },
+  {
+    "id": "model.goods.coats",
+    "category": "goods",
+    "title": "Mäntel",
+    "summary": "Mäntel werden aus Pelzen gefertigt.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.furs"
+    ],
+    "icon": "model.goods.coats.png"
+  },
+  {
+    "id": "model.goods.tradeGoods",
+    "category": "goods",
+    "title": "Handelswaren",
+    "summary": "Handelswaren werden nur in Europa hergestellt und sind für den Handel mit den Ureinwohnern bestimmt.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.tradeGoods.png"
+  },
+  {
+    "id": "model.goods.tools",
+    "category": "goods",
+    "title": "Werkzeuge",
+    "summary": "Werkzeuge werden sowohl zur Konstruktion von fortgeschrittenen Gebäuden und einigen Einheiten, wie zum Beispiel Schiffen, als auch zum Ausrüsten von Pionieren benötigt. Außerdem können sie verwendet werden, um Musketen herzustellen.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.ore"
+    ],
+    "icon": "model.goods.tools.png"
+  },
+  {
+    "id": "model.goods.muskets",
+    "category": "goods",
+    "title": "Musketen",
+    "summary": "Musketen werden zum Ausrüsten von Infanterie- und Kavallerieeinheiten benötigt.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.tools"
+    ],
+    "icon": "model.goods.muskets.png"
+  },
+  {
+    "id": "model.goods.bells",
+    "category": "goods",
+    "title": "Glocken",
+    "summary": "Glocken symbolisieren den Wunsch der Kolonisten nach Unabhängigkeit.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.bells.png"
+  },
+  {
+    "id": "model.goods.crosses",
+    "category": "goods",
+    "title": "Kreuze",
+    "summary": "Kreuze symbolisieren religiöse Unruhen in Europa.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.crosses.png"
+  },
+  {
+    "id": "model.goods.hammers",
+    "category": "goods",
+    "title": "Hämmer",
+    "summary": "Hämmer symbolisieren vollzogene Bauarbeiten in Euren Kolonien.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Preis in Gold",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.goods.lumber"
+    ],
+    "icon": "model.goods.hammers.png"
+  },
+  {
+    "id": "model.resource.game",
+    "category": "resources",
+    "title": "Wild",
+    "summary": "Der Wald ist die Heimat vieler Tiere, geeignet für die Jagd nach Nahrung und Pelzen.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.game.png"
+  },
+  {
+    "id": "model.resource.minerals",
+    "category": "resources",
+    "title": "Minerale",
+    "summary": "Der Boden ist reich an Mineralien, und wenn man geduldig ist, kann man sogar Erz oder Silber finden.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.minerals.png"
+  },
+  {
+    "id": "model.resource.ore",
+    "category": "resources",
+    "title": "Erz",
+    "summary": "Die Erde tut sich auf und eine ergiebige Erzader kann abgebaut werden. Vorkommen finden sich nur in hügeligem Land.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.ore.png"
+  },
+  {
+    "id": "model.resource.silver",
+    "category": "resources",
+    "title": "Silber",
+    "summary": "Dieser Berg beherbergt reichhaltige Silberadern, er wird Städten in der Nähe Wohlstand bringen.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.silver.png"
+  },
+  {
+    "id": "model.resource.lumber",
+    "category": "resources",
+    "title": "Holz",
+    "summary": "Dieser Wald beherbergt solide Bäume, bestens geeignet für den Holzschlag.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.lumber.png"
+  },
+  {
+    "id": "model.resource.furs",
+    "category": "resources",
+    "title": "Pelz",
+    "summary": "Eine Fülle von Tieren in diesen Wäldern bietet Jägern ein reichhaltiges Angebot.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.furs.png"
+  },
+  {
+    "id": "model.resource.tobacco",
+    "category": "resources",
+    "title": "Tabak",
+    "summary": "Der Boden des Graslands ist bestens geeignet für den Anbau von Tabak.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.tobacco.png"
+  },
+  {
+    "id": "model.resource.sugar",
+    "category": "resources",
+    "title": "Zuckerrohr",
+    "summary": "Der Boden der Savanne ist bestens geeignet für den Anbau von Zuckerrohr.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.sugar.png"
+  },
+  {
+    "id": "model.resource.cotton",
+    "category": "resources",
+    "title": "Baumwolle",
+    "summary": "Der Boden der Prärie ist bestens geeignet für den Anbau von Baumwolle.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.cotton.png"
+  },
+  {
+    "id": "model.resource.oasis",
+    "category": "resources",
+    "title": "Oase",
+    "summary": "Die Oase in der Wüste ist ein willkommener Anblick für alle abgekämpften Reisenden.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.oasis.png"
+  },
+  {
+    "id": "model.resource.grain",
+    "category": "resources",
+    "title": "Getreide",
+    "summary": "Die Ernten fallen in dieser fruchtbaren Ebene außergewöhnlich gut aus.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.grain.png"
+  },
+  {
+    "id": "model.resource.fish",
+    "category": "resources",
+    "title": "Fisch",
+    "summary": "Viele kleine Fische ködern hier zahlreiche große Fische, die wiederum eifrige Fischer anlocken.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.fish.png"
+  },
+  {
+    "id": "model.tile.plains",
+    "category": "terrain",
+    "title": "Ebenen",
+    "summary": "Ebenen sind flache Gegenden, die gut zum Ackerbau geeignet sind. Die in den gemäßigten Klimazonen zu findenden Ebenen produzieren große Mengen Getreide, etwas Baumwolle und wenig Erz.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Baumwollballen",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "5"
+      },
+      {
+        "label": "Produktion: Baumwollballen",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Loren Erz",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.cotton",
+      "model.goods.grain",
+      "model.goods.ore"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.grassland",
+    "category": "terrain",
+    "title": "Grasland",
+    "summary": "Das Grasland besteht aus großen, flachen grasbewachsenen Gebieten. Es kann oft in der Nähe der gemäßigten Zone und der subtropischen Zone gefunden werden. Das Grasland ist ideal, um Tabak oder Nahrung anzubauen.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Tabakblätter",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Tabakblätter",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.grain",
+      "model.goods.tobacco"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.prairie",
+    "category": "terrain",
+    "title": "Prärie",
+    "summary": "Die Prärie ist ein Gebiet voller Gräser und Kräuter mit wenigen Bäumen. Diese hat ein eher moderates oder gemäßigtes Klima. Am besten gedeihen hier Getreide und Baumwolle.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Baumwollballen",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Baumwollballen",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.cotton",
+      "model.goods.grain"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.savannah",
+    "category": "terrain",
+    "title": "Savanne",
+    "summary": "In der Savanne existieren sowohl Bäume als auch Gräser. Diese wird häufig als Übergangszone vorgefunden und tritt auf zwischen Wald- oder Waldlandregionen, und Grasland- oder Wüstenregionen. Diese produziert hauptsächlich Getreide und Zucker.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Zucker",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "4"
+      },
+      {
+        "label": "Produktion: Zucker",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.grain",
+      "model.goods.sugar"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.marsh",
+    "category": "terrain",
+    "title": "Moor",
+    "summary": "Das Moor ist ein Feuchtgebiet mit Gräsern, Binsen, Schilf, Typha, Seggen und anderen krautigen Pflanzen, die im seichten Wasser gedeihen. Moore produzieren etwas Getreide und Tabak, wie auch Erz. Man kann sie hauptsächlich in der Nähe der Polarregionen finden.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Tabakblätter",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Tabakblätter",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Loren Erz",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Silberbarren",
+        "value": "0"
+      }
+    ],
+    "related": [
+      "model.goods.grain",
+      "model.goods.ore",
+      "model.goods.silver",
+      "model.goods.tobacco"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.swamp",
+    "category": "terrain",
+    "title": "Sumpf",
+    "summary": "Tropische Feuchtgebiete mit vielen morastigen Seen. Sümpfe haben mehr offene und tiefere Wasserflächen als Moore. Diese produzieren etwas Getreide sowie kleine Mengen an Zucker und Erz.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Zucker",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Zucker",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Loren Erz",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Silberbarren",
+        "value": "0"
+      }
+    ],
+    "related": [
+      "model.goods.grain",
+      "model.goods.ore",
+      "model.goods.silver",
+      "model.goods.sugar"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.desert",
+    "category": "terrain",
+    "title": "Wüste",
+    "summary": "Wüsten sind trockene Gebiete mit wenig Niederschlag. Diese produzieren wenig Getreide, Baumwolle und Erz.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Loren Erz",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "1"
+      },
+      {
+        "label": "Produktion: Loren Erz",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "1"
+      },
+      {
+        "label": "Produktion: Loren Erz",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Baumwollballen",
+        "value": "1"
+      },
+      {
+        "label": "Produktion: Loren Erz",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.goods.cotton",
+      "model.goods.grain",
+      "model.goods.ore"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.tundra",
+    "category": "terrain",
+    "title": "Tundra",
+    "summary": "Die Tundra ist ein Gebiet, in dem Bäume durch niedrige Temperaturen und kurze Wachstumsperioden nur spärlich gedeihen. Diese produziert Getreide und etwas Erz. Diese kann in der Nähe der Polarregionen gefunden werden.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Loren Erz",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Loren Erz",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Silberbarren",
+        "value": "0"
+      }
+    ],
+    "related": [
+      "model.goods.grain",
+      "model.goods.ore",
+      "model.goods.silver"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.mixedForest",
+    "category": "terrain",
+    "title": "Mischwald",
+    "summary": "Die Mischwälder, die in den gemäßigten Gegenden zu finden sind, produzieren Getreide, Holz, Felle und etwas Baumwolle. Durch Rodung können sie zu Ebenen werden.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Felle",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Baumwollballen",
+        "value": "1"
+      },
+      {
+        "label": "Produktion: Felle",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Holzscheite",
+        "value": "6"
+      }
+    ],
+    "related": [
+      "model.goods.cotton",
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.coniferForest",
+    "category": "terrain",
+    "title": "Nadelwald",
+    "summary": "Nadelwälder produzieren Getreide, Holz, Felle und ein wenig Tabak. Diese können meist in den tropischen Zonen gefunden, und durch Rodung zu Grasland werden.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Felle",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Tabakblätter",
+        "value": "1"
+      },
+      {
+        "label": "Produktion: Felle",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Holzscheite",
+        "value": "6"
+      }
+    ],
+    "related": [
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber",
+      "model.goods.tobacco"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.broadleafForest",
+    "category": "terrain",
+    "title": "Laubwald",
+    "summary": "Laubwälder produzieren Getreide, Holz, Felle und ein wenig Baumwolle. Diese können meist in den gemäßigten Zonen gefunden, und durch Rodung zur Prärie umgewandelt werden.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Felle",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Baumwollballen",
+        "value": "1"
+      },
+      {
+        "label": "Produktion: Felle",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Holzscheite",
+        "value": "4"
+      }
+    ],
+    "related": [
+      "model.goods.cotton",
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.tropicalForest",
+    "category": "terrain",
+    "title": "Tropenwald",
+    "summary": "Der Tropenwald produziert Getreide, Holz, Felle und etwas Zucker. Seine Rodung wandelt ihn in eine Savanne um.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Felle",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Zucker",
+        "value": "1"
+      },
+      {
+        "label": "Produktion: Felle",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Holzscheite",
+        "value": "4"
+      }
+    ],
+    "related": [
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber",
+      "model.goods.sugar"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.wetlandForest",
+    "category": "terrain",
+    "title": "Auwald",
+    "summary": "Der Auwald produziert Getreide, Holz, Felle und ein wenig Erz. Auwälder können gerodet und somit zu Mooren werden. Er kann in der Nähe der Polarregionen gefunden werden.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Felle",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Tabakblätter",
+        "value": "1"
+      },
+      {
+        "label": "Produktion: Felle",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Holzscheite",
+        "value": "4"
+      },
+      {
+        "label": "Produktion: Loren Erz",
+        "value": "1"
+      },
+      {
+        "label": "Produktion: Silberbarren",
+        "value": "0"
+      }
+    ],
+    "related": [
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber",
+      "model.goods.ore",
+      "model.goods.silver",
+      "model.goods.tobacco"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.rainForest",
+    "category": "terrain",
+    "title": "Regenwald",
+    "summary": "Der Regenwald produziert Getreide, Holz, Felle und etwas Erz und Zucker. Er kann in den tropischen Regionen gefunden und durch Rodung zu einem Sumpf umgewandelt werden.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Zucker",
+        "value": "1"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Zucker",
+        "value": "1"
+      },
+      {
+        "label": "Produktion: Felle",
+        "value": "1"
+      },
+      {
+        "label": "Produktion: Holzscheite",
+        "value": "4"
+      },
+      {
+        "label": "Produktion: Loren Erz",
+        "value": "1"
+      },
+      {
+        "label": "Produktion: Silberbarren",
+        "value": "0"
+      }
+    ],
+    "related": [
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber",
+      "model.goods.ore",
+      "model.goods.silver",
+      "model.goods.sugar"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.scrubForest",
+    "category": "terrain",
+    "title": "Buschwald",
+    "summary": "Buschwälder produzieren Getreide, Holz, Felle, und etwas Baumwolle und Erz. Rodung führt zur Bildung einer Wüste. Gefunden werden können sie in den gemäßigten Regionen.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Felle",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "1"
+      },
+      {
+        "label": "Produktion: Felle",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "1"
+      },
+      {
+        "label": "Produktion: Felle",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Baumwollballen",
+        "value": "1"
+      },
+      {
+        "label": "Produktion: Felle",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Holzscheite",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Loren Erz",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.cotton",
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber",
+      "model.goods.ore"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.borealForest",
+    "category": "terrain",
+    "title": "Taiga",
+    "summary": "Die Taiga produziert neben Getreide, Holz und Fellen etwas Erz. Diese kann in der Nähe der Polarregionen gefunden werden. Ihre Rodung führt zu einer Tundra.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Felle",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Felle",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Holzscheite",
+        "value": "4"
+      },
+      {
+        "label": "Produktion: Loren Erz",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber",
+      "model.goods.ore"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.hills",
+    "category": "terrain",
+    "title": "Hügel",
+    "summary": "Hügel erheben sich über die umliegenden Gebiete. Diese produzieren große Mengen Erz und etwas Getreide.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Loren Erz",
+        "value": "4"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Loren Erz",
+        "value": "4"
+      }
+    ],
+    "related": [
+      "model.goods.grain",
+      "model.goods.ore"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.mountains",
+    "category": "terrain",
+    "title": "Berge",
+    "summary": "Berge erheben sich über die umliegenden Gebiete. Diese sind steiler und unwegsamer als Hügel. Auf ihnen können keine Kolonien gegründet werden. Diese bieten einen hohen Verteidigungsbonus, doch Verschanzungen erhöhen ihn nicht. Hervorragend für die Erz- und Silbergewinnung.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Loren Erz",
+        "value": "4"
+      },
+      {
+        "label": "Produktion: Silberbarren",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.ore",
+      "model.goods.silver"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.arctic",
+    "category": "terrain",
+    "title": "Arktisches Gebiet",
+    "summary": "Die arktischen Gebiete sind große, von Eis bedeckte Gewässer, umgeben von baumlosen, geforenen Böden, und sie produzieren nichts. Diese befinden sich in der Nähe des Nord- und Südpols und es ist normalerweise nicht möglich, Kolonien auf ihnen zu gründen.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Getreidekörner",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.grain"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.ocean",
+    "category": "terrain",
+    "title": "Ozean",
+    "summary": "Ozeane sind gewaltige mit Salzwasser gefüllte Gewässer, die ideal zum Fischen sind. Die Fischmenge wird durch das Vorhandensein von Land und insbesondere durch Flussmündungen erhöht.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Fische",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.goods.fish"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.lake",
+    "category": "terrain",
+    "title": "See",
+    "summary": "Seen sind größere Wasserflächen im Inland. Eine Kolonie in der Nähe profitiert zwar von den Rohstoffen des Sees, könnte jedoch für Schiffe unerreichbar sein.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Fische",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.goods.fish"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.highSeas",
+    "category": "terrain",
+    "title": "Hochsee",
+    "summary": "Hochseegebiete produzieren Fische und ermöglichen es Schiffen, nach und von Europa zu reisen.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Fische",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.goods.fish"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.greatRiver",
+    "category": "terrain",
+    "title": "Großer Fluss",
+    "summary": "Große Flüsse sind Flüsse, die mit Schiffen befahren werden können.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Fische",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.goods.fish"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.role.default",
+    "category": "roles",
+    "title": "Standard",
+    "summary": "",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.role.scout",
+    "category": "roles",
+    "title": "Späher",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Baukosten / Ausrüstung: Pferde",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.goods.horses",
+      "model.unit.seasonedScout"
+    ],
+    "icon": "model.role.scout.png"
+  },
+  {
+    "id": "model.role.soldier",
+    "category": "roles",
+    "title": "Soldat",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Baukosten / Ausrüstung: Musketen",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.goods.muskets",
+      "model.unit.veteranSoldier"
+    ],
+    "icon": "model.role.soldier.png"
+  },
+  {
+    "id": "model.role.dragoon",
+    "category": "roles",
+    "title": "Dragoner",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Baukosten / Ausrüstung: Musketen",
+        "value": "50"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Pferde",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.goods.horses",
+      "model.goods.muskets",
+      "model.unit.veteranSoldier"
+    ],
+    "icon": "model.role.dragoon.png"
+  },
+  {
+    "id": "model.role.pioneer",
+    "category": "roles",
+    "title": "Pionier",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Maximale Ausrüstung",
+        "value": "5"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.goods.tools",
+      "model.unit.hardyPioneer"
+    ],
+    "icon": "model.role.pioneer.png"
+  },
+  {
+    "id": "model.role.missionary",
+    "category": "roles",
+    "title": "Missionar",
+    "summary": "",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.unit.jesuitMissionary"
+    ],
+    "icon": "model.role.missionary.png"
+  },
+  {
+    "id": "model.role.infantry",
+    "category": "roles",
+    "title": "Infanterie",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Baukosten / Ausrüstung: Musketen",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.goods.muskets",
+      "model.unit.kingsRegular"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.role.cavalry",
+    "category": "roles",
+    "title": "Kavallerie",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Baukosten / Ausrüstung: Musketen",
+        "value": "50"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Pferde",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.goods.horses",
+      "model.goods.muskets",
+      "model.unit.kingsRegular"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.role.mountedBrave",
+    "category": "roles",
+    "title": "Berittene Krieger",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Baukosten / Ausrüstung: Pferde",
+        "value": "25"
+      }
+    ],
+    "related": [
+      "model.goods.horses"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.role.armedBrave",
+    "category": "roles",
+    "title": "Bewaffnete Krieger",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Baukosten / Ausrüstung: Musketen",
+        "value": "25"
+      }
+    ],
+    "related": [
+      "model.goods.muskets"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.role.nativeDragoon",
+    "category": "roles",
+    "title": "Ureinwohner-Dragoner",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Baukosten / Ausrüstung: Musketen",
+        "value": "25"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Pferde",
+        "value": "25"
+      }
+    ],
+    "related": [
+      "model.goods.horses",
+      "model.goods.muskets"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.improvement.river",
+    "category": "improvements",
+    "title": "Fluss",
+    "summary": "Fluss",
+    "text": "",
+    "facts": [
+      {
+        "label": "Zusätzliche Arbeitsrunden",
+        "value": "0"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.improvement.road",
+    "category": "improvements",
+    "title": "Straße",
+    "summary": "Straße",
+    "text": "",
+    "facts": [
+      {
+        "label": "Zusätzliche Arbeitsrunden",
+        "value": "0"
+      }
+    ],
+    "related": [
+      "model.role.pioneer"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.improvement.plow",
+    "category": "improvements",
+    "title": "Pflug",
+    "summary": "Gepflügt",
+    "text": "",
+    "facts": [
+      {
+        "label": "Zusätzliche Arbeitsrunden",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.role.pioneer"
+    ],
+    "icon": "model.improvement.plow.png"
+  },
+  {
+    "id": "model.improvement.clearForest",
+    "category": "improvements",
+    "title": "Wald roden",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Zusätzliche Arbeitsrunden",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.role.pioneer"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.improvement.fishBonusLand",
+    "category": "improvements",
+    "title": "Fischbonus (Küste)",
+    "summary": "Fishbonus auf Küstenfeldern",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.improvement.fishBonusRiver",
+    "category": "improvements",
+    "title": "Fischbonus (Fluss)",
+    "summary": "Fischbonus durch das Vorhandensein von einem Fluss",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.freeColonist",
+    "category": "units",
+    "title": "Freier Kolonist",
+    "summary": "Der freie Kolonist ist ein Greenhorn ohne spezielle Fähigkeiten. Jedoch können freie Kolonisten durch Arbeit in der Kolonie oder den Besuch einer Indianersiedlung an Erfahrung sammeln. Des Weiteren können sie zu altgedienten Soldaten befördert oder in Kolonien, die über eine Schule verfügen, ausgebildet werden.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "0"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Nahrungsmittel",
+        "value": "200"
+      }
+    ],
+    "related": [
+      "model.goods.food"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.expertFarmer",
+    "category": "units",
+    "title": "Erfahrener Bauer",
+    "summary": "Der erfahrene Bauer ist ein Fachmann bei der Erzeugung von Nahrung.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "1"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "1100"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.grain"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.expertFisherman",
+    "category": "units",
+    "title": "Erfahrener Fischer",
+    "summary": "Der erfahrene Fischer ist ein Spezialist im Fangen von Fischen, die automatisch in Nahrung umgewandelt werden.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "1"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "1000"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.fish"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.expertFurTrapper",
+    "category": "units",
+    "title": "Erfahrener Trapper",
+    "summary": "Der erfahrene Trapper hat sich auf die Pelzproduktion spezialisiert.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "1"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.furs"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.expertSilverMiner",
+    "category": "units",
+    "title": "Erfahrener Silberschürfer",
+    "summary": "Der erfahrene Silberschürfer produziert mehr Silber als andere Einheiten.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "1"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "900"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.silver"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.expertLumberJack",
+    "category": "units",
+    "title": "Erfahrener Holzfäller",
+    "summary": "Der erfahrene Holzfäller produziert mehr Holz als andere Einheiten.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "1"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "700"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.lumber"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.expertOreMiner",
+    "category": "units",
+    "title": "Erfahrener Erzschürfer",
+    "summary": "Der erfahrene Erzschürfer besticht auf dem Gebiet des Erzabbaus.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "1"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "600"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.ore"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterSugarPlanter",
+    "category": "units",
+    "title": "Meisterzuckerpflanzer",
+    "summary": "Der Meisterzuckerpflanzer baut Zucker an.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "2"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.sugar"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterCottonPlanter",
+    "category": "units",
+    "title": "Meisterbaumwollpflanzer",
+    "summary": "Der Meisterbaumwollpflanzer baut Baumwolle an.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "2"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.cotton"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterTobaccoPlanter",
+    "category": "units",
+    "title": "Meistertabakpflanzer",
+    "summary": "Der Meistertabakpflanzer baut Tabak an.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "2"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.tobacco"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.firebrandPreacher",
+    "category": "units",
+    "title": "Mitreißender Prediger",
+    "summary": "Der mitreißende Prediger erhöht die religiöse Unruhe in Europa (symbolisiert durch Kreuze), was dazu führt, dass mehr Menschen in die neue Welt auswandern.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "3"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "1500"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.crosses"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.elderStatesman",
+    "category": "units",
+    "title": "Verdienter Staatsmann",
+    "summary": "Der verdiente Staatsmann erhöht das Verlangen der Kolonie nach Unabhängigkeit (symbolisiert durch Freiheitsglocken), was dazu führt, dass die Mitgliederzahl der Söhne der Freiheit in den Kolonien steigt.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "3"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "1900"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.bells"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterCarpenter",
+    "category": "units",
+    "title": "Meisterzimmermann",
+    "summary": "Der Meisterzimmermann ist sehr geschickt beim Bau von Gebäuden und Einheiten.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "1"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "1000"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.hammers"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterDistiller",
+    "category": "units",
+    "title": "Meisterrumbrenner",
+    "summary": "Der Meisterrumbrenner verwendet Zucker zur Herstellung von Rum.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "2"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "1100"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.rum"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterWeaver",
+    "category": "units",
+    "title": "Meisterweber",
+    "summary": "Der Meisterweber verwendet Baumwolle zur Herstellung von Stoff.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "2"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "1300"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.cloth"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterTobacconist",
+    "category": "units",
+    "title": "Meistertabakhändler",
+    "summary": "Der Meistertabakhändler verwendet Tabak zur Herstellung von Zigarren.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "2"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "1200"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.cigars"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterFurTrader",
+    "category": "units",
+    "title": "Meisterpelzhändler",
+    "summary": "Der Meisterpelzhändler verarbeitet Pelze zu Mänteln.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "2"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "950"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.coats"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterBlacksmith",
+    "category": "units",
+    "title": "Meisterschmied",
+    "summary": "Der Meisterschmied verwendet Erz zur Herstellung von Werkzeugen.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "2"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "1050"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterGunsmith",
+    "category": "units",
+    "title": "Meisterbüchsenmacher",
+    "summary": "Der Meisterwaffenschmied verwendet Werkzeuge zur Herstellung von Musketen.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "2"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "850"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.muskets"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.seasonedScout",
+    "category": "units",
+    "title": "Erfahrener Späher",
+    "summary": "Der erfahrene Späher ist am besten geeignet, um die neue Welt, insbesondere Siedlungen der Indianer und Gerüchte über verlorene Städte, zu erkunden.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "1"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.hardyPioneer",
+    "category": "units",
+    "title": "Zäher Pionier",
+    "summary": "Der zähe Pionier ist am besten geeignet, um Wälder zu roden, Felder zu pflügen oder Straßen zu bauen.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "1"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "1200"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.veteranSoldier",
+    "category": "units",
+    "title": "Altgedienter Soldat",
+    "summary": "Der altgediente Soldat ist eine starke militärische Einheit. Nach einigen gewonnen Kämpfen kann jeder freie Kolonist zu einem altgedienten Soldaten werden.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "2"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "2000"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.jesuitMissionary",
+    "category": "units",
+    "title": "Jesuitenmissionar",
+    "summary": "Der Jesuitenmissionar kann in einer indianischen Siedlung eine Mission gründen und ist geschickt darin, Indianer zu konvertieren.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "3"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "1400"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.indenturedServant",
+    "category": "units",
+    "title": "Schuldknecht",
+    "summary": "Der Schuldknecht ist für harte Feldarbeit gut geeignet, kann als Handwerker jedoch nicht überzeugen. Durch Bildung oder Beförderung kann er zu einem freien Kolonisten werden.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "-1"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.pettyCriminal",
+    "category": "units",
+    "title": "Kleinkrimineller",
+    "summary": "Der Kleinkriminelle ist für Feld-, jedoch nicht für Handwerksarbeit geeignet. Durch Beförderung oder Ausbildung kann er zum Schuldknecht werden.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "-2"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.indianConvert",
+    "category": "units",
+    "title": "Konvertit",
+    "summary": "Der indianische Konvertit ist ein Ureinwohner, der sich entschlossen hat, sich einer Kolonie anzuschließen. Er ist geschickt in jeder Art von körperlicher Arbeit, jedoch nicht als Handwerker. Sobald Bartolome de las Casas dem Kontinentalkongress beitritt, werden alle Konvertiten zu freien Kolonisten.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "0"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.brave",
+    "category": "units",
+    "title": "Krieger",
+    "summary": "Der Krieger ist eine Einheit der Ureinwohner mit der Fähigkeit, kleine Mengen von Waren zu tragen. Er kann bewaffnet und beritten sein. Krieger besuchen oft die Kolonien, um Geschenke zu überbringen oder Forderungen zu unterbreiten.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "1"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Frachtplätze",
+        "value": "1"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.colonialRegular",
+    "category": "units",
+    "title": "Kolonialer Soldat",
+    "summary": "Die Berufssoldaten der Kolonien sind Einheiten, die erst nach der Unabhängigkeitserklärung zur Verfügung stehen.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "3"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.kingsRegular",
+    "category": "units",
+    "title": "Königlicher Soldat",
+    "summary": "Die Berufssoldaten des Königs sind starke Einheiten, die nur der Krone zur Verfügung stehen. Diese treten erst nach der Unabhängigkeitserklärung in Erscheinung.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Fähigkeitsstufe",
+        "value": "4"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.caravel",
+    "category": "units",
+    "title": "Karavelle",
+    "summary": "Die Karavelle ist ein kleines und nicht gerade schnelles Handelsschiff.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "2"
+      },
+      {
+        "label": "Frachtplätze",
+        "value": "2"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "1000"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "4"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "128"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "40"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.frigate",
+    "category": "units",
+    "title": "Fregatte",
+    "summary": "Die Fregatte ist ein großes und schnelles Kriegsschiff.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "2"
+      },
+      {
+        "label": "Angriff",
+        "value": "16"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "16"
+      },
+      {
+        "label": "Frachtplätze",
+        "value": "4"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "5000"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "6"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "512"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "200"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.galleon",
+    "category": "units",
+    "title": "Galleone",
+    "summary": "Die Galleone ist ein großes Handelsschiff. Es ist das einzige Schiff, welches in der Lage ist, einen Schatzwagen nach Europa zu bringen.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "2"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "10"
+      },
+      {
+        "label": "Frachtplätze",
+        "value": "6"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "3000"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "6"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "320"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.manOWar",
+    "category": "units",
+    "title": "Kriegsschiff",
+    "summary": "Dies ist ein großes Kriegsschiff. Nach der Unabhängigkeitserklärung steht es nur der Krone zur Verfügung.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "2"
+      },
+      {
+        "label": "Angriff",
+        "value": "24"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "24"
+      },
+      {
+        "label": "Frachtplätze",
+        "value": "6"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "6"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "1024"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "300"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.merchantman",
+    "category": "units",
+    "title": "Handelsschiff",
+    "summary": "Das Handelsschiff ist ein mittelgroßes Schiff zum Transport von Gütern.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "6"
+      },
+      {
+        "label": "Frachtplätze",
+        "value": "4"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "2000"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "5"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "192"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "80"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.privateer",
+    "category": "units",
+    "title": "Kaperschiff",
+    "summary": "Das Kaperschiff ist ein kleines Kriegsschiff ohne verräterische Flagge. Es ist die einzige Einheit, die ohne Kriegserklärung angreifen kann.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "2"
+      },
+      {
+        "label": "Angriff",
+        "value": "8"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "8"
+      },
+      {
+        "label": "Frachtplätze",
+        "value": "2"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "2000"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "8"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "256"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "120"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.artillery",
+    "category": "units",
+    "title": "Artillerie",
+    "summary": "Die Artillerie ist stark im Angriff und bei der Verteidigung von Kolonien und sehr verwundbar auf freiem Feld.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "7"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "5"
+      },
+      {
+        "label": "Preis in Gold",
+        "value": "500"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "192"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "40"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.damagedArtillery",
+    "category": "units",
+    "title": "Beschädigte Artillerie",
+    "summary": "Beschädigte Artillerie entspricht der Artillerie in allen Punkten, ist jedoch schwächer.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "5"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "3"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": "model.unit.damagedArtillery.png"
+  },
+  {
+    "id": "model.unit.treasureTrain",
+    "category": "units",
+    "title": "Schatzwagen",
+    "summary": "Der einzige Einsatzzweck des Schatzwagens ist der Transport von Gold, das in den Ruinen einer verlorenen Stadt gefunden oder aus einer indianischen Siedlung geraubt wurde. Wenn der Wagen in eine Kolonie bewegt wird, bietet die Krone einen Transport gegen Gebühr an. Falls eine eigene Galleone vorhanden ist, kann der Schatz auch hiermit nach Europa gebracht werden.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "0"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": "model.unit.treasureTrain.png"
+  },
+  {
+    "id": "model.unit.wagonTrain",
+    "category": "units",
+    "title": "Wagenzug",
+    "summary": "Der Wagenzug kann bis zu 200 Einheiten Waren durch das Land transportieren. Er kann sowohl zum Handel mit anderen Spielern oder Indianern, als auch zum Transport zwischen eigenen Kolonien verwendet werden.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "0"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "1"
+      },
+      {
+        "label": "Frachtplätze",
+        "value": "2"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "2"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "40"
+      }
+    ],
+    "related": [
+      "model.goods.hammers"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.revenger",
+    "category": "units",
+    "title": "Der Kapitän",
+    "summary": "Der Kapitän verkaufte seine Seele an den Teufel.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "3"
+      },
+      {
+        "label": "Angriff",
+        "value": "666"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "666"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "6"
+      }
+    ],
+    "related": [],
+    "icon": "model.unit.revenger.png"
+  },
+  {
+    "id": "model.unit.flyingDutchman",
+    "category": "units",
+    "title": "Der fliegende Holländer",
+    "summary": "Der fliegende Holländer ist das Schiff der Verdammten.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "3"
+      },
+      {
+        "label": "Angriff",
+        "value": "666"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "666"
+      },
+      {
+        "label": "Frachtplätze",
+        "value": "6"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "12"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.undead",
+    "category": "units",
+    "title": "Untote",
+    "summary": "Die Untoten bilden die Mannschaften des fliegenden Holländers.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Sichtweite",
+        "value": "1"
+      },
+      {
+        "label": "Angriff",
+        "value": "18"
+      },
+      {
+        "label": "Verteidigung",
+        "value": "4"
+      },
+      {
+        "label": "Bewegungspunkte",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": "model.unit.undead.png"
+  },
+  {
+    "id": "model.building.townHall",
+    "category": "buildings",
+    "title": "Rathaus",
+    "summary": "Das Rathaus, welches nicht ausgebaut werden kann, ermöglicht bis zu drei Kolonisten, Freiheitsglocken zu produzieren. Die Produktion von Freiheitsglocken kann erhöht werden durch den Bau einer Druckerei und einer Zeitung.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Produktion: Glocken",
+        "value": "1"
+      },
+      {
+        "label": "Produktion: Glocken",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.bells"
+    ],
+    "icon": "model.building.townHall.png"
+  },
+  {
+    "id": "model.building.carpenterHouse",
+    "category": "buildings",
+    "title": "Haus des Zimmermannes",
+    "summary": "Das Haus des Zimmermanns produziert aus Holz Hämmer, die zum Bau und Ausbau von verschiedensten Gebäuden benötigt werden. Es kann zum Sägewerk ausgebaut werden, sobald die Kolonie eine Größe von 3 erreicht hat.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Verbrauch: Holzscheite",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Hämmer",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.lumber"
+    ],
+    "icon": "model.building.carpenterHouse.png"
+  },
+  {
+    "id": "model.building.lumberMill",
+    "category": "buildings",
+    "title": "Sägewerk",
+    "summary": "Das Sägewerk, das nicht weiter ausgebaut werden kann, produziert aus Holz Hämmer. Hämmer sind für den Bau oder Ausbau aller Arten von Gebäuden nötig. Ein Sägewerk steigert die Produktion von Hämmern.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Benötigte Bevölkerung",
+        "value": "3"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "10"
+      },
+      {
+        "label": "Verbrauch: Holzscheite",
+        "value": "6"
+      },
+      {
+        "label": "Produktion: Hämmer",
+        "value": "6"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "52"
+      }
+    ],
+    "related": [
+      "model.building.carpenterHouse",
+      "model.goods.hammers",
+      "model.goods.lumber"
+    ],
+    "icon": "model.building.lumberMill.png"
+  },
+  {
+    "id": "model.building.blacksmithHouse",
+    "category": "buildings",
+    "title": "Haus des Schmiedes",
+    "summary": "Das Haus des Schmiedes produziert aus Erz Werkzeuge. Werkzeuge werden zum Bau und Ausbau einiger Gebäude, zur Produktion von Musketen sowie für Pioniere benötigt. Der Ausbau zur Schmiede ist jederzeit möglich. Nachdem Adam Smith dem Kontinentalkongress beigetreten ist, kann die Schmiede zur Eisenhütte ausgebaut werden, sobald die Koloniegröße 8 beträgt.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Verbrauch: Loren Erz",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Werkzeuge",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.ore",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.blacksmithHouse.png"
+  },
+  {
+    "id": "model.building.blacksmithShop",
+    "category": "buildings",
+    "title": "Schmiede",
+    "summary": "Die Schmiede erhöht die Produktion von Werkzeugen. Werkzeuge werden zum (Aus-)Bau von Gebäuden, Musketen und für Pioniere benötigt. Der Ausbau zur Eisenhütte ist möglich, sobald die Einwohnerzahl einmal 8 erreicht hat und Adam Smith dem Kontinentalkongress beigetreten ist.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Unterhalt in Gold",
+        "value": "5"
+      },
+      {
+        "label": "Verbrauch: Loren Erz",
+        "value": "6"
+      },
+      {
+        "label": "Produktion: Werkzeuge",
+        "value": "6"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "64"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.building.blacksmithHouse",
+      "model.goods.hammers",
+      "model.goods.ore",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.blacksmithShop.png"
+  },
+  {
+    "id": "model.building.ironWorks",
+    "category": "buildings",
+    "title": "Eisenhütte",
+    "summary": "Die Eisenhütte, die nicht ausgebaut werden kann, dient dazu, Erz in Werkzeuge umzuwandeln. Werkzeuge werden benötigt, um bestimmte Arten von Gebäuden zu bauen und alle Arten von Gebäuden zu verbessern. Werkzeuge werden auch von Pionieren und zur Herstellung von Musketen verwendet. Eine Eisenhütte erhöht die Werkzeugproduktion.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Benötigte Bevölkerung",
+        "value": "8"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "15"
+      },
+      {
+        "label": "Verbrauch: Loren Erz",
+        "value": "6"
+      },
+      {
+        "label": "Produktion: Werkzeuge",
+        "value": "9"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "240"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.blacksmithShop",
+      "model.goods.hammers",
+      "model.goods.ore",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.ironWorks.png"
+  },
+  {
+    "id": "model.building.tobacconistHouse",
+    "category": "buildings",
+    "title": "Haus des Tabakhändlers",
+    "summary": "Das Haus des Tabakhändlers produziert aus Tabak Zigarren. Der Ausbau zum Tabakladen ist jederzeit möglich. Nachdem Adam Smith dem Kontinentalkongress beigetreten ist, kann der Tabakladen weiter zur Zigarrenfabrik ausgebaut werden, sobald die Koloniegröße 8 beträgt.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Verbrauch: Tabakblätter",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Zigarren",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.cigars",
+      "model.goods.tobacco"
+    ],
+    "icon": "model.building.tobacconistHouse.png"
+  },
+  {
+    "id": "model.building.tobacconistShop",
+    "category": "buildings",
+    "title": "Tabakladen",
+    "summary": "Der Tabakladen produziert Zigarren aus Tabak. Er erhöht die Produktion von Zigarren. Der Ausbau zur Zigarrenfabrik ist möglich, sobald die Einwohnerzahl 8 erreicht hat und Adam Smith dem Kontinentalkongress beigetreten ist.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Unterhalt in Gold",
+        "value": "5"
+      },
+      {
+        "label": "Verbrauch: Tabakblätter",
+        "value": "6"
+      },
+      {
+        "label": "Produktion: Zigarren",
+        "value": "6"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "64"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.building.tobacconistHouse",
+      "model.goods.cigars",
+      "model.goods.hammers",
+      "model.goods.tobacco",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.tobacconistShop.png"
+  },
+  {
+    "id": "model.building.cigarFactory",
+    "category": "buildings",
+    "title": "Zigarrenfabrik",
+    "summary": "Die Zigarrenfabrik, welche nicht ausgebaut werden kann, wird benutzt, um Zigarren aus Tabak herzustellen. Eine Zigarrenfabrik erhöht die Produktion von Zigarren.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Benötigte Bevölkerung",
+        "value": "8"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "15"
+      },
+      {
+        "label": "Verbrauch: Tabakblätter",
+        "value": "6"
+      },
+      {
+        "label": "Produktion: Zigarren",
+        "value": "9"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "160"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.tobacconistShop",
+      "model.goods.cigars",
+      "model.goods.hammers",
+      "model.goods.tobacco",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.cigarFactory.png"
+  },
+  {
+    "id": "model.building.weaverHouse",
+    "category": "buildings",
+    "title": "Haus des Webers",
+    "summary": "Das Haus des Webers produziert aus Baumwolle Stoffe. Der Ausbau zur Weberei ist jederzeit möglich. Nachdem Adam Smith dem Kontinentalkongress beigetreten ist, kann die Weberei weiter zur Textilfabrik ausgebaut werden, sobald die Koloniegröße 8 beträgt.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Verbrauch: Baumwollballen",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Stoffrollen",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.cloth",
+      "model.goods.cotton"
+    ],
+    "icon": "model.building.weaverHouse.png"
+  },
+  {
+    "id": "model.building.weaverShop",
+    "category": "buildings",
+    "title": "Weberei",
+    "summary": "Die Weberei produziert aus Baumwolle Stoff. Diese erhöht die Produktion von Stoffen. Der Ausbau zur Textilfabrik ist möglich, sobald die Einwohnerzahl mindestens 8 erreicht hat und Adam Smith dem Kontinentalkongress beigetreten ist.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Unterhalt in Gold",
+        "value": "5"
+      },
+      {
+        "label": "Verbrauch: Baumwollballen",
+        "value": "6"
+      },
+      {
+        "label": "Produktion: Stoffrollen",
+        "value": "6"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "64"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.building.weaverHouse",
+      "model.goods.cloth",
+      "model.goods.cotton",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.weaverShop.png"
+  },
+  {
+    "id": "model.building.textileMill",
+    "category": "buildings",
+    "title": "Textilfabrik",
+    "summary": "Die Textilfabrik, die nicht ausgebaut werden kann, dient dazu, Baumwolle zu Stoff zu verarbeiten. Eine Textilfabrik erhöht die Stoffproduktion.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Benötigte Bevölkerung",
+        "value": "8"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "15"
+      },
+      {
+        "label": "Verbrauch: Baumwollballen",
+        "value": "6"
+      },
+      {
+        "label": "Produktion: Stoffrollen",
+        "value": "9"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "160"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.weaverShop",
+      "model.goods.cloth",
+      "model.goods.cotton",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.textileMill.png"
+  },
+  {
+    "id": "model.building.distillerHouse",
+    "category": "buildings",
+    "title": "Haus des Rumbrenners",
+    "summary": "Das Haus des Rumbrenners produziert aus Zucker Rum. Der Ausbau zur Rumbrennerei ist jederzeit möglich. Nachdem Adam Smith dem Kontinentalkongress beigetreten ist, kann die Rumbrennerei weiter zur Rumfabrik ausgebaut werden, sobald die Koloniegröße 8 beträgt.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Verbrauch: Zucker",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Pullen Rum",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.rum",
+      "model.goods.sugar"
+    ],
+    "icon": "model.building.distillerHouse.png"
+  },
+  {
+    "id": "model.building.rumDistillery",
+    "category": "buildings",
+    "title": "Rumbrennerei",
+    "summary": "Die Rumbrennerei produziert aus Zucker Rum. Diese erhöht die Produktion von Rum. Der Ausbau zur Rumfabrik ist möglich, sobald die Einwohnerzahl mindestens 8 erreicht hat und Adam Smith dem Kontinentalkongress beigetreten ist.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Unterhalt in Gold",
+        "value": "5"
+      },
+      {
+        "label": "Verbrauch: Zucker",
+        "value": "6"
+      },
+      {
+        "label": "Produktion: Pullen Rum",
+        "value": "6"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "64"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.building.distillerHouse",
+      "model.goods.hammers",
+      "model.goods.rum",
+      "model.goods.sugar",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.rumDistillery.png"
+  },
+  {
+    "id": "model.building.rumFactory",
+    "category": "buildings",
+    "title": "Rumfabrik",
+    "summary": "Die Rumfabrik wird benutzt, um aus Zucker Rum zu produzieren. Diese erhöht die Rumproduktion. Kein weiterer Ausbau möglich.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Benötigte Bevölkerung",
+        "value": "8"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "15"
+      },
+      {
+        "label": "Verbrauch: Zucker",
+        "value": "6"
+      },
+      {
+        "label": "Produktion: Pullen Rum",
+        "value": "9"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "160"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.rumDistillery",
+      "model.goods.hammers",
+      "model.goods.rum",
+      "model.goods.sugar",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.rumFactory.png"
+  },
+  {
+    "id": "model.building.furTraderHouse",
+    "category": "buildings",
+    "title": "Haus des Kürschners",
+    "summary": "Das Haus des Kürschners produziert aus Fellen Mäntel. Der Ausbau zum Pelzhandelsposten ist jederzeit möglich. Nachdem Adam Smith dem Kontinentalkongress beigetreten ist, kann der Pelzhandelsposten weiter zur Pelzfabrik ausgebaut werden, sobald die Einwohnerzahl 6 beträgt.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Verbrauch: Felle",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Mäntel",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.coats",
+      "model.goods.furs"
+    ],
+    "icon": "model.building.furTraderHouse.png"
+  },
+  {
+    "id": "model.building.furTradingPost",
+    "category": "buildings",
+    "title": "Pelzhandelsposten",
+    "summary": "Der Pelzhandelsposten, der zu einer Pelzfabrik ausgebaut werden kann, dient der Herstellung von Mänteln aus Pelzen. Sobald die Kolonie eine Einwohnerzahl von 6 hat, kann sie weiter zu einer Pelzfabrik ausgebaut werden, vorausgesetzt, dass Adam Smith dem Kontinentalkongress beigetreten ist. Der Pelzhandelsposten erhöht die Mantelproduktion.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Unterhalt in Gold",
+        "value": "5"
+      },
+      {
+        "label": "Verbrauch: Felle",
+        "value": "6"
+      },
+      {
+        "label": "Produktion: Mäntel",
+        "value": "6"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "56"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.building.furTraderHouse",
+      "model.goods.coats",
+      "model.goods.furs",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.furTradingPost.png"
+  },
+  {
+    "id": "model.building.furFactory",
+    "category": "buildings",
+    "title": "Pelzfabrik",
+    "summary": "Die Pelzfabrik, die nicht ausgebaut werden kann, dient zur Herstellung von Mänteln aus Pelzen. Eine Pelzfabrik erhöht die Mantelproduktion.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Benötigte Bevölkerung",
+        "value": "6"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "15"
+      },
+      {
+        "label": "Verbrauch: Felle",
+        "value": "6"
+      },
+      {
+        "label": "Produktion: Mäntel",
+        "value": "9"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "160"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.furTradingPost",
+      "model.goods.coats",
+      "model.goods.furs",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.furFactory.png"
+  },
+  {
+    "id": "model.building.schoolhouse",
+    "category": "buildings",
+    "title": "Schule",
+    "summary": "Eine Kolonie mit einer Einwohnerzahl von mindestens 4 kann eine Schule bauen, die es einigen Handwerksmeistern ermöglicht, einem ungelernten Kolonisten ihr Handwerk beizubringen. Sobald die Einwohnerzahl 8 erreicht, kann sie zu einem Gymnasium ausgebaut werden, in der zusätzliche Berufe von zwei Kolonisten gelehrt werden können. Sobald die Einwohnerzahl 10 erreicht, kann das Gymnasium durch eine Universität ersetzt werden, an der alle Berufe von drei Kolonisten gelehrt werden können.\\n\\nEine Schule ermöglicht es, Fähigkeiten der Stufe 1 zu lehren.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Arbeitsplätze",
+        "value": "1"
+      },
+      {
+        "label": "Benötigte Bevölkerung",
+        "value": "4"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "5"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "64"
+      }
+    ],
+    "related": [
+      "model.goods.hammers"
+    ],
+    "icon": "model.building.schoolhouse.png"
+  },
+  {
+    "id": "model.building.college",
+    "category": "buildings",
+    "title": "Gymnasium",
+    "summary": "Eine Kolonie mit einer Einwohnerzahl von mindestens 4 kann eine Schule bauen, die es einigen Handwerksmeistern ermöglicht, einem ungelernten Kolonisten ihr Handwerk beizubringen. Sobald die Einwohnerzahl 8 erreicht, kann sie zu einem Gymnasium ausgebaut werden, in der zusätzliche Berufe von zwei Kolonisten gelehrt werden können. Sobald die Einwohnerzahl 10 erreicht, kann das Gymnasium durch eine Universität ersetzt werden, an der alle Berufe von drei Kolonisten gelehrt werden können.\\n\\nEin Gymnasium ermöglicht es, Fähigkeiten der Stufe 2 zu lehren.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Arbeitsplätze",
+        "value": "2"
+      },
+      {
+        "label": "Benötigte Bevölkerung",
+        "value": "8"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "10"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "160"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.building.schoolhouse",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.college.png"
+  },
+  {
+    "id": "model.building.university",
+    "category": "buildings",
+    "title": "Universität",
+    "summary": "Eine Kolonie mit einer Einwohnerzahl von mindestens 4 kann eine Schule bauen, die es einigen Handwerksmeistern ermöglicht, einem ungelernten Kolonisten ihr Handwerk beizubringen. Sobald die Einwohnerzahl 8 erreicht, kann sie zu einem Gymnasium ausgebaut werden, in der zusätzliche Berufe von zwei Kolonisten gelehrt werden können. Sobald die Einwohnerzahl 10 erreicht, kann das Gymnasium durch eine Universität ersetzt werden, an der alle Berufe von drei Kolonisten gelehrt werden können.\\n\\nEin Universität ermöglicht es, Fähigkeiten der Stufe 3 zu lehren.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Arbeitsplätze",
+        "value": "3"
+      },
+      {
+        "label": "Benötigte Bevölkerung",
+        "value": "10"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "15"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "200"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.college",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.university.png"
+  },
+  {
+    "id": "model.building.armory",
+    "category": "buildings",
+    "title": "Waffenschmiede",
+    "summary": "Die Waffenschmiede ermöglicht die Produktion von Musketen aus Werkzeugen. Sobald die Einwohnerzahl mindestens 8 erreicht hat, ist der Ausbau zum Magazin und dann zur Waffenfabrik möglich, wenn Adam Smith dem Kontinentalkongress beigetreten ist.\\n\\nNach dem Bau einer Waffenschmiede dürft Ihr Musketen und Artillerien herstellen.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Unterhalt in Gold",
+        "value": "5"
+      },
+      {
+        "label": "Verbrauch: Werkzeuge",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Musketen",
+        "value": "3"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "52"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.muskets",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.armory.png"
+  },
+  {
+    "id": "model.building.magazine",
+    "category": "buildings",
+    "title": "Magazin",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Benötigte Bevölkerung",
+        "value": "8"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "10"
+      },
+      {
+        "label": "Verbrauch: Werkzeuge",
+        "value": "6"
+      },
+      {
+        "label": "Produktion: Musketen",
+        "value": "6"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "120"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.building.armory",
+      "model.goods.hammers",
+      "model.goods.muskets",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.magazine.png"
+  },
+  {
+    "id": "model.building.arsenal",
+    "category": "buildings",
+    "title": "Waffenfabrik",
+    "summary": "Die Waffenfabrik wird zur Produktion von Musketen aus Werkzeugen genutzt.\\n\\nDie Waffenfabrik benötigt für die Produktion von Musketen nur noch halb so viele Werkzeuge.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Benötigte Bevölkerung",
+        "value": "8"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "15"
+      },
+      {
+        "label": "Verbrauch: Werkzeuge",
+        "value": "9"
+      },
+      {
+        "label": "Produktion: Musketen",
+        "value": "9"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "240"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.magazine",
+      "model.goods.hammers",
+      "model.goods.muskets",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.arsenal.png"
+  },
+  {
+    "id": "model.building.chapel",
+    "category": "buildings",
+    "title": "Kapelle",
+    "summary": "Die Kapelle ist ein Gotteshaus, dass in jeder Kolonie gebaut wird. Die Kapelle produziert eine kleine Menge von Kreuzen, allerdings besteht nicht die Möglichkeit, einen Siedler als Priester arbeiten zu lassen. Um dies zu ermöglichen, muss die Kapelle zunächst zur Kirche ausgebaut werden.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Arbeitsplätze",
+        "value": "0"
+      },
+      {
+        "label": "Produktion: Kreuze",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.crosses"
+    ],
+    "icon": "model.building.chapel.png"
+  },
+  {
+    "id": "model.building.church",
+    "category": "buildings",
+    "title": "Kirche",
+    "summary": "Die Kirche kann ab einer Einwohnerzahl von 3 errichtet werden, der Ausbau zur Kathedrale ist ab 8 Einwohnern möglich. Diese erhöht die Produktion von Kreuzen und ermöglicht es, Siedler zu Missionaren zu berufen. Außerdem wollen durch die religiöse Freiheit (symbolisiert durch die Kreuze) mehr Europäer immigrieren.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Arbeitsplätze",
+        "value": "3"
+      },
+      {
+        "label": "Benötigte Bevölkerung",
+        "value": "3"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "5"
+      },
+      {
+        "label": "Produktion: Kreuze",
+        "value": "2"
+      },
+      {
+        "label": "Produktion: Kreuze",
+        "value": "3"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "64"
+      }
+    ],
+    "related": [
+      "model.building.chapel",
+      "model.goods.crosses",
+      "model.goods.hammers"
+    ],
+    "icon": "model.building.church.png"
+  },
+  {
+    "id": "model.building.cathedral",
+    "category": "buildings",
+    "title": "Kathedrale",
+    "summary": "Eine Kolonie kann ab einer Einwohnerzahl von 3 eine Kirche bauen, die ab 8 Einwohnern zu einer Kathedrale ausgebaut werden kann. Aufgrund der religiösen Freiheit der Neuen Welt (symbolisiert durch die Kreuze) wollen mehr Europäer immigrieren.\\n\\nNach dem Bau einer Kathedrale steigt die Produktion von Kreuzen an.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Arbeitsplätze",
+        "value": "3"
+      },
+      {
+        "label": "Benötigte Bevölkerung",
+        "value": "8"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "15"
+      },
+      {
+        "label": "Produktion: Kreuze",
+        "value": "3"
+      },
+      {
+        "label": "Produktion: Kreuze",
+        "value": "6"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "176"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.church",
+      "model.goods.crosses",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.cathedral.png"
+  },
+  {
+    "id": "model.building.stockade",
+    "category": "buildings",
+    "title": "Einpfählung",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Arbeitsplätze",
+        "value": "0"
+      },
+      {
+        "label": "Benötigte Bevölkerung",
+        "value": "3"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "64"
+      }
+    ],
+    "related": [
+      "model.goods.hammers"
+    ],
+    "icon": "model.building.stockade.png"
+  },
+  {
+    "id": "model.building.fort",
+    "category": "buildings",
+    "title": "Fort",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Arbeitsplätze",
+        "value": "0"
+      },
+      {
+        "label": "Benötigte Bevölkerung",
+        "value": "3"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "10"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "120"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.stockade",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.fort.png"
+  },
+  {
+    "id": "model.building.fortress",
+    "category": "buildings",
+    "title": "Festung",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Arbeitsplätze",
+        "value": "0"
+      },
+      {
+        "label": "Benötigte Bevölkerung",
+        "value": "8"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "15"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "320"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "200"
+      }
+    ],
+    "related": [
+      "model.building.fort",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.fortress.png"
+  },
+  {
+    "id": "model.building.depot",
+    "category": "buildings",
+    "title": "Depot",
+    "summary": "Das Depot lagert alle Arten von Gütern. Seine Anfangskapazität beträgt 100 Einheiten von jeder Art von Gütern, jedoch kann zu einem Lagerhaus aufgerüstet werden, welches 200 Einheiten halten kann. Wenn man das Lagerhaus weiter ausbaut, steigt die Lagerkapazität auf 300.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Arbeitsplätze",
+        "value": "0"
+      }
+    ],
+    "related": [],
+    "icon": "model.building.depot.png"
+  },
+  {
+    "id": "model.building.warehouse",
+    "category": "buildings",
+    "title": "Lagerhaus",
+    "summary": "Im Lagerhaus werden alle möglichen Güter gelagert. Es ist die erste Verbesserung eines Lagers und kann 200 Einheiten jedes Gutes lagern. Einer Lagerhauserweiterung erhöht diese Lagerkapazität auf 300.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Arbeitsplätze",
+        "value": "0"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "5"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "80"
+      }
+    ],
+    "related": [
+      "model.building.depot",
+      "model.goods.hammers"
+    ],
+    "icon": "model.building.warehouse.png"
+  },
+  {
+    "id": "model.building.warehouseExpansion",
+    "category": "buildings",
+    "title": "Lagerhauserweiterung",
+    "summary": "In der Lagerhauserweiterung werden alle möglichen Güter gelagert. Es handelt sich um eine Verbesserung des einfachen Lagerhauses mit einer Lagerkapazität von jeweils 300 Einheiten.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Arbeitsplätze",
+        "value": "0"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "5"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "80"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.building.warehouse",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.warehouseExpansion.png"
+  },
+  {
+    "id": "model.building.country",
+    "category": "buildings",
+    "title": "Weide",
+    "summary": "Die Weide ist eine Fläche in der Nähe der Kolonie, auf der Pferde grasen können. Der Bau von Ställen erhöht die Produktion von Pferden.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Arbeitsplätze",
+        "value": "0"
+      },
+      {
+        "label": "Verbrauch: Nahrungsmittel",
+        "value": "1"
+      },
+      {
+        "label": "Produktion: Pferde",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.food",
+      "model.goods.horses"
+    ],
+    "icon": "model.building.country.png"
+  },
+  {
+    "id": "model.building.stables",
+    "category": "buildings",
+    "title": "Ställe",
+    "summary": "Ställe erhöhen die maximale Pferdeproduktion, indem die Größe der Herden reduziert wird.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Arbeitsplätze",
+        "value": "0"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "5"
+      },
+      {
+        "label": "Verbrauch: Nahrungsmittel",
+        "value": "1"
+      },
+      {
+        "label": "Produktion: Pferde",
+        "value": "1"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "64"
+      }
+    ],
+    "related": [
+      "model.building.country",
+      "model.goods.food",
+      "model.goods.hammers",
+      "model.goods.horses"
+    ],
+    "icon": "model.building.stables.png"
+  },
+  {
+    "id": "model.building.docks",
+    "category": "buildings",
+    "title": "Anlegestelle",
+    "summary": "Die Anlagestelle ermöglicht es Kolonisten, Fische auf Ozeanfeldern neben der Kolonie zu produzieren. Sobald die Einwohnerzahl mindestens 4 beträgt, kann sie zu einem Trockendock ausgebaut werden, was es der Kolonie ermöglicht, beschädigte Schiffe zu reparieren. Sobald die Kolonieeinwohnerzahl 8 erreicht, kann es weiter zu einer Werft ausgebaut werden, wodurch die Kolonie neue Schiffe bauen kann.\\n\\nDer Bau einer Anlegestelle ermöglicht das Fischen.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Arbeitsplätze",
+        "value": "0"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "5"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "52"
+      }
+    ],
+    "related": [
+      "model.goods.hammers"
+    ],
+    "icon": "model.building.docks.png"
+  },
+  {
+    "id": "model.building.drydock",
+    "category": "buildings",
+    "title": "Trockendock",
+    "summary": "Das Trockendock ermöglicht es den Kolonisten, Fische auf Ozeanfeldern neben der Kolonie zu produzieren, und es ermöglicht die Reparatur von Schiffen. Sobald die Einwohnerzahl der Kolonie 8 erreicht, kann es weiter zu einer Werft ausgebaut werden, die es der Kolonie ermöglicht, neue Schiffe zu bauen.\\n\\nDer Bau eines Trockendocks ermöglicht die Reparatur von Schiffen.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Arbeitsplätze",
+        "value": "0"
+      },
+      {
+        "label": "Benötigte Bevölkerung",
+        "value": "4"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "10"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "80"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.building.docks",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.drydock.png"
+  },
+  {
+    "id": "model.building.shipyard",
+    "category": "buildings",
+    "title": "Werft",
+    "summary": "Die Werft erlaubt es Kolonisten, Fische auf Ozeanfeldern neben der Kolonie zu produzieren, Schiffe zu reparieren und zu bauen.\\n\\nDer Bau einer Werft ermöglicht den Schiffsbau.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Arbeitsplätze",
+        "value": "0"
+      },
+      {
+        "label": "Benötigte Bevölkerung",
+        "value": "8"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "15"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "240"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.drydock",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.shipyard.png"
+  },
+  {
+    "id": "model.building.printingPress",
+    "category": "buildings",
+    "title": "Druckerei",
+    "summary": "Die Druckerei, die zu einer Zeitung ausgebaut werden kann, sobald die Einwohnerzahl 4 erreicht hat, erhöht die Produktion an Freiheitsglocken in dieser Kolonie.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Arbeitsplätze",
+        "value": "0"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "5"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "52"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.printingPress.png"
+  },
+  {
+    "id": "model.building.newspaper",
+    "category": "buildings",
+    "title": "Zeitung",
+    "summary": "Die Zeitung, die erst nach dem Bau einer Druckerei gebaut werden kann und sobald die Einwohnerzahl 4 erreicht hat, erhöht die Produktion von Freiheitsglocken.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Arbeitsplätze",
+        "value": "0"
+      },
+      {
+        "label": "Benötigte Bevölkerung",
+        "value": "4"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "10"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "120"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.building.printingPress",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.newspaper.png"
+  },
+  {
+    "id": "model.building.customHouse",
+    "category": "buildings",
+    "title": "Zollhaus",
+    "summary": "Das Zollhaus, das gebaut werden kann, sobald Peter Stuyvesant dem Kontinentalkongress beigetreten ist, ermöglicht es der Kolonie, Waren ohne der Hilfe von Schiffen direkt nach Europa zu exportieren. Außerdem erlaubt es den Handel mit ausländischen Mächten nach der Unabhängigkeitserklärung. Optional kann es auch Boykotte ignorieren.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Arbeitsplätze",
+        "value": "0"
+      },
+      {
+        "label": "Unterhalt in Gold",
+        "value": "15"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Hämmer",
+        "value": "160"
+      },
+      {
+        "label": "Baukosten / Ausrüstung: Werkzeuge",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.customHouse.png"
+  },
+  {
+    "id": "model.foundingFather.adamSmith",
+    "category": "fathers",
+    "title": "Adam Smith",
+    "summary": "Ermöglicht den Bau von Fabriken.",
+    "text": "Besser bekannt als der Vater der modernen Wirtschaft, verfasste Smith mehrere wirtschaftstheoretische Werke, darunter sein bedeutendstes Werk „Der Wohlstand der Nationen“.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1723–1790"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.adamSmith.jpg"
+  },
+  {
+    "id": "model.foundingFather.jacobFugger",
+    "category": "fathers",
+    "title": "Jacob Fugger II.",
+    "summary": "Alle Boykotte, die momentan bestehen, werden aufgehoben.",
+    "text": "Ein außerordentlich wohlhabender deutscher Händler und Bankier. Er häufte mit dem Familienunternehmen, das vor allem auf Bergwerksbeteiligungen setzte, ein Vermögen an.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1459–1525"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.jacobFugger.jpg"
+  },
+  {
+    "id": "model.foundingFather.peterMinuit",
+    "category": "fathers",
+    "title": "Peter Minuit",
+    "summary": "Indianer verlangen keine Bezahlung mehr für die Nutzung ihres Landes.",
+    "text": "Kaufte von amerikanischen Ureinwohnern für etwa 60 niederländische Gulden, was später als Manhattan Island bekannt wurde. Später kolonisierte er auch das Gebiet der Delaware Bay.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1580–1638"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.peterMinuit.jpg"
+  },
+  {
+    "id": "model.foundingFather.peterStuyvesant",
+    "category": "fathers",
+    "title": "Peter Stuyvesant",
+    "summary": "Der Bau von Zollhäusern wird möglich.",
+    "text": "Gouverneur der niederländischen Westindien-Kompanie und später Generaldirektor von Neu-Holland, das nach einer englischen Invasion, die er nicht stoppen konnte, zu New York wurde.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1592–1672"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.peterStuyvesant.jpg"
+  },
+  {
+    "id": "model.foundingFather.janDeWitt",
+    "category": "fathers",
+    "title": "Jan de Witt",
+    "summary": "Der Handel mit Kolonien anderer Nationen wird möglich und mehr Informationen über koloniale Rivalen werden angezeigt.",
+    "text": "De Witt war ein großartiger holländischer Staatsmann. Er vertrat die Kaufleute und förderte Industrie und Handel. Er handelte außerdem mehrere wichtige Verträge für die Holländer aus, um die Kriege mit England zu beenden.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1625–1672"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.janDeWitt.jpg"
+  },
+  {
+    "id": "model.foundingFather.ferdinandMagellan",
+    "category": "fathers",
+    "title": "Ferdinand Magellan",
+    "summary": "Schiffe dürfen sich pro Zug ein Feld weiter bewegen, und die Zeit für Fahrten nach/zu Europa/Amerika wird verkürzt.",
+    "text": "Einer der größten Entdecker, die je die Weltmeere befahren haben. Magellan war der erste, der die Welt umsegelte und den Pazifik überquerte.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1480–1521"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.ferdinandMagellan.jpg"
+  },
+  {
+    "id": "model.foundingFather.franciscoDeCoronado",
+    "category": "fathers",
+    "title": "Fransico de Coronado",
+    "summary": "Alle bestehenden Kolonien werden auf der Karte sichtbar.",
+    "text": "Der erste europäische Entdecker, der den Grand Canyon sah. Obgleich er nie die Goldenen Städte fand, nach denen er suchte, waren seine Karten des heutigen Südwestens der USA für weitere Entdeckungen von großer Bedeutung.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1510–1554"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.franciscoDeCoronado.jpg"
+  },
+  {
+    "id": "model.foundingFather.hernandoDeSoto",
+    "category": "fathers",
+    "title": "Hernando de Soto",
+    "summary": "Das Untersuchen von Gerüchten über verlorene Städte führt nie zu negativen Ergebnissen und alle Landeinheiten bekommen einen größeren Sichtradius.",
+    "text": "Der erste Europäer, der Florida und den Südosten der USA erforschte. Er spielte außerdem eine wichtige Rolle bei der Eroberung Mittelamerikas.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1496–1542"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.hernandoDeSoto.jpg"
+  },
+  {
+    "id": "model.foundingFather.henryHudson",
+    "category": "fathers",
+    "title": "Henry Hudson",
+    "summary": "Die Produktion aller Trapper verdoppelt sich.",
+    "text": "Ein englischer Seefahrer, der einen großen Bereich des nordöstlichen Nordamerikanischen Kontinents erforschte und kartographierte. Viele Wasserstraßen sind in der Region zu seinen Ehren benannt worden. Sein ursprüngliches Ziel war es, die berühmte Nordwestpassage zu finden.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1565–1611"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.henryHudson.jpg"
+  },
+  {
+    "id": "model.foundingFather.laSalle",
+    "category": "fathers",
+    "title": "Robert La Salle",
+    "summary": "Alle Kolonien mit einer Bevölkerung von 3 oder mehr bekommen kostenlos eine Einpfählung.",
+    "text": "Als erster Europäer, der die gesamte Länge des Mississippi bereiste, errichtete La Salle dabei an dessen Ufer zahlreiche Handelsstützpunkte. Er beanspruchte später das gesamte Flusstal als Lousiana zu Ehren des französischen Königs. Später erforschte er mehrere der Großen Seen.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1643–1687"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.laSalle.jpg"
+  },
+  {
+    "id": "model.foundingFather.hernanCortes",
+    "category": "fathers",
+    "title": "Hernan Cortes",
+    "summary": "Eroberte Siedlungen der Ureinwohner hinterlassen immer Schätze (und größere) und die Galeonen des Monarchen transportieren diese kostenlos nach Europa.",
+    "text": "Ein berühmter spanischer Konquistador, der das Reich der Azteken zu Fall brachte und Mexiko für Spanien in Besitz nahm.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1485–1547"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.hernanCortes.jpg"
+  },
+  {
+    "id": "model.foundingFather.georgeWashington",
+    "category": "fathers",
+    "title": "George Washington",
+    "summary": "Jeder Soldat oder Dragoner, der ein Gefecht gewinnt, wird automatisch zur nächsthöheren Stufe befördert.",
+    "text": "General Washington führte die koloniale Armee zum Sieg über die Briten, um die Unabhängigkeit der Kolonien zu erreichen. Dieser Sieg und seine Führungskraft führten dazu, dass er zum ersten Präsident der neuen Nation gewählt wurde.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1732–1799"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.georgeWashington.jpg"
+  },
+  {
+    "id": "model.foundingFather.paulRevere",
+    "category": "fathers",
+    "title": "Paul Revere",
+    "summary": "Wenn eine Kolonie ohne Militäreinheiten angegriffen wird, ergreift ein Kolonist automatisch im Lager vorhandene Musketen und übernimmt die Verteidigung.",
+    "text": "Der berühmte Reiter des kolonialen Amerikas bestieg sein Pferd und ritt durch das Land, um die Einwohner vor der herannahenden britischen Armee zu warnen. Während des Ritts wurde er gefangengenommen und später, als seine Bewacher glaubten, dass sie in ernster Gefahr wären und dass ihr Gefangener sie zu sehr aufhalten könnte, wieder freigelassen.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1734–1818"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.paulRevere.jpg"
+  },
+  {
+    "id": "model.foundingFather.francisDrake",
+    "category": "fathers",
+    "title": "Francis Drake",
+    "summary": "",
+    "text": "Als großartiger englischer Schiffskapitän war Drake der erste Engländer, der die Welt umsegelte und ein Held im Kampf gegen die spanische Armee.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1542–1596"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.francisDrake.jpg"
+  },
+  {
+    "id": "model.foundingFather.johnPaulJones",
+    "category": "fathers",
+    "title": "John Paul Jones",
+    "summary": "Eine Fregatte wird Eurer kolonialen Kriegsflotte hinzugefügt (kostenlos).",
+    "text": "In Amerika als großartiger Schiffahrtskapitän umjubelt. Jones äußerte die berühmten Worte „Sir, Ich habe noch gar nicht zu kämpfen begonnen“, als ihn ein britischer Kapitän angesichts zweier explodierter Geschütze und eines Lecks zur Kapitulation aufforderte. Später beobachtete er vom Deck eines gekaperten britischen Schiffes aus, wie sein eigenes Schiff auf den Grund des Ozeans sank.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1741–1792"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.johnPaulJones.jpg"
+  },
+  {
+    "id": "model.foundingFather.thomasJefferson",
+    "category": "fathers",
+    "title": "Thomas Jefferson",
+    "summary": "",
+    "text": "Als mächtige Stimme des Patriotismus wurde Jefferson mit dem Verfassen der Unabhängigkeitserklärung betraut. Er wurde später der dritte Präsident der Vereinigten Staaten.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1743–1826"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.thomasJefferson.jpg"
+  },
+  {
+    "id": "model.foundingFather.pocahontas",
+    "category": "fathers",
+    "title": "Pocahontas",
+    "summary": "Alle Spannungen zwischen Euch und den Ureinwohnern werden beseitigt und die Besorgnis der Indianer wird nur noch halb so schnell erregt.",
+    "text": "Eine Friedensstifterin zwischen den Siedlern des frühen Jamestown und den Ureinwohnern Amerikas. Ihr wird die Beschaffung von Nahrung und anderen Waren für hungerleidende Siedler in schweren Zeiten zugeschrieben. Diese konvertierte später zum Christentum und heiratete einen Engländer.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1595–1617"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.pocahontas.jpg"
+  },
+  {
+    "id": "model.foundingFather.thomasPaine",
+    "category": "fathers",
+    "title": "Thomas Paine",
+    "summary": "Erhöht die Produktion von Freiheitsglocken in den Kolonien um den Wert des aktuellen Steuersatzes.",
+    "text": "Er veröffentlichte das Pamphlet „Common Sense“ („Gesunder Menschenverstand“), das für Patrioten überall in den Kolonien wegweisend wurde und verfasste während des Unabhängigkeitskrieges mehrere so genannte Crisis-Papiere, die maßgeblich zur Moral der Truppen beitrugen.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1737–1809"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.thomasPaine.jpg"
+  },
+  {
+    "id": "model.foundingFather.simonBolivar",
+    "category": "fathers",
+    "title": "Simon Bolivar",
+    "summary": "",
+    "text": "Bekannt als großer Führer im Kampf um die Unabhängigkeit Südamerikas von Spanien. Bolivar befreite das heutige Venezuela und wurde später dessen erster Präsident.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1783–1830"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.simonBolivar.jpg"
+  },
+  {
+    "id": "model.foundingFather.benjaminFranklin",
+    "category": "fathers",
+    "title": "Benjamin Franklin",
+    "summary": "Die Auslandskriege der Krone haben keinen Einfluss mehr auf die diplomatischen Beziehungen in der Neuen Welt und die Europäer in der Neuen Welt bieten in Verhandlungen immer den Frieden an.",
+    "text": "Franklin spielte eine wesentliche Rolle bei der Unabhängigkeitserklärung und war eine der Stimmen der Revolution. Er reiste ausgiebig zwischen Europa und den Kolonien hin und her und erlangte die Unterstützung der Franzosen im Krieg.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1706–1790"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.benjaminFranklin.jpg"
+  },
+  {
+    "id": "model.foundingFather.williamBrewster",
+    "category": "fathers",
+    "title": "William Brewster",
+    "summary": "Es erscheinen keine Kleinkriminellen oder Schuldknechte mehr an den Docks und Ihr könnt wählen, welcher Immigrant von den verfügbaren Immigranten als nächstes auswandert.",
+    "text": "Brewster war der puritanische Anführer der Kolonie Plymouth in Neu-England.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1567–1644"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.williamBrewster.jpg"
+  },
+  {
+    "id": "model.foundingFather.williamPenn",
+    "category": "fathers",
+    "title": "William Penn",
+    "summary": "",
+    "text": "Als Sohn eines einflussreichen Admirals und enger Freund des Duke of York erhielt Penn das Gebiet der heutigen Bundesstaaten von Pennsylvania, Delaware und New Jersey. Er richtete ein Regierungssystem ein, das auf Brüderlichkeit und persönlicher Freiheit für Siedler und Ureinwohner beruhte.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1644–1718"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.williamPenn.jpg"
+  },
+  {
+    "id": "model.foundingFather.fatherJeanDeBrebeuf",
+    "category": "fathers",
+    "title": "Vater Jean de Brebeuf",
+    "summary": "Alle Missionare sind erfahren.",
+    "text": "Er war ein Freund der Huronen und konvertierte viele zum Christentum. Er wurde von den Irokesen getötet, welche letztendlich ihre Feinde, die Huronen besiegten.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1593–1649"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.fatherJeanDeBrebeuf.jpg"
+  },
+  {
+    "id": "model.foundingFather.juanDeSepulveda",
+    "category": "fathers",
+    "title": "Juan de Sepulveda",
+    "summary": "",
+    "text": "Ein spanischer Theologe, der sich für die Eroberung der indianischen Länder und die Zwangsbekehrung der Ureinwohner aussprach.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1781–1872"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.juanDeSepulveda.jpg"
+  },
+  {
+    "id": "model.foundingFather.bartolomeDeLasCasas",
+    "category": "fathers",
+    "title": "Bartolomé de las Casas",
+    "summary": "Alle existierenden Konvertiten werden zu freien Kolonisten.",
+    "text": "Ein katholischer Priester, der Südamerika bereiste, Indianer bekehrte und die Unterdrückung der Ureinwohner durch Spanien geißelte.",
+    "facts": [
+      {
+        "label": "Lebensdaten",
+        "value": "1474–1566"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.bartolomeDeLasCasas.jpg"
+  },
+  {
+    "id": "model.nation.unknownEnemy",
+    "category": "nations",
+    "title": "Feind",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Unknown"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.nation.dutch",
+    "category": "nations",
+    "title": "Niederlande",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "William I."
+      },
+      {
+        "label": "Name der Neuen Welt",
+        "value": "Neuholland"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.dutch.png"
+  },
+  {
+    "id": "model.nation.french",
+    "category": "nations",
+    "title": "Frankreich",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Louis XIV."
+      },
+      {
+        "label": "Name der Neuen Welt",
+        "value": "Neu-Frankreich"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.french.png"
+  },
+  {
+    "id": "model.nation.english",
+    "category": "nations",
+    "title": "England",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Elizabeth I."
+      },
+      {
+        "label": "Name der Neuen Welt",
+        "value": "Neu-England"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.english.png"
+  },
+  {
+    "id": "model.nation.spanish",
+    "category": "nations",
+    "title": "Spanien",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Philip II."
+      },
+      {
+        "label": "Name der Neuen Welt",
+        "value": "Neu-Spanien"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.spanish.png"
+  },
+  {
+    "id": "model.nation.inca",
+    "category": "nations",
+    "title": "Inka",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Atahualpa"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.inca.png"
+  },
+  {
+    "id": "model.nation.aztec",
+    "category": "nations",
+    "title": "Azteken",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Montezuma II."
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.aztec.png"
+  },
+  {
+    "id": "model.nation.arawak",
+    "category": "nations",
+    "title": "Arawak",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Taino"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.arawak.png"
+  },
+  {
+    "id": "model.nation.cherokee",
+    "category": "nations",
+    "title": "Cherokee",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Moytoy"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.cherokee.png"
+  },
+  {
+    "id": "model.nation.iroquois",
+    "category": "nations",
+    "title": "Irokesen",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Segoyewatha"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.iroquois.png"
+  },
+  {
+    "id": "model.nation.sioux",
+    "category": "nations",
+    "title": "Sioux",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Taoyateduta"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.sioux.png"
+  },
+  {
+    "id": "model.nation.apache",
+    "category": "nations",
+    "title": "Apachen",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Geronimo"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.apache.png"
+  },
+  {
+    "id": "model.nation.tupi",
+    "category": "nations",
+    "title": "Tupi",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Tupiniquim"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.tupi.png"
+  },
+  {
+    "id": "model.nation.dutchREF",
+    "category": "nations",
+    "title": "Hölländisches königliches Expeditionskorps",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "William II."
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.dutchREF.png"
+  },
+  {
+    "id": "model.nation.frenchREF",
+    "category": "nations",
+    "title": "Französisches königliches Expeditionskorps",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Louis XV."
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.frenchREF.png"
+  },
+  {
+    "id": "model.nation.englishREF",
+    "category": "nations",
+    "title": "Englisches königliches Expeditionskorps",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "George III."
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.englishREF.png"
+  },
+  {
+    "id": "model.nation.spanishREF",
+    "category": "nations",
+    "title": "Spanisches königliches Expeditionskorps",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Philip III."
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.spanishREF.png"
+  },
+  {
+    "id": "model.nation.portuguese",
+    "category": "nations",
+    "title": "Portugal",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Dom Manuel I."
+      },
+      {
+        "label": "Name der Neuen Welt",
+        "value": "Land des Heiligen Kreuzes"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.portuguese.png"
+  },
+  {
+    "id": "model.nation.swedish",
+    "category": "nations",
+    "title": "Schweden",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Charles XI"
+      },
+      {
+        "label": "Name der Neuen Welt",
+        "value": "Neu-Schweden"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.swedish.png"
+  },
+  {
+    "id": "model.nation.danish",
+    "category": "nations",
+    "title": "Dänemark",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Frederick II"
+      },
+      {
+        "label": "Name der Neuen Welt",
+        "value": "Neu-Dänemark"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.danish.png"
+  },
+  {
+    "id": "model.nation.russian",
+    "category": "nations",
+    "title": "Russland",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Peter I"
+      },
+      {
+        "label": "Name der Neuen Welt",
+        "value": "Neu-Russland"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.russian.png"
+  },
+  {
+    "id": "model.nation.portugueseREF",
+    "category": "nations",
+    "title": "Portugiesisches königliches Expeditionskorps",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Dom John IV."
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.portugueseREF.png"
+  },
+  {
+    "id": "model.nation.swedishREF",
+    "category": "nations",
+    "title": "Schwedisches königliches Expeditionskorps",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Charles XII"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.swedishREF.png"
+  },
+  {
+    "id": "model.nation.danishREF",
+    "category": "nations",
+    "title": "Dänisches königliches Expeditionskorps",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Frederick III"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.danishREF.png"
+  },
+  {
+    "id": "model.nation.russianREF",
+    "category": "nations",
+    "title": "Russisches königliches Expeditionskorps",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Herrscher",
+        "value": "Catherine I"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.russianREF.png"
+  }
+]

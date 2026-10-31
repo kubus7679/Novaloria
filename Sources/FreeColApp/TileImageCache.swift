@@ -9,9 +9,23 @@ final class TileImageCache {
 
     func terrainImage(forType tileType: String?) -> NSImage? {
         guard let tileType else { return nil }
-        // "model.tile.borealForest" → "borealForest"
         let name = tileType.components(separatedBy: ".").last ?? tileType
-        return loadImage(named: name, folder: "terrain")
+        return loadImage(named: "\(name)_base", folder: "terrain")
+            ?? loadImage(named: name, folder: "terrain")
+    }
+
+    func terrainOverlay(forType tileType: String?) -> NSImage? {
+        guard let tileType else { return nil }
+        let name = tileType.components(separatedBy: ".").last ?? tileType
+        return loadImage(named: "\(name)_overlay", folder: "terrain")
+    }
+
+    func beachImages(style: Int) -> [NSImage] {
+        guard style > 0 else { return [] }
+        return [("edge", (style >> 4) & 15), ("corner", style & 15)].compactMap { kind, index in
+            guard index > 0 else { return nil }
+            return loadImage(named: "beach_\(kind)\(index)", folder: "terrain")
+        }
     }
 
     /// Returns one of the 4 cloud textures for fog-of-war.
@@ -36,6 +50,20 @@ final class TileImageCache {
     /// Order-button icons from the Java client (wait/sentry/fortify/build/disband/done).
     func orderButtonImage(named name: String) -> NSImage? {
         return loadImage(named: name, folder: "order-buttons")
+    }
+
+    func colopediaImage(for entry: ColopediaEntry) -> NSImage? {
+        if entry.category == .units, let image = unitImage(forUnitType: entry.id) { return image }
+        if entry.category == .terrain {
+            return terrainOverlay(forType: entry.id) ?? terrainImage(forType: entry.id)
+        }
+        guard let filename = entry.icon else { return nil }
+        let key = "colopedia/\(filename)"
+        if let image = cache[key] { return image }
+        guard let url = Bundle.module.url(forResource: filename, withExtension: nil, subdirectory: "colopedia"),
+              let image = NSImage(contentsOf: url) else { return nil }
+        cache[key] = image
+        return image
     }
 
     // MARK: - Private

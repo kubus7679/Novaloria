@@ -59,7 +59,7 @@ public actor FreeColClient {
 
     /// Perform the full login handshake.
     public func login(userName: String, nationId: String) async throws -> LoginResult {
-        FreeColLogger.shared.info("FreeColClient login: user=\(userName) nation=\(nationId)")
+        FreeColLogger.shared.info("FreeColClient login")
         // Initial messages (gameState + vacantPlayers) were already consumed by connect()
         let result = try await Handshake.login(
             connection,

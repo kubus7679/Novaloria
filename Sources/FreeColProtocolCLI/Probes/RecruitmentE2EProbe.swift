@@ -10,14 +10,8 @@ func recruitmentE2EProbe() async throws {
     let delegate = TestDelegate()
     await client.setDelegate(delegate)
 
-    try await client.connect()
-    let vacant = await client.initialVacantPlayers
-    let nationId = vacant?.children.first?.attributes["nationId"]
-        ?? vacant?.children.first?.attributes["id"]
-        ?? "model.nation.dutch"
     let userName = "CopilotRecruitment-\(Int(Date().timeIntervalSince1970))"
-
-    let result = try await client.login(userName: userName, nationId: nationId)
+    let result = try await connectAndLogin(client, userName: userName)
     if result.serverState == .preGame {
         // Shorten Europe sailing time for the isolated real-server fixture.
         try await client.send(message: ParsedMessage(
@@ -64,17 +58,6 @@ func recruitmentE2EProbe() async throws {
         current.units.values.filter { $0.owner == localPlayerId && $0.location == europeId }
     }
 
-    func endTurnAndWait() async throws {
-        let turnBefore = await client.game.turn.number
-        _ = try await client.ask(message: ParsedMessage(tag: "endTurn", attributes: [:], children: []), timeout: 45)
-        for _ in 0..<180 {
-            let current = await client.game
-            if current.turn.number > turnBefore && current.currentPlayerId == localPlayerId { return }
-            try await Task.sleep(nanoseconds: 500_000_000)
-        }
-        throw TestError(message: "local player's turn did not return after endTurn")
-    }
-
     // Sail a carrier to Europe. The recruit/train actions only need Europe to exist,
     // but arriving there confirms the Europe screen state the client would show.
     guard let carrier = game.units.values
@@ -92,7 +75,7 @@ func recruitmentE2EProbe() async throws {
         print("    carrier \(carrierId) sailing to \(europeId)...")
         var arrived = false
         for _ in 0..<15 {
-            try await endTurnAndWait()
+            try await endTurnAndWait(client: client, localPlayerId: localPlayerId)
             game = await client.game
             let transit = game.units[carrierId]
             print("    turn \(game.turn.number): carrier location=\(transit?.location ?? "nil") state=\(String(describing: transit?.state)) workLeft=\(transit?.workLeft ?? -1)")
@@ -131,38 +114,49 @@ func recruitmentE2EProbe() async throws {
         ParsedMessage(tag: "trainUnitInEurope", attributes: ["unitType": "model.unit.doesNotExist"], children: []),
         label: "trainUnitInEurope with unknown type")
 
-    // Recruit: slot 0 lets the server pick the migrant (works without selectRecruit).
+    // Slot 1 is a concrete Europe offer. This path remains available without the
+    // selectRecruit ability when the player is paying the normal recruit price.
     game = await client.game
     guard let europe = game.players[localPlayerId]?.europe else {
         throw TestError(message: "Europe data missing")
     }
+    guard let selectedRecruitType = europe.recruitable.first?.unitType else {
+        throw TestError(message: "Europe did not publish a recruit offer for slot 1")
+    }
     let goldBeforeRecruit = game.players[localPlayerId]?.gold ?? 0
-    let unitsBeforeRecruit = unitsInEurope(game).count
+    let europeUnitsBeforeRecruit = unitsInEurope(game)
+    let unitsBeforeRecruit = europeUnitsBeforeRecruit.count
+    let unitIdsBeforeRecruit = Set(europeUnitsBeforeRecruit.map(\.id))
     guard goldBeforeRecruit >= europe.recruitPrice else {
         throw TestError(message: "cannot afford recruitment: gold \(goldBeforeRecruit) < \(europe.recruitPrice)")
     }
-    print("    recruiting (slot 0), recruitPrice=\(europe.recruitPrice), gold=\(goldBeforeRecruit)")
+    print("    recruiting slot 1 (\(selectedRecruitType)), recruitPrice=\(europe.recruitPrice), gold=\(goldBeforeRecruit)")
     _ = try await client.ask(message: ParsedMessage(
-        tag: "emigrateUnit", attributes: ["slot": "0"], children: []
+        tag: "emigrateUnit", attributes: ["slot": "1"], children: []
     ), timeout: 10)
-    var recruited = false
+    var recruitedUnit: FreeColGame.Unit?
     for _ in 0..<30 {
         game = await client.game
-        if unitsInEurope(game).count == unitsBeforeRecruit + 1 {
-            recruited = true
+        recruitedUnit = unitsInEurope(game).first {
+            $0.unitType == selectedRecruitType
+                && !unitIdsBeforeRecruit.contains($0.id)
+        }
+        if unitsInEurope(game).count == unitsBeforeRecruit + 1,
+           recruitedUnit != nil {
             break
         }
         try await Task.sleep(nanoseconds: 200_000_000)
     }
-    guard recruited else {
-        throw TestError(message: "recruited unit did not appear in Europe")
+    guard unitsInEurope(game).count == unitsBeforeRecruit + 1,
+          let recruitedUnit else {
+        throw TestError(message: "slot 1 recruit \(selectedRecruitType) did not appear in Europe")
     }
     let goldAfterRecruit = game.players[localPlayerId]?.gold ?? goldBeforeRecruit
     let recruitCost = goldBeforeRecruit - goldAfterRecruit
     guard recruitCost >= 0, recruitCost <= europe.recruitPrice else {
         throw TestError(message: "recruit cost \(recruitCost) outside 0...\(europe.recruitPrice)")
     }
-    print("    recruit result: gold \(goldBeforeRecruit)->\(goldAfterRecruit), Europe units \(unitsBeforeRecruit)->\(unitsBeforeRecruit + 1)")
+    print("    recruit result: slot 1 produced \(recruitedUnit.id) \(recruitedUnit.unitType ?? "?"), gold \(goldBeforeRecruit)->\(goldAfterRecruit), Europe units \(unitsBeforeRecruit)->\(unitsBeforeRecruit + 1)")
 
     // Train: buy the cheapest affordable unit type for sale. Java prices a type at the
     // server's Europe override, else the specification price.

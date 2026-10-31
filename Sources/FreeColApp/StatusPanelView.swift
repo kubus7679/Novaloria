@@ -13,8 +13,11 @@ struct StatusPanelView: View {
                     .font(.title2.bold())
                 Spacer()
                 Button("Close") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
             }
 
+            ScrollView([.horizontal, .vertical]) {
+                VStack(alignment: .leading, spacing: 12) {
             if let game = state.game {
                 GroupBox("Game") {
                     VStack(alignment: .leading, spacing: 4) {
@@ -64,10 +67,13 @@ struct StatusPanelView: View {
                     .foregroundColor(.secondary)
             }
 
-            Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
         .padding(16)
-        .frame(minWidth: 480, minHeight: 420)
+        .frame(minWidth: 640, idealWidth: 720,
+               minHeight: 400, idealHeight: 640, maxHeight: 760)
     }
 
     @ViewBuilder

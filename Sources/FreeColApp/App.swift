@@ -16,18 +16,20 @@ struct FreeColApp: App {
                     LoginView()
                 case .login, .lobby:
                     LoginView()
-                case .inGame:
+                case .inGame, .reconnecting:
                     GameView()
                 }
             }
             .environment(gameState)
-            .frame(minWidth: 520, minHeight: 620)
+            .frame(minWidth: gameState.phase == .inGame || gameState.phase == .reconnecting ? 900 : 520,
+                   minHeight: 620)
             .onAppear {
                 if CommandLine.arguments.contains("--auto-local-game"), gameState.phase == .disconnected {
                     gameState.startLocal(userName: "Alice", nationId: "model.nation.dutch")
                 }
             }
         }
+        .defaultSize(width: 1200, height: 800)
         .commands {
             CommandGroup(replacing: .appInfo) {
                 Button("About FreeColClient") {

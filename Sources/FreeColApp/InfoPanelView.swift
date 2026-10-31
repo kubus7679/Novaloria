@@ -4,6 +4,7 @@ import FreeColGame
 /// Bottom-right unit/tile/end-of-turn info panel, modelled on the Java client's InfoPanel.
 struct InfoPanelView: View {
     @Environment(GameState.self) private var state
+    @State private var showUnitDetails = false
 
     var body: some View {
         Group {
@@ -15,7 +16,7 @@ struct InfoPanelView: View {
                 endTurnContent
             }
         }
-        .frame(width: 250)
+        .frame(maxWidth: .infinity)
         .frame(minHeight: 90)
         .background(Color.black.opacity(0.7))
         .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -39,7 +40,7 @@ struct InfoPanelView: View {
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 60, height: 60)
             } else {
-                let ownerColor = unit.owner.flatMap { playerColor(for: $0) } ?? .gray
+                let ownerColor = unit.owner.map { state.playerColor(for: $0) } ?? .gray
                 Circle()
                     .fill(ownerColor)
                     .frame(width: 44, height: 44)
@@ -51,15 +52,25 @@ struct InfoPanelView: View {
                     .font(.headline)
                     .lineLimit(2)
                     .foregroundColor(.white)
-                Text("\(unit.state.rawValue)")
+                Text(GameLabels.state(unit.state))
                     .font(.caption)
                     .foregroundColor(.yellow)
                 Text(movesLabel(unit))
                     .font(.caption)
                     .foregroundColor(.white)
+                Button {
+                    showUnitDetails.toggle()
+                } label: {
+                    Image(systemName: "info.circle")
+                        .foregroundColor(.white)
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: $showUnitDetails) {
+                    unitDetails(unit)
+                }
             }
             if !state.nativeTradeTargetsForSelectedUnit.isEmpty {
-                Menu("Trade") {
+                Menu("Handel") {
                     ForEach(state.nativeTradeTargetsForSelectedUnit) { target in
                         Button(target.name) {
                             state.openNativeTradeWithSelectedUnit(settlementId: target.settlementId)
@@ -100,29 +111,95 @@ struct InfoPanelView: View {
         }
     }
 
+    private func unitDetails(_ unit: FreeColGame.Unit) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(displayUnitName(unit.unitType))
+                .font(.headline)
+            detailRow("Erfahrung", "\(unit.experience)")
+            detailRow("Rolle", unit.role.map { displayIdentifier($0) } ?? "Standard")
+            if unit.roleCount > 0 {
+                detailRow("Ausrüstung", "\(unit.roleCount)")
+            }
+            if unit.hitPoints > 0 {
+                detailRow("Trefferpunkte", "\(unit.hitPoints)")
+            }
+
+            if let game = state.game,
+               let specification = game.specification,
+               let unitType = unit.unitType {
+                let abilityIds = Set(specification.unitTypes.values.flatMap { $0.abilities.keys })
+                let abilities = abilityIds
+                    .filter { specification.hasAbility($0, unitType: unitType) }
+                    .sorted()
+                if !abilities.isEmpty {
+                    Divider()
+                    Text("Fähigkeiten")
+                        .font(.caption.bold())
+                    Text(abilities.map(displayIdentifier).joined(separator: ", "))
+                        .font(.caption)
+                        .textSelection(.enabled)
+                }
+            }
+
+            if !unit.goods.isEmpty {
+                Divider()
+                Text("Ladung")
+                    .font(.caption.bold())
+                ForEach(unit.goods.keys.sorted(), id: \.self) { goodsType in
+                    detailRow(displayIdentifier(goodsType), "\(unit.goods[goodsType] ?? 0)")
+                }
+            }
+            if unit.id == state.selectedUnitId, !state.selectedUnitCargoUnits.isEmpty {
+                Divider()
+                Text("Passagiere")
+                    .font(.caption.bold())
+                ForEach(state.selectedUnitCargoUnits) { cargoUnit in
+                    detailRow(
+                        displayUnitName(cargoUnit.unitType),
+                        cargoUnit.name ?? "An Bord"
+                    )
+                }
+            }
+        }
+        .padding(12)
+        .frame(minWidth: 220, alignment: .leading)
+    }
+
+    private func detailRow(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label)
+                .foregroundColor(.secondary)
+            Spacer(minLength: 12)
+            Text(value)
+                .multilineTextAlignment(.trailing)
+        }
+        .font(.caption)
+    }
+
+    private func displayIdentifier(_ value: String) -> String {
+        GameLabels.name(value)
+    }
+
     private func displayUnitName(_ unitType: String?) -> String {
         guard let unitType else { return "?" }
-        if unitType.hasPrefix("model.unit.") {
-            return String(unitType.dropFirst("model.unit.".count))
-        }
-        return unitType
+        return state.unitDisplayName(unitType)
     }
 
     private func movesLabel(_ unit: FreeColGame.Unit) -> String {
         guard let game = state.game else {
-            return "Moves: \(unit.movesLeft)"
+            return "Bewegungspunkte: \(unit.movesLeft)"
         }
         if let location = unit.location, location.hasPrefix("highSeas:") {
             let destinationIsEurope = game.players.values.contains {
                 $0.europe?.id == unit.destination
             }
-            let destination = destinationIsEurope ? "Europe" : "New World"
-            return "Sailing to \(destination) (\(max(unit.workLeft, 0)) turns)"
+            let destination = destinationIsEurope ? "Europa" : "Neue Welt"
+            return "Überfahrt: \(destination) (\(max(unit.workLeft, 0)) Runden)"
         }
         if unitLocationIsEurope(unit, in: game) {
-            return "In Europe"
+            return "In Europa"
         }
-        return "Moves: \(unit.movesLeft)"
+        return "Bewegungspunkte: \(unit.movesLeft)"
     }
 
     private func unitLocationIsEurope(_ unit: FreeColGame.Unit,
@@ -152,7 +229,7 @@ struct InfoPanelView: View {
                     Text(typeLabel(tile.type))
                         .font(.headline)
                         .foregroundColor(.white)
-                    Text(tile.type == nil ? "Unexplored" : "Explored")
+                    Text(tile.type == nil ? "Unerforscht" : "Erforscht")
                         .font(.caption2)
                         .foregroundColor(tile.type == nil ? .secondary : .green)
                     if let ownerId = tile.owner, let game = state.game {
@@ -175,12 +252,12 @@ struct InfoPanelView: View {
                     .foregroundColor(.secondary)
             }
             if !tile.resources.isEmpty {
-                Text("Resources: \(tile.resources.map { "\($0.displayName) (\($0.quantity))" }.joined(separator: ", "))")
+                Text("Ressourcen: \(tile.resources.map { "\(GameLabels.name($0.type ?? $0.id)) (\($0.quantity))" }.joined(separator: ", "))")
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
             if !tile.improvements.isEmpty {
-                Text("Improvements: \(tile.improvements.compactMap { $0.type.map { short($0, prefix: "model.improvement.") } }.joined(separator: ", "))")
+                Text("Verbesserungen: \(tile.improvements.compactMap { $0.type.map(GameLabels.name) }.joined(separator: ", "))")
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -224,7 +301,7 @@ struct InfoPanelView: View {
             let units = units(on: tile.id)
             if !units.isEmpty {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Units")
+                    Text("Einheiten")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                     ForEach(units) { unit in
@@ -237,7 +314,7 @@ struct InfoPanelView: View {
                                         .font(.caption2)
                                         .foregroundColor(.green)
                                 }
-                                Text("\(displayUnitName(unit.unitType)) (\(unit.movesLeft) MP)")
+                                Text("\(displayUnitName(unit.unitType)) (\(unit.movesLeft) BP)")
                                     .font(.caption2)
                                     .foregroundColor(.white)
                             }
@@ -248,13 +325,13 @@ struct InfoPanelView: View {
             }
 
             HStack(spacing: 6) {
-                Button("Set Destination") {
+                Button("Als Ziel setzen") {
                     state.setSelectedUnitDestination(to: tile.id)
                 }
                 .font(.caption2)
                 .disabled(!state.canSetDestinationToSelectedTile)
 
-                Button("Clear") {
+                Button("Ziel löschen") {
                     state.clearSelectedUnitDestination()
                 }
                 .font(.caption2)
@@ -277,10 +354,7 @@ struct InfoPanelView: View {
 
     private func typeLabel(_ type: String?) -> String {
         guard let type else { return "?" }
-        if type.hasPrefix("model.tile.") {
-            return String(type.dropFirst("model.tile.".count))
-        }
-        return type
+        return GameLabels.name(type)
     }
 
     private func colorForTileType(_ type: String?) -> Color {
@@ -300,22 +374,14 @@ struct InfoPanelView: View {
             Text(state.isLocalPlayersTurn ? "Alle Einheiten fertig?" : "Warten auf Gegner…")
                 .font(.caption)
                 .foregroundColor(.white)
-            Button("End Turn") {
-                state.endTurn()
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(!state.canEndTurn)
+            Text("Einheit oder Feld auf der Karte auswählen.\nKolonie: Doppelklick · Feldaktionen: Rechtsklick")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(10)
     }
 
-    private func playerColor(for playerId: String) -> Color? {
-        guard state.game != nil else { return nil }
-        let colors: [Color] = [.blue, .red, .green, .orange, .purple, .brown, .cyan, .mint]
-        let idx = abs(playerId.hashValue) % colors.count
-        return colors[idx]
-    }
 }
 
 private struct DiamondShape: Shape {
