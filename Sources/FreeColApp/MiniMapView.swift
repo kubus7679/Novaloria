@@ -47,7 +47,9 @@ struct MiniMapView: View {
                                 ctx.fill(path, with: .color(ownerColor.opacity(0.45)))
                             }
                         } else {
-                            ctx.fill(path, with: .color(miniColor(for: tile.type)))
+                            ctx.fill(path, with: .color(tile.moveToEurope
+                                ? Color(red: 68.0 / 255, green: 68.0 / 255, blue: 110.0 / 255)
+                                : miniColor(for: tile.type)))
                             if data.colonyTiles.contains(tile.id) {
                                 var colonyPath = Path()
                                 let s = 0.7
@@ -205,6 +207,7 @@ struct MiniMapView: View {
     private func miniColor(for type: String?) -> Color {
         let colors: [String: Color] = [
             "model.tile.ocean": Color(red: 0.2, green: 0.4, blue: 0.8),
+            "model.tile.highSeas": Color(red: 0.2, green: 0.4, blue: 0.8),
             "model.tile.plains": Color(red: 0.8, green: 0.75, blue: 0.4),
             "model.tile.grassland": Color(red: 0.4, green: 0.7, blue: 0.3),
             "model.tile.desert": Color(red: 0.85, green: 0.75, blue: 0.5),

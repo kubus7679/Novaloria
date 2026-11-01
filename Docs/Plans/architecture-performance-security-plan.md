@@ -362,3 +362,120 @@ eigenem und fremdem Zug live prüfen.
 - `bash Tools/build-app.sh` erstellt das aktualisierte startbare App-Bundle;
   `git diff --check` ist erfolgreich. Die laufende Java-App und die persönliche
   Partie wurden nicht unterbrochen; der isolierte Testserver wurde beendet.
+
+### Weitere Kolonieabnahme: Bevölkerung, Tastaturfokus und Produktionssymbole
+
+- Die laufende App bestätigte die widersprüchliche Darstellung: berechnete
+  Bevölkerung 1, zusätzlich der rohe `unitCount`-Wert 0. Die Übersicht zeigt
+  jetzt ausschließlich die gemeinsame Bevölkerungszahl im Kopfbereich.
+- Beim Start als SwiftPM-Programm war die macOS-Aktivierungsrichtlinie
+  `prohibited`: Der Client konnte nicht regulär aktiviert werden und erhielt
+  keine Tastatureingaben. Ein App-Delegate setzt beim Start `regular` und
+  aktiviert das Fenster. Die Umbenennung ist zusätzlich mit Eingabe abschließbar.
+- Die getrennt gestartete lokale Test-App wurde als aktive macOS-Anwendung
+  geprüft. Über echte Tastatureingabe und die Umbenennen-Schaltfläche änderten
+  sich Kolonietitel und Namensfeld auf „Neu-Amsterdam“. Die persönliche
+  Mehrspielerpartie wurde nicht umbenannt oder fortgeschaltet.
+- Der Bundle-Build kopiert jetzt auch das SwiftPM-Ressourcenbundle in die App.
+  Ohne diesen Schritt fehlten beim regulären macOS-Start Terrain und Katalog,
+  was während der isolierten Startprüfung einen Ressourcenabsturz verursachte.
+- Koloniefelder und Zentrum zeigen Original-Warensymbole und Basismengen.
+  Die vom Server gewählte Arbeitsplatzproduktion wird beim Laden und bei
+  einzelnen `colonyTile`-Updates übernommen. Unbesetzte Nachbarfelder zeigen
+  keine laufende Produktion. Mengen sind ausdrücklich Basiswerte: Arbeiter-,
+  Ressourcen-, Verbesserungs- und Kolonieboni werden nicht als exakt berechnet
+  ausgegeben.
+- Regressionen prüfen ausgewählte Produktionsdaten, leere Serverproduktion,
+  inkrementelle Updates, Warenbilder sowie die befüllte native Geländedarstellung.
+- Abschluss: `swift test` mit 131 erfolgreichen Tests,
+  `bash Tools/build-app.sh` und `git diff --check` erfolgreich.
+
+### Koloniearbeiter bei Einheitenauswahl und Zugende
+
+- Die Kartenrotation „Nächste/Vorherige Einheit“ überspringt Einheiten, deren
+  Standort die Kolonie selbst, ein Gebäude oder ein Koloniefeld-Arbeitsplatz ist.
+  Auch aktive Arbeiter mit verbleibenden Bewegungspunkten zählen nicht als
+  Einheiten ohne Befehl und verursachen keine Zugende-Warnung.
+- Der gemeinsame Filter gilt für HUD, Befehlsmenü und die Prüfung auf
+  unbewegte Einheiten. Arbeiter bleiben im Koloniedialog und in Berichten
+  verfügbar; Einheiten vor der Kolonie werden unverändert berücksichtigt.
+- Ein TCP-Regressionstest prüft Vorwärts-/Rückwärtsrotation, weiterhin nötige
+  Warnungen für Außeneinheiten, bestätigtes Zugende mit aktiven Innenarbeitern
+  und die erneute Berücksichtigung nach dem Verlassen des Arbeitsplatzes.
+
+### Weitere Phasen: Fehler, Diplomatie und Schiffsreisen
+
+- **103:** Ein gemeinsamer Mapper behandelt synchrone Java-Antworten,
+  asynchrone Fehler und StringTemplates. Leere `message`-Attribute verdecken
+  das Template in `Connection.ask` nicht mehr. Deutsche Hinweise erklären
+  unter anderem Arbeitsplatz-, Handels-, Landkauf- und Diplomatiefehler.
+  Unbekannte Diagnosen bleiben sichtbar; Timeouts warnen vor unkontrolliertem
+  Wiederholen möglicherweise bereits ausgeführter Aktionen.
+- **95, Teilabnahme:** Der isolierte Java-Server akzeptiert Frieden samt
+  100-Gold-Geschenk; die Probe prüft echte AI-Annahme, Vertragsklauseln, PEACE
+  und exakt 100 Gold Abzug. Ursache des bisherigen Skips waren ein fehlendes
+  `diplomaticTrade id=""` und nicht normalisierte, kleingeschriebene Java-Enums.
+  Gegenangebote verwenden Spieler-IDs für die Klauseln, aber Einheit/Kolonie
+  für die äußere Nachricht. Nur der Server erhöht die Vertragsversion.
+  Neue Gegenvorschläge und endgültige Antworten werden beim Abschluss einer
+  älteren Anfrage nicht mehr gelöscht oder überschrieben.
+- **93:** Hafen und Inspektor teilen Reiseziele und korrekt gebeugte Restdauer.
+  Europa-Ankünfte nennen das Schiff auf Deutsch. Modellupdates behalten
+  ausgewählte Schiffe ohne Kartentile bei. Native Fenster zeigen Überfahrt,
+  Ankunft und spezifikationsbasierte Kaufpreise auch bei 600 × 480 Punkten.
+- Regressionen: 137 Swift-Tests, Offline-/Mock-Server-CLI sowie App-Bundle-Build.
+  Die separate Java-Diplomatieprobe besteht ohne Skip. Die native Sichtprüfung verwendet
+  reproduzierbare Fixture-Daten statt die persönliche Partie zu verändern.
+
+### Abschluss: Tribut und vollständige Java-Matrix
+
+- Die separate Tribut-Fixture ergänzt eine überlegene lokale Landstreitmacht.
+  Der echte Java-Server bestätigt ihre Spielstand-Konsistenz; die AI akzeptiert
+  Frieden gegen 100 Gold. Die Probe prüft nicht nur den Status, sondern auch
+  unveränderte Vertragsklauseln, PEACE und genau 100 Gold Zuwachs.
+- Bewaffnete Landeinheiten und Artillerie erreichen den Tributeditor neben
+  europäischen Kolonien. Die Nachbarschaft folgt der echten gestaffelten Karte.
+  Schiffe, unbewaffnete Kolonisten, verbrauchte Einheiten und fremde Züge werden
+  ausgeschlossen. Der Editor startet mit Frieden und einer 100-Gold-Forderung;
+  angebotene Klauselarten entsprechen dem Java-Tributdialog.
+- Neue Angebote aktualisieren den Editor anhand der Entscheidungs-ID statt
+  nur des unveränderten Dialogtyps. Fehler bleiben im Dialog sichtbar.
+  Annehmen/Ablehnen richtet sich nach der serverseitigen Vertragsversion,
+  weil Java den ursprünglichen Sender auch bei Gegenangeboten beibehält.
+  TCP-Regressionen prüfen die vom Gegner zum lokalen Spieler gerichtete
+  Goldklausel, bestätigte Zahlung und unverändert gültige Diplomatieantworten.
+- Der E2E-Runner unterstützt einen lokalen Java-Checkout ohne Docker. Jede
+  Probe erhält eigene Daten und einen frischen Server; belegte Testports
+  werden abgelehnt. Prozessende und Abbruch beenden ausschließlich den eigenen
+  Server anhand seiner PID.
+- Vollständige Java-Matrix mit `STRICT_SKIPS=1`: **13 bestanden, 0 übersprungen,
+  0 fehlgeschlagen**. Native Tributansicht und Regressionen sind separat geprüft.
+- Abschluss: 139 Swift-Tests, 132 CLI-Tests, App-Bundle-Build und
+  `git diff --check` erfolgreich. Portkollisionsschutz und das Beenden des eigenen
+  Java-Prozesses bei SIGTERM sind ebenfalls praktisch getestet.
+
+### Ausschiffen: Küstenlandung und Hafen unterscheiden
+
+- Die laufende persönliche App wurde ausschließlich gelesen und ihr Spielfenster
+  geprüft: ausgewählter Kolonist mit 0 Bewegungspunkten, generisches „Ziel kann
+  nicht erreicht werden“. Es wurden keine Einheiten bewegt oder Züge beendet.
+- Transportierte Einheiten waren bisher grundsätzlich vom Kartenbewegungspfad
+  ausgeschlossen. Zudem schickte „Von Bord gehen“ immer `disembark`; auf See
+  landet damit ein Kolonist fälschlich auf dem Wasserfeld des Trägers.
+- An Küsten löst die Schaltfläche jetzt eine Landzielauswahl aus. Rechtsklick und
+  die normale Zielwahl senden `move` mit der Passagier-ID und der Richtung vom
+  Trägerfeld zum Landfeld. Wache-Passagiere mit Bewegungspunkten sind erlaubt;
+  das Schiff wird nicht bewegt. Ohne Bewegungspunkte wird auf den nächsten
+  Zug verwiesen. Java schreibt Einheitenzustände klein; diese werden beim Laden
+  und bei Teilupdates normalisiert.
+- Im Hafen oder Europa bleibt `disembark` richtig und benötigt keine eigenen
+  Bewegungspunkte. Die Aktion wartet nun auf die Serverantwort und meldet
+  Ablehnungen oder eine ausbleibende Standortänderung sichtbar. Europa bietet
+  die Aktion direkt je Passagier an.
+- TCP-Tests prüfen Küstenlandung, Sentry/0-Punkte, Hafen und Europa sowie
+  Fehler ohne vorweggenommene Modelländerung. Native Ansichten prüfen die
+  Bedienelemente bei 900 × 620 und den Europa-Hafen bei 600 × 480 Punkten.
+- Abschluss: 143 Swift-Tests, 132 CLI-Tests und App-Bundle-Build erfolgreich.
+  Vollständige Java-Matrix: **14 bestanden, 0 übersprungen, 0 fehlgeschlagen**;
+  die Gameplay-Probe bestätigt Küstenlandung und die neue Ausschiffen-Probe
+  das Ausladen eines erschöpften Passagiers in Europa.

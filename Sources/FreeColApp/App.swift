@@ -2,11 +2,22 @@ import SwiftUI
 import FreeColClient
 #if canImport(AppKit)
 import AppKit
+
+final class ApplicationDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApplication.shared.setActivationPolicy(.regular)
+        NSApplication.shared.activate()
+        NSApplication.shared.windows.first?.makeKeyAndOrderFront(nil)
+    }
+}
 #endif
 
 @main
 struct FreeColApp: App {
     @State private var gameState = GameState()
+#if canImport(AppKit)
+    @NSApplicationDelegateAdaptor(ApplicationDelegate.self) private var applicationDelegate
+#endif
 
     var body: some Scene {
         WindowGroup {
@@ -31,6 +42,11 @@ struct FreeColApp: App {
         }
         .defaultSize(width: 1200, height: 800)
         .commands {
+            CommandGroup(replacing: .saveItem) {
+                Button("Spiel speichern…") { gameState.showSaveGamePanel() }
+                    .keyboardShortcut("s", modifiers: .command)
+                    .disabled(!gameState.canSaveGame)
+            }
             CommandGroup(replacing: .appInfo) {
                 Button("About FreeColClient") {
                     showAboutPanel()

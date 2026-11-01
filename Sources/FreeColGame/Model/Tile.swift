@@ -56,8 +56,10 @@ public struct Tile: GameObject, Identifiable {
     /// Natural resources on the tile.
     public var resources: [TileResource] = []
     /// Lost city rumour present on the tile, if any.
+    public var lostCityRumourId: String?
     public var lostCityRumourType: String?
     public var lostCityName: String?
+    public var hasLostCityRumour: Bool = false
 
     public init(id: String, attributes: Attributes, children: [ParsedMessage], game: Game) throws {
         self.id = id
@@ -68,7 +70,12 @@ public struct Tile: GameObject, Identifiable {
         owningSettlement = attributes["owningSettlement"]
         style = attributes.int("style")
         region = attributes["region"]
-        moveToEurope = attributes.bool("moveToEurope")
+        if attributes["moveToEurope"] != nil {
+            moveToEurope = attributes.bool("moveToEurope")
+        } else {
+            moveToEurope = type.flatMap { game.specification?.tileTypes[$0]?.canMoveToEurope }
+                ?? (type == "model.tile.highSeas")
+        }
         highSeasCount = attributes.int("connected", default: -1)
 
         for child in children {
@@ -94,6 +101,8 @@ public struct Tile: GameObject, Identifiable {
                             quantity: item.attributes.int("quantity")
                         ))
                     case "lostCityRumour":
+                        hasLostCityRumour = true
+                        lostCityRumourId = item.attributes["id"]
                         lostCityRumourType = item.attributes["type"]
                         lostCityName = item.attributes["name"] ?? item.attributes["id"]
                     default:

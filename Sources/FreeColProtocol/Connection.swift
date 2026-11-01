@@ -175,9 +175,7 @@ public actor Connection {
                     if parsed.tag == "reply",
                        parsed.attributes["networkReplyId"] == "\(replyId)" {
                         if let errorChild = parsed.children.first, errorChild.tag == "error" {
-                            let msg = errorChild.attributes["message"]
-                                ?? errorChild.children.first?.attributes["id"]
-                                ?? "Unknown error"
+                            let msg = Self.serverErrorText(errorChild)
                             FreeColLogger.shared.error("Server error reply: \(msg)")
                             throw FreeColProtocolError.serverError(msg)
                         }
@@ -211,9 +209,7 @@ public actor Connection {
             return false
         }
         if let errorChild = parsed.children.first, errorChild.tag == "error" {
-            let msg = errorChild.attributes["message"]
-                ?? errorChild.children.first?.attributes["id"]
-                ?? "Unknown error"
+            let msg = Self.serverErrorText(errorChild)
             FreeColLogger.shared.error("Server error reply: \(msg)")
             cont.resume(throwing: FreeColProtocolError.serverError(msg))
         } else {
@@ -221,6 +217,12 @@ public actor Connection {
             cont.resume(returning: parsed)
         }
         return true
+    }
+
+    private static func serverErrorText(_ error: ParsedMessage) -> String {
+        if let message = error.attributes["message"], !message.isEmpty { return message }
+        return error.children.first(where: { $0.tag == "stringTemplate" })?.attributes["id"]
+            ?? "Unknown error"
     }
 
     private func failPending(_ replyId: Int, error: Error) {

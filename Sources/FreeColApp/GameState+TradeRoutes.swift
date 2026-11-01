@@ -20,6 +20,7 @@ extension GameState {
     var canClearSelectedUnitTradeRoute: Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,
+              movingUnitId == nil, !isSavingGame,
               let game = cachedGame,
               let unitId = selectedUnitId,
               let unit = game.units[unitId],
@@ -38,7 +39,7 @@ extension GameState {
         }
         var result: [(id: String, label: String)] = []
         if let europeId = game.players[localPlayerId]?.europe?.id {
-            result.append((id: europeId, label: "Europe"))
+            result.append((id: europeId, label: "Europa"))
         }
         let colonies = game.colonies.values
             .filter { $0.owner == localPlayerId }
@@ -52,15 +53,15 @@ extension GameState {
     var tradeRouteGoodsTypes: [(id: String, label: String)] {
         guard let specification = cachedGame?.specification else { return [] }
         return specification.goodsTypes.values
-            .sorted { ($0.name ?? $0.id) < ($1.name ?? $1.id) }
-            .map { (id: $0.id, label: $0.name ?? $0.id) }
+            .map { (id: $0.id, label: goodsDisplayName($0.id)) }
+            .sorted { $0.label < $1.label }
     }
 
     func tradeRouteValidationError(for route: TradeRoute) -> String? {
         guard canManageTradeRoutes,
               let game = cachedGame,
               let localPlayerId = resolveLocalPlayerId() else {
-            return "Trade routes can only be managed during your turn."
+            return "Handelsrouten können nur im eigenen Zug verwaltet werden."
         }
         return Self.tradeRouteValidationError(
             route: route,
@@ -81,23 +82,23 @@ extension GameState {
         enhancedTradeRoutes: Bool
     ) -> String? {
         let name = (route.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return "Trade route needs a name." }
-        guard route.owner == localPlayerId else { return "Trade route is not owned by the local player." }
+        guard !name.isEmpty else { return "Die Handelsroute benötigt einen Namen." }
+        guard route.owner == localPlayerId else { return "Diese Handelsroute gehört einem anderen Spieler." }
         guard !existingRoutes.contains(where: { $0.id != route.id && $0.name == name }) else {
-            return "A trade route already uses this name."
+            return "Eine Handelsroute mit diesem Namen existiert bereits."
         }
-        guard route.stops.count >= 2 else { return "Add at least two trade route stops." }
+        guard route.stops.count >= 2 else { return "Mindestens zwei Haltepunkte hinzufügen." }
         guard route.stops.allSatisfy({
             guard let location = $0.locationId else { return false }
             return validStopLocationIds.contains(location)
         }) else {
-            return "Choose a valid owned location for every stop."
+            return "Für jeden Halt einen gültigen eigenen Ort auswählen."
         }
         guard route.stops.allSatisfy({ $0.cargoTypeIds.allSatisfy(validGoodsTypeIds.contains) }) else {
-            return "Trade route contains an unknown goods type."
+            return "Die Handelsroute enthält eine unbekannte Warenart."
         }
         guard route.stops.contains(where: { !$0.cargoTypeIds.isEmpty }) else {
-            return "Select goods for at least one trade route stop."
+            return "Für mindestens einen Halt Waren auswählen."
         }
         if !enhancedTradeRoutes, let firstStop = route.stops.first {
             var presentAtEveryStop = Set(firstStop.cargoTypeIds)
@@ -105,7 +106,7 @@ extension GameState {
                 presentAtEveryStop.formIntersection(stop.cargoTypeIds)
             }
             if !presentAtEveryStop.isEmpty {
-                return "In standard trade routes, goods cannot be selected at every stop."
+                return "Bei Standard-Handelsrouten darf dieselbe Ware nicht an allen Haltepunkten ausgewählt sein."
             }
         }
         return nil
@@ -118,11 +119,14 @@ extension GameState {
         guard !trimmed.isEmpty,
               phase == .inGame,
               isLocalPlayersTurn,
+              movingUnitId == nil, !isSavingGame,
               let game = cachedGame,
               let unitId = selectedUnitId,
               let unit = game.units[unitId],
               let localPlayerId = resolveLocalPlayerId(),
-              unit.owner == localPlayerId else {
+              unit.owner == localPlayerId,
+              let route = game.tradeRoutes[trimmed], route.owner == localPlayerId,
+              game.specification?.hasAbility("model.ability.carryGoods", unitType: unit.unitType) == true else {
             return false
         }
         return unit.tradeRoute != trimmed
@@ -136,24 +140,7 @@ extension GameState {
             errorMessage = "Handelsroute kann nicht zugewiesen werden."
             return
         }
-        errorMessage = nil
-
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "assignTradeRoute",
-                    attributes: ["unit": unitId, "tradeRoute": trimmed],
-                    children: []
-                )
-                if usesLocalServer {
-                    game.setUnitTradeRoute(unitId: unitId, tradeRouteId: trimmed)
-                    gameUpdateID += 1
-                }
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-        }
+        updateTradeRouteAssignment(unitId, routeId: trimmed, in: game)
     }
 
     func clearSelectedUnitTradeRoute() {
@@ -163,24 +150,7 @@ extension GameState {
             errorMessage = "Keine Handelsroute zum Entfernen gesetzt."
             return
         }
-        errorMessage = nil
-
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "assignTradeRoute",
-                    attributes: ["unit": unitId],
-                    children: []
-                )
-                if usesLocalServer {
-                    game.setUnitTradeRoute(unitId: unitId, tradeRouteId: nil)
-                    gameUpdateID += 1
-                }
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-        }
+        updateTradeRouteAssignment(unitId, routeId: nil, in: game)
     }
 
     func createTradeRoute() {
@@ -274,41 +244,27 @@ extension GameState {
     func setSelectedUnitCurrentStop(_ indexText: String) {
         guard phase == .inGame,
               isLocalPlayersTurn,
+              movingUnitId == nil, !isSavingGame,
               let game = cachedGame,
               let unitId = selectedUnitId,
               let unit = game.units[unitId],
               let localPlayerId = resolveLocalPlayerId(),
-              unit.owner == localPlayerId else {
-            errorMessage = "Aktueller Stop kann nicht gesetzt werden."
+              unit.owner == localPlayerId,
+              let routeId = unit.tradeRoute, let route = game.tradeRoutes[routeId],
+              route.owner == localPlayerId else {
+            errorMessage = "Aktueller Halt kann nicht gesetzt werden."
             return
         }
         let trimmed = indexText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let index = Int(trimmed), index >= 0 else {
-            errorMessage = "Bitte einen gueltigen Stop-Index eingeben."
+        guard let index = Int(trimmed), route.stops.indices.contains(index) else {
+            errorMessage = "Bitte einen gültigen Haltepunkt auswählen."
             return
         }
         guard unit.currentStop != index else {
-            errorMessage = "Stop ist bereits gesetzt."
+            errorMessage = "Dieser Halt ist bereits gesetzt."
             return
         }
-        errorMessage = nil
-
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "setCurrentStop",
-                    attributes: ["unit": unitId, "index": String(index)],
-                    children: []
-                )
-                if usesLocalServer {
-                    game.setUnitCurrentStop(unitId: unitId, index: index)
-                    gameUpdateID += 1
-                }
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-        }
+        updateTradeRouteStop(unitId, index: index, in: game)
     }
 
     // MARK: - Trade route execution

@@ -63,15 +63,15 @@ public struct Unit: GameObject, PartiallyUpdatable, Identifiable {
         if let v = attributes["location"] { location = v }
         if let v = attributes["entryLocation"] { entryLocation = v }
         movesLeft = attributes.int("movesLeft", default: movesLeft)
-        if let v = attributes["state"], let s = UnitState(rawValue: v) { state = s }
+        if let v = attributes["state"], let s = UnitState(rawValue: v.uppercased()) { state = s }
         if let v = attributes["role"] { role = v }
         roleCount = attributes.int("roleCount", default: roleCount)
         experience = attributes.int("experience", default: experience)
         hitPoints = attributes.int("hitPoints", default: hitPoints)
         treasureAmount = attributes.int("treasureAmount", default: treasureAmount)
         if let v = attributes["workType"] { workType = v }
-        if let v = attributes["destination"] { destination = v }
-        if let v = attributes["tradeRoute"] { tradeRoute = v }
+        if let v = attributes["destination"] { destination = v.isEmpty ? nil : v }
+        if let v = attributes["tradeRoute"] { tradeRoute = v.isEmpty ? nil : v }
         currentStop = attributes.int("currentStop", default: currentStop)
         if let v = attributes["student"] { student = v }
         if let v = attributes["teacher"] { teacher = v }

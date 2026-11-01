@@ -99,6 +99,7 @@ final class GameState {
     }
 
     struct PendingServerDecision {
+        let id = UUID()
         let type: PendingServerDecisionType
         let rawPayload: [String: String]
         var children: [ParsedMessage] = []
@@ -181,7 +182,7 @@ final class GameState {
         case .lootCargo:
             return "Loot Cargo"
         case .firstContact:
-            return "First Contact"
+            return "Erstkontakt"
         case .monarchAction:
             return "Monarch"
         case .newLandName:
@@ -223,11 +224,7 @@ final class GameState {
             if goodsCount > 0 { parts.append("goods stacks: \(goodsCount)") }
             return parts.isEmpty ? "Cargo to assess." : parts.joined(separator: ", ")
         case .firstContact:
-            var parts: [String] = []
-            if let other = decision.rawPayload["other"] { parts.append("contact: \(other)") }
-            if let camps = decision.rawPayload["camps"] { parts.append("camps: \(camps)") }
-            if let tile = decision.rawPayload["tile"] { parts.append("tile: \(tile)") }
-            return parts.isEmpty ? "A native people greets you." : parts.joined(separator: ", ")
+            return firstContactMessage
         case .monarchAction:
             var parts: [String] = []
             if let action = decision.rawPayload["action"] { parts.append(prettyEnum(action)) }
@@ -301,15 +298,29 @@ final class GameState {
     /// User-facing German message for the firstContact prompt.
     var firstContactMessage: String {
         guard let decision = pendingServerDecision, decision.type == .firstContact else { return "" }
-        let other = decision.rawPayload["other"] ?? "ein natives Volk"
-        let camps = decision.rawPayload["camps"]
-        let playerName = decision.rawPayload["player"] ?? "Du"
-        if let camps, camps == "true" {
-            return "\(playerName) hat zum ersten Mal Kontakt mit \(other) aufgenommen (Siedlung sichtbar). Diplomatische Beziehungen herstellen?"
-        }
-        return "\(playerName) hat zum ersten Mal Kontakt mit \(other) aufgenommen. Diplomatische Beziehungen herstellen?"
+        let other = contactPlayerName(decision.rawPayload["other"], fallback: "einem unbekannten Volk")
+        let playerName = contactPlayerName(decision.rawPayload["player"], fallback: localPlayerName ?? "Dein Spieler")
+        let camps = decision.rawPayload["camps"].flatMap(Int.init)
+        let settlementInfo = camps.map { " Das Volk besitzt \($0) \($0 == 1 ? "Siedlung" : "Siedlungen")." } ?? ""
+        return "\(playerName) hat zum ersten Mal Kontakt mit \(other) aufgenommen.\(settlementInfo) Diplomatische Beziehungen herstellen?"
     }
 
+    private func contactPlayerName(_ id: String?, fallback: String) -> String {
+        guard let id, let player = cachedGame?.players[id] else { return fallback }
+        if let name = player.name, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return name
+        }
+        if let nation = player.nationId { return GameLabels.name(nation) }
+        return fallback
+    }
+
+    var showsColonyWorkOrder: Bool {
+        selectedUnit.map { !isNavalUnit($0) && canUnitWorkInColony($0) } ?? false
+    }
+
+    var showsEuropeTravelOrder: Bool {
+        selectedUnit.map { isNavalUnit($0) } ?? false
+    }
     /// User-facing German message for the indianDemand prompt.
     var indianDemandMessage: String {
         guard let decision = pendingServerDecision, decision.type == .indianDemand else { return "" }
@@ -484,6 +495,7 @@ final class GameState {
     var isChoosingMoveDestination: Bool = false
     private(set) var movingUnitId: String?
     private var movementTask: Task<Void, Never>?
+    private var movementAttempts: [String: Int] = [:]
     var isReadyToStart: Bool = false
     private var localPlayerName: String?
     private var remoteHost: String?
@@ -497,6 +509,46 @@ final class GameState {
     private var localColorValue: String?
     private var seenModelMessageSignatures: Set<String> = []
     private var isEndingTurn: Bool = false
+    private var saveRequestID: UUID?
+    var isSavingGame: Bool { saveRequestID != nil }
+
+    var canSaveGame: Bool {
+        phase == .inGame && !usesLocalServer && isLocalPlayerAdmin
+            && isLocalPlayersTurn && !isSavingGame && movingUnitId == nil && !isEndingTurn
+    }
+
+    func saveGame(to url: URL) {
+        guard canSaveGame, let client, let game = cachedGame else {
+            errorMessage = "Speichern ist nur als Spieladministrator im eigenen Zug auf einem Java-Server möglich."
+            return
+        }
+        let requestID = UUID()
+        saveRequestID = requestID
+        errorMessage = nil
+        statusMessage = "Spielstand wird vom Server angefordert…"
+        Task {
+            defer {
+                if saveRequestID == requestID { saveRequestID = nil }
+            }
+            do {
+                let reply = try await client.ask(message: ParsedMessage(
+                    tag: "saveGame", attributes: [:], children: []
+                ), timeout: 60)
+                guard saveRequestID == requestID, cachedGame === game else { return }
+                let data = try ServerSavegame.decode(reply)
+                try data.write(to: url, options: .atomic)
+                statusMessage = "Spiel gespeichert: \(url.lastPathComponent)"
+            } catch {
+                guard saveRequestID == requestID else { return }
+                FreeColLogger.shared.error("Saving game failed: \(error)")
+                errorMessage = "Spiel konnte nicht gespeichert werden: \(ServerErrorMessage.description(for: error))"
+                if let protocolError = error as? FreeColProtocolError, case .timeout = protocolError {
+                    errorMessage = "Keine Speicherbestätigung vom Server erhalten. Es wurde keine Datei gespeichert. Der Java-Server benötigt die FreeColClient-Speichererweiterung."
+                }
+                statusMessage = "Speichern fehlgeschlagen."
+            }
+        }
+    }
     private var pendingEndTurnTurn: Int?
     private var endTurnToken: Int = 0
     private static let coreGameplayAskTimeout: TimeInterval = 30
@@ -713,7 +765,7 @@ final class GameState {
                 }
                 statusMessage = "High scores requested."
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -733,7 +785,7 @@ final class GameState {
                 }
                 statusMessage = "Nation summary requested."
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -818,21 +870,12 @@ final class GameState {
     }
 
     var canEndTurn: Bool {
-        phase == .inGame && isLocalPlayersTurn && !isGameEnded && !isEndingTurn && movingUnitId == nil
+        phase == .inGame && isLocalPlayersTurn && !isGameEnded && !isEndingTurn && !isSavingGame && movingUnitId == nil
     }
 
     /// True while the local player still has an active unit with moves left.
     var hasUnmovedLocalUnits: Bool {
-        guard let game = cachedGame,
-              let localPlayerId = resolveLocalPlayerId() else {
-            return false
-        }
-        return game.units.values.contains { unit in
-            unit.owner == localPlayerId
-                && unit.state == .active
-                && unit.movesLeft > 0
-                && game.resolvedTileId(for: unit) != nil
-        }
+        !unitsAwaitingOrders.isEmpty
     }
 
     /// A colony name that is not already in use, seeded into the build-colony field.
@@ -869,7 +912,8 @@ final class GameState {
     }
 
     var canJoinSelectedColony: Bool {
-        guard phase == .inGame,
+        guard showsColonyWorkOrder,
+              phase == .inGame,
               isLocalPlayersTurn,
               let game = cachedGame,
               let unitId = selectedUnitId,
@@ -890,18 +934,42 @@ final class GameState {
     var canDisembarkSelectedUnit: Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,
+              movingUnitId == nil,
               let game = cachedGame,
               let unitId = selectedUnitId,
               let unit = game.units[unitId],
               let localPlayerId = resolveLocalPlayerId(),
               unit.owner == localPlayerId,
-              unit.state == .active,
-              unit.movesLeft > 0,
-              unit.location != nil,
-              game.units[unit.location ?? ""] != nil else {
+              !isNavalUnit(unit),
+              let carrier = selectedUnitCarrier,
+              carrier.owner == localPlayerId,
+              isCarrierUnit(carrier) else {
             return false
         }
-        return true
+        if selectedUnitCanDisembarkInPlace { return true }
+        guard canChooseMoveDestination, let source = resolveUnitTileId(carrier, in: game) else { return false }
+        return game.neighborTileIds(of: source).contains { tileId in
+            guard let tile = game.tiles[tileId], tile.type != nil, !isWaterTile(tile, in: game) else { return false }
+            return nextStepTowardDestination(for: unit, destinationTileId: tileId, in: game) == tileId
+        }
+    }
+
+    private var selectedUnitCanDisembarkInPlace: Bool {
+        guard let game = cachedGame, let location = selectedUnitCarrier?.location else { return false }
+        if game.players.values.contains(where: { $0.europe?.id == location }) { return true }
+        guard let tile = game.tiles[location], tile.type != nil else { return false }
+        return !isWaterTile(tile, in: game)
+    }
+
+    var selectedUnitDisembarkHint: String? {
+        guard selectedUnitCarrier != nil else { return nil }
+        if !isLocalPlayersTurn { return "Ausschiffen ist nur im eigenen Zug möglich." }
+        if selectedUnitCanDisembarkInPlace { return "Im Hafen kann die Einheit direkt von Bord gehen." }
+        if selectedUnitTileId == nil { return "Während der Überfahrt ist Ausschiffen nicht möglich." }
+        if selectedUnit?.movesLeft == 0 {
+            return "Zum Anlanden fehlen Bewegungspunkte. Bitte bis zum nächsten Zug warten."
+        }
+        return "Zum Anlanden ein benachbartes, freies Landfeld wählen; alternativ dort rechtsklicken."
     }
 
     var canDisbandSelectedUnit: Bool {
@@ -929,6 +997,7 @@ final class GameState {
     var canClearSelectedUnitDestination: Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,
+              movingUnitId == nil, !isSavingGame,
               let game = cachedGame,
               let unitId = selectedUnitId,
               let unit = game.units[unitId],
@@ -1143,7 +1212,8 @@ final class GameState {
             }
             .map { info -> (id: String, label: String) in
                 let cost = info.requiredGoods[buildingMaterialsGoodsId] ?? 0
-                let label = cost > 0 ? "\(info.displayName) – \(cost)" : info.displayName
+                let name = GameLabels.name(info.id, fallback: info.displayName)
+                let label = cost > 0 ? "\(name) – \(cost)" : name
                 return (id: info.id, label: label)
             }
             .sorted { $0.label < $1.label }
@@ -1206,7 +1276,7 @@ final class GameState {
                 startLocalServerLoop(server: server)
             } catch {
                 FreeColLogger.shared.error("Local game failed: \(error)")
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
                 phase = .disconnected
                 statusMessage = ""
             }
@@ -1282,7 +1352,7 @@ final class GameState {
                 statusMessage = "Connected"
             } catch {
                 FreeColLogger.shared.error("Connection failed: \(error)")
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
                 phase = .disconnected
                 statusMessage = ""
             }
@@ -1306,7 +1376,7 @@ final class GameState {
                 startMessageLoop(client: client, server: nil)
             } catch {
                 FreeColLogger.shared.error("Login failed: \(error)")
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
                 phase = .login
                 statusMessage = "Login failed"
             }
@@ -1801,10 +1871,10 @@ final class GameState {
         switch proposal.status {
         case "ACCEPT_TRADE":
             clearPendingDecision()
-            statusMessage = "Diplomacy: offer accepted."
+            statusMessage = "Diplomatie: Angebot angenommen."
         case "REJECT_TRADE":
             clearPendingDecision()
-            statusMessage = "Diplomacy: offer rejected."
+            statusMessage = "Diplomatie: Angebot abgelehnt."
         default:
             clearPendingDecision()
             pendingServerDecision = PendingServerDecision(
@@ -1812,7 +1882,7 @@ final class GameState {
                 rawPayload: parsed.attributes,
                 children: [tradeNode]
             )
-            statusMessage = "Diplomacy: proposal pending."
+            statusMessage = "Diplomatie: Angebot wartet auf eine Antwort."
         }
     }
 
@@ -2167,7 +2237,7 @@ final class GameState {
             do {
                 try await client.send(message: message)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2198,8 +2268,11 @@ final class GameState {
             attributes: attributes,
             children: proposal.raw.children
         )
-        let ourId = decision.rawPayload["ourId"] ?? proposal.sender ?? resolveLocalPlayerId() ?? ""
-        let otherId = decision.rawPayload["otherId"] ?? proposal.recipient ?? ""
+        guard let ourId = decision.rawPayload["ourId"], !ourId.isEmpty,
+              let otherId = decision.rawPayload["otherId"], !otherId.isEmpty else {
+            errorMessage = "Diplomatie-Objekte fehlen."
+            return
+        }
         let message = ParsedMessage(
             tag: "diplomacy",
             attributes: ["ourId": ourId, "otherId": otherId],
@@ -2209,10 +2282,12 @@ final class GameState {
         Task {
             do {
                 _ = try await client.ask(message: message)
-                clearPendingDecision()
-                statusMessage = accept ? "Diplomacy accepted." : "Diplomacy rejected."
+                if pendingServerDecision?.id == decision.id {
+                    clearPendingDecision()
+                    statusMessage = accept ? "Diplomatie: Annahme gesendet." : "Diplomatie: Ablehnung gesendet."
+                }
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2226,17 +2301,27 @@ final class GameState {
             errorMessage = "Kein diplomatischer Vorschlag aktiv."
             return
         }
-        let ourId = decision.rawPayload["ourId"] ?? resolveLocalPlayerId() ?? ""
+        let ourId = decision.rawPayload["ourId"] ?? ""
         let otherId = decision.rawPayload["otherId"] ?? ""
-        guard !ourId.isEmpty, !otherId.isEmpty else {
+        guard !ourId.isEmpty, !otherId.isEmpty,
+              let localPlayerId = resolveLocalPlayerId(),
+              let sender = proposal.sender, let recipient = proposal.recipient,
+              sender == localPlayerId || recipient == localPlayerId else {
             errorMessage = "Diplomatie-Objekte fehlen."
+            return
+        }
+        guard drafts.allSatisfy({ pendingDiplomacyClauseKinds.contains($0.kind) }) else {
+            errorMessage = "Diese Vertragsklausel ist für die Tributverhandlung nicht verfügbar."
             return
         }
 
         var attributes = proposal.raw.attributes
         attributes["status"] = "PROPOSE_TRADE"
-        attributes["version"] = String(proposal.version + 1)
-        let children = drafts.map { Self.diplomacyClauseNode($0, ourId: ourId, otherId: otherId) }
+        attributes["version"] = String(proposal.version)
+        let otherPlayerId = sender == localPlayerId ? recipient : sender
+        let children = drafts.map {
+            Self.diplomacyClauseNode($0, ourId: localPlayerId, otherId: otherPlayerId)
+        }
         let tradeNode = ParsedMessage(tag: "diplomaticTrade", attributes: attributes, children: children)
         let message = ParsedMessage(
             tag: "diplomacy",
@@ -2247,18 +2332,20 @@ final class GameState {
         Task {
             do {
                 _ = try await client.ask(message: message)
-                clearPendingDecision()
-                statusMessage = "Gegenangebot gesendet."
+                if pendingServerDecision?.id == decision.id {
+                    clearPendingDecision()
+                    statusMessage = "Gegenangebot gesendet."
+                }
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
 
-    /// True when the pending diplomacy proposal came from another player.
+    /// Java keeps the original sender throughout a session; version zero is only the opening draft.
     var pendingDiplomacyIsIncoming: Bool {
         guard let proposal = pendingDiplomacy else { return false }
-        return proposal.sender != resolveLocalPlayerId()
+        return proposal.version > 0
     }
 
     /// Draft clauses pre-populated from the pending proposal.
@@ -2267,7 +2354,7 @@ final class GameState {
               let proposal = decision.diplomaticTradeProposal else {
             return []
         }
-        let ourId = decision.rawPayload["ourId"] ?? resolveLocalPlayerId() ?? ""
+        let ourId = resolveLocalPlayerId() ?? ""
         return proposal.clauses.compactMap {
             DiplomaticClauseDraft(clause: $0, ourPlayerId: ourId)
         }
@@ -2384,7 +2471,7 @@ final class GameState {
                     statusMessage = "Emigrants placed."
                 }
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2402,7 +2489,7 @@ final class GameState {
                 clearPendingDecision()
                 statusMessage = "Decision sent."
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2438,6 +2525,8 @@ final class GameState {
     }
 
     private func resetSessionState() {
+        movementAttempts.removeAll()
+        saveRequestID = nil
         movementTask?.cancel()
         movementTask = nil
         movingUnitId = nil
@@ -2493,7 +2582,7 @@ final class GameState {
                 try await client?.send(message: msg)
             } catch {
                 isReadyToStart = previous
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2512,7 +2601,7 @@ final class GameState {
                 let msg = ParsedMessage(tag: "requestLaunch", attributes: [:], children: [])
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2543,7 +2632,7 @@ final class GameState {
                 try await client?.send(message: msg)
             } catch {
                 localNationId = previousNationId
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2574,7 +2663,7 @@ final class GameState {
                 try await client?.send(message: msg)
             } catch {
                 localNationTypeId = previousNationTypeId
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2613,7 +2702,7 @@ final class GameState {
                 try await client?.send(message: msg)
             } catch {
                 localColorValue = previousColorValue
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2662,7 +2751,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2697,7 +2786,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2722,7 +2811,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2737,7 +2826,7 @@ final class GameState {
                 let msg = ParsedMessage(tag: "continue", attributes: [:], children: [])
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2752,7 +2841,7 @@ final class GameState {
                 let msg = ParsedMessage(tag: "retire", attributes: [:], children: [])
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2767,7 +2856,7 @@ final class GameState {
                 let msg = ParsedMessage(tag: "enterRevengeMode", attributes: [:], children: [])
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2785,7 +2874,7 @@ final class GameState {
                 let msg = ParsedMessage(tag: "declineMounds", attributes: ["unit": unitId], children: [])
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2811,7 +2900,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2835,7 +2924,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2864,7 +2953,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2898,7 +2987,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2928,7 +3017,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2961,7 +3050,7 @@ final class GameState {
                 let msg = ParsedMessage(tag: "chat", attributes: attributes, children: [])
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -2981,7 +3070,7 @@ final class GameState {
                 let msg = ParsedMessage(tag: "setDead", attributes: ["player": playerId], children: [])
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -3015,7 +3104,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -3181,7 +3270,7 @@ final class GameState {
                 try await sendCoreGameplayAction(msg, timeout: Self.coreGameplayAskTimeout)
             } catch {
                 clearPendingEndTurn()
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -3240,10 +3329,14 @@ final class GameState {
 
     var canChooseMoveDestination: Bool {
         guard phase == .inGame, isLocalPlayersTurn, movingUnitId == nil,
+              let game = cachedGame,
               let localPlayerId,
               let unit = selectedUnit, unit.owner == localPlayerId,
-              unit.movesLeft > 0, unit.state == .active,
-              let location = unit.location, cachedGame?.tiles[location] != nil else {
+              unit.movesLeft > 0, canIssueMovementOrders(for: unit, in: game),
+              let unitLocation = unit.location,
+              game.tiles[unitLocation] != nil
+                || game.units[unitLocation].map({ isCarrierUnit($0) && $0.owner == unit.owner }) == true,
+              let location = resolveUnitTileId(unit, in: game), game.tiles[location] != nil else {
             return false
         }
         return true
@@ -3289,18 +3382,9 @@ final class GameState {
     }
 
     func canMoveSelectedUnitTo(destinationTileId: String) -> Bool {
-        guard phase == .inGame,
-              isLocalPlayersTurn,
-              movingUnitId == nil,
+        guard canChooseMoveDestination,
               let game = cachedGame,
-              let unitId = selectedUnitId,
-              let unit = game.units[unitId],
-              let localPlayerId = resolveLocalPlayerId(),
-              unit.owner == localPlayerId,
-              unit.movesLeft > 0,
-              unit.state == .active,
-              let sourceTileId = unit.location,
-              game.tiles[sourceTileId] != nil,
+              let sourceTileId = selectedUnitTileId,
               sourceTileId != destinationTileId,
               game.tiles[destinationTileId] != nil else {
             return false
@@ -3312,7 +3396,9 @@ final class GameState {
         guard canMoveSelectedUnitTo(destinationTileId: destinationTileId),
               let unit = selectedUnit,
               let game = cachedGame else {
-            errorMessage = "Ziel kann nicht erreicht werden."
+            errorMessage = selectedUnit?.movesLeft == 0
+                ? "Diese Einheit hat keine Bewegungspunkte mehr. Bitte bis zum nächsten Zug warten."
+                : "Ziel kann nicht erreicht werden."
             return
         }
         guard nextStepTowardDestination(for: unit, destinationTileId: destinationTileId, in: game) != nil else {
@@ -3323,20 +3409,31 @@ final class GameState {
     }
 
     private func startMovingSelectedUnit(to destinationTileId: String) {
-        guard movingUnitId == nil, let unitId = selectedUnitId, let game = cachedGame else { return }
+        guard let unitId = selectedUnitId else { return }
+        startMovingUnit(unitId, to: destinationTileId)
+    }
+
+    private func startMovingUnit(_ unitId: String, to destinationTileId: String) {
+        guard movingUnitId == nil, let game = cachedGame else { return }
         errorMessage = nil
         movingUnitId = unitId
+        movementAttempts[unitId] = game.turn.number
+        let storesDestination = game.units[unitId].map { unit in
+            unit.destination == destinationTileId
+                || resolveUnitTileId(unit, in: game).map {
+                    attackDirection(fromTileId: $0, toTileId: destinationTileId, in: game) == nil
+                } == true
+        } ?? false
         movementTask = Task {
             defer {
                 if movingUnitId == unitId {
                     movingUnitId = nil
                     movementTask = nil
+                    continueSavedMovementOrders()
                 }
             }
             do {
-                // A distant order remains visible when this turn's movement is exhausted.
-                if let source = game.units[unitId]?.location,
-                   attackDirection(fromTileId: source, toTileId: destinationTileId, in: game) == nil {
+                if storesDestination, let unit = game.units[unitId], unit.destination != destinationTileId {
                     try await sendCoreGameplayAction(ParsedMessage(tag: "setDestination", attributes: [
                         "unit": unitId, "destination": destinationTileId,
                     ], children: []), queueIfDisconnected: false)
@@ -3346,8 +3443,9 @@ final class GameState {
                     }
                 }
                 while !Task.isCancelled, cachedGame === game, isLocalPlayersTurn,
-                      let unit = game.units[unitId], unit.movesLeft > 0, unit.state == .active,
-                      let source = unit.location, game.tiles[source] != nil, source != destinationTileId {
+                      let unit = game.units[unitId], unit.movesLeft > 0, canIssueMovementOrders(for: unit, in: game),
+                      (!storesDestination || unit.destination == destinationTileId),
+                      let source = resolveUnitTileId(unit, in: game), source != destinationTileId {
                     guard let next = nextStepTowardDestination(for: unit, destinationTileId: destinationTileId, in: game),
                           let direction = attackDirection(fromTileId: source, toTileId: next, in: game) else {
                         throw UserFacingActionError(message: "Der weitere Weg zum Ziel ist blockiert.")
@@ -3358,20 +3456,30 @@ final class GameState {
                     ], children: []), queueIfDisconnected: false)
                     if usesLocalServer {
                         game.moveUnit(unitId, to: next)
+                        game.changeUnitState(unitId: unitId, state: .active)
                         gameUpdateID += 1
                     }
                     guard !Task.isCancelled, cachedGame === game else { return }
-                    guard game.units[unitId]?.location != source else {
+                    guard let moved = game.units[unitId], resolveUnitTileId(moved, in: game) == next,
+                          moved.location != unit.location else {
                         throw UserFacingActionError(message: "Die Bewegung wurde vom Server nicht ausgeführt.")
                     }
                     if selectedUnitId == unitId {
-                        selectedTileId = game.units[unitId]?.location
+                        selectedTileId = resolveUnitTileId(moved, in: game)
                     }
+                }
+                if storesDestination, cachedGame === game, let unit = game.units[unitId],
+                   resolveUnitTileId(unit, in: game) == destinationTileId {
+                    try await sendCoreGameplayAction(ParsedMessage(
+                        tag: "setDestination", attributes: ["unit": unitId], children: []
+                    ), queueIfDisconnected: false)
+                    game.setUnitDestination(unitId: unitId, destinationId: nil)
+                    gameUpdateID += 1
                 }
             } catch is CancellationError {
                 return
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -3417,7 +3525,7 @@ final class GameState {
                     selectUnit(nil, onTile: nil)
                 }
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -3448,29 +3556,42 @@ final class GameState {
                 try await client?.send(message: msg)
                 selectUnit(nil, onTile: tileId)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
 
     func canEmbarkSelectedUnit(onCarrier carrierId: String) -> Bool {
+        guard let unitId = selectedUnitId else { return false }
+        return canEmbarkUnit(unitId, onCarrier: carrierId)
+    }
+
+    func canEmbarkUnit(_ unitId: String, onCarrier carrierId: String) -> Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,
+              movingUnitId == nil,
               let game = cachedGame,
-              let unitId = selectedUnitId,
               let unit = game.units[unitId],
               let carrier = game.units[carrierId],
               let localPlayerId = resolveLocalPlayerId(),
               unit.owner == localPlayerId,
               carrier.owner == localPlayerId,
-              unit.state == .active,
-              unit.movesLeft > 0,
+              !isNavalUnit(unit),
               let unitLoc = unit.location,
               let carrierLoc = carrier.location,
               unitLoc == carrierLoc,
                             unit.id != carrier.id,
-                            isLikelyCarrier(carrier, in: game) else {
+                            isCarrierUnit(carrier),
+              game.tiles[unitLoc] != nil || localPlayer?.europe?.id == unitLoc else {
             return false
+        }
+        if let capacity = carrier.unitType.flatMap({ game.specification?.unitTypes[$0]?.cargoSpace }) {
+            let passengers = game.units.values.filter { $0.location == carrierId }
+            let occupied = passengers.reduce(0) {
+                $0 + ($1.unitType.flatMap { game.specification?.unitTypes[$0]?.spaceTakenOnCarrier } ?? 1)
+            } + carrier.goods.values.reduce(0) { $0 + max(0, ($1 + 99) / 100) }
+            let required = unit.unitType.flatMap { game.specification?.unitTypes[$0]?.spaceTakenOnCarrier } ?? 1
+            guard occupied + required <= capacity else { return false }
         }
         return true
     }
@@ -3483,23 +3604,28 @@ final class GameState {
             return
         }
         errorMessage = nil
-
-
+        movingUnitId = unitId
         Task {
+            defer { if movingUnitId == unitId { movingUnitId = nil } }
             do {
                 let msg = ParsedMessage(
                     tag: "embark",
                     attributes: ["unit": unitId, "carrier": carrierId],
                     children: []
                 )
-                if server != nil {
+                try await sendCoreGameplayAction(msg, queueIfDisconnected: false)
+                guard cachedGame === game else { return }
+                if usesLocalServer {
                     game.embarkUnit(unitId: unitId, carrierId: carrierId)
-                    reconcileSelectionWithGame()
                     gameUpdateID += 1
                 }
-                try await client?.send(message: msg)
+                guard game.units[unitId]?.location == carrierId else {
+                    throw UserFacingActionError(message: "Der Server hat das Einschiffen nicht bestätigt.")
+                }
+                reconcileSelectionWithGame()
+                statusMessage = "Einheit ist an Bord."
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -3507,12 +3633,22 @@ final class GameState {
     func disembarkSelectedUnit() {
         guard canDisembarkSelectedUnit,
               let unitId = selectedUnitId,
+              let unit = selectedUnit,
               let game = cachedGame else {
-            errorMessage = "Ausschiffen nicht moeglich."
+            errorMessage = selectedUnitDisembarkHint ?? "Ausschiffen nicht möglich."
             return
         }
         errorMessage = nil
-
+        if !selectedUnitCanDisembarkInPlace {
+            if let destination = selectedTileId,
+               nextStepTowardDestination(for: unit, destinationTileId: destination, in: game) == destination {
+                moveSelectedUnitTo(destinationTileId: destination)
+            } else {
+                beginChoosingMoveDestination()
+                statusMessage = "Zum Ausschiffen ein benachbartes Landfeld auswählen."
+            }
+            return
+        }
 
         Task {
             do {
@@ -3521,14 +3657,18 @@ final class GameState {
                     attributes: ["unit": unitId],
                     children: []
                 )
-                if server != nil {
+                try await sendCoreGameplayAction(msg, queueIfDisconnected: false)
+                if usesLocalServer {
                     game.disembarkUnit(unitId: unitId)
                     reconcileSelectionWithGame()
                     gameUpdateID += 1
                 }
-                try await client?.send(message: msg)
+                guard game.units[unitId]?.location != unit.location else {
+                    throw UserFacingActionError(message: "Das Ausschiffen wurde vom Server nicht ausgeführt.")
+                }
+                syncAfterModelUpdate()
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -3560,7 +3700,7 @@ final class GameState {
                     selectUnit(nil, onTile: selectedTileId)
                 }
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -3568,11 +3708,14 @@ final class GameState {
     func canSetSelectedUnitDestination(to destinationTileId: String) -> Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,
+              movingUnitId == nil, !isSavingGame,
               let game = cachedGame,
               let unitId = selectedUnitId,
               let unit = game.units[unitId],
               let localPlayerId = resolveLocalPlayerId(),
               unit.owner == localPlayerId,
+              game.tiles[unit.location ?? ""] != nil,
+              canIssueMovementOrders(for: unit, in: game),
               game.tiles[destinationTileId] != nil else {
             return false
         }
@@ -3586,25 +3729,7 @@ final class GameState {
             errorMessage = "Ziel kann nicht gesetzt werden."
             return
         }
-        errorMessage = nil
-
-
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "setDestination",
-                    attributes: ["unit": unitId, "destination": destinationTileId],
-                    children: []
-                )
-                if server != nil {
-                    game.setUnitDestination(unitId: unitId, destinationId: destinationTileId)
-                    gameUpdateID += 1
-                }
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-        }
+        updateMovementOrders(unitId, destination: destinationTileId, activate: false, in: game)
     }
 
     func clearSelectedUnitDestination() {
@@ -3614,25 +3739,7 @@ final class GameState {
             errorMessage = "Kein Ziel zum Entfernen gesetzt."
             return
         }
-        errorMessage = nil
-
-
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "setDestination",
-                    attributes: ["unit": unitId],
-                    children: []
-                )
-                if server != nil {
-                    game.setUnitDestination(unitId: unitId, destinationId: nil)
-                    gameUpdateID += 1
-                }
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-        }
+        updateMovementOrders(unitId, destination: nil, activate: false, in: game)
     }
 
     // MARK: Phase 56 - unit orders
@@ -3641,6 +3748,7 @@ final class GameState {
     var canClearSelectedUnitOrders: Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,
+              movingUnitId == nil, !isSavingGame,
               let game = cachedGame,
               let unitId = selectedUnitId,
               let unit = game.units[unitId],
@@ -3659,37 +3767,106 @@ final class GameState {
             errorMessage = "Keine Befehle zum Loeschen."
             return
         }
+        updateMovementOrders(unitId, destination: nil, activate: true, in: game)
+    }
+
+    private func updateMovementOrders(_ unitId: String, destination: String?, activate: Bool, in game: Game) {
         errorMessage = nil
+        movingUnitId = unitId
+        movementAttempts[unitId] = game.turn.number
         Task {
+            defer { if movingUnitId == unitId { movingUnitId = nil } }
             do {
-                if game.units[unitId]?.destination != nil {
-                    try await client?.send(message: ParsedMessage(
-                        tag: "setDestination", attributes: ["unit": unitId], children: []))
-                    if server != nil {
-                        game.setUnitDestination(unitId: unitId, destinationId: nil)
+                if game.units[unitId]?.destination != destination {
+                    var attributes = ["unit": unitId]
+                    if let destination { attributes["destination"] = destination }
+                    try await sendCoreGameplayAction(ParsedMessage(
+                        tag: "setDestination", attributes: attributes, children: []),
+                        queueIfDisconnected: false)
+                    guard cachedGame === game else { return }
+                    if usesLocalServer {
+                        game.setUnitDestination(unitId: unitId, destinationId: destination)
+                        gameUpdateID += 1
+                    }
+                    guard game.units[unitId]?.destination == destination else {
+                        throw UserFacingActionError(message: "Der Server hat die Zieländerung nicht bestätigt.")
                     }
                 }
-                if game.units[unitId]?.state != .active {
-                    try await client?.send(message: ParsedMessage(
+                if activate, game.units[unitId]?.state != .active {
+                    try await sendCoreGameplayAction(ParsedMessage(
                         tag: "changeState",
-                        attributes: ["unit": unitId, "state": UnitState.active.rawValue],
-                        children: []))
-                    if server != nil {
+                        attributes: ["unit": unitId, "state": "active"], children: []),
+                        queueIfDisconnected: false)
+                    guard cachedGame === game else { return }
+                    if usesLocalServer {
                         game.changeUnitState(unitId: unitId, state: .active)
+                        gameUpdateID += 1
+                    }
+                    guard game.units[unitId]?.state == .active else {
+                        throw UserFacingActionError(message: "Der Server hat die Aktivierung nicht bestätigt.")
                     }
                 }
-                if server != nil {
-                    reconcileSelectionWithGame()
-                    gameUpdateID += 1
-                }
-                statusMessage = "Orders cleared."
+                statusMessage = destination == nil ? "Befehle gelöscht." : "Marschziel gespeichert."
             } catch {
-                errorMessage = error.localizedDescription
+                guard cachedGame === game else { return }
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
 
-    /// Local units that still have movement or are active this turn.
+    func updateTradeRouteStop(_ unitId: String, index: Int, in game: Game) {
+        errorMessage = nil
+        movingUnitId = unitId
+        Task {
+            defer { if movingUnitId == unitId { movingUnitId = nil } }
+            do {
+                try await sendCoreGameplayAction(ParsedMessage(
+                    tag: "setCurrentStop", attributes: ["unit": unitId, "index": String(index)], children: []
+                ), queueIfDisconnected: false)
+                guard cachedGame === game else { return }
+                if usesLocalServer {
+                    game.setUnitCurrentStop(unitId: unitId, index: index)
+                    gameUpdateID += 1
+                }
+                guard game.units[unitId]?.currentStop == index else {
+                    throw UserFacingActionError(message: "Der Server hat den Haltepunkt nicht bestätigt.")
+                }
+                statusMessage = "Haltepunkt geändert."
+            } catch {
+                guard cachedGame === game else { return }
+                errorMessage = ServerErrorMessage.description(for: error)
+            }
+        }
+    }
+
+    func updateTradeRouteAssignment(_ unitId: String, routeId: String?, in game: Game) {
+        errorMessage = nil
+        movingUnitId = unitId
+        Task {
+            defer { if movingUnitId == unitId { movingUnitId = nil } }
+            do {
+                var attributes = ["unit": unitId]
+                if let routeId { attributes["tradeRoute"] = routeId }
+                try await sendCoreGameplayAction(ParsedMessage(
+                    tag: "assignTradeRoute", attributes: attributes, children: []
+                ), queueIfDisconnected: false)
+                guard cachedGame === game else { return }
+                if usesLocalServer {
+                    game.setUnitTradeRoute(unitId: unitId, tradeRouteId: routeId)
+                    gameUpdateID += 1
+                }
+                guard let unit = game.units[unitId], unit.tradeRoute == routeId else {
+                    throw UserFacingActionError(message: "Der Server hat die Routenzuweisung nicht bestätigt.")
+                }
+                statusMessage = routeId == nil ? "Routenzuweisung entfernt." : "Handelsroute zugewiesen."
+            } catch {
+                guard cachedGame === game else { return }
+                errorMessage = ServerErrorMessage.description(for: error)
+            }
+        }
+    }
+
+    /// All local units, including colony workers used in reports.
     var selectableLocalUnits: [FreeColGame.Unit] {
         guard let game = cachedGame,
               let localPlayerId = resolveLocalPlayerId() else { return [] }
@@ -3698,17 +3875,29 @@ final class GameState {
             .sorted { $0.id < $1.id }
     }
 
+    /// Units cycled on the map; workers remain selectable in their colony.
+    var cyclingLocalUnits: [FreeColGame.Unit] {
+        guard let game = cachedGame else { return [] }
+        let colonyLocations = Set(game.colonies.values.flatMap {
+            [$0.id] + $0.buildings.map(\.id) + $0.workTiles.map(\.id)
+        })
+        return selectableLocalUnits.filter { unit in
+            guard let location = unit.location else { return true }
+            return !colonyLocations.contains(location)
+        }
+    }
+
     /// Units the player has not given an order to yet (Java `EndTurnDialog`).
     var unitsAwaitingOrders: [FreeColGame.Unit] {
         guard let game = cachedGame else { return [] }
-        return selectableLocalUnits.filter {
+        return cyclingLocalUnits.filter {
             $0.movesLeft > 0 && $0.state == .active && game.resolvedTileId(for: $0) != nil
         }
     }
 
     /// Cycle to the next (`forward`) or previous local unit.
     func selectAdjacentUnit(forward: Bool, onlyAwaitingOrders: Bool = false) {
-        let units = onlyAwaitingOrders ? unitsAwaitingOrders : selectableLocalUnits
+        let units = onlyAwaitingOrders ? unitsAwaitingOrders : cyclingLocalUnits
         guard !units.isEmpty, let game = cachedGame else { return }
         let target: FreeColGame.Unit
         if let currentId = selectedUnitId, let index = units.firstIndex(where: { $0.id == currentId }) {
@@ -3724,7 +3913,7 @@ final class GameState {
     func selectNextUnit() { selectAdjacentUnit(forward: true) }
     func selectPreviousUnit() { selectAdjacentUnit(forward: false) }
 
-    /// A naval unit on a tile can be sent to Europe via server high-seas routing.
+    /// Only a ship on a direct high-seas exit can begin a Europe crossing.
     var canSendSelectedUnitToEurope: Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,
@@ -3735,7 +3924,7 @@ final class GameState {
               unit.owner == localPlayerId,
               isNavalUnit(unit),
               let tileId = resolveUnitTileId(unit, in: game),
-              game.tiles[tileId] != nil,
+              game.tiles[tileId]?.moveToEurope == true,
               localPlayer?.europe?.id != nil else {
             return false
         }
@@ -3748,7 +3937,7 @@ final class GameState {
               let unitId = selectedUnitId,
               let game = cachedGame,
               let europeId = localPlayer?.europe?.id else {
-            errorMessage = "Reise nach Europa nicht moeglich."
+            errorMessage = "Die Reise nach Europa ist nur mit einem eigenen Schiff auf einem Hochsee-Ausfahrtsfeld am Kartenrand im eigenen Zug möglich."
             return
         }
         errorMessage = nil
@@ -3762,7 +3951,47 @@ final class GameState {
                 try await sendCoreGameplayAction(msg)
                 statusMessage = "Segelt nach Europa."
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
+            }
+        }
+    }
+
+    func canSendShipToAmerica(_ unitId: String) -> Bool {
+        guard phase == .inGame, isLocalPlayersTurn, !usesLocalServer,
+              !isSavingGame, !isEndingTurn, movingUnitId == nil,
+              let game = cachedGame, game.map != nil,
+              let unit = game.units[unitId], unit.owner == localPlayerId,
+              isNavalUnit(unit),
+              let europeId = localPlayer?.europe?.id,
+              unit.location == europeId else { return false }
+        return true
+    }
+
+    func sendShipToAmerica(_ unitId: String) {
+        guard canSendShipToAmerica(unitId),
+              let game = cachedGame, let mapId = game.map?.id,
+              let europeId = localPlayer?.europe?.id else {
+            errorMessage = "Die Rückreise ist nur mit einem eigenen Schiff im Europahafen im eigenen Zug auf einem Java-Server möglich."
+            return
+        }
+        errorMessage = nil
+        movingUnitId = unitId
+        Task {
+            defer { if movingUnitId == unitId { movingUnitId = nil } }
+            do {
+                try await sendCoreGameplayAction(
+                    Self.moveToMessage(unitId: unitId, destinationId: mapId),
+                    queueIfDisconnected: false
+                )
+                guard cachedGame === game else { return }
+                guard let ship = game.units[unitId], ship.location != europeId,
+                      ship.destination == mapId, unitTravelStatus(ship) != nil else {
+                    throw UserFacingActionError(message: "Der Server hat die Abreise zur Neuen Welt nicht bestätigt.")
+                }
+                reconcileSelectionWithGame()
+                statusMessage = "Schiff ist zur Neuen Welt aufgebrochen."
+            } catch {
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -3837,7 +4066,7 @@ final class GameState {
                 }
                 try await sendCoreGameplayAction(msg, queueIfDisconnected: false)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -3888,7 +4117,7 @@ final class GameState {
                 try await client?.send(message: msg)
                 statusMessage = "Fracht abgeworfen."
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -3916,7 +4145,7 @@ final class GameState {
                 }
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -3973,7 +4202,7 @@ final class GameState {
                 }
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -4007,7 +4236,7 @@ final class GameState {
                 }
                 try await sendCoreGameplayAction(msg, queueIfDisconnected: false)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -4040,7 +4269,7 @@ final class GameState {
                 }
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -4063,7 +4292,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -4101,7 +4330,7 @@ final class GameState {
                 }
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -4129,7 +4358,7 @@ final class GameState {
                 }
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -4159,7 +4388,7 @@ final class GameState {
                 let msg = ParsedMessage(tag: "setBuildQueue", attributes: attrs, children: [])
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -4187,7 +4416,7 @@ final class GameState {
                 }
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -4276,7 +4505,7 @@ final class GameState {
                 }
                 try await sendCoreGameplayAction(msg, queueIfDisconnected: false)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -4338,7 +4567,7 @@ final class GameState {
                 }
                 try await sendCoreGameplayAction(msg, queueIfDisconnected: false)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -4361,7 +4590,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -4390,7 +4619,7 @@ final class GameState {
                 }
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -4416,7 +4645,7 @@ final class GameState {
                 }
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -4475,7 +4704,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -4568,7 +4797,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -4606,7 +4835,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -4642,7 +4871,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -4671,13 +4900,13 @@ final class GameState {
                     )
                     try await client?.send(message: msg)
                 } catch {
-                    errorMessage = error.localizedDescription
+                    errorMessage = ServerErrorMessage.description(for: error)
                 }
             }
         } catch let MarketTradeError.message(text) {
             errorMessage = text
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = ServerErrorMessage.description(for: error)
         }
     }
 
@@ -4704,13 +4933,13 @@ final class GameState {
                     )
                     try await client?.send(message: msg)
                 } catch {
-                    errorMessage = error.localizedDescription
+                    errorMessage = ServerErrorMessage.description(for: error)
                 }
             }
         } catch let MarketTradeError.message(text) {
             errorMessage = text
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = ServerErrorMessage.description(for: error)
         }
     }
 
@@ -4844,7 +5073,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -4908,7 +5137,7 @@ final class GameState {
                 )
                 try await sendCoreGameplayAction(msg, queueIfDisconnected: false)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -4939,7 +5168,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -5008,7 +5237,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -5051,7 +5280,7 @@ final class GameState {
                 }
                 statusMessage = "Skill erfragt."
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -5087,7 +5316,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -5142,7 +5371,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -5192,7 +5421,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -5237,7 +5466,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -5282,7 +5511,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -5329,7 +5558,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -5374,7 +5603,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -5419,7 +5648,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -5467,7 +5696,7 @@ final class GameState {
                 )
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -5487,6 +5716,21 @@ final class GameState {
 
     // MARK: Phase 48 - Diplomacy
 
+    var diplomacyContextForSelectedUnit: String? {
+        guard let unit = selectedUnit, let specification = cachedGame?.specification else { return nil }
+        if specification.hasAbility("model.ability.negotiate", unitType: unit.unitType) {
+            return "DIPLOMATIC"
+        }
+        guard !isNavalUnit(unit),
+              ["model.role.soldier", "model.role.dragoon"].contains(unit.role ?? "")
+                || (specification.unitTypes[unit.unitType ?? ""]?.offence ?? 0) > 0 else { return nil }
+        return "TRIBUTE"
+    }
+
+    var pendingDiplomacyClauseKinds: [DiplomaticClauseKind] {
+        pendingDiplomacy?.context == "TRIBUTE" ? [.gold, .stance, .incite] : DiplomaticClauseKind.allCases
+    }
+
     /// Adjacent foreign colonies the selected unit could negotiate with.
     var diplomacyInitiationTargetsForSelectedUnit: [(id: String, label: String)] {
         guard phase == .inGame,
@@ -5495,18 +5739,18 @@ final class GameState {
               let unit = selectedUnit,
               let localPlayerId = resolveLocalPlayerId(),
               unit.owner == localPlayerId,
-              game.specification?.hasAbility("model.ability.negotiate", unitType: unit.unitType) == true,
+              unit.movesLeft > 0,
+              unit.state == .active,
+              diplomacyContextForSelectedUnit != nil,
               let unitTileId = resolveUnitTileId(unit, in: game),
-              let unitTile = game.tiles[unitTileId] else { return [] }
+              game.tiles[unitTileId] != nil else { return [] }
+        let neighbors = Set(game.neighborTileIds(of: unitTileId))
         return game.colonies.values.compactMap { colony in
             guard let ownerId = colony.owner,
                   ownerId != localPlayerId,
                   game.players[ownerId]?.playerType == .european,
                   let colonyTileId = colony.tileId,
-                  let colonyTile = game.tiles[colonyTileId] else { return nil }
-            let dx = abs(colonyTile.x - unitTile.x)
-            let dy = abs(colonyTile.y - unitTile.y)
-            guard dx <= 1, dy <= 1, !(dx == 0 && dy == 0) else { return nil }
+                  neighbors.contains(colonyTileId) else { return nil }
             let ownerName = game.players[ownerId]?.name ?? ownerId
             return (id: colony.id, label: "\(colony.name ?? colony.id) (\(ownerName))")
         }
@@ -5522,6 +5766,7 @@ final class GameState {
               let unitId = selectedUnitId,
               let other = game.colonies[otherColonyId],
               let otherOwner = other.owner,
+              let context = diplomacyContextForSelectedUnit,
               let ourId = resolveLocalPlayerId() else {
             errorMessage = "Diplomatie nicht möglich."
             return
@@ -5534,20 +5779,25 @@ final class GameState {
         let tradeNode = ParsedMessage(
             tag: "diplomaticTrade",
             attributes: [
-                "context": "DIPLOMATIC",
+                "id": "",
+                "context": context,
                 "sender": ourId,
                 "recipient": otherOwner,
                 "status": "PROPOSE_TRADE",
-                "version": "1",
+                "version": "0",
             ],
-            children: []
+            children: context == "TRIBUTE" ? [
+                Self.diplomacyClauseNode(DiplomaticClauseDraft(kind: .stance), ourId: ourId, otherId: otherOwner),
+                Self.diplomacyClauseNode(DiplomaticClauseDraft(kind: .gold, weGive: false),
+                                        ourId: ourId, otherId: otherOwner),
+            ] : []
         )
         pendingServerDecision = PendingServerDecision(
             type: .diplomacy,
             rawPayload: ["ourId": unitId, "otherId": otherColonyId],
             children: [tradeNode]
         )
-        statusMessage = "Diplomatie eröffnet."
+        statusMessage = context == "TRIBUTE" ? "Tributverhandlung eröffnet." : "Diplomatie eröffnet."
     }
 
     var canSendDiplomacy: Bool {
@@ -5631,7 +5881,7 @@ final class GameState {
                 }
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -5660,25 +5910,15 @@ final class GameState {
                 }
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
 
     func canMoveSelectedUnit(to destinationTileId: String) -> Bool {
-        guard phase == .inGame,
-              isLocalPlayersTurn,
+        guard canMoveSelectedUnitTo(destinationTileId: destinationTileId),
               let game = cachedGame,
-              let unitId = selectedUnitId,
-              let unit = game.units[unitId],
-              let localPlayerId = resolveLocalPlayerId(),
-              unit.owner == localPlayerId,
-              unit.movesLeft > 0,
-              unit.state == .active,
-              let sourceTileId = unit.location,
-              game.tiles[sourceTileId] != nil,
-              sourceTileId != destinationTileId,
-              game.tiles[destinationTileId] != nil else {
+              let sourceTileId = selectedUnitTileId else {
             return false
         }
         guard attackDirection(fromTileId: sourceTileId, toTileId: destinationTileId, in: game) != nil else {
@@ -5693,6 +5933,58 @@ final class GameState {
         reconcileSelectedUnitOrderWithGame()
         reconcilePendingEndTurnWithGame()
         autoFocusInitialUnitIfNeeded()
+        continueSavedMovementOrders()
+    }
+
+    private func continueSavedMovementOrders() {
+        guard phase == .inGame, isLocalPlayersTurn, !isEndingTurn, !isSavingGame,
+              movingUnitId == nil, let game = cachedGame, let owner = localPlayerId else { return }
+        guard let unit = game.units.values.sorted(by: { $0.id < $1.id }).first(where: {
+            $0.owner == owner && $0.movesLeft > 0 && $0.tradeRoute == nil
+                && game.tiles[$0.location ?? ""] != nil
+                && canIssueMovementOrders(for: $0, in: game)
+                && $0.destination.flatMap { game.tiles[$0] } != nil
+                && movementAttempts[$0.id] != game.turn.number
+        }), let destination = unit.destination else { return }
+        startMovingUnit(unit.id, to: destination)
+    }
+
+    func movementPath(for unit: FreeColGame.Unit) -> [String] {
+        guard let game = cachedGame, let destination = unit.destination,
+              let source = resolveUnitTileId(unit, in: game), game.tiles[destination] != nil else { return [] }
+        var path = [source]
+        var visited: Set<String> = [source]
+        while let current = path.last, current != destination {
+            guard let next = nextStepTowardDestination(
+                for: unit, destinationTileId: destination, in: game, from: current
+            ), visited.insert(next).inserted else { return [] }
+            path.append(next)
+        }
+        return path
+    }
+
+    func unitTravelStatus(_ unit: FreeColGame.Unit) -> String? {
+        guard let game = cachedGame else { return nil }
+        if game.players.values.contains(where: { $0.europe?.id == unit.location && unit.location != nil }) {
+            return "In Europa"
+        }
+        let isOnMap = unit.location.flatMap { game.tiles[$0] } != nil
+        guard !isOnMap,
+              unit.location?.hasPrefix("highSeas:") == true
+                || [.sailing, .toEurope, .toAmerica].contains(unit.state) else { return nil }
+        let destination: String
+        if game.players.values.contains(where: { $0.europe?.id == unit.destination && unit.destination != nil })
+            || unit.state == .toEurope {
+            destination = "Europa"
+        } else if unit.destination == game.map?.id && unit.destination != nil
+                    || unit.destination.flatMap({ game.tiles[$0] }) != nil
+                    || unit.state == .toAmerica {
+            destination = "Neue Welt"
+        } else {
+            destination = "Ziel unbekannt"
+        }
+        let turns = max(0, unit.workLeft)
+        return "Überfahrt: \(destination) (\(turns) \(turns == 1 ? "Runde" : "Runden"))"
     }
 
     private func surfaceEuropeArrivalMessage() {
@@ -5702,7 +5994,9 @@ final class GameState {
             seenModelMessageSignatures.insert(signature)
             return message.id == "model.unit.arriveInEurope"
         }) else { return }
-        statusMessage = "A ship arrived in Europe."
+        let ship = message.source.flatMap { cachedGame?.units[$0] }
+        let name = ship?.name ?? ship?.unitType.map(unitDisplayName) ?? "Ein Schiff"
+        statusMessage = "\(name) ist in Europa eingetroffen."
     }
 
     private func reconcileSelectionWithGame() {
@@ -5738,9 +6032,7 @@ final class GameState {
             if let tileId = resolveUnitTileId(unit, in: game) {
                 selectedTileId = tileId
             } else {
-                selectedUnitId = nil
                 selectedTileId = nil
-                return
             }
         } else if let tileId = selectedTileId {
             if game.tiles[tileId] == nil {
@@ -5838,17 +6130,16 @@ final class GameState {
         return mapping.first(where: { $0.value.0 == dx && $0.value.1 == dy })?.key
     }
 
-    private func nextStepTowardDestination(for unit: FreeColGame.Unit, destinationTileId: String, in game: Game) -> String? {
-        guard let sourceTileId = resolveUnitTileId(unit, in: game),
+    private func nextStepTowardDestination(for unit: FreeColGame.Unit, destinationTileId: String, in game: Game, from source: String? = nil) -> String? {
+        guard let sourceTileId = source ?? resolveUnitTileId(unit, in: game),
               game.tiles[destinationTileId] != nil else {
             return nil
         }
         return game.nextPathStep(from: sourceTileId, to: destinationTileId) { _, next in
-            guard let tile = game.tiles[next], let type = tile.type, let owner = unit.owner,
+            guard let tile = game.tiles[next], tile.type != nil, let owner = unit.owner,
                   !hasHostileUnit(onTile: next, in: game, friendlyOwner: owner),
                   !game.colonies.values.contains(where: { $0.tileId == next && $0.owner != owner }) else { return false }
-            let water = game.specification?.tileTypes[type]?.isWater
-                ?? ["model.tile.ocean", "model.tile.highSeas", "model.tile.lake", "model.tile.greatRiver"].contains(type)
+            let water = isWaterTile(tile, in: game)
             if isNavalUnit(unit) {
                 return water || game.colonies.values.contains { $0.tileId == next && $0.owner == owner }
             }
@@ -5856,6 +6147,15 @@ final class GameState {
         }
     }
 
+    private func isWaterTile(_ tile: Tile, in game: Game) -> Bool {
+        guard let type = tile.type else { return false }
+        return game.specification?.tileTypes[type]?.isWater
+            ?? ["model.tile.ocean", "model.tile.highSeas", "model.tile.lake", "model.tile.greatRiver"].contains(type)
+    }
+
+    private func canIssueMovementOrders(for unit: FreeColGame.Unit, in game: Game) -> Bool {
+        unit.state == .active || (unit.state == .sentry && game.units[unit.location ?? ""] != nil)
+    }
     private func isValidDirection(_ direction: String) -> Bool {
         ["N", "NE", "E", "SE", "S", "SW", "W", "NW"].contains(direction)
     }
@@ -5953,7 +6253,8 @@ final class GameState {
               let localNationId,
               reconnectTask == nil else {
             if !userRequestedDisconnect {
-                errorMessage = error?.localizedDescription ?? "Disconnected"
+                errorMessage = error.map { ServerErrorMessage.description(for: $0) }
+                    ?? "Die Verbindung zum Server wurde getrennt."
             }
             return
         }
@@ -6004,7 +6305,7 @@ final class GameState {
                 try await sendCoreGameplayAction(action.message, queueIfDisconnected: false)
                 queuedGameplayActions.removeAll { $0.id == action.id }
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }

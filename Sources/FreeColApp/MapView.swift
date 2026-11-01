@@ -297,6 +297,24 @@ struct MapView: View {
                                 ))
                             }
                             drawImprovements(tile, at: origin, context: &ctx)
+                            for resource in tile.resources {
+                                if let image = TileImageCache.shared.resourceImage(for: resource.type) {
+                                    let width = tileW * 0.4
+                                    let height = width * image.size.height / max(1, image.size.width)
+                                    ctx.draw(Image(nsImage: image), in: CGRect(
+                                        x: origin.x - width / 2, y: origin.y - height / 2,
+                                        width: width, height: height
+                                    ))
+                                }
+                            }
+                            if let image = TileImageCache.shared.lostCityRumourImage(for: tile) {
+                                let width = tileW * 0.5
+                                let height = width * image.size.height / max(1, image.size.width)
+                                ctx.draw(Image(nsImage: image), in: CGRect(
+                                    x: origin.x - width / 2, y: origin.y - height / 2,
+                                    width: width, height: height
+                                ))
+                            }
                             // Explored but not currently visible: dim like the Java RescaleOp(0.8).
                             if isDimmed {
                                 ctx.fill(path, with: .color(.black.opacity(0.2)))
@@ -385,19 +403,22 @@ struct MapView: View {
                             if state.mapOverlay == .resources,
                                (isVisible || !showFog),
                                let resource = tile.resources.first {
-                                let marker = Path(ellipseIn: CGRect(
-                                    x: origin.x - 7,
-                                    y: origin.y + tileH * 0.18,
-                                    width: 14,
-                                    height: 14
-                                ))
-                                ctx.fill(marker, with: .color(.orange))
-                                ctx.stroke(marker, with: .color(.black), lineWidth: 1)
-                                let label = Text("\(GameLabels.name(resource.type ?? resource.id)) ×\(resource.quantity)")
+                                let quantity = resource.quantity >= 0 ? " ×\(resource.quantity)" : ""
+                                let label = Text("\(GameLabels.name(resource.type ?? resource.id))\(quantity)")
                                     .font(.system(size: max(8, tileW * 0.055), weight: .bold))
                                     .foregroundColor(.white)
                                 ctx.draw(label, at: CGPoint(x: origin.x, y: origin.y + tileH * 0.4))
                             }
+                        }
+
+                        for tile in visibleTiles {
+                            guard let image = TileImageCache.shared.highSeasExitImage(for: tile) else { continue }
+                            let origin = tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
+                            let height = tileW * image.size.height / max(1, image.size.width)
+                            ctx.draw(Image(nsImage: image), in: CGRect(
+                                x: origin.x - tileW / 2, y: origin.y - height / 2,
+                                width: tileW, height: height
+                            ))
                         }
 
                         // Labels must follow all sprites so later tiles cannot paint over them.
@@ -452,9 +473,10 @@ struct MapView: View {
                             }
                         }
 
-                        if state.mapOverlay == .paths,
-                           let selectedUnitId = state.selectedUnitId,
-                           let selectedUnit = game.units[selectedUnitId],
+                        for selectedUnit in game.units.values.sorted(by: { $0.id < $1.id })
+                            where selectedUnit.owner == state.localPlayerId
+                                && (selectedUnit.id == state.selectedUnitId || state.mapOverlay == .paths) {
+                           if
                            let destinationTileId = selectedUnit.destination,
                            let destinationTile = game.tiles[destinationTileId],
                            let sourceTileId = resolveUnitTileId(selectedUnit, in: game),
@@ -462,17 +484,9 @@ struct MapView: View {
                             let sourceOrigin = tileOrigin(x: sourceTile.x, y: sourceTile.y, tileW: tileW, tileH: tileH)
                             var previewPath = Path()
                             previewPath.move(to: sourceOrigin)
-                            var currentTileId = sourceTileId
-                            var reachedDestination = false
-                            for _ in 0..<data.tiles.count {
-                                guard let nextTileId = game.nextPathStep(
-                                    from: currentTileId,
-                                    to: destinationTileId,
-                                    canTraverse: { _, next in
-                                        !state.showFogOfWar || data.visibleTileIds.contains(next)
-                                    }
-                                ), let nextTile = game.tiles[nextTileId] else { break }
-                                currentTileId = nextTileId
+                            let route = state.movementPath(for: selectedUnit)
+                            for nextTileId in route.dropFirst() {
+                                guard let nextTile = game.tiles[nextTileId] else { break }
                                 let nextOrigin = tileOrigin(
                                     x: nextTile.x,
                                     y: nextTile.y,
@@ -480,12 +494,8 @@ struct MapView: View {
                                     tileH: tileH
                                 )
                                 previewPath.addLine(to: nextOrigin)
-                                if nextTileId == destinationTileId {
-                                    reachedDestination = true
-                                    break
-                                }
                             }
-                            if reachedDestination {
+                            if route.last == destinationTileId {
                                 ctx.stroke(
                                     previewPath,
                                     with: .color(.yellow.opacity(0.9)),
@@ -508,6 +518,10 @@ struct MapView: View {
                             )
                             let marker = Path(ellipseIn: markerRect)
                             ctx.stroke(marker, with: .color(.yellow), lineWidth: 2)
+                            ctx.draw(Text("Ziel").font(.system(size: max(10, tileW * 0.1), weight: .bold))
+                                .foregroundColor(.yellow),
+                                     at: CGPoint(x: destinationOrigin.x, y: destinationOrigin.y + markerSize))
+                           }
                         }
 
                         if let cue = state.mapAnimationCue,

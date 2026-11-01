@@ -180,6 +180,7 @@ public struct TileTypeInfo: @unchecked Sendable {
     public var id: String
     public var isWater: Bool
     public var canSettle: Bool
+    public var canMoveToEurope: Bool
     public var centerOutputs: [String: Int]
     public var centerInputs: [String: Int]
     public var workerOutputs: [String: Int]
@@ -187,12 +188,14 @@ public struct TileTypeInfo: @unchecked Sendable {
     public init(id: String,
                 isWater: Bool = false,
                 canSettle: Bool = true,
+                canMoveToEurope: Bool = false,
                 centerOutputs: [String: Int] = [:],
                 centerInputs: [String: Int] = [:],
                 workerOutputs: [String: Int] = [:]) {
         self.id = id
         self.isWater = isWater
         self.canSettle = canSettle
+        self.canMoveToEurope = canMoveToEurope
         self.centerOutputs = centerOutputs
         self.centerInputs = centerInputs
         self.workerOutputs = workerOutputs
@@ -387,6 +390,11 @@ public final class Specification: @unchecked Sendable {
             tileTypes[tileId] = TileTypeInfo(id: tileId,
                                              isWater: child.attributes.bool("is-water", default: false),
                                              canSettle: child.attributes.bool("can-settle", default: true),
+                                             canMoveToEurope: child.children.contains {
+                                                 $0.tag == "ability"
+                                                     && $0.attributes["id"] == "model.ability.moveToEurope"
+                                                     && $0.attributes.bool("value", default: true)
+                                             },
                                              centerOutputs: outputs,
                                              centerInputs: inputs,
                                              workerOutputs: workerOutputs)

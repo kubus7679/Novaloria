@@ -31,6 +31,12 @@ struct GameMenuBar: View {
 
     private var gameMenu: some View {
         Menu("Spiel") {
+            Button(state.isSavingGame ? "Wird gespeichert…" : "Spiel speichern…") {
+                state.showSaveGamePanel()
+            }
+            .disabled(!state.canSaveGame)
+            .help("Vollständigen Spielstand speichern. Erfordert die Java-Speichererweiterung und Administratorrechte im eigenen Zug.")
+            Divider()
             Button("Zug beenden") { state.requestEndTurn() }
                 .disabled(!state.canEndTurn)
             Divider()
@@ -100,8 +106,10 @@ struct GameMenuBar: View {
             Divider()
             Button("Kolonie gründen") { state.buildColony(name: state.suggestedColonyName) }
                 .disabled(!state.canBuildSelectedColony)
-            Button("In der Kolonie arbeiten") { state.joinSelectedColony() }
-                .disabled(!state.canJoinSelectedColony)
+            if state.showsColonyWorkOrder {
+                Button("In der Kolonie arbeiten") { state.joinSelectedColony() }
+                    .disabled(!state.canJoinSelectedColony)
+            }
             Menu("Verwalten") {
                 Button("Einheit auflösen…", role: .destructive) { state.disbandSelectedUnit() }
                 .disabled(!state.canDisbandSelectedUnit)
@@ -117,13 +125,15 @@ struct GameMenuBar: View {
                 .disabled(!state.canClearSelectedUnitDestination)
             Button("Befehle löschen") { state.clearSelectedUnitOrders() }
                 .disabled(!state.canClearSelectedUnitOrders)
-            Button("Nach Europa") { state.sendSelectedUnitToEurope() }
-                .disabled(!state.canSendSelectedUnitToEurope)
+            if state.showsEuropeTravelOrder {
+                Button("Nach Europa") { state.sendSelectedUnitToEurope() }
+                    .disabled(!state.canSendSelectedUnitToEurope)
+            }
             Divider()
             Button("Nächste Einheit") { state.selectNextUnit() }
-                .disabled(state.selectableLocalUnits.isEmpty)
+                .disabled(state.cyclingLocalUnits.isEmpty)
             Button("Vorherige Einheit") { state.selectPreviousUnit() }
-                .disabled(state.selectableLocalUnits.isEmpty)
+                .disabled(state.cyclingLocalUnits.isEmpty)
             Button("Nächste Einheit ohne Befehl") {
                 state.selectAdjacentUnit(forward: true, onlyAwaitingOrders: true)
             }

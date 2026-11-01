@@ -5,11 +5,26 @@
 > Die verifizierten Restlücken stehen in
 > `Docs/Plans/playability-roadmap-54-57.md` (Phasen 54–65) sowie die
 > Economy-/Colony-Management-Follow-ups der Phasen 66–102. Im aktuellen Java-Lauf
-> bestehen 11 von 12 Proben (smoke, deep, gameplay, reject, traderoute, multiplayer,
-> Native Trade, abandon, combat, missionary/spy, recruitment); Diplomatie wird
-> übersprungen, weil keine AI-Antwort beobachtet wird. `STRICT_SKIPS=1` deckt diesen
-> offenen Fall auf. Die native UI-
-> Sichtprüfung der Transit-/Ankunftsanzeige steht noch aus.
+> bestehen alle 14 Proben (smoke, deep, gameplay, reject, traderoute,
+> multiplayer, Native Trade, abandon, disembark, diplomacy, tribute, combat, missionary/spy,
+> recruitment), ohne Skip und mit `STRICT_SKIPS=1`.
+> Die Java-AI bestätigt Frieden und exakt 100 Gold Geschenktransfer sowie separat
+> Frieden gegen exakt 100 Gold Tribut. Bewaffnete Landeinheiten erreichen den
+> Tributeditor neben fremden europäischen Kolonien.
+> Native Fixture-Fenster prüfen Transit-/Ankunftsanzeige, stabile Schiffsauswahl
+> und die Europa-Kaufliste. Phase 103 vereinheitlicht deutsche Serverfehler.
+> Ausschiffen nutzt an Küsten die Passagierbewegung zum Landfeld; im Hafen und
+> in Europa wird direkt ausgeladen, auch ohne verbleibende Bewegungspunkte.
+> Phasen 105–106 sichern Zieländerungen und Befehlsabbruch mit Serverbestätigung
+> ab und ergänzen alle zwölf originalen Rohstoffgrafiken auf Karte, Koloniegelände
+> und Feldinfo. Verifikation: 162 Swift-Tests, native Fensteraufnahmen, App-Bundle
+> und eine Java-Probe für Ziel setzen/löschen plus Überfahrt erfolgreich.
+> Phasen 107–108 ergänzen einen deutschen Handelsrouteneditor mit umbrechenden
+> Aktionen und Warennamen. Nur eigene Waren-Transporter erhalten eigene Routen;
+> Zuweisung, Entfernen und Haltwechsel werden serverbestätigt und nicht offline
+> wiederholt. Native Layout- und TCP-Regressionen sowie die Java-Routenprobe
+> decken diese Abläufe ab. Aktueller Stand: 167 Swift-Tests ohne Fehler,
+> Java-Routenprobe ohne Skip und App-Bundle erfolgreich gebaut.
 
 ## Phase 1: Colony and Unit UX completion
 

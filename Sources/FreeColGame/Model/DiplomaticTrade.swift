@@ -59,10 +59,10 @@ public struct DiplomaticTradeProposal {
 
     public init(raw: ParsedMessage) {
         self.raw = raw
-        self.context = raw.attributes["context"]
+        self.context = raw.attributes["context"]?.uppercased()
         self.sender = raw.attributes["sender"]
         self.recipient = raw.attributes["recipient"]
-        self.status = raw.attributes["status"]
+        self.status = raw.attributes["status"]?.uppercased()
         self.version = raw.attributes.int("version", default: 0)
         self.clauses = raw.children.enumerated().map { index, node in
             DiplomaticTradeClause(index: index, node: node)
@@ -162,4 +162,3 @@ public struct DiplomaticClauseDraft: Identifiable, Equatable, Sendable {
         )
     }
 }
-

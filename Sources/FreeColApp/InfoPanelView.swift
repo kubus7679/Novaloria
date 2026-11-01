@@ -186,26 +186,7 @@ struct InfoPanelView: View {
     }
 
     private func movesLabel(_ unit: FreeColGame.Unit) -> String {
-        guard let game = state.game else {
-            return "Bewegungspunkte: \(unit.movesLeft)"
-        }
-        if let location = unit.location, location.hasPrefix("highSeas:") {
-            let destinationIsEurope = game.players.values.contains {
-                $0.europe?.id == unit.destination
-            }
-            let destination = destinationIsEurope ? "Europa" : "Neue Welt"
-            return "Überfahrt: \(destination) (\(max(unit.workLeft, 0)) Runden)"
-        }
-        if unitLocationIsEurope(unit, in: game) {
-            return "In Europa"
-        }
-        return "Bewegungspunkte: \(unit.movesLeft)"
-    }
-
-    private func unitLocationIsEurope(_ unit: FreeColGame.Unit,
-                                     in game: FreeColGame.Game) -> Bool {
-        guard let location = unit.location else { return false }
-        return game.players.values.contains { $0.europe?.id == location }
+        state.unitTravelStatus(unit) ?? "Bewegungspunkte: \(unit.movesLeft)"
     }
 
     // MARK: - TILE mode
@@ -219,6 +200,14 @@ struct InfoPanelView: View {
                         .interpolation(.high)
                         .frame(width: 56, height: 40)
                         .clipShape(DiamondShape())
+                        .overlay {
+                            if let image = TileImageCache.shared.highSeasExitImage(for: tile) {
+                                Image(nsImage: image)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 56, height: 40)
+                            }
+                        }
                 } else {
                     RoundedRectangle(cornerRadius: 4)
                         .fill(colorForTileType(tile.type))
@@ -229,6 +218,11 @@ struct InfoPanelView: View {
                     Text(typeLabel(tile.type))
                         .font(.headline)
                         .foregroundColor(.white)
+                    if tile.type != nil, tile.moveToEurope {
+                        Text("Hochsee-Ausfahrt nach Europa")
+                            .font(.caption2)
+                            .foregroundColor(.cyan)
+                    }
                     Text(tile.type == nil ? "Unerforscht" : "Erforscht")
                         .font(.caption2)
                         .foregroundColor(tile.type == nil ? .secondary : .green)
@@ -251,8 +245,16 @@ struct InfoPanelView: View {
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
-            if !tile.resources.isEmpty {
-                Text("Ressourcen: \(tile.resources.map { "\(GameLabels.name($0.type ?? $0.id)) (\($0.quantity))" }.joined(separator: ", "))")
+            ForEach(tile.resources) { resource in
+                HStack {
+                    if let image = TileImageCache.shared.resourceImage(for: resource.type) {
+                        Image(nsImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 32, height: 24)
+                    }
+                    Text("\(GameLabels.name(resource.type ?? resource.id))\(resource.quantity >= 0 ? " (\(resource.quantity))" : "")")
+                }
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -261,8 +263,16 @@ struct InfoPanelView: View {
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
-            if let lostCityName = tile.lostCityName {
-                Text("Lost city: \(short(lostCityName, prefix: "nameCache."))")
+            if tile.hasLostCityRumour {
+                HStack {
+                    if let image = TileImageCache.shared.lostCityRumourImage(for: tile) {
+                        Image(nsImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 32, height: 24)
+                    }
+                    Text("Gerücht einer verlorenen Stadt")
+                }
                     .font(.caption2)
                     .foregroundColor(.orange)
             }

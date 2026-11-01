@@ -27,7 +27,7 @@ struct TradeRoutePanelView: View {
                     editor
                 }
             } else {
-                Text("Trade routes can only be managed during your turn.")
+                Text("Handelsrouten können nur im eigenen Zug verwaltet werden.")
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -42,7 +42,7 @@ struct TradeRoutePanelView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Trade Routes")
+                Text("Handelsrouten")
                     .font(.headline)
                 Spacer()
                 if let message = state.errorMessage {
@@ -51,24 +51,25 @@ struct TradeRoutePanelView: View {
                         .foregroundColor(.red)
                         .lineLimit(1)
                 }
-                Button("New Route") {
+                Button("Neue Route") {
                     knownRouteIds = Set(routes.map(\.id))
                     awaitingNewRoute = true
                     state.createTradeRoute()
                 }
-                Button("Close") { dismiss() }
+                .disabled(!state.canManageTradeRoutes)
+                Button("Schließen") { dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
             
             HStack {
-                Toggle("Auto-execute routes at turn end", isOn: Binding(
+                Toggle("Routen beim Zugende automatisch ausführen", isOn: Binding(
                     get: { state.autoExecuteTradeRoutes },
                     set: { state.autoExecuteTradeRoutes = $0 }
                 ))
                 .toggleStyle(.checkbox)
                 .font(.caption)
                 
-                Button("Execute Now") {
+                Button("Jetzt ausführen") {
                     state.executeTradeRoutes()
                 }
                 .buttonStyle(.bordered)
@@ -113,7 +114,7 @@ struct TradeRoutePanelView: View {
                 }
             }
             if routes.isEmpty {
-                Text("No trade routes yet.")
+                Text("Noch keine Handelsrouten.")
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 8)
@@ -133,7 +134,7 @@ struct TradeRoutePanelView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Text("Name")
-                        TextField("Route name", text: Binding(
+                        TextField("Routenname", text: Binding(
                             get: { draft.name ?? "" },
                             set: { self.draft?.name = $0 }
                         ))
@@ -148,9 +149,9 @@ struct TradeRoutePanelView: View {
 
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
-                            Text("Stops").font(.subheadline.weight(.semibold))
+                            Text("Haltepunkte").font(.subheadline.weight(.semibold))
                             Spacer()
-                            Button("Add Stop") {
+                            Button("Halt hinzufügen") {
                                 var updated = draft
                                 let defaultLocation = candidates.first?.id
                                 updated.stops.append(TradeRouteStop(locationId: defaultLocation))
@@ -160,7 +161,7 @@ struct TradeRoutePanelView: View {
                         }
 
                         if draft.stops.isEmpty {
-                            Text("Add at least one stop.")
+                            Text("Mindestens zwei Haltepunkte hinzufügen.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         } else {
@@ -172,43 +173,44 @@ struct TradeRoutePanelView: View {
 
                     Divider()
 
-                    HStack {
-                        Button("Save") { state.saveTradeRoute(draft) }
+                    FlowLayout(spacing: 8) {
+                        Button("Speichern") { state.saveTradeRoute(draft) }
                             .buttonStyle(.borderedProminent)
                             .disabled(state.tradeRouteValidationError(for: draft) != nil)
 
-                        Button("Assign to Selected Unit") {
+                        Button("Einheit zuweisen") {
                             state.assignSelectedUnitTradeRoute(draft.id)
                         }
                         .buttonStyle(.bordered)
                         .disabled(!state.canAssignSelectedUnitTradeRoute(draft.id))
 
-                        Button("Clear from Unit") { state.clearSelectedUnitTradeRoute() }
+                        Button("Zuweisung entfernen") { state.clearSelectedUnitTradeRoute() }
                             .buttonStyle(.bordered)
                             .disabled(!state.canClearSelectedUnitTradeRoute)
 
-                        Spacer()
                     }
 
                     if let unit = state.selectedUnit, unit.tradeRoute == draft.id {
                         HStack {
-                            Text("Current stop")
+                            Text("Aktueller Halt")
                                 .font(.caption)
-                            Stepper("Stop \(unit.currentStop + 1) of \(max(1, draft.stops.count))",
+                            Stepper("Halt \(unit.currentStop + 1) von \(state.game?.tradeRoutes[draft.id]?.stops.count ?? 0)",
                                     value: Binding(
                                         get: { unit.currentStop },
                                         set: { state.setSelectedUnitCurrentStop(String($0)) }
                                     ),
-                                    in: 0...max(0, draft.stops.count - 1))
+                                    in: 0...max(0, (state.game?.tradeRoutes[draft.id]?.stops.count ?? 0) - 1))
                                 .font(.caption)
+                                .disabled(state.movingUnitId != nil || state.isSavingGame)
                             Spacer()
                         }
                     }
                 }
                 .padding(12)
             }
+            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
         } else {
-            Text("Select or create a trade route.")
+            Text("Eine Handelsroute auswählen oder erstellen.")
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -218,13 +220,13 @@ struct TradeRoutePanelView: View {
     private func stopEditor(index: Int, stop: TradeRouteStop) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text("Stop \(index + 1)")
+                Text("Halt \(index + 1)")
                     .font(.caption.weight(.semibold))
                 Picker("", selection: Binding(
                     get: { self.draft?.stops[index].locationId ?? "" },
                     set: { self.draft?.stops[index].locationId = $0.isEmpty ? nil : $0 }
                 )) {
-                    Text("Select location").tag("")
+                    Text("Ort auswählen").tag("")
                     ForEach(candidates, id: \.id) { candidate in
                         Text(candidate.label).tag(candidate.id)
                     }
@@ -264,7 +266,7 @@ struct TradeRoutePanelView: View {
             }
 
             if goodsTypes.isEmpty {
-                Text("No goods types available.")
+                Text("Keine Warenarten verfügbar.")
                     .font(.caption2)
                     .foregroundColor(.secondary)
             } else {
@@ -325,12 +327,12 @@ struct TradeRoutePanelView: View {
     }
 }
 
-/// Minimal wrapping layout for the cargo toggles.
+/// Wrapping layout for cargo toggles and editor actions.
 private struct FlowLayout: Layout {
     var spacing: CGFloat = 6
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let maxWidth = proposal.width ?? .infinity
+        let maxWidth = proposal.width ?? subviews.map { $0.sizeThatFits(.unspecified).width }.max() ?? 0
         var x: CGFloat = 0
         var y: CGFloat = 0
         var rowHeight: CGFloat = 0
@@ -344,7 +346,7 @@ private struct FlowLayout: Layout {
             x += size.width + spacing
             rowHeight = max(rowHeight, size.height)
         }
-        return CGSize(width: maxWidth == .infinity ? x : maxWidth, height: y + rowHeight)
+        return CGSize(width: maxWidth, height: y + rowHeight)
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {

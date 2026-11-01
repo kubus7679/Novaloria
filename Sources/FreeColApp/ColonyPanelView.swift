@@ -160,12 +160,6 @@ struct ColonyPanelView: View {
                 Label("Bevölkerung: \(population)", systemImage: "person.2")
                 Text("Nahrung: \(colony.goods["model.goods.food"] ?? colony.goods["model.goods.grain"] ?? 0)")
                 Spacer()
-                Menu("Verwaltung") {
-                    Button("Kolonie verlassen…", role: .destructive) {
-                        showAbandonConfirmation = true
-                    }
-                    .disabled(!canManage || !canAbandonColony)
-                }
             }
             .font(.caption)
             Text("Bauauftrag: \(buildTargetLabel ?? "Keiner")")
@@ -198,13 +192,6 @@ struct ColonyPanelView: View {
                                     .font(.caption)
                             }
                             GridRow {
-                                Text("Bevölkerung")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Text("\(population)")
-                                    .font(.caption)
-                            }
-                            GridRow {
                                 Text("Freiheit")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -232,13 +219,6 @@ struct ColonyPanelView: View {
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
                                 Text("\(colony.established)")
-                                    .font(.caption2)
-                            }
-                            GridRow {
-                                Text("Bevölkerung")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                Text("\(colony.unitCount)")
                                     .font(.caption2)
                             }
                             GridRow {
@@ -329,16 +309,21 @@ struct ColonyPanelView: View {
                         TextField("Koloniename", text: $colonyNameInput)
                             .textFieldStyle(.roundedBorder)
                             .accessibilityIdentifier("colony-name")
+                            .onSubmit {
+                                if canRename { onRenameColony(colonyNameInput) }
+                            }
                         Button("Kolonie umbenennen") {
                             onRenameColony(colonyNameInput)
                         }
                         .buttonStyle(.bordered)
                         .accessibilityIdentifier("colony-rename")
-                        .disabled(
-                            !canManage || colonyNameInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                || colonyNameInput.trimmingCharacters(in: .whitespacesAndNewlines)
-                                    .caseInsensitiveCompare(colony.name ?? "") == .orderedSame
-                        )
+                        .disabled(!canRename)
+                        Button("Kolonie verlassen…", role: .destructive) {
+                            showAbandonConfirmation = true
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier("colony-abandon")
+                        .disabled(!canManage || !canAbandonColony)
                     }
 
                     if section == .production {
@@ -690,6 +675,12 @@ struct ColonyPanelView: View {
             // Keep the draft in sync with server-driven queue changes.
             buildQueueItems = newQueue
         }
+    }
+
+    private var canRename: Bool {
+        let name = colonyNameInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        return canManage && !name.isEmpty
+            && name.caseInsensitiveCompare(colony.name ?? "") != .orderedSame
     }
 
     private func syncWorkerInputs() {

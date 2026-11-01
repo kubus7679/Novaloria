@@ -32,13 +32,32 @@ extension GameState {
             } else {
                 reason = "Für dieses Feld fehlt der Arbeitsplatz in den Serverdaten."
             }
+            let workers = location.map { location in
+                selectedColonyUnits.filter { $0.location == location.id }
+            } ?? []
+            let type = game.specification?.tileTypes[tile.type ?? ""]
+            let outputs = location?.productionOutputs
+                ?? (id == tileId ? type?.centerOutputs : type?.workerOutputs) ?? [:]
+            var production: [ColonyTerrainProduction] = []
+            if id == tileId {
+                production = outputs.filter { $0.value > 0 }.map {
+                    ColonyTerrainProduction(goodsType: $0.key, baseAmount: $0.value)
+                }
+            } else {
+                let workTypes = Set(workers.compactMap(\.workType))
+                let goodsTypes = workTypes.isEmpty && !workers.isEmpty
+                    ? Set(location?.productionOutputs?.keys.map { $0 } ?? []) : workTypes
+                for goods in goodsTypes {
+                    let workerCount = workTypes.isEmpty ? workers.count : workers.filter { $0.workType == goods }.count
+                    let amount = outputs[goods].map { $0 * workerCount }
+                    production.append(ColonyTerrainProduction(goodsType: goods, baseAmount: amount))
+                }
+            }
             return ColonyTerrainField(
                 tile: tile, offset: CGPoint(x: point.x - origin.x, y: point.y - origin.y),
                 workLocationId: location?.id,
-                workers: location.map { location in
-                    selectedColonyUnits.filter { $0.location == location.id }
-                } ?? [],
-                unavailableReason: reason
+                workers: workers, unavailableReason: reason,
+                production: production.sorted { $0.goodsType < $1.goodsType }
             )
         }
     }
@@ -52,7 +71,7 @@ extension GameState {
         }
         if tileId == colony.tileId { return "Das Zentrum wird automatisch bewirtschaftet." }
         if tile.type == nil { return "Das Gelände ist unbekannt." }
-        if tile.lostCityRumourType != nil { return "Die Ruinen müssen zuerst erkundet werden." }
+        if tile.hasLostCityRumour { return "Die Ruinen müssen zuerst erkundet werden." }
         if let owner = tile.owner, owner != colony.owner { return "Dieses Land gehört einem anderen Volk." }
         if let settlement = tile.owningSettlement, settlement != colony.id {
             return "Dieses Feld gehört zu einer anderen Siedlung."

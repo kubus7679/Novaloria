@@ -49,12 +49,30 @@ public struct ColonyWorkLocation: Sendable, Identifiable {
     public var kind: Kind
     public var tileId: String?
     public var buildingType: String?
+    /// Selected base outputs; nil means the server omitted the production type.
+    public var productionOutputs: [String: Int]?
 
-    public init(id: String, kind: Kind, tileId: String? = nil, buildingType: String? = nil) {
+    public init(id: String, kind: Kind, tileId: String? = nil, buildingType: String? = nil,
+                productionOutputs: [String: Int]? = nil) {
         self.id = id
         self.kind = kind
         self.tileId = tileId
         self.buildingType = buildingType
+        self.productionOutputs = productionOutputs
+    }
+
+    public mutating func applyUpdate(attributes: Attributes, children: [ParsedMessage]) {
+        if let tile = attributes["workTile"] ?? attributes["tile"] ?? attributes["work-tile"] {
+            tileId = tile
+        }
+        if let production = children.first(where: { $0.tag == "production" }) {
+            productionOutputs = [:]
+            for output in production.children where output.tag == "output" {
+                if let goods = output.attributes["goods-type"] {
+                    productionOutputs?[goods] = output.attributes.int("value")
+                }
+            }
+        }
     }
 }
 
@@ -127,11 +145,13 @@ public struct Colony: GameObject, PartiallyUpdatable, Identifiable {
                 let tileId = child.attributes["workTile"]
                     ?? child.attributes["tile"]
                     ?? child.attributes["work-tile"]
-                workTiles.append(ColonyWorkLocation(
+                var location = ColonyWorkLocation(
                     id: child.attributes["id"] ?? tileId ?? "",
                     kind: .colonyTile,
                     tileId: tileId
-                ))
+                )
+                location.applyUpdate(attributes: child.attributes, children: child.children)
+                workTiles.append(location)
             case "alarm":
                 if let playerId = child.attributes["player"] {
                     alarm[playerId] = child.attributes.int("value")

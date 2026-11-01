@@ -2,8 +2,8 @@
 #
 # End-to-end validation of the Swift client against the real Java FreeCol server.
 #
-# Requires Docker. Uses a dedicated container + volume so it never touches an
-# existing FreeCol server instance.
+# Uses Docker, or a local Java checkout with LOCAL_FREECOL_DIR.
+# Each probe starts an isolated server, never an existing game.
 #
 # Usage:
 #   Tools/e2e-java-server.sh
@@ -15,6 +15,8 @@
 #   STRICT_SKIPS    Set to 1 to treat probes that skipped (no reachable target)
 #                   as failures
 #   ONLY            Space-separated probe names to run (e.g. "combat recruitment")
+#   LOCAL_FREECOL_DIR  Built Java checkout instead of Docker
+#   JAVA_BIN        Java executable for local mode (default: java)
 
 set -euo pipefail
 
@@ -25,24 +27,56 @@ VOLUME="freecol-swift-e2e-data"
 KEEP_SERVER="${KEEP_SERVER:-0}"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+LOCAL_FREECOL_DIR="${LOCAL_FREECOL_DIR:-}"
+JAVA_BIN="${JAVA_BIN:-java}"
+SERVER_PID=""
+LOG_DIR="$(mktemp -d)"
+if [ -n "$LOCAL_FREECOL_DIR" ]; then
+  LOCAL_FREECOL_DIR="$(cd "$LOCAL_FREECOL_DIR" && pwd)"
+  PORT="${FREECOL_PORT:-3559}"
+  if [ "$KEEP_SERVER" = "1" ]; then
+    echo "KEEP_SERVER=1 is only supported in Docker mode." >&2
+    exit 1
+  fi
+fi
+
+stop_local_server() {
+  if [ -n "$SERVER_PID" ]; then
+    if kill -0 "$SERVER_PID" 2>/dev/null; then
+      kill "$SERVER_PID"
+    fi
+    wait "$SERVER_PID" 2>/dev/null || true
+    SERVER_PID=""
+  fi
+}
 
 cleanup() {
-  if [ "$KEEP_SERVER" != "1" ]; then
+  if [ -n "$LOCAL_FREECOL_DIR" ]; then
+    stop_local_server
+  elif [ "$KEEP_SERVER" != "1" ]; then
     docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
     docker volume rm "$VOLUME" >/dev/null 2>&1 || true
   fi
 }
 trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
-if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+if [ -n "$LOCAL_FREECOL_DIR" ]; then
+  if [ ! -f "$LOCAL_FREECOL_DIR/FreeCol.jar" ] || [ ! -d "$LOCAL_FREECOL_DIR/data" ]; then
+    echo "LOCAL_FREECOL_DIR needs FreeCol.jar and data/." >&2
+    exit 1
+  fi
+elif ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
   echo "Docker image '$IMAGE' not found." >&2
   echo "Build it from the Java FreeCol checkout:" >&2
   echo "  docker compose -f ../freecol/docker/docker-compose.yml build" >&2
   exit 1
 fi
 
-echo "==> Preparing volume $VOLUME"
-docker volume create "$VOLUME" >/dev/null
+if [ -z "$LOCAL_FREECOL_DIR" ]; then
+  echo "==> Preparing volume $VOLUME"
+  docker volume create "$VOLUME" >/dev/null
 # The headless server aborts if the client options file is missing.
 docker run --rm -i -v "$VOLUME":/data --entrypoint sh "$IMAGE" -c '
   mkdir -p /data/config/freecol/freecol
@@ -59,20 +93,60 @@ docker run --rm -i -v "$VOLUME":/data --entrypoint sh "$IMAGE" -c '
   <option id="model.option.useXRender" value="false"/>
 </clientOptions>
 XML
+fi
 
 start_server() {
-  docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
   # Server args are '|'-separated so values may contain spaces (--difficulty|Very Easy).
   # An explicit --difficulty replaces the Easy default.
   local server_args=()
   [ -n "${1:-}" ] && IFS='|' read -ra server_args <<< "$1"
   local difficulty=(--difficulty Easy)
   [[ "${1:-}" == *--difficulty* ]] && difficulty=()
-  docker run -d --name "$CONTAINER" -p "$PORT":3541 -v "$VOLUME":/data \
-    -v "$ROOT/Tools/fixtures":/fixtures:ro \
-    "$IMAGE" ${difficulty[@]+"${difficulty[@]}"} ${server_args[@]+"${server_args[@]}"} >/dev/null
+  local server_log="$LOG_DIR/$name-server.log"
+  if [ -n "$LOCAL_FREECOL_DIR" ]; then
+    stop_local_server
+    if nc -z 127.0.0.1 "$PORT" >/dev/null 2>&1; then
+      echo "Port $PORT is already occupied; refusing to touch the existing server." >&2
+      exit 1
+    fi
+    local directory="$LOG_DIR/$name-data"
+    mkdir -p "$directory/config" "$directory/cache" "$directory/data"
+    local index
+    for index in "${!server_args[@]}"; do
+      if [[ "${server_args[$index]}" == /fixtures/* ]]; then
+        server_args[$index]="$ROOT/Tools/fixtures/${server_args[$index]#/fixtures/}"
+      fi
+    done
+    cat > "$directory/options.xml" <<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<clientOptions>
+  <option id="model.option.languageOption" value="clientOptions.gui.languageOption.autoDetectLanguage"/>
+  <option id="model.option.usePixmaps" value="true"/>
+  <option id="model.option.useOpenGL" value="false"/>
+  <option id="model.option.useXRender" value="false"/>
+</clientOptions>
+XML
+    (
+      cd "$LOCAL_FREECOL_DIR"
+      exec "$JAVA_BIN" -Djava.awt.headless=true -Xmx2G -jar FreeCol.jar \
+        --default-locale en --server --private --server-ip 127.0.0.1 --server-port "$PORT" \
+        --user-config-directory "$directory/config" --user-cache-directory "$directory/cache" \
+        --user-data-directory "$directory/data" --clientOptions "$directory/options.xml" \
+        --log-file "$server_log" \
+        ${difficulty[@]+"${difficulty[@]}"} ${server_args[@]+"${server_args[@]}"}
+    ) >"$LOG_DIR/$name-console.log" 2>&1 &
+    SERVER_PID=$!
+  else
+    docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+    docker run -d --name "$CONTAINER" -p "$PORT":3541 -v "$VOLUME":/data \
+      -v "$ROOT/Tools/fixtures":/fixtures:ro \
+      "$IMAGE" ${difficulty[@]+"${difficulty[@]}"} ${server_args[@]+"${server_args[@]}"} >/dev/null
+  fi
   echo "==> Waiting for Java server on 127.0.0.1:$PORT"
   for _ in $(seq 1 30); do
+    if [ -n "$SERVER_PID" ] && ! kill -0 "$SERVER_PID" 2>/dev/null; then
+      break
+    fi
     if nc -z 127.0.0.1 "$PORT" >/dev/null 2>&1; then
       sleep 2
       return 0
@@ -80,7 +154,11 @@ start_server() {
     sleep 1
   done
   echo "Java server did not come up; logs:" >&2
-  docker logs "$CONTAINER" >&2 || true
+  if [ -n "$LOCAL_FREECOL_DIR" ]; then
+    tail -n 40 "$LOG_DIR/$name-console.log" >&2
+  else
+    docker logs "$CONTAINER" >&2 || true
+  fi
   exit 1
 }
 
@@ -91,7 +169,6 @@ STRICT_SKIPS="${STRICT_SKIPS:-0}"
 ONLY="${ONLY:-}"
 E2E_LOG_LEVEL="${E2E_LOG_LEVEL:-error}"
 SEED_TRADE_ROUTE="${E2E_SEED_TRADE_ROUTE:-33333}"
-LOG_DIR="$(mktemp -d)"
 
 # run_probe NAME TITLE "SERVER_ARGS" ENV=VALUE...
 # Starts a fresh server, runs one CLI probe and classifies it as passed,
@@ -135,8 +212,21 @@ run_probe nativetrade "Native Trade Session probe (open/buy/haggle/close against
   REAL_SERVER_NATIVE_TRADE_E2E=1 REAL_SERVER_USERNAME=FreeColE2ENativeTrade
 run_probe abandon "Colony abandonment probe (remove empty colony and release tile)" "--load-savegame|/fixtures/abandon-e2e.fsg" \
   REAL_SERVER_USERNAME=FreeColE2ENativeTrade REAL_SERVER_ABANDON_E2E=1
-run_probe diplomacy "Diplomacy probe (proposal to European AI, async response handling)" "--load-savegame|/fixtures/scenario-e2e.fsg" \
+run_probe disembark "Disembark probe (unload exhausted passenger in Europe)" "--load-savegame|/fixtures/scenario-e2e.fsg" \
+  REAL_SERVER_USERNAME=FreeColE2ENativeTrade REAL_SERVER_DISEMBARK_E2E=1
+if [ "${RUN_SAVE_E2E:-0}" = "1" ]; then
+  run_probe save "Savegame export probe (requires optional save extension)" "--load-savegame|/fixtures/scenario-e2e.fsg" \
+    REAL_SERVER_USERNAME=FreeColE2ENativeTrade REAL_SERVER_SAVE_E2E=1 \
+    REAL_SERVER_SAVE_PATH="$LOG_DIR/exported.fsg"
+  if [ -f "$LOG_DIR/exported.fsg" ]; then
+    run_probe saveload "Reload exported savegame and verify gameplay" "--load-savegame|$LOG_DIR/exported.fsg" \
+      REAL_SERVER_USERNAME=FreeColE2ENativeTrade REAL_SERVER_DISEMBARK_E2E=1
+  fi
+fi
+run_probe diplomacy "Diplomacy probe (AI accepts peace and a 100-gold gift)" "--load-savegame|/fixtures/scenario-e2e.fsg" \
   REAL_SERVER_USERNAME=FreeColE2ENativeTrade REAL_SERVER_SCENARIO_FIXTURE=1 REAL_SERVER_DIPLOMACY_E2E=1
+run_probe tribute "Tribute probe (AI accepts peace and pays 100 gold)" "--load-savegame|/fixtures/tribute-e2e.fsg" \
+  REAL_SERVER_USERNAME=FreeColE2ENativeTrade REAL_SERVER_SCENARIO_FIXTURE=1 REAL_SERVER_TRIBUTE_E2E=1
 run_probe combat "Combat probe (attack enemy unit, verify combat result)" "--load-savegame|/fixtures/scenario-e2e.fsg" \
   REAL_SERVER_USERNAME=FreeColE2ENativeTrade REAL_SERVER_SCENARIO_FIXTURE=1 REAL_SERVER_COMBAT_E2E=1
 run_probe missionaryspy "Missionary & Spy probe (send missionary, spy settlement)" "--load-savegame|/fixtures/scenario-e2e.fsg" \

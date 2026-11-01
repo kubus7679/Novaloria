@@ -110,16 +110,21 @@ def main():
         match = re.fullmatch(r"image\.tile\.model\.tile\.(\w+)\.center", key)
         overlay = re.fullmatch(r"image\.tile(?:forest|overlay)\.model\.tile\.(\w+)", key)
         beach = re.fullmatch(r"image\.tile\.model\.tile\.beach\.(edge|corner)(\d+)", key)
+        resource = re.fullmatch(r"image\.tileitem\.model\.resource\.(\w+)", key)
         if match:
             name = f"{match[1]}_base"
         elif overlay:
             name = f"{overlay[1]}_overlay"
         elif beach:
             name = f"beach_{beach[1]}{beach[2]}"
+        elif resource:
+            name = f"resource_{resource[1]}"
         else:
             continue
         shutil.copyfile(source / "data/default" / resolve(key), target / "terrain" / f"{name}.png")
 
+    shutil.copyfile(source / "data/default" / resolve("image.tileitem.lostCityRumour"),
+                    target / "terrain" / "lostCityRumour.png")
     messages = properties(source / "data/strings/FreeColMessages.properties")
     messages.update(properties(source / "data/strings/FreeColMessages_de.properties"))
     names = {}

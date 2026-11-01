@@ -154,6 +154,13 @@ public final class Game: @unchecked Sendable {
             case "colony", "indianSettlement":
                 try loadSettlementTree(child)
             case "building", "colonyTile":
+                if child.tag == "colonyTile", let id = child.attributes["id"],
+                   let colonyId = colonies.values.first(where: { $0.workTiles.contains { $0.id == id } })?.id,
+                   var colony = colonies[colonyId],
+                   let index = colony.workTiles.firstIndex(where: { $0.id == id }) {
+                    colony.workTiles[index].applyUpdate(attributes: child.attributes, children: child.children)
+                    colonies[colonyId] = colony
+                }
                 for unit in child.children where unit.tag == "unit" {
                     try loadUnitTree(unit)
                 }
@@ -252,6 +259,14 @@ public final class Game: @unchecked Sendable {
         let ids = extractRemoveIds(parsed)
         coordIndex = nil
         for objectId in ids {
+            for tileId in Array(tiles.keys) {
+                guard var tile = tiles[tileId], tile.lostCityRumourId == objectId else { continue }
+                tile.lostCityRumourId = nil
+                tile.hasLostCityRumour = false
+                tile.lostCityRumourType = nil
+                tile.lostCityName = nil
+                tiles[tileId] = tile
+            }
             players.removeValue(forKey: objectId)
             units.removeValue(forKey: objectId)
             let removedColony = colonies.removeValue(forKey: objectId)
@@ -500,6 +515,7 @@ public final class Game: @unchecked Sendable {
             return
         }
         unit.location = tileId
+        unit.movesLeft = 0
         units[unitId] = unit
     }
 

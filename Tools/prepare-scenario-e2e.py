@@ -15,6 +15,8 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("source", type=Path, help="Validated Native Trade .fsg fixture")
     parser.add_argument("destination", type=Path, help="Scenario .fsg fixture to create")
+    parser.add_argument("--tribute", action="store_true",
+                        help="Add a superior local land force for a peace-and-tribute agreement")
     args = parser.parse_args()
 
     xml_parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
@@ -194,6 +196,9 @@ def main() -> None:
 
     add_unit("model.unit.seasonedScout", "model.role.scout", "1")
     add_unit("model.unit.jesuitMissionary", "model.role.missionary", "1")
+    if args.tribute:
+        for _ in range(8):
+            add_unit("model.unit.veteranSoldier", "model.role.dragoon", "1")
 
     defender = next(
         (

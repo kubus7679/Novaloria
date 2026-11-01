@@ -196,7 +196,7 @@ test("server reject mapper normalizes common reject messages") {
     )
     try assertEqual(
         ServerRejectMapper.userFacingMessage(for: buildReject),
-        "Diese Einheit kann hier keine Kolonie gruenden."
+        "Die Einheit kann hier keine Kolonie gründen."
     )
 
     let movesReject = ParsedMessage(
@@ -239,7 +239,7 @@ test("server reject mapper normalizes common reject messages") {
     )
     try assertEqual(
         ServerRejectMapper.userFacingMessage(for: turnReject),
-        "Du bist gerade nicht am Zug."
+        "Du bist nicht am Zug. Bitte warte auf deinen nächsten Zug."
     )
 
     let amphibiousReject = ParsedMessage(

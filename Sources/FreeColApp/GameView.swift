@@ -122,7 +122,7 @@ struct GameView: View {
                         Button("Kolonie") { state.openColonyPanel() }
                             .disabled(state.selectedColony == nil)
                         Button("Nächste Einheit") { state.selectNextUnit() }
-                            .disabled(state.selectableLocalUnits.isEmpty)
+                            .disabled(state.cyclingLocalUnits.isEmpty)
                     }
                     Button("Zug beenden") { state.requestEndTurn() }
                         .buttonStyle(GameActionButtonStyle())
@@ -836,8 +836,10 @@ struct GameView: View {
                             .disabled(!state.canChangeSelectedUnitState(to: .fortifying))
                         Button("Befehle löschen") { state.clearSelectedUnitOrders() }
                             .disabled(!state.canClearSelectedUnitOrders)
-                        Button("Nach Europa") { state.sendSelectedUnitToEurope() }
-                            .disabled(!state.canSendSelectedUnitToEurope)
+                        if state.showsEuropeTravelOrder {
+                            Button("Nach Europa") { state.sendSelectedUnitToEurope() }
+                                .disabled(!state.canSendSelectedUnitToEurope)
+                        }
                         Divider()
                         Button("Einheit auflösen…", role: .destructive) {
                             state.disbandSelectedUnit()
@@ -882,17 +884,24 @@ struct GameView: View {
                             Button("An Bord: \(carrier.unitType.map(state.unitDisplayName) ?? "Transporter")") {
                                 state.embarkSelectedUnit(onCarrier: carrier.id)
                             }
+                            .disabled(!state.canEmbarkSelectedUnit(onCarrier: carrier.id))
                             .buttonStyle(.bordered)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
 
-                    if state.canDisembarkSelectedUnit {
+                    if state.selectedUnitCarrier != nil {
                         Button("Von Bord gehen") {
                             state.disembarkSelectedUnit()
                         }
                         .buttonStyle(.bordered)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .disabled(!state.canDisembarkSelectedUnit)
+                        if let hint = state.selectedUnitDisembarkHint {
+                            Text(hint)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
 
                     if let targetTileId = state.selectedTileId,
@@ -1041,7 +1050,7 @@ struct GameView: View {
                     }
 
                     if !state.diplomacyInitiationTargetsForSelectedUnit.isEmpty {
-                        Menu("Diplomacy…") {
+                        Menu(state.diplomacyContextForSelectedUnit == "TRIBUTE" ? "Tribut verhandeln…" : "Diplomatie…") {
                             ForEach(state.diplomacyInitiationTargetsForSelectedUnit, id: \.id) { target in
                                 Button(target.label) {
                                     state.beginDiplomacy(otherColonyId: target.id)

@@ -1,4 +1,5 @@
 import AppKit
+import FreeColGame
 
 /// Loads and caches NSImages from the app bundle's Resources folders.
 final class TileImageCache {
@@ -18,6 +19,23 @@ final class TileImageCache {
         guard let tileType else { return nil }
         let name = tileType.components(separatedBy: ".").last ?? tileType
         return loadImage(named: "\(name)_overlay", folder: "terrain")
+    }
+
+    /// The original client's high-seas marker is a cloud layer above the terrain and units.
+    func highSeasExitImage(for tile: Tile) -> NSImage? {
+        guard tile.type != nil, tile.moveToEurope else { return nil }
+        return cloudImage(forX: tile.x, y: tile.y)
+    }
+
+    func lostCityRumourImage(for tile: Tile) -> NSImage? {
+        guard tile.type != nil, tile.hasLostCityRumour else { return nil }
+        return loadImage(named: "lostCityRumour", folder: "terrain")
+    }
+
+    func resourceImage(for type: String?) -> NSImage? {
+        guard let type, type.hasPrefix("model.resource.") else { return nil }
+        let name = type.components(separatedBy: ".").last ?? type
+        return loadImage(named: "resource_\(name)", folder: "terrain")
     }
 
     func beachImages(style: Int) -> [NSImage] {
@@ -50,6 +68,11 @@ final class TileImageCache {
     /// Order-button icons from the Java client (wait/sentry/fortify/build/disband/done).
     func orderButtonImage(named name: String) -> NSImage? {
         return loadImage(named: name, folder: "order-buttons")
+    }
+
+    func goodsImage(for goodsType: String) -> NSImage? {
+        guard let entry = ColopediaCatalog.classicEntries.first(where: { $0.id == goodsType }) else { return nil }
+        return colopediaImage(for: entry)
     }
 
     func colopediaImage(for entry: ColopediaEntry) -> NSImage? {

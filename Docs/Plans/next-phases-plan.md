@@ -1,20 +1,21 @@
 # Nächste Phasen — Planung
 
-> **Stand:** 30. Oktober 2026
-> **Fortschritt:** Phase 94 und der konkrete Europa-Recruit-Slot aus Phase 96 sind
-> implementiert. Der aktuelle Java-Lauf ergibt 11 bestanden, 1 übersprungen und 0
-> fehlgeschlagen (12 Proben); Diplomatie wird korrekt als Skip ausgewiesen, wenn die AI
-> innerhalb von 30 Sekunden nicht antwortet. Phase 93 bleibt bis zur nativen
-> UI-Sichtprüfung offen.
+> **Stand:** 31. Oktober 2026
+> **Fortschritt:** Phasen 105–108 sind implementiert und geprüft. Phase 93 hat jetzt native
+> Layout-Prüfungen für Überfahrt, Ankunft und Europa-Kaufliste sowie stabile
+> Auswahl über Modellupdates. Phase 95 bestätigt Frieden/Geschenk und
+> Frieden/Tribut mit je exakt 100 Gold gegen den echten Java-Server.
+> Die vollständige Java-Matrix besteht: **14 bestanden, 0 übersprungen,
+> 0 fehlgeschlagen** mit `STRICT_SKIPS=1` im isolierten lokalen Java-Modus.
 > **Grundsatz:** Neue Features erst auf real verifizierter Basis. Ein Probe-Lauf, der
 > nur über den Skip-Pfad läuft, zählt nicht als Validierung.
 
-## Messergebnis `Tools/e2e-java-server.sh` (12 Proben)
+## Aktueller Gesamtlauf `Tools/e2e-java-server.sh` (14 Proben)
 
 | Status | Proben |
 |--------|--------|
-| Grün, ohne Skip | smoke, deep, gameplay, reject, traderoute, multiplayer, nativetrade, abandon, combat, missionaryspy, recruitment |
-| Nur geskippt (nicht validiert) | diplomacy (keine AI-Antwort im 30-s-Fenster) |
+| Grün, ohne Skip | smoke, deep, gameplay, reject, traderoute, multiplayer, nativetrade, abandon, disembark, diplomacy, tribute, combat, missionaryspy, recruitment |
+| Übersprungen | – |
 | Rot | – |
 
 Der erste Lauf hat drei echte Client-Fehler und mehrere falsche Probe-Annahmen
@@ -56,6 +57,13 @@ skippten, wenn nichts in Reichweite war.
 - Die Diplomatie-Probe sendet den Vorschlag und verarbeitet eine Antwort, falls der
   Server eine liefert. Im deterministischen Savegame kam in 30 Sekunden keine AI-Antwort;
   die Java-Nachricht bestätigt den Vorschlag beim Sender nicht synchron.
+  Dieser frühere Fehler ist inzwischen behoben (fehlende Objekt-ID und
+  kleingeschriebener Status); der aktuelle Gesamtlauf bestätigt die AI-Annahme.
+- Die separate Tribut-Fixture entsteht mit `--tribute` aus demselben Basisstand.
+  Acht zusätzliche lokale Veteranen als Dragoner sichern eine klare militärische
+  Überlegenheit. Eine echte AI nimmt Frieden gegen 100 Gold an; die Probe prüft
+  unveränderte Klauseln, PEACE und den exakten Goldzuwachs. Der Java-Server
+  bestätigt die Spielstand-Konsistenz beim Laden.
 
 **Verifikation:** `STRICT_SKIPS=1 Tools/e2e-java-server.sh` — 11 bestanden, 0
 übersprungen, 0 fehlgeschlagen. Die Szenario-Fixture besteht außerdem die Java-
@@ -85,6 +93,25 @@ sind `<highSeas>` und `<europe>` unbemerkt durchgerutscht.
 - **Offen:** Sichtprüfung in der nativen App von Transit-/Ankunftsanzeige,
   Einheitenwahl und der durch Spezifikationspreise befüllten Europa-Kaufliste.
 
+**Nachprüfung 31. Oktober:**
+
+- Inspektor und Europa-Hafen verwenden dieselbe Reiseanzeige: Ziel, Restdauer
+  mit „Runde/Runden“, unbekannte Ziele ohne fälschliche „Neue Welt“-Vorgabe.
+- Europa-Ankunft wird deutsch und mit Schiffsname angezeigt.
+- Die Auswahl von Schiffen auf See und in Europa bleibt bei Modellupdates erhalten;
+  zuvor wurde sie ohne Kartentile gelöscht. Reiseeinheiten blockieren keine Kartenbefehle.
+- Native AppKit-/SwiftUI-Fenster prüfen und rendern Überfahrt (1/2 Runden), Ankunft,
+  Hafen und spezifikationsbasierte Kaufpreise bei 600 × 480 Punkten.
+- Damit ist das Layout mit reproduzierbaren Modelldaten geprüft; eine weitere
+  manuelle Sichtprüfung während einer realen Java-Überfahrt bleibt möglich.
+- Ausschiffen unterscheidet nun Küstenlandung (`move` des Passagiers auf Land)
+  von direktem Ausladen im Hafen/Europa (`disembark`). Passagiere auf Wache sind
+  bewegbar, sofern Bewegungspunkte verbleiben; 0 Punkte werden sichtbar erklärt.
+  Der Hafenbefehl wird nicht mehr auf einem Wasserfeld gesendet. Die zusätzliche
+  Java-Probe bestätigt direktes Ausladen in Europa trotz 0 Bewegungspunkten;
+  die Gameplay-Probe bestätigt die Küstenlandung. Native Fenster und TCP-Tests
+  decken beide Bedienwege sowie Serverablehnungen ab.
+
 **Aufwand:** 1 Tag.
 
 ---
@@ -94,7 +121,7 @@ sind `<highSeas>` und `<europe>` unbemerkt durchgerutscht.
 | Phase | Inhalt | Anmerkung |
 |-------|--------|-----------|
 | 94 | ✅ Kolonie aufgeben (`abandonColony`) | Deterministische Fixture; Java entfernt die Kolonie und gibt das Tile frei. Dabei wurde das Swift-Parsing von Java-`remove xLength/x0` korrigiert. |
-| 95 | 🔴 Offen: Diplomatie-Tiefe und Antwort | In der Fixture ist keine AI-Antwort innerhalb 30 s beobachtbar. Die Probe wertet das jetzt als Skip statt Erfolg. Geschenk/Tribut/stance mit tatsächlicher Annahme sind daher noch nicht validiert. |
+| 95 | ✅ Echte Diplomatie- und Tribut-Annahme | Java-AI akzeptiert Frieden plus 100 Gold Geschenk sowie separat Frieden gegen 100 Gold Tribut. Haltung, unveränderte Klauseln und exakter Goldabzug/-zuwachs werden geprüft. Bewaffnete Landeinheiten öffnen den Tributeditor mit geeigneten Klauseln. UI-Gegenangebote verwenden Spieler- statt Objekt-IDs, behalten die serverseitige Version und verlieren neue Antworten beim Abschluss von `ask` nicht mehr. |
 | 96 | ✅ Konkreter `emigrateUnit`-Slot | Java-Probe wählt Slot 1 und prüft, dass exakt der angebotene Recruit-Typ und der Goldabzug im Modell erscheinen. Das Fountain-of-Youth-Slot-1-Antwortformat bleibt über die bestehende Mock-Server-Probe abgedeckt; ein zufälliger realer Fountain-Auslöser ist nicht Teil dieser Fixture. |
 
 Aufwand gesamt: 1–2 Tage.
@@ -133,7 +160,7 @@ Erst nach Cluster A, damit die UI auf verifiziertem Modell aufsetzt.
 | Phase | Inhalt |
 |-------|--------|
 | 102 | ✅ Auto-Reconnect mit Statusanzeige und bestätigungspflichtiger Kernaktions-Queue |
-| 103 | Zentrale Fehlerbehandlung (`userFacingServerError`-Abdeckung gegen reale Server-Texte aus den E2E-Logs) |
+| 103 | ✅ Zentrale deutsche Fehlerbehandlung für synchrone Antworten, asynchrone Fehler und StringTemplates. Spezifische Java-Aktionsfehler, Verbindungsabbruch und Zeitüberschreitung mit Hinweis auf unklaren Ausführungszustand; unbekannte Diagnosen bleiben sichtbar. |
 | 104 | Performance/Speicher — erst nach Profiling mit Instruments |
 
 ---
@@ -143,17 +170,81 @@ Erst nach Cluster A, damit die UI auf verifiziertem Modell aufsetzt.
 Save/Load, Metaserver-Browser, erweiterte Diplomatie- und Handelsmechaniken. In den Docs
 bisher bewusst als Nicht-Ziele geführt.
 
+## Phasen 105–106 — Spielbarkeit und Karteninformationen
+
+Die nachfolgenden Phasen priorisieren konkrete Bedienlücken vor ungeprüften
+Performanceänderungen. Phase 104 bleibt vom Instruments-Profil abhängig.
+
+### Phase 105 — Verlässliche Marschbefehle (implementiert)
+
+- Ziel setzen, Ziel löschen und Befehle löschen warten auf die Serverantwort.
+- Während eines offenen Bewegungs-/Zielbefehls sind konkurrierende Zieländerungen
+  gesperrt. Abgelehnte Änderungen behalten den bisherigen Modellzustand.
+- Leere `destination`-Attribute entfernen Ziele korrekt. Ohne Verbindung gibt
+  es keine Erfolgsmeldung. Zieländerungen werden nicht offline wiederholt.
+- Die bereits implementierte rundenübergreifende Bewegung und gelbe Route bleiben
+  erhalten; TCP-Regressionen prüfen Zielwechsel, Ablehnung und Abbruch.
+
+### Phase 106 — Originalgrafiken für Rohstoffvorkommen (implementiert)
+
+- Alle zwölf klassischen Bonusgrafiken werden über den bestehenden Importer
+  reproduzierbar eingebunden.
+- Erforschte Felder zeigen Vorkommen regulär auf der Karte, im Koloniegelände
+  und in der Feldinformation. Die Ressourcenebene ergänzt Namen und Mengen.
+- Unbegrenzte Vorkommen (`quantity=-1`) erhalten keine irreführende negative
+  Mengenanzeige. Unbekannte Mod-Ressourcen behalten ihre Textinformation.
+- Ressourcen verschwinden nach dem entsprechenden vollständigen Feld-Update.
+
+**Abnahme:** Swift-Regressionen und native Fensteraufnahmen für normale Karte und
+Ressourcenebene, vollständige Testsuite und Neubau des App-Bundles.
+
+**Ergebnis:** 162 Swift-Tests ohne Fehler; native Aufnahmen mit Vorkommen und
+Ressourcenbeschriftung geprüft; App-Bundle gebaut. Die isolierte Java-Probe
+`disembark` bestätigt zusätzlich Ziel setzen/löschen anhand der Serverupdates
+sowie die anschließende Rückreise mit Passagier. Kein Skip, kein Fehler.
+
 ---
 
-## Nächste Schritte nach Phase 102
+## Phasen 107–108 — Deutsche und verlässliche Handelsrouten
 
-1. Phase 93: native UI-Sichtprüfung für Transit-/Ankunftsanzeige und Einheitenwahl
-   (vom Nutzer übernommen).
-2. Phase 95: Java-AI-Antwortpfad und Geschenk-/Tribut-Handel mit echter Annahme
-   verifizieren.
-3. Phase 97 fortsetzen: verbleibende inline CLI-Tests schrittweise auslagern.
-4. Phase 103: zentrale Fehlerbehandlung gegen echte Serverfehlertexte prüfen.
-5. Phase 104: Performance und Speicher erst nach Instruments-Profiling optimieren.
+### Phase 107 — Deutscher Handelsrouteneditor (implementiert)
+
+- Routenliste, Haltepunkte, Aktionen, Europa und Validierungsmeldungen sind deutsch.
+- Die Warenauswahl nutzt dieselben deutschen Warennamen wie die übrige Oberfläche.
+- Waren und Aktionsschaltflächen brechen um; der Editor bleibt scrollbar.
+  Eine native Layout-Regression prüft die schmale Fensterbreite von 680 Punkten.
+
+### Phase 108 — Sichere Zuweisung und Haltepunkte (implementiert)
+
+- Nur eigene Waren-Transporter können vorhandene eigene Routen erhalten.
+  Die Spezifikationsfähigkeit `carryGoods` ist maßgeblich; reine
+  Passagiertransporter und Kolonisten werden nicht zugelassen.
+- Zuweisen, Entfernen und Wechsel des aktuellen Halts warten auf Serverbestätigung.
+  Konkurrierende Befehle sind währenddessen gesperrt. Abgelehnte Aktionen ändern
+  den lokalen Auftrag nicht; ohne Verbindung gibt es keine Offline-Wiederholung.
+- Haltepunkte werden gegen die gespeicherte Route geprüft, nicht gegen einen
+  noch ungespeicherten Editorentwurf. Leere `tradeRoute`-Attribute löschen die
+  Zuweisung auch bei partiellen Modellupdates.
+- TCP-Regressionen prüfen Ablehnung, Zuweisung, ungültige Indizes, Haltwechsel,
+  Entfernen und fehlende Verbindung. Die isolierte Java-Probe prüft zusätzlich
+  die bestätigte Entfernung einer zuvor zugewiesenen Route.
+
+**Abnahme:** Vollständige Swift-Tests, native Layout-Regression, isolierte
+Java-Probe `traderoute` ohne Skip sowie Neubau des App-Bundles.
+
+**Ergebnis:** 167 Swift-Tests ohne Fehler, darunter die native
+680-Punkte-Layoutprüfung. Die Java-Probe bestätigt Zuweisung, Haltwechsel,
+Bereichsprüfung und Entfernen der Route: 1 bestanden, 0 übersprungen,
+0 fehlgeschlagen. Das App-Bundle wurde erfolgreich neu gebaut.
+
+## Nächste Schritte nach Phase 108
+
+1. Phase 93: optional zusätzliche manuelle Sichtprüfung während einer echten
+   Java-Überfahrt; native Fixture-Ansichten sind bereits abgedeckt.
+2. Phase 104: Performance/Speicher erst nach reproduzierbarem Instruments-Profil bearbeiten.
+3. Routenverwaltung weiter absichern: Anlegen, Speichern und Löschen verwenden
+   noch den bisherigen Sendepfad. Diese separaten Aktionen ebenfalls gegen
+   Ablehnung und Verbindungsabbruch prüfen, bevor die Routenautomatik erweitert wird.
 
 Phase 102 speichert nur Kernaktionen, die über `sendCoreGameplayAction` laufen.
 Nach Wiederverbindung werden sie niemals automatisch wiederholt; jede Aktion kann
@@ -166,10 +257,14 @@ die Bestätigungsabfrage vor unbeabsichtigter doppelter Ausführung.
 Tools/e2e-java-server.sh                          # alle Proben, Summary am Ende
 ONLY="recruitment combat" Tools/e2e-java-server.sh  # einzelne Proben
 STRICT_SKIPS=1 Tools/e2e-java-server.sh           # Skips gelten als Fehler (Exit 2)
+LOCAL_FREECOL_DIR=../freecol JAVA_BIN=/opt/homebrew/opt/openjdk/bin/java \
+  STRICT_SKIPS=1 Tools/e2e-java-server.sh         # gesamter Lauf ohne Docker
 ```
 
 Voraussetzung: Docker und das Image `docker-freecol-server:latest`
-(`docker compose -f ../freecol/docker/docker-compose.yml build`).
+(`docker compose -f ../freecol/docker/docker-compose.yml build`) oder ein lokal
+gebauter Checkout mit `FreeCol.jar` und `data/`. Lokal nutzt jede Probe eigene
+Verzeichnisse und standardmäßig Port 3559; ein belegter Port führt zum Abbruch.
 
 ## Verwandte Dokumente
 

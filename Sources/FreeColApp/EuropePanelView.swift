@@ -106,15 +106,7 @@ struct EuropePanelView: View {
                     } else {
                         ForEach(Array(europe.recruitable.enumerated()), id: \.offset) { index, recruit in
                             HStack {
-                                if let nsImg = TileImageCache.shared.unitImage(forUnitType: recruit.unitType) {
-                                    Image(nsImage: nsImg)
-                                        .resizable()
-                                        .interpolation(.high)
-                                        .frame(width: 26, height: 26)
-                                } else {
-                                    Image(systemName: "person.fill")
-                                        .frame(width: 26, height: 26)
-                                }
+                                unitPortrait(recruit.unitType)
                                 Text(unitLabel(recruit.unitType))
                                     .font(.caption)
                                 Spacer()
@@ -211,6 +203,7 @@ struct EuropePanelView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(purchasable, id: \.unitType) { unit in
                         HStack {
+                            unitPortrait(unit.unitType)
                             Text(unit.label)
                                 .font(.caption)
                             Spacer()
@@ -462,13 +455,27 @@ struct EuropePanelView: View {
                         }
                         let passengers = state.game?.units.values.filter { $0.location == carrier.id } ?? []
                         ForEach(passengers.sorted { $0.id < $1.id }) { unit in
-                            Text(unitLabel(unit.unitType))
+                            HStack {
+                                unitPortrait(unit.unitType)
+                                Text(unitLabel(unit.unitType))
+                                Spacer()
+                                Button("Von Bord gehen") {
+                                    state.selectUnit(unit.id, onTile: nil)
+                                    state.disembarkSelectedUnit()
+                                }
+                                .disabled(!state.isLocalPlayersTurn || state.movingUnitId != nil)
+                            }
                         }
                         if carrier.goods.isEmpty && passengers.isEmpty {
                             Text("Keine Fracht oder Passagiere.")
                                 .foregroundStyle(.secondary)
                         }
                         Button("Mit diesem Schiff handeln") { section = .market }
+                        Button("Zur Neuen Welt aufbrechen") {
+                            state.sendShipToAmerica(carrier.id)
+                        }
+                        .disabled(!state.canSendShipToAmerica(carrier.id))
+                        .help("Das Schiff verlässt Europa mit seiner gesamten Fracht und allen Passagieren.")
                     }
                     if selectedCarrierId.isEmpty {
                         Text("Schiff für Handel auswählen.")
@@ -491,19 +498,36 @@ struct EuropePanelView: View {
                     Text("Keine Einheiten an den Docks.").foregroundStyle(.secondary)
                 }
                 ForEach(dockUnits) { unit in
-                    Label(unitLabel(unit.unitType), systemImage: "person")
+                    HStack {
+                        unitPortrait(unit.unitType)
+                        Text(unitLabel(unit.unitType))
+                        Spacer()
+                        Button("An Bord") {
+                            state.selectUnit(unit.id, onTile: nil)
+                            state.embarkSelectedUnit(onCarrier: selectedCarrierId)
+                        }
+                        .disabled(!state.canEmbarkUnit(unit.id, onCarrier: selectedCarrierId))
+                        .help("Auf das oben ausgewählte Schiff laden. Das Schiff muss im Europahafen sein und Platz haben.")
+                    }
+                }
+                if !dockUnits.isEmpty {
+                    Text(selectedCarrierId.isEmpty
+                         ? "Zum Einschiffen muss ein Schiff im Europahafen liegen."
+                         : "„An Bord“ lädt die Einheit auf das ausgewählte Schiff, sofern Platz frei ist.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 let traveling =
-                    state.game?.units.values.filter {
-                        $0.owner == state.localPlayerId
-                            && ($0.state == .sailing || $0.state == .toEurope || $0.state == .toAmerica
-                                || $0.location?.hasPrefix("highSeas:") == true)
+                    state.game?.units.values.filter { unit in
+                        unit.owner == state.localPlayerId
+                            && !state.europeUnits.contains(where: { $0.id == unit.id })
+                            && state.unitTravelStatus(unit) != nil
                     } ?? []
                 if !traveling.isEmpty {
                     Divider()
                     Text("Auf See").font(.headline)
                     ForEach(traveling.sorted { $0.id < $1.id }) { unit in
-                        Text("\(unitLabel(unit.unitType)) · \(max(0, unit.workLeft)) Runden")
+                        Text("\(unitLabel(unit.unitType)) · \(state.unitTravelStatus(unit) ?? "")")
                     }
                 }
             }
@@ -515,6 +539,24 @@ struct EuropePanelView: View {
         if !state.europeCarrierUnits.contains(where: { $0.id == selectedCarrierId }) {
             selectedCarrierId = state.europeCarrierUnits.first?.id ?? ""
         }
+
+    }
+
+    private func unitPortrait(_ unitType: String?) -> some View {
+        Group {
+            if let image = TileImageCache.shared.unitImage(forUnitType: unitType) {
+                Image(nsImage: image)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+            } else {
+                Image(systemName: "person.fill")
+                    .resizable()
+                    .scaledToFit()
+            }
+        }
+        .frame(width: 40, height: 40)
+        .accessibilityHidden(true)
     }
 
     private func trendColor(for goodsType: String?) -> Color {

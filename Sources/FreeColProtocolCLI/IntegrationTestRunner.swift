@@ -39,6 +39,12 @@ func runIntegrationTests() async {
     await integrationTest(
       "real Java server colony abandonment probe", closure: abandonColonyE2EProbe)
   }
+  if ProcessInfo.processInfo.environment["REAL_SERVER_DISEMBARK_E2E"] == "1" {
+    await integrationTest("real Java server disembark probe", closure: disembarkE2EProbe)
+  }
+  if ProcessInfo.processInfo.environment["REAL_SERVER_SAVE_E2E"] == "1" {
+    await integrationTest("real Java server savegame export probe", closure: saveGameE2EProbe)
+  }
 
   // Native Trade E2E probe: verify open, buy, haggle and close against a real native settlement.
   if ProcessInfo.processInfo.environment["REAL_SERVER_NATIVE_TRADE_E2E"] == "1" {
@@ -48,6 +54,9 @@ func runIntegrationTests() async {
   // Diplomacy E2E probe: report a missing asynchronous AI response as a skip.
   if ProcessInfo.processInfo.environment["REAL_SERVER_DIPLOMACY_E2E"] == "1" {
     await integrationTest("real Java server diplomacy probe", closure: diplomacyE2EProbe)
+  }
+  if ProcessInfo.processInfo.environment["REAL_SERVER_TRIBUTE_E2E"] == "1" {
+    await integrationTest("real Java server tribute probe", closure: diplomacyE2EProbe)
   }
 
   // Combat E2E probe: verify attack on enemy unit and combat result handling.

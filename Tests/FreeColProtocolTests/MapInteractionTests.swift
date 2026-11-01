@@ -7,6 +7,305 @@ import FreeColProtocol
 @testable import FreeColApp
 
 final class MapInteractionTests: XCTestCase {
+    @MainActor
+    func testGermanTradeRouteEditorFitsNativeWindow() throws {
+        let state = try makeState()
+        state.game?.specification = Specification(parsed: try XMLDecoder.decode("""
+        <freecol-specification id="spec"><goods-types>
+          <goods-type id="model.goods.grain"/><goods-type id="model.goods.tools"/>
+          <goods-type id="model.goods.lumber"/><goods-type id="model.goods.ore"/>
+          <goods-type id="model.goods.silver"/><goods-type id="model.goods.cloth"/>
+        </goods-types></freecol-specification>
+        """))
+        try state.game?.applyUpdate(XMLDecoder.decode("""
+        <update><tradeRoute id="route-1" name="Versorgung Boston" owner="player-1">
+          <tradeRouteStop location="colony-1"><cargo id="model.goods.grain"/></tradeRouteStop>
+          <tradeRouteStop location="europe-1"/>
+        </tradeRoute></update>
+        """))
+        state.gameUpdateID += 1
+        try checkPanel(TradeRoutePanelView().environment(state), name: "trade-routes-german",
+                       width: 680, height: 680)
+    }
+
+    @MainActor
+    func testOriginalResourceGraphicsCoverClassicTypesAndUpdateWithTiles() throws {
+        let state = try makeState()
+        let game = try XCTUnwrap(state.game)
+        for type in ["game", "minerals", "ore", "silver", "lumber", "furs",
+                     "tobacco", "sugar", "cotton", "oasis", "grain", "fish"] {
+            let image = try XCTUnwrap(TileImageCache.shared.resourceImage(for: "model.resource.\(type)"))
+            XCTAssertGreaterThan(image.size.width, 0)
+        }
+        XCTAssertNil(TileImageCache.shared.resourceImage(for: nil))
+        XCTAssertNil(TileImageCache.shared.resourceImage(for: "model.resource.unknown"))
+        try game.applyUpdate(XMLDecoder.decode("""
+        <update><tile id="tile-3-2" x="3" y="2" type="model.tile.plains">
+          <tileItemContainer id="resources-1">
+            <resource id="resource-1" type="model.resource.grain" quantity="-1"/>
+          </tileItemContainer>
+        </tile></update>
+        """))
+        state.selectedUnitId = nil
+        state.selectedTileId = "tile-3-2"
+        state.gameUpdateID += 1
+        XCTAssertEqual(game.tiles["tile-3-2"]?.resources.first?.quantity, -1)
+        for overlay in [GameState.MapOverlay.none, .resources] {
+            state.mapOverlay = overlay
+            try checkPanel(GameView().environment(state), name: "resources-\(overlay.rawValue)", width: 1200, height: 800)
+        }
+        try game.applyUpdate(XMLDecoder.decode("""
+        <update><tile id="tile-3-2" x="3" y="2" type="model.tile.plains">
+          <tileItemContainer id="resources-1"/>
+        </tile></update>
+        """))
+        XCTAssertTrue(try XCTUnwrap(game.tiles["tile-3-2"]).resources.isEmpty)
+    }
+
+    @MainActor
+    func testRumourMarkerAppearsWithoutSecretTypeAndDisappearsAfterExploration() throws {
+        let state = try makeState()
+        let game = try XCTUnwrap(state.game)
+        let update = try XMLDecoder.decode("""
+        <update><tile id="tile-3-2" x="3" y="2" type="model.tile.plains">
+          <tileItemContainer id="items-1"><lostCityRumour id="rumour-1"/></tileItemContainer>
+        </tile></update>
+        """)
+        try game.applyUpdate(update)
+        let rumour = try XCTUnwrap(game.tiles["tile-3-2"])
+        XCTAssertTrue(rumour.hasLostCityRumour)
+        XCTAssertNil(rumour.lostCityRumourType, "The server need not reveal the outcome")
+        XCTAssertNotNil(TileImageCache.shared.lostCityRumourImage(for: rumour))
+        var unexplored = rumour
+        unexplored.type = nil
+        XCTAssertNil(TileImageCache.shared.lostCityRumourImage(for: unexplored))
+        state.selectedUnitId = nil
+        state.selectedTileId = rumour.id
+        state.gameUpdateID += 1
+        try checkPanel(GameView().environment(state), name: "lost-city-rumour", width: 1200, height: 800)
+        try game.applyRemove(XMLDecoder.decode(#"<remove xLength="1" x0="rumour-1"/>"#))
+        XCTAssertFalse(try XCTUnwrap(game.tiles[rumour.id]).hasLostCityRumour)
+        XCTAssertNil(TileImageCache.shared.lostCityRumourImage(for: try XCTUnwrap(game.tiles[rumour.id])))
+        try game.applyUpdate(update)
+        try game.applyUpdate(XMLDecoder.decode("""
+        <update><tile id="tile-3-2" x="3" y="2" type="model.tile.plains">
+          <tileItemContainer id="items-1"/>
+        </tile></update>
+        """))
+        XCTAssertFalse(try XCTUnwrap(game.tiles[rumour.id]).hasLostCityRumour)
+    }
+
+    @MainActor
+    func testSavedMovementRouteIsVisibleWithoutEnablingPathOverlay() throws {
+        let state = try makeState()
+        let game = try XCTUnwrap(state.game)
+        game.setUnitDestination(unitId: "unit-1", destinationId: "tile-4-2")
+        state.gameUpdateID += 1
+        state.selectUnit("unit-1", onTile: "tile-2-2")
+        XCTAssertEqual(state.mapOverlay, .none)
+        let route = state.movementPath(for: try XCTUnwrap(game.units["unit-1"]))
+        XCTAssertEqual(route.first, "tile-2-2")
+        XCTAssertEqual(route.last, "tile-4-2")
+        try checkPanel(GameView().environment(state), name: "saved-movement-route", width: 1200, height: 800)
+        game.setUnitDestination(unitId: "unit-1", destinationId: nil)
+        XCTAssertTrue(state.movementPath(for: try XCTUnwrap(game.units["unit-1"])).isEmpty)
+    }
+
+    @MainActor
+    func testEuropeDockRecruitmentAndPurchasesUseUnitGraphics() throws {
+        let state = try makeState()
+        state.game?.specification = Specification(parsed: try XMLDecoder.decode("""
+        <freecol-specification>
+          <unit-type id="model.unit.masterCarpenter" price="900"/>
+          <unit-type id="model.unit.caravel" price="1000">
+            <ability id="model.ability.navalUnit"/><ability id="model.ability.carryUnits"/>
+          </unit-type>
+          <unit-type id="model.unit.artillery" price="500"/>
+        </freecol-specification>
+        """))
+        try state.game?.applyUpdate(XMLDecoder.decode("""
+        <update>
+          <player id="player-1" username="Alice" gold="1500" immigrationRequired="12">
+            <europe id="europe-1" owner="player-1" recruitPrice="120">
+              <recruit id="model.unit.masterCarpenter" number="1"/>
+              <recruit id="model.unit.freeColonist" number="1"/>
+              <recruit id="model.unit.expertFarmer" number="1"/>
+            </europe>
+          </player>
+          <unit id="ship-port" unitType="model.unit.caravel" owner="player-1" location="europe-1"/>
+          <unit id="carpenter" unitType="model.unit.masterCarpenter" owner="player-1" location="europe-1"/>
+        </update>
+        """))
+        state.gameUpdateID += 1
+        XCTAssertEqual(state.purchasableEuropeUnits.count, 3)
+        for type in ["masterCarpenter", "freeColonist", "expertFarmer", "caravel", "artillery"] {
+            let image = try XCTUnwrap(TileImageCache.shared.unitImage(forUnitType: "model.unit.\(type)"))
+            XCTAssertGreaterThan(image.size.width, 0)
+        }
+        for section in [EuropePanelView.EuropeSection.harbor, .recruitment] {
+            try checkPanel(EuropePanelView(section: section).environment(state),
+                           name: "europe-return-\(section)", width: 600, height: 480)
+        }
+    }
+
+    @MainActor
+    func testHighSeasExitsUseOriginalCloudsOnlyOnEnabledExploredTiles() throws {
+        let game = try makeGame()
+        for (type, override, marked) in [
+            ("model.tile.highSeas", "", true),
+            ("model.tile.ocean", "moveToEurope=\"true\"", true),
+            ("model.tile.ocean", "", false),
+            ("model.tile.highSeas", "moveToEurope=\"false\"", false),
+            ("", "moveToEurope=\"true\"", false),
+        ] {
+            let tile = try Tile(id: "exit", attributes: XMLDecoder.decode(
+                "<tile x=\"0\" y=\"2\" \(type.isEmpty ? "" : "type=\"\(type)\"") \(override)/>"
+            ).attributes, children: [], game: game)
+            let image = TileImageCache.shared.highSeasExitImage(for: tile)
+            XCTAssertEqual(image != nil, marked, "\(type) \(override)")
+            if marked {
+                XCTAssertTrue(image === TileImageCache.shared.cloudImage(forX: tile.x, y: tile.y))
+            }
+        }
+        for x in 0..<4 {
+            XCTAssertNotNil(TileImageCache.shared.cloudImage(forX: x, y: 0))
+        }
+    }
+
+    @MainActor
+    func testHighSeasExitMapAndInspectorFitNativeWindow() throws {
+        let state = try makeState()
+        try state.game?.applyUpdate(XMLDecoder.decode("""
+        <update>
+          <tile id="tile-0-0" x="0" y="0" type="model.tile.highSeas"/>
+          <tile id="tile-0-1" x="0" y="1" type="model.tile.ocean" moveToEurope="true"/>
+          <tile id="tile-0-2" x="0" y="2" type="model.tile.highSeas" moveToEurope="false"/>
+          <tile id="tile-1-0" x="1" y="0" type="model.tile.ocean"/>
+        </update>
+        """))
+        state.showFogOfWar = false
+        state.gameUpdateID += 1
+        state.selectedUnitId = nil
+        state.selectedTileId = "tile-0-0"
+        try checkPanel(GameView().environment(state).frame(width: 1200, height: 800),
+                       name: "high-seas-exits", width: 1200, height: 800)
+    }
+
+    @MainActor
+    func testCoastalDisembarkControlsFitWithAndWithoutMoves() throws {
+        let state = try makeState()
+        try state.game?.applyUpdate(XMLDecoder.decode("""
+        <update>
+          <tile id="tile-1-0" x="1" y="0" type="model.tile.ocean"/>
+          <unit id="ship" owner="player-1" unitType="model.unit.caravel" location="tile-1-0" movesLeft="0"/>
+          <unit id="unit-1" owner="player-1" unitType="model.unit.freeColonist"
+                location="ship" state="sentry" movesLeft="3"/>
+        </update>
+        """))
+        state.gameUpdateID += 1
+        state.selectUnit("unit-1", onTile: "tile-1-0")
+        XCTAssertTrue(state.canDisembarkSelectedUnit)
+        try checkPanel(GameView().environment(state).frame(width: 900, height: 620),
+                       name: "disembark-coast-ready", width: 900, height: 620)
+        try state.game?.applyPartial(XMLDecoder.decode("""
+        <partial id="unit-1" movesLeft="0"/>
+        """))
+        state.gameUpdateID += 1
+        XCTAssertFalse(state.canDisembarkSelectedUnit)
+        try checkPanel(GameView().environment(state).frame(width: 900, height: 620),
+                       name: "disembark-coast-no-moves", width: 900, height: 620)
+        try state.game?.applyPartial(XMLDecoder.decode("""
+        <partial id="ship" location="europe-1"/>
+        """))
+        state.gameUpdateID += 1
+        XCTAssertTrue(state.canDisembarkSelectedUnit)
+        try checkPanel(EuropePanelView(section: .harbor).environment(state),
+                       name: "disembark-europe-no-moves", width: 600, height: 480)
+    }
+
+    @MainActor
+    func testTributeEditorFitsNativePanel() throws {
+        let state = try makeState()
+        state.game?.specification = Specification(parsed: try XMLDecoder.decode("""
+        <freecol-specification><unit-type id="model.unit.freeColonist"/></freecol-specification>
+        """))
+        try state.game?.applyUpdate(XMLDecoder.decode("""
+        <update><colony id="foreign-colony" owner="player-2" tile="tile-2-0" name="Quebec"/></update>
+        """))
+        try state.game?.applyPartial(XMLDecoder.decode("""
+        <partial id="unit-1" role="model.role.soldier"/>
+        """))
+        state.gameUpdateID += 1
+        state.selectUnit("unit-1", onTile: "tile-2-2")
+        state.beginDiplomacy(otherColonyId: "foreign-colony")
+        XCTAssertEqual(state.pendingDiplomacy?.context, "TRIBUTE")
+        try checkPanel(DiplomacyView().environment(state).frame(width: 760, height: 480),
+                       name: "diplomacy-tribute", width: 760, height: 480)
+        state.applySessionMessage(try XMLDecoder.decode("""
+        <diplomacy ourId="unit-1" otherId="foreign-colony">
+          <diplomaticTrade id="" context="tribute" status="propose_trade"
+                          sender="player-1" recipient="player-2" version="2">
+            <goldTradeItem id="model.tradeItem.gold" source="player-2" destination="player-1" gold="50"/>
+          </diplomaticTrade>
+        </diplomacy>
+        """))
+        XCTAssertTrue(state.pendingDiplomacyIsIncoming)
+        try checkPanel(DiplomacyView().environment(state).frame(width: 760, height: 480),
+                       name: "diplomacy-tribute-counteroffer", width: 760, height: 480)
+    }
+
+    @MainActor
+    func testShipTravelArrivalAndSpecificationPricesFitNativePanels() throws {
+        let state = try makeState()
+        let game = try XCTUnwrap(state.game)
+        game.specification = Specification(parsed: try XMLDecoder.decode("""
+        <freecol-specification><unit-types>
+          <unit-type id="model.unit.caravel" price="1000">
+            <ability id="model.ability.navalUnit"/><ability id="model.ability.carryUnits"/>
+          </unit-type>
+          <unit-type id="model.unit.artillery" price="500"/>
+        </unit-types></freecol-specification>
+        """))
+        try game.applyUpdate(XMLDecoder.decode("""
+        <update>
+          <player id="player-1" username="Alice" gold="1500" immigrationRequired="12">
+            <europe id="europe-1" owner="player-1" recruitPrice="120">
+              \(String(repeating: "<recruit id=\"model.unit.freeColonist\" number=\"1\"/>", count: 3))
+            </europe>
+          </player>
+          <unit id="ship-transit" owner="player-1" unitType="model.unit.caravel" name="Hoffnung"
+                location="highSeas:1" destination="europe-1" state="SAILING" workLeft="2"/>
+        </update>
+        """))
+        state.gameUpdateID += 1
+        state.selectUnit("ship-transit", onTile: nil)
+        state.syncAfterModelUpdate()
+        XCTAssertEqual(state.selectedUnitId, "ship-transit")
+        XCTAssertEqual(state.purchasableEuropeUnits.map(\.price), [500, 1000])
+        for turns in [2, 1] {
+            try game.applyPartial(ParsedMessage(tag: "partial", attributes: [
+                "id": "ship-transit", "workLeft": String(turns),
+            ], children: []))
+            state.gameUpdateID += 1
+            try checkPanel(InfoPanelView().environment(state).frame(width: 360, height: 220), name: "ship-transit-\(turns)",
+                           width: 360, height: 220)
+        }
+        try checkPanel(EuropePanelView(section: .harbor).environment(state),
+                       name: "europe-transit-600", width: 600, height: 480)
+        try checkPanel(EuropePanelView(section: .recruitment).environment(state),
+                       name: "europe-specification-prices-600", width: 600, height: 480)
+        try game.applyPartial(try XMLDecoder.decode("""
+        <partial id="ship-transit" location="europe-1" state="ACTIVE" workLeft="0"/>
+        """))
+        state.gameUpdateID += 1
+        state.syncAfterModelUpdate()
+        XCTAssertEqual(state.selectedUnitId, "ship-transit")
+        try checkPanel(InfoPanelView().environment(state).frame(width: 360, height: 220),
+                       name: "ship-arrived", width: 360, height: 220)
+        try checkPanel(EuropePanelView(section: .harbor).environment(state),
+                       name: "europe-arrived-600", width: 600, height: 480)
+    }
+
     func testResizePreservesCameraCenterAndClampsAtMapEdges() {
         let canvas = CGSize(width: 10000, height: 8000)
         let large = CGSize(width: 2000, height: 1100)
@@ -161,6 +460,9 @@ final class MapInteractionTests: XCTestCase {
         XCTAssertGreaterThan(entries.count, 200)
         XCTAssertEqual(Set(entries.map(\.id)).count, entries.count)
         XCTAssertEqual(Set(entries.map(\.category)), Set(ColopediaCategory.allCases))
+        for goods in ["model.goods.grain", "model.goods.cotton", "model.goods.food"] {
+            XCTAssertNotNil(TileImageCache.shared.goodsImage(for: goods), goods)
+        }
         let colonist = try XCTUnwrap(entries.first { $0.id == "model.unit.freeColonist" })
         XCTAssertEqual(colonist.title, "Freier Kolonist")
         XCTAssertTrue(colonist.summary.contains("Kolonist"))

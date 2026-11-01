@@ -380,7 +380,9 @@ final class FreeColProtocolTests: XCTestCase {
         ))
         XCTAssertEqual(state.pendingServerDecision?.type, .firstContact)
         XCTAssertTrue(state.canRespondToPendingDecision())
-        XCTAssertEqual(state.pendingDecisionSummary, "contact: player-4, camps: 2, tile: tile-2-3")
+        XCTAssertEqual(state.pendingDecisionSummary, state.firstContactMessage)
+        XCTAssertFalse(state.pendingDecisionSummary.contains("player-"))
+        XCTAssertTrue(state.pendingDecisionSummary.contains("2 Siedlungen"))
 
         // Response echoes must not reopen a prompt.
         state.clearPendingDecision()
@@ -668,15 +670,15 @@ final class FreeColProtocolTests: XCTestCase {
 
         var oneStop = route
         oneStop.stops = Array(route.stops.prefix(1))
-        XCTAssertEqual(validate(oneStop, [], false), "Add at least two trade route stops.")
+        XCTAssertEqual(validate(oneStop, [], false), "Mindestens zwei Haltepunkte hinzufügen.")
 
         var invalidLocation = route
         invalidLocation.stops[1].locationId = "foreign-colony"
-        XCTAssertEqual(validate(invalidLocation, [], false), "Choose a valid owned location for every stop.")
+        XCTAssertEqual(validate(invalidLocation, [], false), "Für jeden Halt einen gültigen eigenen Ort auswählen.")
 
         var allStopsEmpty = route
         allStopsEmpty.stops[0].cargoTypeIds = []
-        XCTAssertEqual(validate(allStopsEmpty, [], false), "Select goods for at least one trade route stop.")
+        XCTAssertEqual(validate(allStopsEmpty, [], false), "Für mindestens einen Halt Waren auswählen.")
 
         var cargoAtEveryStop = route
         cargoAtEveryStop.stops[1].cargoTypeIds = ["model.goods.food"]
@@ -684,7 +686,7 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertNil(validate(cargoAtEveryStop, [], true))
 
         let duplicate = TradeRoute(id: "route-2", name: "Route A", owner: "player-1")
-        XCTAssertEqual(validate(route, [duplicate], false), "A trade route already uses this name.")
+        XCTAssertEqual(validate(route, [duplicate], false), "Eine Handelsroute mit diesem Namen existiert bereits.")
     }
 
     func testColonyBuildQueueAndBuildingsParsing() throws {
@@ -1605,7 +1607,8 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertTrue(state.canClearSelectedUnitOrders)
         state.clearSelectedUnitOrders()
         try await Task.sleep(nanoseconds: 50_000_000)
-        XCTAssertEqual(state.statusMessage, "Orders cleared.")
+        XCTAssertNotNil(state.errorMessage, "Without a connection, clearing orders must not claim success")
+        XCTAssertEqual(game.units["unit-2"]?.destination, "tile-0-0")
 
         // unit-1 is active without a destination: nothing to clear.
         state.selectUnit("unit-1", onTile: "tile-0-0")
@@ -1683,8 +1686,8 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertTrue(state.canEndTurn)
 
         state.selectUnit("unit-embarked", onTile: "tile-0")
-        XCTAssertFalse(state.canMoveSelectedUnit(to: "tile-1"), "embarked units cannot move independently")
-        XCTAssertFalse(state.canMoveSelectedUnitTo(destinationTileId: "tile-1"))
+        XCTAssertTrue(state.canMoveSelectedUnit(to: "tile-1"), "passengers can step from their carrier onto adjacent land")
+        XCTAssertTrue(state.canMoveSelectedUnitTo(destinationTileId: "tile-1"))
 
         game.currentPlayerId = "player-2"
         state.selectUnit("unit-founder", onTile: "tile-0")

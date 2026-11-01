@@ -22,7 +22,7 @@ struct DiplomacyView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Diplomacy")
+                Text(state.pendingDiplomacy?.context == "TRIBUTE" ? "Tributverhandlung" : "Diplomatie")
                     .font(.title2.bold())
                 Spacer()
                 if state.pendingDiplomacyIsIncoming {
@@ -39,6 +39,11 @@ struct DiplomacyView: View {
                 .keyboardShortcut(.cancelAction)
             }
 
+            if let error = state.errorMessage {
+                Text(error)
+                    .foregroundStyle(.red)
+                    .font(.caption)
+            }
             ScrollView([.horizontal, .vertical]) {
                 VStack(alignment: .leading, spacing: 12) {
             if let proposal = state.pendingDiplomacy {
@@ -88,7 +93,10 @@ struct DiplomacyView: View {
                minHeight: 400, idealHeight: 640, maxHeight: 760)
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear { syncDrafts() }
-        .onChange(of: state.pendingServerDecision?.type) { _, _ in syncDrafts() }
+        .onChange(of: state.pendingServerDecision?.id) { _, _ in
+            newKind = .gold
+            syncDrafts()
+        }
     }
 
     // MARK: - Counter-proposal
@@ -110,7 +118,7 @@ struct DiplomacyView: View {
 
                 HStack {
                     Picker("Type", selection: $newKind) {
-                        ForEach(DiplomaticClauseKind.allCases) { kind in
+                        ForEach(state.pendingDiplomacyClauseKinds) { kind in
                             Text(kind.title).tag(kind)
                         }
                     }

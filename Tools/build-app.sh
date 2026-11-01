@@ -16,6 +16,8 @@ mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
 
 cp "$SOURCE_BIN" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
+ditto "$BIN_DIR/FreeColClient_FreeColApp.bundle" \
+    "$APP_BUNDLE/Contents/Resources/FreeColClient_FreeColApp.bundle"
 
 cat > "$APP_BUNDLE/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>

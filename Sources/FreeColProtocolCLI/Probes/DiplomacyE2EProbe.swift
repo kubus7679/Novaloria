@@ -4,6 +4,8 @@ import FreeColGame
 import FreeColClient
 
 func diplomacyE2EProbe() async throws {
+    let tribute = ProcessInfo.processInfo.environment["REAL_SERVER_TRIBUTE_E2E"] == "1"
+    let context = tribute ? "TRIBUTE" : "DIPLOMATIC"
     let host = ProcessInfo.processInfo.environment["REAL_SERVER_HOST"] ?? "127.0.0.1"
     let port = Int(ProcessInfo.processInfo.environment["REAL_SERVER_PORT"] ?? "3541") ?? 3541
     let client = FreeColClient(host: host, port: port)
@@ -45,11 +47,19 @@ func diplomacyE2EProbe() async throws {
         // Find an adjacent foreign colony owned by a European AI.
         func diplomacyTarget(in current: FreeColGame.Game) -> (unitId: String, colonyId: String, ownerId: String)? {
             for (unitId, unit) in current.units {
+                let eligible: Bool
+                if tribute {
+                    eligible = spec.isNaval(unitType: unit.unitType) == false
+                        && (["model.role.soldier", "model.role.dragoon"].contains(unit.role ?? "")
+                            || (spec.unitTypes[unit.unitType ?? ""]?.offence ?? 0) > 0)
+                } else {
+                    eligible = spec.hasAbility("model.ability.negotiate", unitType: unit.unitType)
+                        || unit.role == "model.role.scout"
+                }
                 guard unit.owner == localPlayerId,
-                      (spec.hasAbility("model.ability.negotiate", unitType: unit.unitType)
-                       || unit.role == "model.role.scout"),
-                      let unitTileId = current.resolvedTileId(for: unit),
-                      let unitTile = current.tiles[unitTileId] else { continue }
+                      eligible,
+                      let unitTileId = current.resolvedTileId(for: unit) else { continue }
+                let neighbors = Set(current.neighborTileIds(of: unitTileId))
                 for (colonyId, colony) in current.colonies {
                     guard let ownerId = colony.owner,
                           ownerId != localPlayerId,
@@ -57,10 +67,7 @@ func diplomacyE2EProbe() async throws {
                           owner.playerType == .european,
                           owner.ai,
                           let colonyTileId = colony.tileId,
-                          let colonyTile = current.tiles[colonyTileId] else { continue }
-                    let dx = abs(colonyTile.x - unitTile.x)
-                    let dy = abs(colonyTile.y - unitTile.y)
-                    guard dx <= 1, dy <= 1, !(dx == 0 && dy == 0) else { continue }
+                          neighbors.contains(colonyTileId) else { continue }
                     return (unitId, colonyId, ownerId)
                 }
             }
@@ -77,24 +84,39 @@ func diplomacyE2EProbe() async throws {
 
         guard let target = diplomacyTarget(in: game) else {
             await client.disconnect()
+            if scenarioFixture {
+                throw TestError(message: "\(context) fixture has no eligible unit adjacent to an AI colony")
+            }
             throw ProbeSkipped(message: "no negotiable unit adjacent to a visible European AI colony")
         }
 
         print("    diplomacy target: colony \(target.colonyId) (owner \(target.ownerId))")
+        let gift = 100
+        let goldSource = tribute ? target.ownerId : localPlayerId
+        let goldDestination = tribute ? localPlayerId : target.ownerId
+        let goldBefore = game.players[localPlayerId]?.gold ?? 0
+        guard tribute || goldBefore >= gift else {
+            throw TestError(message: "diplomacy fixture needs at least \(gift) local gold")
+        }
 
         let tradeNode = ParsedMessage(
             tag: "diplomaticTrade",
             attributes: [
-                "context": "DIPLOMATIC",
+                "id": "",
+                "context": context,
                 "sender": localPlayerId,
                 "recipient": target.ownerId,
                 "status": "PROPOSE_TRADE",
-                "version": "1",
+                "version": "0",
             ],
             children: [
                 ParsedMessage(tag: "stanceTradeItem",
                               attributes: ["id": "model.tradeItem.stance", "stance": "PEACE",
                                            "source": localPlayerId, "destination": target.ownerId],
+                              children: []),
+                ParsedMessage(tag: "goldTradeItem",
+                              attributes: ["id": "model.tradeItem.gold", "gold": String(gift),
+                                           "source": goldSource, "destination": goldDestination],
                               children: [])
             ]
         )
@@ -124,11 +146,11 @@ func diplomacyE2EProbe() async throws {
                         throw TestError(message: "Java diplomacy error: \(incoming.attributes["message"] ?? "unknown error")")
                     }
                     guard let envelope = diplomacyEnvelope(in: incoming),
-                          let trade = envelope.children.first(where: { $0.tag == "diplomaticTrade" }),
-                          let status = trade.attributes["status"],
-                          ["ACCEPT_TRADE", "REJECT_TRADE", "PROPOSE_TRADE"].contains(status) else { continue }
+                          let trade = envelope.children.first(where: { $0.tag == "diplomaticTrade" }) else { continue }
                     let proposal = DiplomaticTradeProposal(raw: trade)
-                    guard proposal.context == "DIPLOMATIC",
+                    guard let status = proposal.status,
+                          ["ACCEPT_TRADE", "REJECT_TRADE", "PROPOSE_TRADE"].contains(status) else { continue }
+                    guard proposal.context == context,
                           proposal.sender != nil,
                           proposal.recipient != nil else {
                         throw TestError(message: "AI diplomacy response has invalid context/version")
@@ -151,13 +173,26 @@ func diplomacyE2EProbe() async throws {
 
         // Send proposal and wait for an asynchronous AI answer.
         let responseStart = delegate.receivedPayloads.count
-        try await client.send(message: proposalMessage)
+        _ = try await client.ask(message: proposalMessage, timeout: 20)
         print("    diplomacy proposal sent")
 
         if let aiReply = try await waitForDiplomacyResponse(after: responseStart, timeout: 30),
            let trade = aiReply.children.first(where: { $0.tag == "diplomaticTrade" }) {
             let proposal = DiplomaticTradeProposal(raw: trade)
             print("    AI diplomacy response: \(proposal.status ?? "unknown") (\(proposal.clauses.count) clauses)")
+            guard proposal.clauses.count == 2,
+                  proposal.clauses.contains(where: {
+                      $0.tag == "goldTradeItem" && Int($0.attributes["gold"] ?? "") == gift
+                          && $0.attributes["source"] == goldSource
+                          && $0.attributes["destination"] == goldDestination
+                  }),
+                  proposal.clauses.contains(where: {
+                      $0.tag == "stanceTradeItem" && $0.attributes["stance"]?.uppercased() == "PEACE"
+                          && $0.attributes["source"] == localPlayerId
+                          && $0.attributes["destination"] == target.ownerId
+                  }) else {
+                throw TestError(message: "AI response changed the required \(context) terms")
+            }
             if proposal.status == "ACCEPT_TRADE" {
                 guard try await waitForPeaceWithAI() else {
                     throw TestError(message: "AI accepted peace but the stance update was not applied")
@@ -177,11 +212,21 @@ func diplomacyE2EProbe() async throws {
                     throw TestError(message: "accepted AI counter-proposal but PEACE stance was not applied")
                 }
                 print("    accepted counter-proposal applied: stance is PEACE")
+            } else {
+                throw TestError(message: "AI rejected the required diplomacy agreement")
             }
         } else {
             await client.disconnect()
+            if scenarioFixture {
+                throw TestError(message: "Java \(context) fixture provided no AI response within 30s")
+            }
             throw ProbeSkipped(message: "Java server provided no AI response within 30s")
         }
+        game = await client.game
+        guard game.players[localPlayerId]?.gold == goldBefore + (tribute ? gift : -gift) else {
+            throw TestError(message: "accepted diplomacy did not transfer exactly \(gift) gold")
+        }
+        print("    accepted \(tribute ? "tribute" : "gift") applied: \(gift) gold transferred")
 
         await client.disconnect()
     }

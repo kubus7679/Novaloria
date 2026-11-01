@@ -464,6 +464,7 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_GAMEPLAY_E2E"] == "1" {
                     guard reachedLand else {
                         throw TestError(message: "founding unit did not reach selected tile \(targetTile.id)")
                     }
+                    print("    coastal landing confirmed: passenger \(embarkedFounder.id) moved from carrier to \(targetTile.id)")
                     game = try await endTurnAndWaitForLocalPlayer()
                     guard let landedFounder = game.units[embarkedFounder.id],
                           canFoundColony(with: landedFounder, in: game) else {
@@ -1485,6 +1486,15 @@ guard reachedLand else {
             throw TestError(message: "out-of-range setCurrentStop changed currentStop to \(game.units[carrierId]?.currentStop ?? -1)")
         }
         print("    out-of-range stop \(stopCount) left currentStop unchanged (rejectedReply=\(rejected))")
+
+        _ = try await client.ask(message: ParsedMessage(
+            tag: "assignTradeRoute", attributes: ["unit": carrierId], children: []
+        ), timeout: 8)
+        game = await client.game
+        guard game.units[carrierId]?.tradeRoute == nil else {
+            throw TestError(message: "cleared trade route remained assigned to \(carrierId)")
+        }
+        print("    server confirmed removal of the trade route")
 
         await client.disconnect()
     }
