@@ -13,7 +13,7 @@ struct ChatPanelView: View {
                 Text("Chat")
                     .font(.title3.bold())
                 Spacer()
-                Button("Close") { dismiss() }
+                Button("Schließen") { dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
 
@@ -21,7 +21,7 @@ struct ChatPanelView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 4) {
                         if state.incomingChatLog.isEmpty {
-                            Text("No messages yet.")
+                            Text("Noch keine Nachrichten.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -44,10 +44,10 @@ struct ChatPanelView: View {
             }
 
             HStack {
-                TextField("Message", text: $message)
+                TextField("Nachricht", text: $message)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit(send)
-                Button("Send", action: send)
+                Button("Senden", action: send)
                     .disabled(message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }

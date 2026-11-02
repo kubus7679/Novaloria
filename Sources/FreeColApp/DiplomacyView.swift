@@ -26,12 +26,12 @@ struct DiplomacyView: View {
                     .font(.title2.bold())
                 Spacer()
                 if state.pendingDiplomacyIsIncoming {
-                    Button("Reject") { state.rejectDiplomacy() }
+                    Button("Ablehnen") { state.rejectDiplomacy() }
                         .buttonStyle(.bordered)
-                    Button("Accept") { state.acceptDiplomacy() }
+                    Button("Akzeptieren") { state.acceptDiplomacy() }
                         .buttonStyle(.borderedProminent)
                 }
-                Button("Close") {
+                Button("Schließen") {
                     if !state.pendingDiplomacyIsIncoming { state.clearPendingDecision() }
                     dismiss()
                 }
@@ -56,9 +56,9 @@ struct DiplomacyView: View {
                 }
                 .font(.caption)
 
-                GroupBox("Incoming Clauses") {
+                GroupBox("Eingehende Klauseln") {
                     if proposal.clauses.isEmpty {
-                        Text("No clauses.")
+                        Text("Keine Klauseln.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     } else {
@@ -102,10 +102,10 @@ struct DiplomacyView: View {
     // MARK: - Counter-proposal
 
     private var counterProposalEditor: some View {
-        GroupBox("Counter-Proposal") {
+        GroupBox("Gegenvorschlag") {
             VStack(alignment: .leading, spacing: 8) {
                 if drafts.isEmpty {
-                    Text("No clauses. Add one below.")
+                    Text("Keine Klauseln. Füge eine unten hinzu.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 } else {
@@ -117,16 +117,16 @@ struct DiplomacyView: View {
                 Divider()
 
                 HStack {
-                    Picker("Type", selection: $newKind) {
+                    Picker("Typ", selection: $newKind) {
                         ForEach(state.pendingDiplomacyClauseKinds) { kind in
                             Text(kind.title).tag(kind)
                         }
                     }
                     .frame(width: 140)
 
-                    Picker("Direction", selection: $newWeGive) {
-                        Text("We give").tag(true)
-                        Text("They give").tag(false)
+                    Picker("Richtung", selection: $newWeGive) {
+                        Text("Wir geben").tag(true)
+                        Text("Sie geben").tag(false)
                     }
                     .frame(width: 160)
                 }
@@ -144,10 +144,10 @@ struct DiplomacyView: View {
                 )
 
                 HStack {
-                    Button("Add Clause") { addClause() }
+                    Button("Klausel hinzufügen") { addClause() }
                         .buttonStyle(.bordered)
                     Spacer()
-                    Button("Send Counter-Proposal") {
+                    Button("Gegenvorschlag senden") {
                         state.sendDiplomacyCounterProposal(drafts)
                     }
                     .buttonStyle(.borderedProminent)
@@ -166,8 +166,8 @@ struct DiplomacyView: View {
                 .frame(width: 60, alignment: .leading)
 
             Picker("", selection: draft.weGive) {
-                Text("We give").tag(true)
-                Text("They give").tag(false)
+                Text("Wir geben").tag(true)
+                Text("Sie geben").tag(false)
             }
             .labelsHidden()
             .frame(width: 120)
@@ -214,19 +214,19 @@ struct DiplomacyView: View {
                 .frame(width: 100)
         case .goods:
             Picker("", selection: goodsType) {
-                Text("Select goods").tag("")
+                Text("Ware auswählen").tag("")
                 ForEach(goodsOptions, id: \.id) { option in
                     Text(option.label).tag(option.id)
                 }
             }
             .labelsHidden()
             .frame(width: 160)
-            TextField("Amount", text: goodsAmount)
+            TextField("Menge", text: goodsAmount)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 70)
         case .colony:
             Picker("", selection: colonyId) {
-                Text("Select colony").tag("")
+                Text("Kolonie auswählen").tag("")
                 ForEach(colonyOptions, id: \.id) { option in
                     Text(option.label).tag(option.id)
                 }
@@ -243,7 +243,7 @@ struct DiplomacyView: View {
             .frame(width: 140)
         case .unit:
             Picker("", selection: unitId) {
-                Text("Select unit").tag("")
+                Text("Einheit auswählen").tag("")
                 ForEach(state.diplomacyUnitOptions(weGive: weGive), id: \.id) { option in
                     Text(option.label).tag(option.id)
                 }
@@ -252,7 +252,7 @@ struct DiplomacyView: View {
             .frame(width: 200)
         case .incite:
             Picker("", selection: victimId) {
-                Text("Select target").tag("")
+                Text("Ziel auswählen").tag("")
                 ForEach(state.diplomacyVictimOptions(), id: \.id) { option in
                     Text(option.label).tag(option.id)
                 }

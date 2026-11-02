@@ -108,19 +108,19 @@ struct ReportPanelView: View {
                 HStack {
                     Text(selected.title)
                         .font(.title3.bold())
-                    TextField("Filter rows", text: $searchText)
+                    TextField("Zeilen filtern", text: $searchText)
                         .textFieldStyle(.roundedBorder)
                         .frame(maxWidth: 220)
-                    Button(sortAscending ? "Sort ↑" : "Sort ↓") {
+                    Button(sortAscending ? "Sortieren ↑" : "Sortieren ↓") {
                         sortAscending.toggle()
                     }
-                    .help("Sort rows by the first column")
-                    Button("Export CSV…") {
+                    .help("Zeilen nach der ersten Spalte sortieren")
+                    Button("CSV exportieren…") {
                         exportCSV()
                     }
                     .disabled(tableSnapshots.isEmpty)
                     Spacer()
-                    Button("Close") { dismiss() }
+                    Button("Schließen") { dismiss() }
                         .keyboardShortcut(.cancelAction)
                 }
                 ScrollView([.horizontal, .vertical]) {
@@ -139,7 +139,7 @@ struct ReportPanelView: View {
         .onPreferenceChange(ReportTablePreferenceKey.self) {
             tableSnapshots = $0
         }
-        .alert("CSV export failed", isPresented: Binding(
+        .alert("CSV-Export fehlgeschlagen", isPresented: Binding(
             get: { exportError != nil },
             set: { if !$0 { exportError = nil } }
         )) {
@@ -210,10 +210,10 @@ struct ReportPanelView: View {
     private var coloniesReport: some View {
         GroupBox {
             if ownColonies.isEmpty {
-                empty("No colonies.")
+                empty("Keine Kolonien.")
             } else {
                 table(
-                    headers: ["Name", "Pop", "SoL", "Liberty", "Bonus"],
+                    headers: ["Name", "Bev.", "SoL", "Freiheit", "Bonus"],
                     widths: [160, 50, 50, 70, 60],
                     rows: ownColonies.map { colony in
                         [
@@ -236,10 +236,10 @@ struct ReportPanelView: View {
             .sorted { $0.0 < $1.0 }
         return GroupBox {
             if rows.isEmpty {
-                empty("No units.")
+                empty("Keine Einheiten.")
             } else {
                 table(
-                    headers: ["Unit Type", "Count"],
+                    headers: ["Einheitentyp", "Anzahl"],
                     widths: [240, 60],
                     rows: rows.map { [shortName($0.0, prefix: "model.unit."), "\($0.1)"] }
                 )
@@ -251,10 +251,10 @@ struct ReportPanelView: View {
         let units = ownUnits.filter { isNaval($0) == naval }
         return GroupBox {
             if units.isEmpty {
-                empty(naval ? "No naval units." : "No military units.")
+                empty(naval ? "Keine Schiffe." : "Keine Militäreinheiten.")
             } else {
                 table(
-                    headers: ["Unit", "State", "MP", "Location"],
+                    headers: ["Einheit", "Zustand", "BP", "Standort"],
                     widths: [200, 90, 40, 160],
                     rows: units.map { unit in
                         [
@@ -275,7 +275,7 @@ struct ReportPanelView: View {
         }
         return GroupBox {
             if carriers.isEmpty {
-                empty("No cargo carriers.")
+                empty("Keine Frachter.")
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(carriers) { carrier in
@@ -284,7 +284,7 @@ struct ReportPanelView: View {
                             Text("\(shortName(carrier.unitType, prefix: "model.unit.")) (\(cargo.count))")
                                 .font(.caption.bold())
                             if cargo.isEmpty {
-                                Text("empty")
+                                Text("leer")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
                             } else {
@@ -316,10 +316,10 @@ struct ReportPanelView: View {
                             "\(entry.arrears)"
                         ]
                     }
-                table(headers: ["Goods", "In stock", "Buy", "Sell", "Arrears"],
+                table(headers: ["Ware", "Vorrat", "Kauf", "Verkauf", "Schulden"],
                       widths: [160, 70, 50, 50, 70], rows: rows)
             } else {
-                empty("No market data.")
+                empty("Keine Marktdaten.")
             }
         }
     }
@@ -329,21 +329,21 @@ struct ReportPanelView: View {
         let arrears = state.localPlayerMarketData.reduce(0) { $0 + $1.arrears }
         let rows: [[String]] = [
             ["Gold", "\(player?.gold ?? 0)"],
-            ["Tax rate", "\(player?.tax ?? 0)%"],
-            ["Arrears", "\(arrears)"],
-            ["Recruits purchased", "\(state.purchasesRecruits)"],
-            ["Units trained", "\(state.purchasesTrained)"],
-            ["Total purchases", "\(state.purchasesTotal)"],
-            ["Total sales", "\(state.salesTotal)"],
-            ["Net balance", "\(state.purchasesNetProfit)"],
+            ["Steuersatz", "\(player?.tax ?? 0)%"],
+            ["Schulden", "\(arrears)"],
+            ["Angeworbene Rekruten", "\(state.purchasesRecruits)"],
+            ["Ausgebildete Einheiten", "\(state.purchasesTrained)"],
+            ["Gesamtkäufe", "\(state.purchasesTotal)"],
+            ["Gesamtverkäufe", "\(state.salesTotal)"],
+            ["Nettobilanz", "\(state.purchasesNetProfit)"],
         ]
         return GroupBox {
-            table(headers: ["Item", "Value"], widths: [220, 120], rows: rows)
+            table(headers: ["Posten", "Wert"], widths: [220, 120], rows: rows)
         }
     }
 
     private var foreignReport: some View {
-        guard let game, let localPlayerId else { return AnyView(empty("No game.")) }
+        guard let game, let localPlayerId else { return AnyView(empty("Kein Spiel.")) }
         let others = game.players.values
             .filter { $0.id != localPlayerId && $0.playerType == .european }
             .sorted { ($0.name ?? "") < ($1.name ?? "") }
@@ -351,10 +351,10 @@ struct ReportPanelView: View {
         return AnyView(GroupBox {
             VStack(alignment: .leading, spacing: 10) {
                 if others.isEmpty {
-                    empty("No other European powers.")
+                    empty("Keine anderen europäischen Mächte.")
                 } else {
                     table(
-                        headers: ["Player", "Nation", "Stance", "Tension", "Gold", "Score"],
+                        headers: ["Spieler", "Nation", "Haltung", "Spannung", "Gold", "Punkte"],
                         widths: [130, 140, 100, 70, 70, 60],
                         rows: others.map { player in
                             [
@@ -370,18 +370,18 @@ struct ReportPanelView: View {
                 }
 
                 Divider()
-                Text("Nation Summary")
+                Text("Nationsübersicht")
                     .font(.caption.bold())
                 HStack {
-                    Picker("Player", selection: $summaryPlayerId) {
-                        Text("Select…").tag("")
+                    Picker("Spieler", selection: $summaryPlayerId) {
+                        Text("Auswählen…").tag("")
                         ForEach(others) { player in
                             Text(player.name ?? player.id).tag(player.id)
                         }
                     }
                     .labelsHidden()
                     .frame(width: 200)
-                    Button("Request") { state.requestNationSummary(playerId: summaryPlayerId) }
+                    Button("Anfordern") { state.requestNationSummary(playerId: summaryPlayerId) }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         .disabled(summaryPlayerId.isEmpty)
@@ -389,7 +389,7 @@ struct ReportPanelView: View {
                 if let summary = state.nationSummaryReport {
                     let attrs = summary.attributes
                     table(
-                        headers: ["Settlements", "Units", "Military", "Naval", "Gold", "SoL", "Fathers"],
+                        headers: ["Siedlungen", "Einheiten", "Militär", "Flotte", "Gold", "SoL", "Väter"],
                         widths: [80, 60, 70, 60, 60, 50, 60],
                         rows: [[
                             attrs["numberOfSettlements"] ?? "?",
@@ -407,7 +407,7 @@ struct ReportPanelView: View {
     }
 
     private var indianReport: some View {
-        guard let game else { return AnyView(empty("No game.")) }
+        guard let game else { return AnyView(empty("Kein Spiel.")) }
         let indians = game.players.values
             .filter { $0.playerType == .indian }
             .sorted { ($0.name ?? "") < ($1.name ?? "") }
@@ -417,10 +417,10 @@ struct ReportPanelView: View {
         return AnyView(GroupBox {
             VStack(alignment: .leading, spacing: 10) {
                 if indians.isEmpty {
-                    empty("No native peoples.")
+                    empty("Keine Ureinwohner.")
                 } else {
                     table(
-                        headers: ["People", "Nation", "Stance"],
+                        headers: ["Volk", "Nation", "Haltung"],
                         widths: [160, 160, 110],
                         rows: indians.map { player in
                             [
@@ -432,12 +432,12 @@ struct ReportPanelView: View {
                     )
                 }
                 if !settlements.isEmpty {
-                    Text("Known settlements: \(settlements.count)")
+                    Text("Bekannte Siedlungen: \(settlements.count)")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 if let local = state.localPlayer, !local.bannedMissions.isEmpty {
-                    Text("Missions banned by: \(local.bannedMissions.map { game.players[$0]?.name ?? $0 }.sorted().joined(separator: ", "))")
+                    Text("Missionen verboten durch: \(local.bannedMissions.map { game.players[$0]?.name ?? $0 }.sorted().joined(separator: ", "))")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -452,11 +452,11 @@ struct ReportPanelView: View {
                 let total = game.tiles.count
                 let percent = total > 0 ? Int(Double(explored) / Double(total) * 100) : 0
                 VStack(alignment: .leading, spacing: 6) {
-                    row("Explored tiles", "\(explored) / \(total)")
-                    row("Explored", "\(percent)%")
+                    row("Erkundete Kacheln", "\(explored) / \(total)")
+                    row("Erkundet", "\(percent)%")
                 }
             } else {
-                empty("No map.")
+                empty("Keine Karte.")
             }
         }
     }
@@ -465,17 +465,17 @@ struct ReportPanelView: View {
         GroupBox {
             if let game {
                 VStack(alignment: .leading, spacing: 6) {
-                    row("Turn", "\(game.turn.number)")
-                    row("Current player", game.players[game.currentPlayerId ?? ""]?.name ?? "-")
+                    row("Runde", "\(game.turn.number)")
+                    row("Aktueller Spieler", game.players[game.currentPlayerId ?? ""]?.name ?? "-")
                     if let local = state.localPlayer {
-                        row("Your gold", "\(local.gold)")
-                        row("Your tax", "\(local.tax)%")
-                        row("Your score", "\(local.score)")
+                        row("Dein Gold", "\(local.gold)")
+                        row("Deine Steuer", "\(local.tax)%")
+                        row("Deine Punkte", "\(local.score)")
                     }
                     let messages = state.localPlayerModelMessages
                     if !messages.isEmpty {
                         Divider()
-                        Text("Events")
+                        Text("Ereignisse")
                             .font(.caption.bold())
                         ForEach(Array(messages.suffix(8).reversed().enumerated()),
                                 id: \.offset) { _, message in
@@ -486,7 +486,7 @@ struct ReportPanelView: View {
                     }
                 }
             } else {
-                empty("No game.")
+                empty("Kein Spiel.")
             }
         }
     }
@@ -495,17 +495,17 @@ struct ReportPanelView: View {
         GroupBox {
             HStack {
                 Spacer()
-                Button("Request from Server") { state.requestHighScores() }
+                Button("Vom Server anfordern") { state.requestHighScores() }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
             }
             if let report = state.highScoresReport {
                 let entries = report.children.filter { $0.tag == "highScore" }
                 if entries.isEmpty {
-                    empty("No entries.")
+                    empty("Keine Einträge.")
                 } else {
                     table(
-                        headers: ["Player", "Nation", "Score", "Units", "Colonies"],
+                        headers: ["Spieler", "Nation", "Punkte", "Einheiten", "Kolonien"],
                         widths: [140, 120, 70, 60, 80],
                         rows: entries.map { entry in
                             [
@@ -519,7 +519,7 @@ struct ReportPanelView: View {
                     )
                 }
             } else {
-                empty("No high scores available.")
+                empty("Keine Bestenliste verfügbar.")
             }
         }
     }
@@ -531,21 +531,21 @@ struct ReportPanelView: View {
         return GroupBox {
             VStack(alignment: .leading, spacing: 8) {
                 if let current {
-                    row("In progress", state.foundingFatherDisplayName(current))
+                    row("In Arbeit", state.foundingFatherDisplayName(current))
                 }
                 if fathers.isEmpty && offered.isEmpty && current == nil {
-                    empty("No founding fathers yet.")
+                    empty("Noch keine Gründerväter.")
                 } else {
                     if !fathers.isEmpty {
-                        Text("In Congress (\(fathers.count))")
+                        Text("Im Kongress (\(fathers.count))")
                             .font(.caption.bold())
-                        table(headers: ["Founding Father"], widths: [260],
+                        table(headers: ["Gründervater"], widths: [260],
                               rows: fathers.map { [state.foundingFatherDisplayName($0)] })
                     }
                     if !offered.isEmpty {
-                        Text("Offered")
+                        Text("Angeboten")
                             .font(.caption.bold())
-                        table(headers: ["Founding Father"], widths: [260],
+                        table(headers: ["Gründervater"], widths: [260],
                               rows: offered.map { [state.foundingFatherDisplayName($0)] })
                     }
                 }
@@ -557,7 +557,7 @@ struct ReportPanelView: View {
         let colonies = state.localColonies
         return GroupBox {
             if colonies.isEmpty {
-                empty("No colonies.")
+                empty("Keine Kolonien.")
             } else {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(colonies) { colony in
@@ -566,9 +566,9 @@ struct ReportPanelView: View {
                             Text("\(colony.name ?? colony.id) (\(workers.count))")
                                 .font(.caption.bold())
                             if workers.isEmpty {
-                                empty("No workers.")
+                                empty("Keine Arbeiter.")
                             } else {
-                                table(headers: ["Unit", "Work", "Location"],
+                                table(headers: ["Einheit", "Arbeit", "Standort"],
                                       widths: [140, 120, 150],
                                       rows: workers.map { unit in
                                           [
@@ -592,12 +592,12 @@ struct ReportPanelView: View {
         } ?? []
         return GroupBox {
             VStack(alignment: .leading, spacing: 8) {
-                row("Missionaries", "\(missionaries.count)")
-                row("Native settlements", "\(settlements.count)")
+                row("Missionare", "\(missionaries.count)")
+                row("Siedlungen der Ureinwohner", "\(settlements.count)")
                 if missionaries.isEmpty {
-                    empty("No missionaries.")
+                    empty("Keine Missionare.")
                 } else {
-                    table(headers: ["Unit", "Location"], widths: [180, 160],
+                    table(headers: ["Einheit", "Standort"], widths: [180, 160],
                           rows: missionaries.map {
                               [$0.unitType.map { shortName($0, prefix: "model.unit.") } ?? $0.id,
                                $0.location ?? "—"]
@@ -611,7 +611,7 @@ struct ReportPanelView: View {
         let colonies = state.localColonies
         return GroupBox {
             if colonies.isEmpty {
-                empty("No colonies.")
+                empty("Keine Kolonien.")
             } else {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(colonies) { colony in
@@ -620,9 +620,9 @@ struct ReportPanelView: View {
                             Text(colony.name ?? colony.id)
                                 .font(.caption.bold())
                             if production.isEmpty {
-                                empty("No estimated production.")
+                                empty("Keine geschätzte Produktion.")
                             } else {
-                                table(headers: ["Goods", "Per turn"],
+                                table(headers: ["Ware", "Pro Runde"],
                                       widths: [180, 80],
                                       rows: production.map { [$0.label, "\($0.amount)"] })
                             }
@@ -637,9 +637,9 @@ struct ReportPanelView: View {
         let assignments = state.educationAssignments
         return GroupBox {
             if assignments.isEmpty {
-                empty("No education in progress.")
+                empty("Keine Ausbildung im Gange.")
             } else {
-                table(headers: ["Student", "Teacher", "Colony"],
+                table(headers: ["Schüler", "Lehrer", "Kolonie"],
                       widths: [150, 150, 140],
                       rows: assignments.map { unit in
                           [
@@ -656,7 +656,7 @@ struct ReportPanelView: View {
         let colonies = state.localColonies
         return GroupBox {
             if colonies.isEmpty {
-                empty("No colonies.")
+                empty("Keine Kolonien.")
             } else {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(colonies) { colony in
@@ -665,9 +665,9 @@ struct ReportPanelView: View {
                                 Text("\(colony.name ?? colony.id) → \(requirements.target)")
                                     .font(.caption.bold())
                                 if requirements.items.isEmpty {
-                                    empty("No material requirements.")
+                                    empty("Keine Materialanforderungen.")
                                 } else {
-                                    table(headers: ["Goods", "Stored", "Required"],
+                                    table(headers: ["Ware", "Vorhanden", "Benötigt"],
                                           widths: [160, 70, 80],
                                           rows: requirements.items.map {
                                               [$0.label, "\($0.stored)", "\($0.required)"]
@@ -685,9 +685,9 @@ struct ReportPanelView: View {
         let messages = state.localPlayerModelMessages
         return GroupBox {
             if messages.isEmpty {
-                empty("No events recorded.")
+                empty("Keine Ereignisse aufgezeichnet.")
             } else {
-                table(headers: ["Event", "Source", "Type"],
+                table(headers: ["Ereignis", "Quelle", "Typ"],
                       widths: [220, 120, 100],
                       rows: messages.reversed().map {
                           [$0.label, $0.source ?? "—", $0.messageType ?? "—"]
@@ -740,7 +740,7 @@ struct ReportPanelView: View {
     private func exportCSV() {
         guard !tableSnapshots.isEmpty else { return }
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = "\(selected.rawValue)-turn-\(game?.turn.number ?? 0).csv"
+        panel.nameFieldStringValue = "\(selected.rawValue)-runde-\(game?.turn.number ?? 0).csv"
         panel.allowedContentTypes = [.commaSeparatedText]
         guard panel.runModal() == .OK, let url = panel.url else { return }
 

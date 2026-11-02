@@ -9,10 +9,10 @@ struct ReportsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Reports")
+                Text("Berichte")
                     .font(.title2.bold())
                 Spacer()
-                Button("Close") { dismiss() }
+                Button("Schließen") { dismiss() }
             }
 
             if state.nationSummaryReport == nil && state.highScoresReport == nil {
@@ -37,26 +37,26 @@ struct ReportsView: View {
     }
 
     private func nationSummarySection(_ summary: ParsedMessage) -> some View {
-        GroupBox("Nation Summary") {
+        GroupBox("Nationsübersicht") {
             VStack(alignment: .leading, spacing: 4) {
                 let player = summary.attributes["player"] ?? "?"
-                Text("Player: \(player)")
+                Text("Spieler: \(player)")
                     .font(.caption.bold())
-                reportRow("Settlements", summary.attributes["numberOfSettlements"])
-                reportRow("Units", summary.attributes["numberOfUnits"])
-                reportRow("Military", summary.attributes["militaryStrength"])
-                reportRow("Naval", summary.attributes["navalStrength"])
+                reportRow("Siedlungen", summary.attributes["numberOfSettlements"])
+                reportRow("Einheiten", summary.attributes["numberOfUnits"])
+                reportRow("Militär", summary.attributes["militaryStrength"])
+                reportRow("Flotte", summary.attributes["navalStrength"])
                 reportRow("Gold", summary.attributes["gold"])
-                reportRow("SoL", summary.attributes["SoL"])
-                reportRow("Tax", summary.attributes["tax"])
-                reportRow("Stance", summary.attributes["stance"])
+                reportRow("Freiheitsbewusstsein", summary.attributes["SoL"])
+                reportRow("Steuer", summary.attributes["tax"])
+                reportRow("Haltung", summary.attributes["stance"])
             }
             .padding(.vertical, 4)
         }
     }
 
     private func highScoresSection(_ report: ParsedMessage) -> some View {
-        GroupBox("High Scores") {
+        GroupBox("Bestenliste") {
             VStack(alignment: .leading, spacing: 4) {
                 let entries = report.children.filter { $0.tag == "highScore" }
                 if entries.isEmpty {
@@ -65,11 +65,11 @@ struct ReportsView: View {
                         .foregroundColor(.secondary)
                 } else {
                     HStack(spacing: 0) {
-                        Text("Player").frame(width: 120, alignment: .leading)
+                        Text("Spieler").frame(width: 120, alignment: .leading)
                         Text("Nation").frame(width: 90, alignment: .leading)
-                        Text("Score").frame(width: 55, alignment: .trailing)
-                        Text("Units").frame(width: 45, alignment: .trailing)
-                        Text("Colonies").frame(width: 60, alignment: .trailing)
+                        Text("Punkte").frame(width: 55, alignment: .trailing)
+                        Text("Einheiten").frame(width: 45, alignment: .trailing)
+                        Text("Kolonien").frame(width: 60, alignment: .trailing)
                     }
                     .font(.caption2.bold())
                     .foregroundColor(.secondary)

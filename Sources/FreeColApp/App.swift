@@ -48,7 +48,7 @@ struct FreeColApp: App {
                     .disabled(!gameState.canSaveGame)
             }
             CommandGroup(replacing: .appInfo) {
-                Button("About FreeColClient") {
+                Button("Über FreeColClient") {
                     showAboutPanel()
                 }
             }
@@ -62,7 +62,7 @@ struct FreeColApp: App {
             .applicationVersion: AppVersion.version,
             .version: AppVersion.gitHash,
             .credits: NSAttributedString(
-                string: "Open-source macOS client for the FreeCol turn-based strategy game.\nhttps://github.com/Copilot/FreeColClient",
+                string: "Open-Source-macOS-Client für das FreeCol-Rundenstrategiespiel.\nhttps://github.com/Copilot/FreeColClient",
                 attributes: [.font: NSFont.systemFont(ofSize: 11)]
             ),
         ])
