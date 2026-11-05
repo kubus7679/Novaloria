@@ -826,6 +826,51 @@ final class MapInteractionTests: XCTestCase {
     }
 
     @MainActor
+    func testServerEventsOverlayMapWithoutReducingItsSize() throws {
+        let state = try makeState()
+        let size = CGSize(width: 900, height: 620)
+
+        func mapFrame() throws -> CGRect {
+            let host = NSHostingView(rootView: GameView().environment(state))
+            host.frame = CGRect(origin: .zero, size: size)
+            host.layoutSubtreeIfNeeded()
+            func findMap(in view: NSView) -> ClickCaptureNSView? {
+                if let map = view as? ClickCaptureNSView { return map }
+                return view.subviews.lazy.compactMap { findMap(in: $0) }.first
+            }
+            let map = try XCTUnwrap(findMap(in: host))
+            return map.convert(map.bounds, to: host)
+        }
+
+        let originalFrame = try mapFrame()
+        XCTAssertGreaterThan(originalFrame.height, 200)
+        let types: [GameState.PendingServerDecisionType] = [
+            .foundingFather, .newRegionName, .newLandName, .firstContact,
+            .monarchAction, .indianDemand, .lootCargo, .fountainOfYouth,
+            .scoutReport, .incite, .nativeTrade, .diplomacy,
+        ]
+        for type in types {
+            state.pendingServerDecision = GameState.PendingServerDecision(
+                type: type,
+                rawPayload: [
+                    "newLandName": "Neu-Amsterdam",
+                    "newRegionName": "Neue Region",
+                    "trade": "model.foundingFather.adamSmith",
+                    "exploration": "model.foundingFather.henryHudson",
+                    "military": "model.foundingFather.hernanCortes",
+                    "political": "model.foundingFather.pocahontas",
+                    "religious": "model.foundingFather.williamBrewster",
+                ]
+            )
+            XCTAssertEqual(try mapFrame(), originalFrame, type.rawValue)
+            try checkPanel(GameView().environment(state), name: "map-event-\(type.rawValue)",
+                           width: size.width, height: size.height)
+        }
+        state.clearPendingDecision()
+        XCTAssertEqual(try mapFrame(), originalFrame)
+    }
+
+    @MainActor
     func testFoundingFatherSelectionFitsMinimumWindowWithAllFiveOffers() throws {
         let state = try makeState()
         state.applySessionMessage(ParsedMessage(tag: "chooseFoundingFather", attributes: [

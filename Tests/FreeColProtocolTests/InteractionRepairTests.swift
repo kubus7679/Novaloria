@@ -39,6 +39,82 @@ final class InteractionRepairTests: XCTestCase {
     }
 
     @MainActor
+    func testColonyWarningsAndExperienceMessagesAreReadable() throws {
+        let game = Game()
+        try game.load(from: XMLDecoder.decode("""
+        <game id="game-1" clientUserName="Alice">
+          <player id="player-1" username="Alice">
+            <modelMessage id="model.colony.famineFeared" source="colony-1" messageType="WARNING">
+              <pair value="%colony%"><stringTemplate id="Boston" templateType="NAME"/></pair>
+              <pair value="%number%"><stringTemplate id="2" templateType="NAME"/></pair>
+            </modelMessage>
+            <modelMessage id="model.unit.experience" source="colony-1" messageType="UNIT_IMPROVED">
+              <pair value="%colony%"><stringTemplate id="Boston" templateType="NAME"/></pair>
+              <pair value="%oldName%"><stringTemplate id="model.unit.freeColonist" templateType="KEY"/></pair>
+              <pair value="%unit%"><stringTemplate id="model.unit.expertFarmer" templateType="KEY"/></pair>
+            </modelMessage>
+          </player>
+          <colony id="colony-1" name="Boston" owner="player-1"/>
+        </game>
+        """))
+
+        let state = GameState()
+        state.installGame(game)
+        let messages = try XCTUnwrap(game.players["player-1"]?.modelMessages)
+        XCTAssertEqual(messages[0].replacements["%number%"], "2")
+        XCTAssertEqual(
+            state.modelMessageText(messages[0]),
+            "In Boston wird eine Hungersnot befürchtet. Die Nahrung reicht nur noch für 2 Züge."
+        )
+        XCTAssertEqual(
+            state.modelMessageText(messages[1]),
+            "Ein Freier Kolonist in Boston ist durch Erfahrung zum Experten (Erfahrener Bauer) geworden."
+        )
+    }
+
+    @MainActor
+    func testLostCityRumourResultsFromServerAreReadable() throws {
+        let game = Game()
+        try game.load(from: XMLDecoder.decode("""
+        <game id="game-1" clientUserName="Alice">
+          <player id="player-1" username="Alice"/>
+        </game>
+        """))
+        let state = GameState()
+        state.installGame(game)
+        let response = try XMLDecoder.decode("""
+        <multiple>
+          <featureChange id="player-1" add="true">
+            <modelMessage id="model.lostCityRumour.ruins.description" source="unit-1" messageType="LOST_CITY_RUMOUR">
+              <pair value="%money%"><stringTemplate id="600" templateType="NAME"/></pair>
+            </modelMessage>
+            <modelMessage id="model.lostCityRumour.nothing.0.description" source="unit-1" messageType="LOST_CITY_RUMOUR"/>
+            <modelMessage id="model.lostCityRumour.learn.description" source="unit-1" messageType="LOST_CITY_RUMOUR">
+              <pair value="%unit%"><stringTemplate id="model.unit.freeColonist" templateType="KEY"/></pair>
+              <pair value="%type%"><stringTemplate id="model.unit.expertFarmer" templateType="KEY"/></pair>
+            </modelMessage>
+          </featureChange>
+        </multiple>
+        """)
+
+        XCTAssertTrue(try GameStateManager(game: game).process(response))
+        let messages = state.localPlayerModelMessages
+        XCTAssertEqual(messages.count, 3)
+        XCTAssertEqual(
+            state.modelMessageText(messages[0]),
+            "Ihr habt Ruinen mit Schätzen im Wert von 600 Gold entdeckt."
+        )
+        XCTAssertEqual(
+            state.modelMessageText(messages[1]),
+            "Das Gerücht über eine verlorene Stadt war nichts als ein Gerücht."
+        )
+        XCTAssertEqual(
+            state.modelMessageText(messages[2]),
+            "Freier Kolonist hat Erfahrung gesammelt und ist jetzt Erfahrener Bauer."
+        )
+    }
+
+    @MainActor
     func testLocalStartPreservesSelectedNationAndGold() async throws {
         let state = GameState()
         defer { state.disconnect() }
@@ -48,6 +124,34 @@ final class InteractionRepairTests: XCTestCase {
         XCTAssertNil(state.errorMessage)
         XCTAssertEqual(state.localPlayer?.nationId, "model.nation.french")
         XCTAssertEqual(state.localPlayer?.gold, 4200)
+    }
+
+    @MainActor
+    func testLocalStartUsesClassicEquippedStartingUnits() async throws {
+        let state = GameState()
+        defer { state.disconnect() }
+        state.startLocal(userName: "Alice", nationId: "model.nation.dutch")
+        try await waitUntil { state.phase == .inGame || state.errorMessage != nil }
+        XCTAssertNil(state.errorMessage)
+
+        let game = try XCTUnwrap(state.game)
+        XCTAssertEqual(game.units.count, 3)
+        XCTAssertEqual(game.units["unit-caravel"]?.unitType, "model.unit.caravel")
+        XCTAssertEqual(game.units["unit-caravel"]?.location, "tile-4-1")
+
+        let soldier = try XCTUnwrap(game.units["unit-veteran-soldier"])
+        XCTAssertEqual(soldier.unitType, "model.unit.veteranSoldier")
+        XCTAssertEqual(soldier.location, "unit-caravel")
+        XCTAssertEqual(soldier.role, "model.role.soldier")
+        XCTAssertEqual(soldier.roleCount, 1)
+        XCTAssertEqual(soldier.state, .sentry)
+
+        let pioneer = try XCTUnwrap(game.units["unit-hardy-pioneer"])
+        XCTAssertEqual(pioneer.unitType, "model.unit.hardyPioneer")
+        XCTAssertEqual(pioneer.location, "unit-caravel")
+        XCTAssertEqual(pioneer.role, "model.role.pioneer")
+        XCTAssertEqual(pioneer.roleCount, 1)
+        XCTAssertEqual(pioneer.state, .sentry)
     }
 
     @MainActor

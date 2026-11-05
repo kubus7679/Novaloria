@@ -55,17 +55,39 @@ public struct ModelMessage: Sendable, Identifiable {
     public var display: String?
     public var messageType: String?
     public var hasBeenDisplayed: Bool
+    public var replacements: [String: String]
 
     public init(id: String,
                 source: String?,
                 display: String?,
                 messageType: String?,
-                hasBeenDisplayed: Bool) {
+                hasBeenDisplayed: Bool,
+                replacements: [String: String] = [:]) {
         self.id = id
         self.source = source
         self.display = display
         self.messageType = messageType
         self.hasBeenDisplayed = hasBeenDisplayed
+        self.replacements = replacements
+    }
+
+    public static func templateReplacements(from children: [ParsedMessage]) -> [String: String] {
+        var replacements: [String: String] = [:]
+        for pair in children where pair.tag == "pair" {
+            guard let key = pair.attributes["value"],
+                  let value = pair.children.first(where: { $0.tag == "stringTemplate" })?.attributes["id"] else {
+                continue
+            }
+            replacements[key] = value
+        }
+        return replacements
+    }
+
+    public var notificationID: String {
+        let parameters = replacements.keys.sorted()
+            .map { "\($0)=\(replacements[$0] ?? "")" }
+            .joined(separator: "|")
+        return "\(id)|\(source ?? "")|\(parameters)"
     }
 
     /// Best-effort label: the message key with any `model.message.` prefix removed.
@@ -155,7 +177,8 @@ public struct Player: GameObject, PartiallyUpdatable, Identifiable {
                     source: child.attributes["source"],
                     display: child.attributes["display"],
                     messageType: child.attributes["messageType"],
-                    hasBeenDisplayed: child.attributes.bool("hasBeenDisplayed", default: false)
+                    hasBeenDisplayed: child.attributes.bool("hasBeenDisplayed", default: false),
+                    replacements: ModelMessage.templateReplacements(from: child.children)
                 ))
             case "tension":
                 if let playerId = child.attributes["player"] {

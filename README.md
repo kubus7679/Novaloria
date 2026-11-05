@@ -18,14 +18,53 @@ swift run FreeColApp
 
 In der App kannst du:
 - **Verbinden** zu einem laufenden FreeCol-Server nutzen oder
+- **Neues Spiel erstellen…** mit einem echten lokalen Java-Server verwenden oder
 - **Lokales Spiel** für einen lokalen Mock-Start verwenden.
+
+### Neue Java-Partie erstellen
+
+1. In der Startansicht oder Lobby **Neues Spiel erstellen…** öffnen.
+2. Den FreeCol-Installationsordner mit `FreeCol.jar` und `data/` sowie das
+   ausführbare Java-Programm wählen (passende Java-Version für diese Installation erforderlich).
+3. **Optionen laden** liest alle Spiel-, Karten- und Schwierigkeitsoptionen
+   einschließlich geerbter Definitionen aus dem `freecol`-Regelset der Installation.
+   Nach Wahl einer Schwierigkeitsvorlage lassen sich deren Werte einzeln anpassen.
+   Ein Vorlagenwechsel setzt bisherige Änderungen zurück. Einheitenlisten sind
+   im erweiterten XML-Editor bearbeitbar; sonst gibt es Schalter, Auswahllisten
+   und Eingabefelder mit Prüfung der Java-Wertebereiche.
+4. Optional Servername, freien Port und Zufallsstartwert setzen.
+   **Optionsdatei exportieren…** speichert die Konfiguration ohne Serverstart.
+5. **Spiel erstellen** speichert eine eigene Partie unter
+   `~/Library/Application Support/FreeColClient/Games/<UUID>/`, startet Java und
+   verbindet den Client. Anschließend wie gewohnt anmelden, **Bereit** wählen
+   und als Administrator **Spiel starten** drücken.
+
+Der Ordner enthält `game-options.xml`, `launch-arguments.json`, `server.log`
+und `console.log`; er lässt sich aus der Startansicht im Finder öffnen.
+Die Optionsdatei ist eine geerbte FreeCol-Spezifikation: Ein eigenes Regelset
+bindet sie beim Java-Start über `--rules` ein. Die Java-Installation wird nicht
+verändert. Übliche `game_options.xml`/`map_generator_options.xml` werden vom
+headless Java-Server nicht automatisch beim Start übernommen.
+Der Server lauscht privat auf `127.0.0.1`; LAN-/Docker-Hosting ist hier nicht
+enthalten. Beim Trennen oder Beenden der App wird nur der von der App gestartete
+Server beendet. Nicht gespeicherter Spielfortschritt geht dabei verloren.
+Eine bestehende Lobby wird erst nach Bestätigung verlassen.
+
+Gezielter Integrationstest mit einer gebauten Java-Installation:
+
+```bash
+FREECOL_NEW_GAME_E2E_DIR=../freecol \
+FREECOL_JAVA_BIN=/opt/homebrew/opt/openjdk/bin/java \
+swift test --filter NewGameTests
+```
 
 Die Lobby zeigt nur unterstützte Änderungen: verfügbare Völker, die eigene
 Spielerfarbe und den Bereitschaftsstatus. **Spiel starten** ist nur für den
 Administrator sichtbar. Der Name ist nach der Anmeldung nicht mehr bearbeitbar.
 Startgold lässt sich unter **Optionen für lokales Spiel** ausschließlich für den
 Mock-Start einstellen; bei Serverpartien bestimmt der Server Gold, Karte und
-Spielregeln. Die bisher wirkungslosen Karten- und Spielmodusfelder entfallen.
+Spielregeln anhand der beim Erstellen gewählten Konfiguration. Laufende
+Serverpartien lassen sich darüber nicht nachträglich umkonfigurieren.
 Der Lobby-Hintergrund ist die originale historische Karte aus FreeCol
 (`data/base/resources/images/ui/map.jpg`, `image.flavor.Canvas.map`), gebündelt
 als `lobby-background.jpg`; die FreeCol-Lizenz liegt den App-Ressourcen bei.
@@ -117,7 +156,10 @@ als `lobby-background.jpg`; die FreeCol-Lizenz liegt den App-Ressourcen bei.
   Fehler behalten die technische Meldung. Bei Zeitüberschreitungen zuerst den
   Spielstand prüfen, bevor eine möglicherweise bereits ausgeführte Aktion wiederholt wird.
 - **Kolonie:** Übersicht, Arbeiter/Felder, Gebäude/Bau und Lager/Fracht sind
-  getrennte Bereiche. Unter **Arbeiter und Felder** einen Arbeiter auswählen und
+  getrennte Bereiche. Aktionen und Serverupdates behalten die geöffnete Kolonie bei.
+  **Vorherige** und **Nächste** blättern alphabetisch durch die eigenen Kolonien
+  (mit Umlauf); das Dropdown im Kolonienamen öffnet direkt eine bestimmte Kolonie.
+  Unter **Arbeiter und Felder** einen Arbeiter auswählen und
   ein Feld der Geländeübersicht anklicken; belegte Felder tauschen die Arbeiter.
   Warensymbole zeigen die Produktion der besetzten Felder und des Zentrums;
   die angegebenen Mengen sind Basiswerte ohne Arbeiter- und Geländeboni.

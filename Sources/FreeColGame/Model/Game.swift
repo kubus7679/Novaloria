@@ -402,7 +402,8 @@ public final class Game: @unchecked Sendable {
                         source: child.attributes["source"],
                         display: child.attributes["display"],
                         messageType: child.attributes["messageType"],
-                        hasBeenDisplayed: child.attributes.bool("hasBeenDisplayed", default: false)
+                        hasBeenDisplayed: child.attributes.bool("hasBeenDisplayed", default: false),
+                        replacements: ModelMessage.templateReplacements(from: child.children)
                     ))
                 }
             default:

@@ -369,7 +369,7 @@ final class KeyboardShortcutsManager {
         shortcuts.append(KeyboardShortcut(
             key: "s",
             modifier: .command,
-            action: { state.promptSaveGame() },
+            action: { state.showSaveGamePanel() },
             description: "Spiel speichern",
             category: .game
         ))

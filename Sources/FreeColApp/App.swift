@@ -39,6 +39,9 @@ struct FreeColApp: App {
                     gameState.startLocal(userName: "Alice", nationId: "model.nation.dutch")
                 }
             }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+                gameState.stopHostedServer()
+            }
         }
         .defaultSize(width: 1200, height: 800)
         .commands {

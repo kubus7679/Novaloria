@@ -72,6 +72,15 @@ Message (abstract)
         +-- [many action messages...]
 ```
 
+### Event presentation (macOS client)
+
+Server decisions (including founding fathers, region/land naming, first contact,
+monarch actions, native trade, and diplomacy) appear as overlays over the map.
+The map keeps its size and position while a decision is open. Dialog content
+scrolls when necessary, and map clicks and gameplay keyboard shortcuts are
+blocked until the decision is resolved. Event notifications also appear inside
+the map area, behind any active decision.
+
 ### Message Dispatch (Java)
 
 Messages are deserialized by reflection. Given a tag-name `foo`, the system looks up `net.sf.freecol.common.networking.FooMessage`, finds its `(Game, FreeColXMLReader)` constructor, and calls it. The mapping is cached in a static `builders` map (`Message.java:63`).
@@ -557,7 +566,13 @@ With i18n template (more common on server):
 - `actor Connection` for serialized access to the socket
 - `async` receive loop using `NWConnection.receiveMessage`
 - `async` `ask()` with `CheckedContinuation`
-- `@MainActor` for UI updates when game state changes
+- The client's live `Game` is shared with SwiftUI. Access it on `@MainActor`;
+  reset, login loading, and all incoming model changes also run on that actor.
+  `@unchecked Sendable` does not make the model's dictionaries thread-safe.
+- Client delegate callbacks run on the main actor after model changes. Reply
+  continuations resume only after the reply's model changes have been applied.
+- Login completion installs the live model before publishing the UI's
+  lobby/in-game phase, including local games and reconnects.
 
 ### Error Handling
 - Server errors arrive as `<error>` messages inside `<reply>`

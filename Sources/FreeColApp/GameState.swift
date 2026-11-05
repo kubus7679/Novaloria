@@ -476,6 +476,11 @@ final class GameState {
     var serverState: ServerState?
     private var bridge: ClientBridge?
     private var server: MockServer?
+    private var javaServer: LocalJavaServer?
+    private var javaServerStartTask: Task<Void, Never>?
+    private var javaServerStartID: UUID?
+    private var connectionAttemptID: UUID?
+    private(set) var hostedGameDirectory: URL?
     var usesLocalServer: Bool { server != nil }
     private var messageLoopTask: Task<Void, Never>?
     private var localServerTask: Task<Void, Never>?
@@ -574,6 +579,7 @@ final class GameState {
     var mapOverlay: MapOverlay = .none
     var showEuropePanel: Bool = false
     var showColonyPanel: Bool = false
+    private var displayedColonyId: String?
     var showDebugPanel: Bool = false
     var showStatusPanel: Bool = false
     var showShortcutsHelp: Bool = false
@@ -612,9 +618,13 @@ final class GameState {
     }
     func closeEuropePanel() { showEuropePanel = false }
     func openColonyPanel() {
-        guard selectedColony != nil else {
+        guard let colony = selectedColony else {
             errorMessage = "Bitte eine Kolonie auf der Karte auswaehlen."
             return
+        }
+        displayedColonyId = colony.id
+        if !selectedColonyUnits.contains(where: { $0.id == selectedUnitId }) {
+            selectedUnitId = nil
         }
         closeTileActions()
         isChoosingMoveDestination = false
@@ -623,14 +633,33 @@ final class GameState {
     /// Select a colony by id (e.g. from a spy result) and open its panel.
     func openColonyPanel(colonyId: String) {
         guard let colony = cachedGame?.colonies[colonyId],
-              let tileId = colony.tileId else {
+              let tileId = colony.tileId, cachedGame?.tiles[tileId] != nil else {
             errorMessage = "Die Kolonie ist auf der Karte nicht verfuegbar."
             return
         }
+        displayedColonyId = colonyId
         selectedTileId = tileId
         openColonyPanel()
     }
-    func closeColonyPanel() { showColonyPanel = false }
+    func closeColonyPanel() {
+        showColonyPanel = false
+        displayedColonyId = nil
+    }
+
+    func selectPreviousColony() { cycleColony(offset: -1) }
+    func selectNextColony() { cycleColony(offset: 1) }
+
+    private func cycleColony(offset: Int) {
+        let colonies = coloniesForNavigation
+        guard !colonies.isEmpty else {
+            errorMessage = "Keine eigenen Kolonien verfügbar."
+            return
+        }
+        let currentIndex = colonies.firstIndex { $0.id == selectedColony?.id }
+        let index = currentIndex.map { ($0 + offset + colonies.count) % colonies.count }
+            ?? (offset > 0 ? 0 : colonies.count - 1)
+        openColonyPanel(colonyId: colonies[index].id)
+    }
     func openDebugPanel() { showDebugPanel = true }
     func closeDebugPanel() { showDebugPanel = false }
     
@@ -842,6 +871,75 @@ final class GameState {
     /// Server model messages for the local player (event log / turn report).
     var localPlayerModelMessages: [ModelMessage] {
         localPlayer?.modelMessages ?? []
+    }
+
+    func modelMessageText(_ message: ModelMessage) -> String {
+        func replacement(_ key: String) -> String? {
+            guard let value = message.replacements[key] else { return nil }
+            if value.hasPrefix("model.unit.") {
+                return unitDisplayName(value)
+            }
+            return value
+        }
+
+        let colony = replacement("%colony%")
+            ?? message.source.flatMap { cachedGame?.colonies[$0]?.name }
+            ?? "unbekannte Kolonie"
+
+        let messageId = message.id.hasSuffix(".description")
+            ? String(message.id.dropLast(".description".count))
+            : message.id
+
+        switch messageId {
+        case "model.colony.famineFeared":
+            let turns = replacement("%number%") ?? "?"
+            return "In \(colony) wird eine Hungersnot befürchtet. Die Nahrung reicht nur noch für \(turns) Züge."
+        case "model.colony.starving":
+            return "\(colony) verhungert."
+        case "model.colony.colonistStarved":
+            return "In \(colony) ist ein Kolonist verhungert!"
+        case "model.colony.colonyStarved":
+            return "Der letzte Kolonist in \(colony) ist verhungert; die Kolonie ist verlassen."
+        case "model.colony.newColonist":
+            return "Ein neuer Kolonist ist in \(colony) eingetroffen."
+        case "model.unit.experience":
+            let oldUnit = replacement("%oldName%") ?? "Ein Kolonist"
+            let newUnit = replacement("%unit%") ?? "ein Experte"
+            return "Ein \(oldUnit) in \(colony) ist durch Erfahrung zum Experten (\(newUnit)) geworden."
+        default:
+            break
+        }
+
+        let rumourPrefix = "model.lostCityRumour."
+        guard messageId.hasPrefix(rumourPrefix) else { return message.label }
+        let result = String(messageId.dropFirst(rumourPrefix.count))
+        let money = replacement("%money%") ?? "?"
+        switch result {
+        case "burialGround":
+            return "Eure Einheit hat eine heilige Begräbnisstätte betreten."
+        case "cibola":
+            let city = replacement("%city%") ?? "eine der Sieben Goldenen Städte"
+            return "Ihr habt \(city) entdeckt und einen Schatz im Wert von \(money) Gold gefunden."
+        case "colonist":
+            return "Überlebende einer verlorenen Kolonie schließen sich Eurer Expedition an."
+        case "expeditionVanishes":
+            return "Eure Expedition ist spurlos verschwunden!"
+        case "fountainOfYouth", "fountainOfYouth.noEurope":
+            return "Ihr habt den Jungbrunnen entdeckt!"
+        case "learn":
+            let unit = replacement("%unit%") ?? "Eure Einheit"
+            let type = replacement("%type%") ?? "einen erfahrenen Beruf"
+            return "\(unit) hat Erfahrung gesammelt und ist jetzt \(type)."
+        case "ruins", "ruins.mounds":
+            return "Ihr habt Ruinen mit Schätzen im Wert von \(money) Gold entdeckt."
+        case "tribalChief", "tribalChief.mounds":
+            return "Ein Häuptling beschenkt Euch mit Schmuck im Wert von \(money) Gold."
+        default:
+            if result.hasPrefix("nothing.") {
+                return "Das Gerücht über eine verlorene Stadt war nichts als ein Gerücht."
+            }
+            return "Ein Gerücht über eine verlorene Stadt wurde erforscht."
+        }
     }
 
     func foundingFatherDisplayName(_ id: String?) -> String {
@@ -1186,16 +1284,32 @@ final class GameState {
     }
 
     var selectedColony: Colony? {
-        guard let game = cachedGame,
-              let tileId = selectedTileId else {
-            return nil
+        guard let game = cachedGame else { return nil }
+        if showColonyPanel, let displayedColonyId {
+            return game.colonies[displayedColonyId]
         }
+        guard let tileId = selectedTileId else { return nil }
         if let tile = game.tiles[tileId],
            let settlementId = tile.settlement,
            let colony = game.colonies[settlementId] {
             return colony
         }
         return game.colonies.values.first(where: { $0.tileId == tileId })
+    }
+
+    var coloniesForNavigation: [Colony] {
+        guard let game = cachedGame, let owner = resolveLocalPlayerId() else { return [] }
+        return game.colonies.values.filter {
+            $0.owner == owner && $0.tileId.flatMap { game.tiles[$0] } != nil
+        }.sorted {
+            let comparison = ($0.name ?? $0.id).localizedStandardCompare($1.name ?? $1.id)
+            return comparison == .orderedSame ? $0.id < $1.id : comparison == .orderedAscending
+        }
+    }
+
+    var canNavigateColonies: Bool {
+        let colonies = coloniesForNavigation
+        return colonies.count > 1 || colonies.first.map { $0.id != selectedColony?.id } == true
     }
 
     var selectedColonyUnits: [FreeColGame.Unit] {
@@ -1357,7 +1471,7 @@ final class GameState {
 
                 try await client.connect()
                 statusMessage = "Connected, logging in…"
-                _ = try await client.login(userName: userName, nationId: nationId)
+                let result = try await client.login(userName: userName, nationId: nationId)
                 cachedGame = await client.game
                 if let game = cachedGame, game.currentPlayerId == nil {
                     // Local games have no server-side turn owner yet.
@@ -1367,7 +1481,7 @@ final class GameState {
                 // Make sure handshake completed
                 _ = try await serverHandshake
 
-                phase = .inGame
+                applyLoginResult(result)
                 statusMessage = ""
                 startMessageLoop(client: client, server: server)
                 startLocalServerLoop(server: server)
@@ -1423,6 +1537,61 @@ final class GameState {
         }
     }
 
+    func createJavaGame(configuration: NewGameConfiguration, java: URL, port: Int,
+                        name: String, seed: String) throws {
+        guard phase == .disconnected || phase == .lobby else {
+            throw NewGameError.invalid("Eine neue Partie kann nur außerhalb eines laufenden Spiels erstellt werden.")
+        }
+        let root = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
+                                              appropriateFor: nil, create: true)
+            .appendingPathComponent("FreeColClient/Games")
+        let launch = try JavaServerLaunch.prepare(configuration: configuration, java: java, port: port,
+                                                 name: name, seed: seed, root: root)
+        let previousServer = javaServer
+        if phase == .lobby { disconnect() }
+        resetSessionState()
+        hostedGameDirectory = launch.directory
+        let server = LocalJavaServer()
+        javaServer = server
+        server.onUnexpectedExit = { [weak self] message in
+            guard let self else { return }
+            FreeColLogger.shared.error(message)
+            self.disconnect()
+            self.errorMessage = message
+        }
+        let startID = UUID()
+        javaServerStartID = startID
+        phase = .connecting
+        statusMessage = "Java-Server wird gestartet…"
+        javaServerStartTask = Task {
+            do {
+                try await previousServer?.waitForShutdown()
+                try Task.checkCancellation()
+                try await server.start(launch)
+                guard javaServerStartID == startID else { return }
+                javaServerStartTask = nil
+                javaServerStartID = nil
+                phase = .disconnected
+                connect(host: "127.0.0.1", port: port)
+            } catch {
+                guard javaServerStartID == startID else { return }
+                FreeColLogger.shared.error("Java-Serverstart fehlgeschlagen: \(error)")
+                stopHostedServer()
+                errorMessage = error.localizedDescription
+                phase = .disconnected
+                statusMessage = ""
+            }
+        }
+    }
+
+    func stopHostedServer() {
+        javaServerStartID = nil
+        javaServerStartTask?.cancel()
+        javaServerStartTask = nil
+        javaServer?.stop()
+        javaServer = nil
+    }
+
     func connect(host: String, port: Int) {
         guard case .disconnected = phase else { return }
         userRequestedDisconnect = false
@@ -1436,19 +1605,29 @@ final class GameState {
         self.client = client
         let bridge = ClientBridge(gameState: self)
         self.bridge = bridge
+        let attemptID = UUID()
+        connectionAttemptID = attemptID
 
         Task {
             await client.setDelegate(bridge)
             do {
                 try await client.connect()
                 // Capture initial handshake data from client after connection and handshake
-                self.vacantPlayers = await client.initialVacantPlayers
-                self.serverState = await client.initialGameState
+                let vacantPlayers = await client.initialVacantPlayers
+                let serverState = await client.initialGameState
+                guard connectionAttemptID == attemptID else {
+                    await client.disconnect()
+                    return
+                }
+                self.vacantPlayers = vacantPlayers
+                self.serverState = serverState
                 
                 phase = .login
                 statusMessage = "Connected"
             } catch {
+                guard connectionAttemptID == attemptID else { return }
                 FreeColLogger.shared.error("Connection failed: \(error)")
+                stopHostedServer()
                 errorMessage = ServerErrorMessage.description(for: error)
                 phase = .disconnected
                 statusMessage = ""
@@ -1482,6 +1661,8 @@ final class GameState {
 
     func disconnect() {
         userRequestedDisconnect = true
+        connectionAttemptID = nil
+        stopHostedServer()
         reconnectTask?.cancel()
         reconnectTask = nil
         queuedGameplayActions.removeAll()
@@ -1489,9 +1670,11 @@ final class GameState {
         messageLoopTask = nil
         localServerTask?.cancel()
         localServerTask = nil
+        let disconnectedClient = client
+        let disconnectedServer = server
         Task {
-            await client?.disconnect()
-            await server?.stop()
+            await disconnectedClient?.disconnect()
+            await disconnectedServer?.stop()
         }
         server = nil
         client = nil
@@ -2636,7 +2819,7 @@ final class GameState {
         selectedTileId = nil
         isChoosingMoveDestination = false
         showEuropePanel = false
-        showColonyPanel = false
+        closeColonyPanel()
         showDebugPanel = false
         showStatusPanel = false
         tileActionTileId = nil
@@ -6104,7 +6287,21 @@ final class GameState {
         guard let game = cachedGame else {
             selectedUnitId = nil
             selectedTileId = nil
+            closeColonyPanel()
             return
+        }
+
+        // Colony actions must not let unit recovery or movement change the open colony.
+        if showColonyPanel, let displayedColonyId {
+            if let colony = game.colonies[displayedColonyId],
+               let tileId = colony.tileId, game.tiles[tileId] != nil {
+                selectedTileId = tileId
+                if !selectedColonyUnits.contains(where: { $0.id == selectedUnitId }) {
+                    selectedUnitId = nil
+                }
+                return
+            }
+            closeColonyPanel()
         }
 
         let localPlayerId = resolveLocalPlayerId()
@@ -6269,6 +6466,7 @@ final class GameState {
 
     private func autoFocusInitialUnitIfNeeded() {
         guard !didAutoFocusInitialUnit,
+              !showColonyPanel,
               selectedUnitId == nil,
               phase == .inGame,
               let game = cachedGame,
@@ -6382,8 +6580,8 @@ final class GameState {
                     let result = try await newClient.login(userName: localPlayerName, nationId: localNationId)
                     self.client = newClient
                     self.bridge = newBridge
-                    self.applyLoginResult(result)
                     self.cachedGame = await newClient.game
+                    self.applyLoginResult(result)
                     self.statusMessage = "Reconnected. Review queued actions before resending."
                     self.reconnectTask = nil
                     self.startMessageLoop(client: newClient)
@@ -6453,7 +6651,10 @@ final class GameState {
 <tile id="tile-3-3" x="3" y="3" type="model.tile.ocean"/>
 <tile id="tile-4-3" x="4" y="3" type="model.tile.ocean"/>
 </map>
-<unit id="unit-colonist" owner="player-european" unitType="model.unit.colonist" location="tile-4-1" movesLeft="3" state="ACTIVE"/>
+<unit id="unit-caravel" owner="player-european" unitType="model.unit.caravel" location="tile-4-1" movesLeft="3" state="ACTIVE">
+  <unit id="unit-veteran-soldier" owner="player-european" unitType="model.unit.veteranSoldier" location="unit-caravel" role="model.role.soldier" roleCount="1" state="SENTRY"/>
+  <unit id="unit-hardy-pioneer" owner="player-european" unitType="model.unit.hardyPioneer" location="unit-caravel" role="model.role.pioneer" roleCount="1" state="SENTRY"/>
+</unit>
 <colony id="colony-amsterdam" name="Amsterdam" owner="player-european" tile="tile-4-0" settlementType="model.settlement.colony"/>
 </game>
 """
@@ -6468,12 +6669,7 @@ private final class ClientBridge: ClientDelegate {
 
     nonisolated func clientDidConnect() {}
 
-    nonisolated func clientDidLogin(_ result: LoginResult) {
-        guard let gs = gameState else { return }
-        Task { @MainActor in
-            gs.applyLoginResult(result)
-        }
-    }
+    nonisolated func clientDidLogin(_ result: LoginResult) {}
 
     nonisolated func clientDidReceiveGameState(_ parsed: ParsedMessage) {
         guard let gs = gameState else { return }

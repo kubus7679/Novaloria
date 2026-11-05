@@ -7,15 +7,18 @@ struct EventMessagesOverlay: View {
     
     @State private var readMessageIds: Set<String> = []
     
-    var unreadMessages: [ModelMessage] {
-        state.localPlayerModelMessages.filter { !readMessageIds.contains($0.id) }
+    var unreadMessages: [(id: String, message: ModelMessage)] {
+        state.localPlayerModelMessages.enumerated().compactMap { index, message in
+            let id = "\(index)|\(message.notificationID)"
+            return readMessageIds.contains(id) ? nil : (id, message)
+        }
     }
     
     var body: some View {
         if !unreadMessages.isEmpty {
             VStack(spacing: 8) {
-                ForEach(unreadMessages) { message in
-                    messageView(for: message)
+                ForEach(unreadMessages, id: \.id) { item in
+                    messageView(for: item.message, notificationID: item.id)
                 }
             }
             .padding(16)
@@ -25,7 +28,7 @@ struct EventMessagesOverlay: View {
     }
     
     @ViewBuilder
-    private func messageView(for message: ModelMessage) -> some View {
+    private func messageView(for message: ModelMessage, notificationID: String) -> some View {
         HStack(spacing: 8) {
             if let image = eventMessageImage(for: message) {
                 Image(nsImage: image)
@@ -34,12 +37,7 @@ struct EventMessagesOverlay: View {
                     .frame(width: 24, height: 24)
             }
             VStack(alignment: .leading, spacing: 2) {
-                if let source = message.source, !source.isEmpty {
-                    Text(source)
-                        .font(.caption.bold())
-                        .foregroundColor(.white)
-                }
-                Text(message.label)
+                Text(state.modelMessageText(message))
                     .font(.caption)
                     .foregroundColor(.white)
                     .multilineTextAlignment(.leading)
@@ -56,7 +54,7 @@ struct EventMessagesOverlay: View {
         .shadow(radius: 4)
         .frame(maxWidth: 400)
         .onTapGesture {
-            readMessageIds.insert(message.id)
+            readMessageIds.insert(notificationID)
         }
     }
     

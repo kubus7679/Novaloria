@@ -96,24 +96,42 @@ struct GameMenuBar: View {
             Button("Bewegen…") { state.beginChoosingMoveDestination() }
                 .disabled(!state.canChooseMoveDestination)
             Divider()
-            Button("Warten") { state.setSelectedUnitState(.skipped) }
+            commandButton("Warten", shortcutDescription: "Warten / Überspringen") {
+                state.setSelectedUnitState(.skipped)
+            }
                 .disabled(!state.canChangeSelectedUnitState(to: .skipped))
-            Button("Überspringen") { state.setSelectedUnitState(.skipped) }
+            commandButton("Überspringen", shortcutDescription: "Warten / Überspringen") {
+                state.setSelectedUnitState(.skipped)
+            }
                 .disabled(!state.canChangeSelectedUnitState(to: .skipped))
-            Button("Wache") { state.setSelectedUnitState(.sentry) }
+            commandButton("Wache", shortcutDescription: "Wache halten") {
+                state.setSelectedUnitState(.sentry)
+            }
                 .disabled(!state.canChangeSelectedUnitState(to: .sentry))
-            Button("Befestigen") { state.setSelectedUnitState(.fortifying) }
+            commandButton("Befestigen", shortcutDescription: "Befestigen") {
+                state.setSelectedUnitState(.fortifying)
+            }
                 .disabled(!state.canChangeSelectedUnitState(to: .fortifying))
             Divider()
-            Button("Kolonie gründen") { state.buildColony(name: state.suggestedColonyName) }
+            commandButton("Kolonie gründen", shortcutDescription: "Kolonie bauen") {
+                state.buildColony(name: state.suggestedColonyName)
+            }
                 .disabled(!state.canBuildSelectedColony)
             if state.showsColonyWorkOrder {
-                Button("In der Kolonie arbeiten") { state.joinSelectedColony() }
+                commandButton("In der Kolonie arbeiten", shortcutDescription: "In der Kolonie arbeiten") {
+                    state.joinSelectedColony()
+                }
                     .disabled(!state.canJoinSelectedColony)
             }
             Menu("Verwalten") {
-                Button("Einheit auflösen…", role: .destructive) { state.disbandSelectedUnit() }
-                .disabled(!state.canDisbandSelectedUnit)
+                commandButton(
+                    "Einheit auflösen…",
+                    shortcutDescription: "Einheit auflösen",
+                    role: .destructive
+                ) {
+                    state.disbandSelectedUnit()
+                }
+                    .disabled(!state.canDisbandSelectedUnit)
             }
             Divider()
             Button("Ausgewähltes Feld als Ziel") {
@@ -124,16 +142,22 @@ struct GameMenuBar: View {
             .disabled(!state.canSetDestinationToSelectedTile)
             Button("Ziel löschen") { state.clearSelectedUnitDestination() }
                 .disabled(!state.canClearSelectedUnitDestination)
-            Button("Befehle löschen") { state.clearSelectedUnitOrders() }
+            commandButton("Befehle löschen", shortcutDescription: "Befehle löschen") {
+                state.clearSelectedUnitOrders()
+            }
                 .disabled(!state.canClearSelectedUnitOrders)
             if state.showsEuropeTravelOrder {
                 Button("Nach Europa") { state.sendSelectedUnitToEurope() }
                     .disabled(!state.canSendSelectedUnitToEurope)
             }
             Divider()
-            Button("Nächste Einheit") { state.selectNextUnit() }
+            commandButton("Nächste Einheit", shortcutDescription: "Nächste Einheit auswählen") {
+                state.selectNextUnit()
+            }
                 .disabled(state.cyclingLocalUnits.isEmpty)
-            Button("Vorherige Einheit") { state.selectPreviousUnit() }
+            commandButton("Vorherige Einheit", shortcutDescription: "Vorherige Einheit auswählen") {
+                state.selectPreviousUnit()
+            }
                 .disabled(state.cyclingLocalUnits.isEmpty)
             Button("Nächste Einheit ohne Befehl") {
                 state.selectAdjacentUnit(forward: true, onlyAwaitingOrders: true)
@@ -142,6 +166,26 @@ struct GameMenuBar: View {
             Divider()
             Button("Handelsrouten…") { onTradeRoutes() }
                 .disabled(!state.canManageTradeRoutes)
+        }
+    }
+
+    private func commandButton(
+        _ title: String,
+        shortcutDescription: String,
+        role: ButtonRole? = nil,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(role: role, action: action) {
+            HStack {
+                Text(title)
+                Spacer(minLength: 24)
+                if let shortcut = state.keyboardShortcutsManager?.shortcuts.first(
+                    where: { $0.description == shortcutDescription }
+                ) {
+                    Text(shortcut.fullDisplay)
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
     }
 

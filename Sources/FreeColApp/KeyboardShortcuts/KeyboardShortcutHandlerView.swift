@@ -27,36 +27,34 @@ struct KeyboardShortcutHandlerView<Content: View>: View {
     }
     
     private func handleKeyEvent(_ event: NSEvent) -> Bool {
+        guard gameState.pendingServerDecision == nil else { return false }
         guard let manager = gameState.keyboardShortcutsManager else { return false }
-        
-        // Only handle key down events
-        guard event.type == .keyDown else { return false }
-        
-        // Get the key string
-        guard let characters = event.characters, !characters.isEmpty else { return false }
-        let key = characters
-        
-        // Handle special keys
+
+        guard let key = keyString(for: event) else { return false }
+
         let handled = handleSpecialKeys(key, modifierFlags: event.modifierFlags)
         if handled {
             return true
         }
-        
-        // Let the shortcut manager handle it
-        // For single character keys
-        if key.count == 1 {
-            let handled = manager.handleKeyPress(key, modifierFlags: event.modifierFlags)
-            if handled {
-                return true
-            }
+
+        return manager.handleKeyPress(key, modifierFlags: event.modifierFlags)
+    }
+
+    private func keyString(for event: NSEvent) -> String? {
+        switch event.keyCode {
+        case 36, 76: return "enter"
+        case 53: return "escape"
+        case 123: return "left"
+        case 124: return "right"
+        case 125: return "down"
+        case 126: return "up"
+        default: return event.charactersIgnoringModifiers?.lowercased()
         }
-        
-        return false
     }
     
     private func handleSpecialKeys(_ key: String, modifierFlags: NSEvent.ModifierFlags) -> Bool {
         switch key.lowercased() {
-        case "\u{1b}": // Escape
+        case "escape":
             // Close panels
             if gameState.showShortcutsHelp {
                 gameState.showShortcutsHelp = false
@@ -67,7 +65,7 @@ struct KeyboardShortcutHandlerView<Content: View>: View {
                 return true
             }
             
-        case "\r", "\n": // Enter/Return
+        case "enter":
             if modifierFlags.contains(.control) {
                 // Ctrl+Enter = End turn
                 if gameState.canEndTurn {
@@ -97,27 +95,40 @@ struct KeyboardEventHandlerView: NSViewRepresentable {
     func updateNSView(_ nsView: KeyboardEventNSView, context: Context) {
         nsView.onKeyEvent = onKeyEvent
     }
+
+    static func dismantleNSView(_ nsView: KeyboardEventNSView, coordinator: ()) {
+        nsView.stopMonitoring()
+    }
 }
 
-/// NSView that captures keyboard events
+/// Installs a window-scoped event monitor so shortcuts work regardless of first responder.
 final class KeyboardEventNSView: NSView {
     var onKeyEvent: ((NSEvent) -> Bool)?
-    
-    override var acceptsFirstResponder: Bool { true }
-    override var canBecomeKeyView: Bool { true }
-    
-    override func keyDown(with event: NSEvent) {
-        if let onKeyEvent = onKeyEvent, onKeyEvent(event) {
-            // Event was handled
-            return
+
+    private var eventMonitor: Any?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window == nil {
+            stopMonitoring()
+        } else if eventMonitor == nil {
+            eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self,
+                      let window = self.window,
+                      event.window === window,
+                      window.isKeyWindow,
+                      !(window.firstResponder is NSTextView),
+                      !(window.firstResponder is NSTextField) else {
+                    return event
+                }
+                return self.onKeyEvent?(event) == true ? nil : event
+            }
         }
-        // Pass to super
-        super.keyDown(with: event)
     }
-    
-    override func keyUp(with event: NSEvent) {
-        super.keyUp(with: event)
+
+    func stopMonitoring() {
+        guard let eventMonitor else { return }
+        NSEvent.removeMonitor(eventMonitor)
+        self.eventMonitor = nil
     }
 }
-
-

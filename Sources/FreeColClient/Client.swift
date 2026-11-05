@@ -2,6 +2,7 @@ import Foundation
 import FreeColProtocol
 import FreeColGame
 
+/// Callbacks run on the main actor, after any corresponding model changes.
 public protocol ClientDelegate: AnyObject {
     func clientDidConnect()
     func clientDidLogin(_ result: LoginResult)
@@ -20,6 +21,7 @@ public actor FreeColClient {
     public var initialVacantPlayers: ParsedMessage?
     public var initialGameState: ServerState?
 
+    /// The live model is shared with the UI; read and mutate it only on the main actor.
     public var game: Game { stateManager.game }
 
     public init(host: String = "localhost", port: Int = 3541) {
@@ -36,7 +38,9 @@ public actor FreeColClient {
     public func connect() async throws {
         // Establish TCP connection and read initial server messages (gameState and vacantPlayers)
         FreeColLogger.shared.info("FreeColClient connect: establishing TCP connection")
-        stateManager.reset()
+        await MainActor.run {
+            stateManager.reset()
+        }
         initialVacantPlayers = nil
         initialGameState = nil
         try await connection.connect()
@@ -46,7 +50,9 @@ public actor FreeColClient {
         self.initialGameState = initial.gameState
 
         // Handshake completed – notify UI
-        delegate?.clientDidConnect()
+        await MainActor.run { [delegate] in
+            delegate?.clientDidConnect()
+        }
     }
 
     /// Disconnect.
@@ -67,9 +73,10 @@ public actor FreeColClient {
             nationId: nationId
         )
 
-        try stateManager.loadFromLogin(result)
-
-        delegate?.clientDidLogin(result)
+        try await MainActor.run { [stateManager, delegate] in
+            try stateManager.loadFromLogin(result)
+            delegate?.clientDidLogin(result)
+        }
         return result
     }
 
@@ -92,27 +99,30 @@ public actor FreeColClient {
                     // A reply to one of our `ask` requests carries the resulting
                     // ChangeSet. Apply it, then release the waiting continuation.
                     for child in parsed.children where child.tag != "error" {
-                        let childHandled = try stateManager.process(child)
-                        if !childHandled {
-                            delegate?.clientDidReceiveGameState(child)
-                        } else {
-                            delegate?.clientDidUpdate()
-                        }
+                        try await processIncomingMessage(child)
                     }
                     await connection.resolveReply(parsed)
                     continue
                 }
 
-                let handled = try stateManager.process(parsed)
-                if !handled {
-                    delegate?.clientDidReceiveGameState(parsed)
-                } else {
-                    delegate?.clientDidUpdate()
-                }
+                try await processIncomingMessage(parsed)
             }
         } catch {
             FreeColLogger.shared.error("Message loop ended: \(error)")
-            delegate?.clientDidDisconnect(error: error)
+            await MainActor.run { [delegate] in
+                delegate?.clientDidDisconnect(error: error)
+            }
+        }
+    }
+
+    private func processIncomingMessage(_ parsed: ParsedMessage) async throws {
+        try await MainActor.run { [stateManager, delegate] in
+            let handled = try stateManager.process(parsed)
+            if handled {
+                delegate?.clientDidUpdate()
+            } else {
+                delegate?.clientDidReceiveGameState(parsed)
+            }
         }
     }
 
@@ -127,12 +137,7 @@ public actor FreeColClient {
 
         if let payload = parsed.children.first {
             do {
-                let handled = try stateManager.process(payload)
-                if !handled {
-                    delegate?.clientDidReceiveGameState(payload)
-                } else {
-                    delegate?.clientDidUpdate()
-                }
+                try await processIncomingMessage(payload)
             } catch {
                 FreeColLogger.shared.error("Failed to process question payload <\(payload.tag)>: \(error)")
                 replyChildren = [ParsedMessage(tag: "error", attributes: ["message": "\(error)"], children: [])]

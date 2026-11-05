@@ -6,6 +6,8 @@ struct DiplomacyView: View {
     @Environment(GameState.self) private var state
     @Environment(\.dismiss) private var dismiss
 
+    var onClose: (() -> Void)?
+
     @State private var drafts: [DiplomaticClauseDraft] = []
     @State private var newKind: DiplomaticClauseKind = .gold
     @State private var newWeGive = true
@@ -33,7 +35,11 @@ struct DiplomacyView: View {
                 }
                 Button("Schließen") {
                     if !state.pendingDiplomacyIsIncoming { state.clearPendingDecision() }
-                    dismiss()
+                    if let onClose {
+                        onClose()
+                    } else {
+                        dismiss()
+                    }
                 }
                 .buttonStyle(.bordered)
                 .keyboardShortcut(.cancelAction)

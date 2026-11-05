@@ -56,6 +56,7 @@ struct LoginView: View {
 
     // Erweiterte Optionen (vorselektioniert)
     @State private var startingMoneyValue: String = "3000"
+    @State private var showNewGame = false
 
     // Berechnete Eigenschaften
     private var availableNations: [(id: String, name: String, description: String)] {
@@ -250,6 +251,13 @@ struct LoginView: View {
                             }
 
                             // Verbindungsbuttons
+                            if state.phase == .disconnected || isLobby {
+                                Button("Neues Spiel erstellen…", systemImage: "plus.circle") {
+                                    showNewGame = true
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(Color(red: 0.72, green: 0.48, blue: 0.19))
+                            }
                             HStack(spacing: 12) {
                                 if state.phase == .disconnected {
                                     Button(action: {
@@ -291,6 +299,14 @@ struct LoginView: View {
                                     .buttonStyle(.bordered)
                                     .tint(.orange)
                                 }
+                            }
+
+                            if let directory = state.hostedGameDirectory {
+                                HStack {
+                                    Text("Optionen und Serverprotokolle:")
+                                    Button("Im Finder zeigen") { NSWorkspace.shared.open(directory) }
+                                }
+                                .font(.caption)
                             }
 
                             // Sicherheitshinweis
@@ -538,6 +554,13 @@ struct LoginView: View {
                 .padding()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .sheet(isPresented: $showNewGame) {
+            NewGameView { port in
+                host = "127.0.0.1"
+                portString = String(port)
+            }
+            .environment(state)
         }
         .onChange(of: availableNationIds) { _, _ in
             syncSelectedNation()
