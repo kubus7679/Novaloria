@@ -21,6 +21,7 @@ struct GameMenuBar: View {
             ordersMenu
             reportMenu
             colopediaMenu
+            helpMenu
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
@@ -162,6 +163,17 @@ struct GameMenuBar: View {
     private var colopediaMenu: some View {
         Menu("Colopädie") {
             Button("Colopädie öffnen…") { onColopedia() }
+        }
+    }
+
+    // MARK: - Help
+
+    private var helpMenu: some View {
+        Menu("Hilfe") {
+            Button("Tastaturkürzel…") {
+                state.showShortcutsHelp = true
+            }
+            .help("Zeigt alle verfügbaren Tastaturkürzel an")
         }
     }
 }

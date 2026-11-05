@@ -497,16 +497,17 @@ final class GameState {
     private var movementTask: Task<Void, Never>?
     private var movementAttempts: [String: Int] = [:]
     var isReadyToStart: Bool = false
-    private var localPlayerName: String?
+    var localPlayerName: String?
     private var remoteHost: String?
     private var remotePort: Int?
     private var reconnectTask: Task<Void, Never>?
     private var userRequestedDisconnect = false
     var queuedGameplayActions: [QueuedGameplayAction] = []
     private var cachedLocalPlayerId: String?
-    private var localNationId: String?
-    private var localNationTypeId: String?
-    private var localColorValue: String?
+    var localNationId: String?
+    var localNationTypeId: String?
+    var localColorValue: String?
+    private var gameOptions: [String: String] = [:]
     private var seenModelMessageSignatures: Set<String> = []
     private var isEndingTurn: Bool = false
     private var saveRequestID: UUID?
@@ -575,11 +576,20 @@ final class GameState {
     var showColonyPanel: Bool = false
     var showDebugPanel: Bool = false
     var showStatusPanel: Bool = false
+    var showShortcutsHelp: Bool = false
     var requestedMapScrollTileId: String?
     /// Report currently selected in the report browser.
     var requestedReport: ReportKind?
     /// Settlement the user asked to find (center map on).
     var findSettlementQuery: String?
+    
+    // Keyboard shortcuts manager
+    private(set) var keyboardShortcutsManager: KeyboardShortcutsManager?
+    
+    init() {
+        // Initialize keyboard shortcuts manager
+        keyboardShortcutsManager = KeyboardShortcutsManager(gameState: self)
+    }
 
     // Purchases tracking (client-side, like the Java client's purchases summary)
     var purchasesRecruits: Int = 0
@@ -623,6 +633,85 @@ final class GameState {
     func closeColonyPanel() { showColonyPanel = false }
     func openDebugPanel() { showDebugPanel = true }
     func closeDebugPanel() { showDebugPanel = false }
+    
+    // MARK: - Keyboard Shortcuts Support
+    
+    /// Attempt to build a colony using keyboard shortcut
+    func attemptBuildColonyWithShortcut() {
+        guard canBuildSelectedColony else {
+            errorMessage = "Kann hier keine Kolonie bauen. Benötige Kolonist auf geeignetem Gelände."
+            return
+        }
+        buildColony(name: suggestedColonyName)
+    }
+    
+    /// Attempt to build a road using keyboard shortcut
+    func attemptBuildRoadWithShortcut() {
+        statusMessage = "Straßenbau ist noch nicht implementiert."
+    }
+    
+    /// Attempt to attack using keyboard shortcut
+    func attemptAttackWithShortcut(ranged: Bool) {
+        guard let tileId = selectedTileId else {
+            errorMessage = "Kein Ziel für Angriff ausgewählt."
+            return
+        }
+        
+        if ranged && canAttackSelectedUnitRanged(onTile: tileId) {
+            requestAttack(onTile: tileId, ranged: true)
+        } else if !ranged && canAttackSelectedUnitMelee(onTile: tileId) {
+            requestAttack(onTile: tileId, ranged: false)
+        } else {
+            errorMessage = ranged ? "Fernkampf nicht möglich." : "Nahkampf nicht möglich."
+        }
+    }
+    
+    /// Embark selected unit on default carrier
+    func embarkSelectedUnitOnDefaultCarrier() {
+        guard let carrierId = defaultEmbarkCarrierId else {
+            errorMessage = "Kein Transportschiff zum Einsteigen verfügbar."
+            return
+        }
+        embarkSelectedUnit(onCarrier: carrierId)
+    }
+    
+    /// Center map on selected unit
+    func centerMapOnSelectedUnit() {
+        if let unitTileId = selectedUnitTileId {
+            requestMapScroll(to: unitTileId)
+        }
+    }
+    
+
+    
+    /// Show reports panel
+    func showReports() {
+        requestedReport = .turn
+    }
+    
+    /// Show chat panel
+    func showChat() {
+        // Placeholder
+    }
+    
+    /// Toggle find settlement panel
+    func toggleFindSettlement() {
+        // Placeholder
+    }
+    
+    /// Prompt to save game
+    func promptSaveGame() {
+        if canSaveGame {
+            statusMessage = "Spiel speichern... (Noch nicht implementiert)"
+        } else {
+            errorMessage = "Spiel kann derzeit nicht gespeichert werden."
+        }
+    }
+    
+    /// Toggle shortcuts help display
+    func toggleShortcutsHelp() {
+        showShortcutsHelp.toggle()
+    }
 
     var isLocalPlayerAdmin: Bool {
         guard let game = cachedGame,
@@ -643,6 +732,13 @@ final class GameState {
     /// echo, when available.
     func serverOptionValue(id: String) -> String? {
         cachedGame?.optionValues[id]
+    }
+
+    var availableLobbyNationIds: [String] {
+        guard phase == .lobby else { return [] }
+        return cachedGame?.nationStates.compactMap { id, availability in
+            availability == "AVAILABLE" ? id : nil
+        }.sorted() ?? []
     }
 
     var isLocalPlayersTurn: Bool {
@@ -1240,6 +1336,7 @@ final class GameState {
         FreeColLogger.shared.info("Starting local game")
         resetSessionState()
         localPlayerName = userName
+        localNationId = nationId
         phase = .connecting
         statusMessage = "Starting local server…"
 
@@ -2666,6 +2763,10 @@ final class GameState {
                 errorMessage = ServerErrorMessage.description(for: error)
             }
         }
+    }
+
+    func setGameOption(_ optionId: String, value: String) {
+        gameOptions[optionId] = value
     }
 
     func setLocalPlayerColor(_ colorValue: String) {
@@ -6313,39 +6414,49 @@ final class GameState {
     func discardQueuedGameplayAction(_ action: QueuedGameplayAction) {
         queuedGameplayActions.removeAll { $0.id == action.id }
     }
-}
 
-private func makeGameXML() -> String {
-    """
-    <game id="local-game" turn="1">
-      <player id="player-european" username="Player" nationId="model.nation.dutch" gold="500"/>
-      <player id="player-native-1" nationId="model.nation.iroquois" playerType="INDIAN"/>
-      <map id="map-0" width="10" height="8">
-        <tile id="tile-0-0" x="0" y="0" type="model.tile.ocean"/>
-        <tile id="tile-1-0" x="1" y="0" type="model.tile.ocean"/>
-        <tile id="tile-2-0" x="2" y="0" type="model.tile.ocean"/>
-        <tile id="tile-3-0" x="3" y="0" type="model.tile.plains"/>
-        <tile id="tile-4-0" x="4" y="0" type="model.tile.plains" owner="player-european"/>
-        <tile id="tile-0-1" x="0" y="1" type="model.tile.ocean"/>
-        <tile id="tile-1-1" x="1" y="1" type="model.tile.ocean"/>
-        <tile id="tile-2-1" x="2" y="1" type="model.tile.grassland"/>
-        <tile id="tile-3-1" x="3" y="1" type="model.tile.grassland" owner="player-european"/>
-        <tile id="tile-4-1" x="4" y="1" type="model.tile.grassland" owner="player-european"/>
-        <tile id="tile-0-2" x="0" y="2" type="model.tile.ocean"/>
-        <tile id="tile-1-2" x="1" y="2" type="model.tile.ocean"/>
-        <tile id="tile-2-2" x="2" y="2" type="model.tile.ocean"/>
-        <tile id="tile-3-2" x="3" y="2" type="model.tile.ocean"/>
-        <tile id="tile-4-2" x="4" y="2" type="model.tile.ocean"/>
-        <tile id="tile-0-3" x="0" y="3" type="model.tile.ocean"/>
-        <tile id="tile-1-3" x="1" y="3" type="model.tile.ocean"/>
-        <tile id="tile-2-3" x="2" y="3" type="model.tile.ocean"/>
-        <tile id="tile-3-3" x="3" y="3" type="model.tile.ocean"/>
-        <tile id="tile-4-3" x="4" y="3" type="model.tile.ocean"/>
-      </map>
-      <unit id="unit-colonist" owner="player-european" unitType="model.unit.colonist" location="tile-4-1" movesLeft="3" state="ACTIVE"/>
-      <colony id="colony-amsterdam" name="Amsterdam" owner="player-european" tile="tile-4-0" settlementType="model.settlement.colony"/>
-    </game>
-    """
+    private func makeGameXML() -> String {
+        let startingMoney = gameOptions["model.option.startingMoney"] ?? "500"
+        let mapWidth = gameOptions["model.option.mapWidth"] ?? "10"
+        let mapHeight = gameOptions["model.option.mapHeight"] ?? "8"
+        let nationId = self.localNationId ?? "model.nation.dutch"
+        let userName = self.localPlayerName ?? "Player"
+        
+        return """
+<game id="local-game" turn="1">
+<freecol-specification>
+<option id="model.option.startingMoney" value="\(startingMoney)"/>
+<option id="model.option.mapWidth" value="\(mapWidth)"/>
+<option id="model.option.mapHeight" value="\(mapHeight)"/>
+</freecol-specification>
+<player id="player-european" username="\(userName)" nationId="\(nationId)" gold="\(startingMoney)"/>
+<player id="player-native-1" nationId="model.nation.iroquois" playerType="INDIAN"/>
+<map id="map-0" width="\(mapWidth)" height="\(mapHeight)">
+<tile id="tile-0-0" x="0" y="0" type="model.tile.ocean"/>
+<tile id="tile-1-0" x="1" y="0" type="model.tile.ocean"/>
+<tile id="tile-2-0" x="2" y="0" type="model.tile.ocean"/>
+<tile id="tile-3-0" x="3" y="0" type="model.tile.plains"/>
+<tile id="tile-4-0" x="4" y="0" type="model.tile.plains" owner="player-european"/>
+<tile id="tile-0-1" x="0" y="1" type="model.tile.ocean"/>
+<tile id="tile-1-1" x="1" y="1" type="model.tile.ocean"/>
+<tile id="tile-2-1" x="2" y="1" type="model.tile.grassland"/>
+<tile id="tile-3-1" x="3" y="1" type="model.tile.grassland" owner="player-european"/>
+<tile id="tile-4-1" x="4" y="1" type="model.tile.grassland" owner="player-european"/>
+<tile id="tile-0-2" x="0" y="2" type="model.tile.ocean"/>
+<tile id="tile-1-2" x="1" y="2" type="model.tile.ocean"/>
+<tile id="tile-2-2" x="2" y="2" type="model.tile.ocean"/>
+<tile id="tile-3-2" x="3" y="2" type="model.tile.ocean"/>
+<tile id="tile-4-2" x="4" y="2" type="model.tile.ocean"/>
+<tile id="tile-0-3" x="0" y="3" type="model.tile.ocean"/>
+<tile id="tile-1-3" x="1" y="3" type="model.tile.ocean"/>
+<tile id="tile-2-3" x="2" y="3" type="model.tile.ocean"/>
+<tile id="tile-3-3" x="3" y="3" type="model.tile.ocean"/>
+<tile id="tile-4-3" x="4" y="3" type="model.tile.ocean"/>
+</map>
+<unit id="unit-colonist" owner="player-european" unitType="model.unit.colonist" location="tile-4-1" movesLeft="3" state="ACTIVE"/>
+<colony id="colony-amsterdam" name="Amsterdam" owner="player-european" tile="tile-4-0" settlementType="model.settlement.colony"/>
+</game>
+"""
 }
 
 private final class ClientBridge: ClientDelegate {
@@ -6389,4 +6500,5 @@ private final class ClientBridge: ClientDelegate {
             gs.gameUpdateID += 1
         }
     }
+}
 }

@@ -41,6 +41,12 @@ public struct Unit: GameObject, PartiallyUpdatable, Identifiable {
     /// Goods carried by a carrier, keyed by goods type id (`<goodsContainer>`).
     public var goods: [String: Int] = [:]
 
+    /// Movement points for display, divided by 3 to match the Java client behavior.
+    /// FreeCol stores movement as multiples of 3 internally (e.g., 15 for 5 display points).
+    public var displayMovesLeft: Int {
+        movesLeft / 3
+    }
+
     public init(id: String, attributes: Attributes, children: [ParsedMessage], game: Game) throws {
         self.id = id
         applyPartial(attributes: attributes)

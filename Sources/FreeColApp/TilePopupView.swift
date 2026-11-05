@@ -123,7 +123,7 @@ struct TilePopupView: View {
 
     private func unitTitle(_ unit: FreeColGame.Unit) -> String {
         let type = unit.unitType.map(shortName) ?? unit.id
-        return "\(type) · \(unit.movesLeft) Bewegungspunkte"
+        return "\(type) · \(unit.displayMovesLeft) Bewegungspunkte"
     }
 
     private func shortName(_ value: String) -> String {

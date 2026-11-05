@@ -6,6 +6,51 @@ import FreeColProtocol
 
 final class InteractionRepairTests: XCTestCase {
     @MainActor
+    func testLobbyOnlyOffersServerAvailableNations() throws {
+        let state = GameState()
+        let game = Game()
+        try game.load(from: XMLDecoder.decode("""
+        <game id="lobby">
+          <nationOptions>
+            <nationOption id="model.nation.french" state="AVAILABLE"/>
+            <nationOption id="model.nation.dutch" state="AVAILABLE"/>
+            <nationOption id="model.nation.english" state="NOT_AVAILABLE"/>
+            <nationOption id="model.nation.spanish" state="AI_ONLY"/>
+            <nationOption id="model.nation.portuguese"/>
+          </nationOptions>
+        </game>
+        """))
+        state.installGame(game)
+        XCTAssertTrue(state.availableLobbyNationIds.isEmpty)
+        state.phase = .lobby
+        XCTAssertEqual(state.availableLobbyNationIds, ["model.nation.dutch", "model.nation.french"])
+        state.installGame(Game())
+        XCTAssertTrue(state.availableLobbyNationIds.isEmpty)
+        state.installGame(game)
+        state.phase = .inGame
+        XCTAssertTrue(state.availableLobbyNationIds.isEmpty)
+    }
+
+    @MainActor
+    func testLobbyBackgroundIsBundledAndDecodable() throws {
+        let image = try XCTUnwrap(LoginView.backgroundImage)
+        XCTAssertEqual(image.size.width, 1600)
+        XCTAssertEqual(image.size.height, 1200)
+    }
+
+    @MainActor
+    func testLocalStartPreservesSelectedNationAndGold() async throws {
+        let state = GameState()
+        defer { state.disconnect() }
+        state.setGameOption("model.option.startingMoney", value: "4200")
+        state.startLocal(userName: "Alice", nationId: "model.nation.french")
+        try await waitUntil { state.phase == .inGame || state.errorMessage != nil }
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(state.localPlayer?.nationId, "model.nation.french")
+        XCTAssertEqual(state.localPlayer?.gold, 4200)
+    }
+
+    @MainActor
     func testTradeRouteAssignmentRequiresOwnedGoodsCarrierAndServerConfirmation() async throws {
         let server = MockServer()
         let state = GameState()

@@ -17,8 +17,18 @@ swift run FreeColApp
 ```
 
 In der App kannst du:
-- **Connect** zu einem laufenden FreeCol-Server nutzen oder
-- **Local Game** für einen lokalen Mock-Start verwenden.
+- **Verbinden** zu einem laufenden FreeCol-Server nutzen oder
+- **Lokales Spiel** für einen lokalen Mock-Start verwenden.
+
+Die Lobby zeigt nur unterstützte Änderungen: verfügbare Völker, die eigene
+Spielerfarbe und den Bereitschaftsstatus. **Spiel starten** ist nur für den
+Administrator sichtbar. Der Name ist nach der Anmeldung nicht mehr bearbeitbar.
+Startgold lässt sich unter **Optionen für lokales Spiel** ausschließlich für den
+Mock-Start einstellen; bei Serverpartien bestimmt der Server Gold, Karte und
+Spielregeln. Die bisher wirkungslosen Karten- und Spielmodusfelder entfallen.
+Der Lobby-Hintergrund ist die originale historische Karte aus FreeCol
+(`data/base/resources/images/ui/map.jpg`, `image.flavor.Canvas.map`), gebündelt
+als `lobby-background.jpg`; die FreeCol-Lizenz liegt den App-Ressourcen bei.
 
 ### Bedienung im Spiel
 

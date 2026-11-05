@@ -290,7 +290,7 @@ struct ColonyPanelView: View {
                                         Text(GameLabels.state(unit.state))
                                             .font(.caption2)
                                             .foregroundColor(.secondary)
-                                        Text("\(unit.movesLeft) Bewegungspunkte")
+                                        Text("\(unit.displayMovesLeft) Bewegungspunkte")
                                             .font(.caption2)
                                             .foregroundColor(.secondary)
                                     }

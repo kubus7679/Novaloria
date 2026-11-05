@@ -91,7 +91,7 @@ final class TileImageCache {
 
     // MARK: - Private
 
-    private func loadImage(named name: String, folder: String) -> NSImage? {
+    func loadImage(named name: String, folder: String) -> NSImage? {
         let key = "\(folder)/\(name)"
         if let cached = cache[key] { return cached }
         guard let url = Bundle.module.url(forResource: name, withExtension: "png", subdirectory: folder),

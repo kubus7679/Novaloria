@@ -186,7 +186,7 @@ struct InfoPanelView: View {
     }
 
     private func movesLabel(_ unit: FreeColGame.Unit) -> String {
-        state.unitTravelStatus(unit) ?? "Bewegungspunkte: \(unit.movesLeft)"
+        state.unitTravelStatus(unit) ?? "Bewegungspunkte: \(unit.displayMovesLeft)"
     }
 
     // MARK: - TILE mode
@@ -324,7 +324,7 @@ struct InfoPanelView: View {
                                         .font(.caption2)
                                         .foregroundColor(.green)
                                 }
-                                Text("\(displayUnitName(unit.unitType)) (\(unit.movesLeft) BP)")
+                                Text("\(displayUnitName(unit.unitType)) (\(unit.displayMovesLeft) BP)")
                                     .font(.caption2)
                                     .foregroundColor(.white)
                             }

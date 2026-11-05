@@ -299,7 +299,7 @@ struct MapView: View {
                             drawImprovements(tile, at: origin, context: &ctx)
                             for resource in tile.resources {
                                 if let image = TileImageCache.shared.resourceImage(for: resource.type) {
-                                    let width = tileW * 0.4
+                                    let width = tileW * 0.25
                                     let height = width * image.size.height / max(1, image.size.width)
                                     ctx.draw(Image(nsImage: image), in: CGRect(
                                         x: origin.x - width / 2, y: origin.y - height / 2,

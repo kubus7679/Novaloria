@@ -25,7 +25,8 @@ struct GameView: View {
     @State private var showQueuedActionConfirmation = false
 
     var body: some View {
-        VStack(spacing: 0) {
+        KeyboardShortcutHandlerView {
+            VStack(spacing: 0) {
             ScrollView(.horizontal) {
                 topBar
             }
@@ -119,12 +120,12 @@ struct GameView: View {
                 Spacer(minLength: 0)
                 VStack(alignment: .trailing, spacing: 6) {
                     HStack {
-                        Button("Kolonie") { state.openColonyPanel() }
+                        Button("Kolonie (C)") { state.openColonyPanel() }
                             .disabled(state.selectedColony == nil)
-                        Button("Nächste Einheit") { state.selectNextUnit() }
+                        Button("Nächste Einheit (N)") { state.selectNextUnit() }
                             .disabled(state.cyclingLocalUnits.isEmpty)
                     }
-                    Button("Zug beenden") { state.requestEndTurn() }
+                    Button("Zug beenden (⌃⏎)") { state.requestEndTurn() }
                         .buttonStyle(GameActionButtonStyle())
                         .disabled(!state.canEndTurn)
                         .help("Vor dem Zugende werden Einheiten ohne Befehl angezeigt.")
@@ -134,6 +135,9 @@ struct GameView: View {
             .background(Color(NSColor.controlBackgroundColor))
         }
         .background(Color(white: 0.08))
+        .overlay {
+            EventMessagesOverlay()
+        }
         .sheet(
             isPresented: Binding(
                 get: { state.showEuropePanel },
@@ -292,6 +296,12 @@ struct GameView: View {
         )) {
             StatusPanelView()
         }
+        .sheet(isPresented: Binding(
+            get: { state.showShortcutsHelp },
+            set: { state.showShortcutsHelp = $0 }
+        )) {
+            KeyboardShortcutsView()
+        }
         .sheet(isPresented: $showIndependence) {
             independenceSheet
         }
@@ -324,7 +334,8 @@ struct GameView: View {
             showNativeTrade = (newType == .nativeTrade)
             showDiplomacy = (newType == .diplomacy)
             if newType == .newLandName || newType == .newRegionName {
-                namePromptText = state.pendingTextPrompt?.defaultText ?? ""
+                let defaultText = state.pendingTextPrompt?.defaultText ?? ""
+                namePromptText = defaultText
             }
         }
         .onPreferenceChange(MapViewportKey.self) { info in
@@ -342,6 +353,7 @@ struct GameView: View {
                 victoryOverlay
             }
         }
+        } // End KeyboardShortcutHandlerView
     }
 
     @ViewBuilder
@@ -409,7 +421,7 @@ struct GameView: View {
                                 Text(unit.unitType.map(state.unitDisplayName) ?? "Einheit")
                                     .font(.caption)
                                 Spacer()
-                                Text("\(unit.movesLeft) Bewegungspunkte")
+                                Text("\(unit.displayMovesLeft) Bewegungspunkte")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
                             }
@@ -808,7 +820,7 @@ struct GameView: View {
                     InfoPanelView()
                     Divider()
 
-                    Button("Bewegen…") { state.beginChoosingMoveDestination() }
+                    Button("Bewegen… (M)") { state.beginChoosingMoveDestination() }
                         .buttonStyle(GameActionButtonStyle())
                         .disabled(!state.canChooseMoveDestination)
 
@@ -828,13 +840,13 @@ struct GameView: View {
                     }
 
                     Menu("Befehle") {
-                        Button("Warten") { state.setSelectedUnitState(.skipped) }
+                        Button("Warten (W)") { state.setSelectedUnitState(.skipped) }
                             .disabled(!state.canChangeSelectedUnitState(to: .skipped))
-                        Button("Wache") { state.setSelectedUnitState(.sentry) }
+                        Button("Wache (S)") { state.setSelectedUnitState(.sentry) }
                             .disabled(!state.canChangeSelectedUnitState(to: .sentry))
-                        Button("Befestigen") { state.setSelectedUnitState(.fortifying) }
+                        Button("Befestigen (F)") { state.setSelectedUnitState(.fortifying) }
                             .disabled(!state.canChangeSelectedUnitState(to: .fortifying))
-                        Button("Befehle löschen") { state.clearSelectedUnitOrders() }
+                        Button("Befehle löschen (⇧C)") { state.clearSelectedUnitOrders() }
                             .disabled(!state.canClearSelectedUnitOrders)
                         if state.showsEuropeTravelOrder {
                             Button("Nach Europa") { state.sendSelectedUnitToEurope() }
@@ -849,7 +861,7 @@ struct GameView: View {
                     .menuStyle(.borderlessButton)
                     .padding(.vertical, 6)
 
-                    Button("Aktivieren") {
+                    Button("Aktivieren (A)") {
                         state.setSelectedUnitState(.active)
                     }
                     .buttonStyle(.bordered)
@@ -863,7 +875,7 @@ struct GameView: View {
                             .onChange(of: state.selectedUnitId) { _, _ in
                                 colonyName = state.suggestedColonyName
                             }
-                        Button("Kolonie gründen") {
+                        Button("Kolonie gründen (B)") {
                             state.buildColony(name: colonyName)
                         }
                         .buttonStyle(.borderedProminent)
@@ -872,7 +884,7 @@ struct GameView: View {
                     }
 
                     if state.canJoinSelectedColony {
-                        Button("In der Kolonie arbeiten") {
+                        Button("In der Kolonie arbeiten (J)") {
                             state.joinSelectedColony()
                         }
                         .buttonStyle(.bordered)
@@ -881,7 +893,7 @@ struct GameView: View {
 
                     if !state.embarkCarrierOptions.isEmpty {
                         ForEach(state.embarkCarrierOptions, id: \.id) { carrier in
-                            Button("An Bord: \(carrier.unitType.map(state.unitDisplayName) ?? "Transporter")") {
+                            Button("An Bord: \(carrier.unitType.map(state.unitDisplayName) ?? "Transporter") (I)") {
                                 state.embarkSelectedUnit(onCarrier: carrier.id)
                             }
                             .disabled(!state.canEmbarkSelectedUnit(onCarrier: carrier.id))
@@ -891,7 +903,7 @@ struct GameView: View {
                     }
 
                     if state.selectedUnitCarrier != nil {
-                        Button("Von Bord gehen") {
+                        Button("Von Bord gehen (O)") {
                             state.disembarkSelectedUnit()
                         }
                         .buttonStyle(.bordered)
@@ -908,14 +920,14 @@ struct GameView: View {
                         state.canAttackSelectedUnitMelee(onTile: targetTileId)
                             || state.canAttackSelectedUnitRanged(onTile: targetTileId)
                     {
-                        Button("Nahkampf") {
+                        Button("Nahkampf (T)") {
                             state.requestAttack(onTile: targetTileId, ranged: false)
                         }
                         .buttonStyle(.bordered)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .disabled(!state.canAttackSelectedUnitMelee(onTile: targetTileId))
 
-                        Button("Fernkampf") {
+                        Button("Fernkampf (⇧T)") {
                             state.requestAttack(onTile: targetTileId, ranged: true)
                         }
                         .buttonStyle(.bordered)

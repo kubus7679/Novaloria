@@ -28,6 +28,7 @@ let package = Package(
                 .copy("Resources/colopedia-de.json"),
                 .copy("Resources/colopedia"),
                 .copy("Resources/FreeCol-COPYING"),
+                .copy("Resources/lobby-background.jpg"),
             ]
         ),
         .testTarget(
