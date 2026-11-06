@@ -29,7 +29,7 @@ struct DebugControlsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 if let game = state.game {
-                    GroupBox("Players") {
+                    GroupBox("Spieler") {
                         let sorted = game.players.values
                             .filter { $0.playerType == .european }
                         ForEach(Array(sorted), id: \.id) { player in
@@ -46,7 +46,7 @@ struct DebugControlsView: View {
                         }
                     }
 
-                    GroupBox("Units") {
+                    GroupBox("Einheiten") {
                         ForEach(
                             game.units.values.filter { unit in
                                 guard let localPlayerId = state.localPlayerId else { return false }
@@ -56,7 +56,7 @@ struct DebugControlsView: View {
                         ) { unit in
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(unit.unitType ?? "Unit")
+                                    Text(unit.unitType.map(state.unitDisplayName) ?? "Einheit")
                                         .font(.caption)
                                     Text(unitLocationLabel(unit, in: game))
                                         .font(.caption2)
@@ -70,10 +70,10 @@ struct DebugControlsView: View {
                                 }
                                 Spacer()
                                 VStack(alignment: .trailing, spacing: 2) {
-                                    Text("\(unit.movesLeft) MP")
+                                    Text("\(unit.movesLeft) BP")
                                         .font(.caption2)
                                         .foregroundColor(.secondary)
-                                    Text(unit.state.rawValue)
+                                    Text(GameLabels.state(unit.state))
                                         .font(.caption2)
                                         .foregroundColor(.secondary)
                                 }
@@ -81,43 +81,43 @@ struct DebugControlsView: View {
                         }
                     }
 
-                    GroupBox("Colonies") {
+                    GroupBox("Kolonien") {
                         let colonyList = Array(game.colonies.values)
                         ForEach(colonyList, id: \.id) { colony in
                             HStack {
                                 Text(colony.name ?? "?")
                                     .font(.caption)
                                 Spacer()
-                                Text("\(colony.sonsOfLiberty)% SoL")
+                                Text("\(colony.sonsOfLiberty)% Freiheit")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
                             }
                         }
                     }
 
-                    GroupBox("Trade Route") {
+                    GroupBox("Handelsroute") {
                         VStack(alignment: .leading, spacing: 6) {
-                            TextField("Trade Route ID", text: $tradeRouteId)
+                            TextField("Handelsrouten-ID", text: $tradeRouteId)
                                 .textFieldStyle(.roundedBorder)
 
-                            Button("Assign Trade Route (Selected Unit)") {
+                            Button("Handelsroute zuweisen (ausgewählte Einheit)") {
                                 state.assignSelectedUnitTradeRoute(tradeRouteId)
                             }
                             .buttonStyle(.bordered)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .disabled(!state.canAssignSelectedUnitTradeRoute(tradeRouteId))
 
-                            Button("Clear Trade Route") {
+                            Button("Handelsroute entfernen") {
                                 state.clearSelectedUnitTradeRoute()
                             }
                             .buttonStyle(.bordered)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .disabled(!state.canClearSelectedUnitTradeRoute)
 
-                            TextField("Current Stop Index", text: $currentStopIndex)
+                            TextField("Index des aktuellen Halts", text: $currentStopIndex)
                                 .textFieldStyle(.roundedBorder)
 
-                            Button("Set Current Stop") {
+                            Button("Aktuellen Halt festlegen") {
                                 state.setSelectedUnitCurrentStop(currentStopIndex)
                             }
                             .buttonStyle(.bordered)
@@ -127,13 +127,13 @@ struct DebugControlsView: View {
                     }
 
                     if let selected = state.selectedUnit, selected.treasureAmount > 0 {
-                        GroupBox("Treasure") {
+                        GroupBox("Schatz") {
                             VStack(alignment: .leading, spacing: 6) {
-                                Text("Amount: \(selected.treasureAmount)")
+                                Text("Menge: \(selected.treasureAmount)")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
 
-                                Button("Cash In Treasure Train") {
+                                Button("Schatztransport einlösen") {
                                     state.cashInSelectedTreasureTrain()
                                 }
                                 .buttonStyle(.bordered)
@@ -144,29 +144,29 @@ struct DebugControlsView: View {
                         }
                     }
                     if state.selectedUnit != nil {
-                        Button("Decline Mounds") {
+                        Button("Hügel ablehnen") {
                             state.declineMoundsForSelectedUnit()
                         }
                         .buttonStyle(.bordered)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
 
-                    GroupBox("Native") {
+                    GroupBox("Ureinwohner") {
                         VStack(alignment: .leading, spacing: 6) {
-                            TextField("Settlement ID", text: $nativeSettlementId)
+                            TextField("Siedlungs-ID", text: $nativeSettlementId)
                                 .textFieldStyle(.roundedBorder)
 
-                            TextField("Chief result", text: $nativeChiefResult)
+                            TextField("Ergebnis des Häuptlings", text: $nativeChiefResult)
                                 .textFieldStyle(.roundedBorder)
 
                             HStack {
-                                Button("Spy") {
+                                Button("Ausspionieren") {
                                     state.spyOnNativeSettlement(settlementId: nativeSettlementId)
                                 }
                                 .buttonStyle(.bordered)
                                 .disabled(!state.canSpyOnNativeSettlement || nativeSettlementId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
-                                Button("Gift") {
+                                Button("Geschenk überbringen") {
                                     state.deliverGiftToSettlement(nativeSettlementId)
                                 }
                                 .buttonStyle(.bordered)
@@ -174,13 +174,13 @@ struct DebugControlsView: View {
                             }
 
                             HStack {
-                                Button("Accept Gift") {
+                                Button("Geschenk annehmen") {
                                     state.acceptGiftFromNativeSettlement(colonyId: nativeSettlementId)
                                 }
                                 .buttonStyle(.bordered)
                                 .disabled(!state.canAcceptNativeGift || nativeSettlementId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
-                                Button("Incite") {
+                                Button("Aufstand anzetteln") {
                                     let gold = Int(nativeInciteGold) ?? 0
                                     state.inciteSettlement(settlementId: nativeSettlementId, enemyPlayerId: nativeEnemyPlayerId, gold: gold)
                                 }
@@ -189,10 +189,10 @@ struct DebugControlsView: View {
                             }
 
                             HStack {
-                                Button("Demand N") { state.demandTributeFromSettlement(direction: "N") }
-                                Button("NE") { state.demandTributeFromSettlement(direction: "NE") }
-                                Button("E") { state.demandTributeFromSettlement(direction: "E") }
-                                Button("SE") { state.demandTributeFromSettlement(direction: "SE") }
+                                Button("Tribut N") { state.demandTributeFromSettlement(direction: "N") }
+                                Button("NO") { state.demandTributeFromSettlement(direction: "NE") }
+                                Button("O") { state.demandTributeFromSettlement(direction: "E") }
+                                Button("SO") { state.demandTributeFromSettlement(direction: "SE") }
                             }
                             .buttonStyle(.bordered)
                             .disabled(!state.canDemandTributeWithSelectedUnit)
@@ -207,16 +207,16 @@ struct DebugControlsView: View {
                             .disabled(!state.canDemandTributeWithSelectedUnit)
 
                             HStack {
-                                Button("Scout N") { state.scoutIndianSettlement(direction: "N") }
-                                Button("NE") { state.scoutIndianSettlement(direction: "NE") }
-                                Button("E") { state.scoutIndianSettlement(direction: "E") }
-                                Button("SE") { state.scoutIndianSettlement(direction: "SE") }
+                                Button("Erkunden N") { state.scoutIndianSettlement(direction: "N") }
+                                Button("NO") { state.scoutIndianSettlement(direction: "NE") }
+                                Button("O") { state.scoutIndianSettlement(direction: "E") }
+                                Button("SO") { state.scoutIndianSettlement(direction: "SE") }
                             }
                             .buttonStyle(.bordered)
                             .disabled(!state.canScoutIndianSettlement)
 
                             HStack {
-                                Button("Scout S") { state.scoutIndianSettlement(direction: "S") }
+                                Button("Erkunden S") { state.scoutIndianSettlement(direction: "S") }
                                 Button("SW") { state.scoutIndianSettlement(direction: "SW") }
                                 Button("W") { state.scoutIndianSettlement(direction: "W") }
                                 Button("NW") { state.scoutIndianSettlement(direction: "NW") }
@@ -224,7 +224,7 @@ struct DebugControlsView: View {
                             .buttonStyle(.bordered)
                             .disabled(!state.canScoutIndianSettlement)
 
-                            Button("Speak to Chief") {
+                            Button("Mit Häuptling sprechen") {
                                 state.scoutSpeakToChief(settlementId: nativeSettlementId, result: nativeChiefResult)
                             }
                             .buttonStyle(.bordered)
@@ -232,78 +232,78 @@ struct DebugControlsView: View {
 
                             Divider()
 
-                            Text("Missionary")
+                            Text("Missionar")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
 
-                            TextField("Direction", text: $missionaryDirection)
+                            TextField("Richtung", text: $missionaryDirection)
                                 .textFieldStyle(.roundedBorder)
 
-                            Toggle("Denounce", isOn: $missionaryDenounce)
+                            Toggle("Anprangern", isOn: $missionaryDenounce)
 
-                            Button("Missionary Action") {
+                            Button("Missionarsaktion") {
                                 state.sendMissionaryAction(direction: missionaryDirection, denounce: missionaryDenounce)
                             }
                             .buttonStyle(.bordered)
                             .disabled(!state.canSendMissionaryAction || missionaryDirection.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
-                            TextField("Enemy player ID", text: $nativeEnemyPlayerId)
+                            TextField("Spieler-ID des Gegners", text: $nativeEnemyPlayerId)
                                 .textFieldStyle(.roundedBorder)
-                            TextField("Incite gold", text: $nativeInciteGold)
+                            TextField("Gold für den Aufstand", text: $nativeInciteGold)
                                 .textFieldStyle(.roundedBorder)
                         }
                         .padding(.vertical, 4)
                     }
 
-                    Button("Continue") {
+                    Button("Weiterspielen") {
                         state.sendContinue()
                     }
                     .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity)
 
-                    Button("Retire") {
+                    Button("Aufgeben") {
                         state.retireGame()
                     }
                     .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity)
 
-                    Button("Enter Revenge Mode") {
+                    Button("Rachemodus starten") {
                         state.enterRevengeMode()
                     }
                     .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity)
 
-                    TextField("Monarch action type", text: $monarchActionType)
+                    TextField("Monarch-Aktionstyp", text: $monarchActionType)
                         .textFieldStyle(.roundedBorder)
 
-                    Button("Monarch Action") {
+                    Button("Monarch-Aktion") {
                         state.sendMonarchAction(monarchActionType)
                     }
                     .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity)
                     .disabled(monarchActionType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
-                    Toggle("AI Enabled", isOn: $aiEnabled)
+                    Toggle("KI aktiv", isOn: $aiEnabled)
 
-                    Button("Apply AI Setting") {
+                    Button("KI-Einstellung übernehmen") {
                         state.setLocalPlayerAI(aiEnabled)
                     }
                     .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity)
 
-                    Button("Set Available") {
+                    Button("Als verfügbar markieren") {
                         state.setLocalPlayerAvailable()
                     }
                     .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity)
 
-                    TextField("Stance", text: $stanceValue)
+                    TextField("Haltung", text: $stanceValue)
                         .textFieldStyle(.roundedBorder)
 
-                    TextField("Stance target player", text: $stanceTargetPlayerId)
+                    TextField("Zielspieler-ID der Haltung", text: $stanceTargetPlayerId)
                         .textFieldStyle(.roundedBorder)
 
-                    Button("Set Stance") {
+                    Button("Haltung festlegen") {
                         state.setStance(stance: stanceValue, targetPlayerId: stanceTargetPlayerId)
                     }
                     .buttonStyle(.bordered)
@@ -313,13 +313,13 @@ struct DebugControlsView: View {
                         || stanceTargetPlayerId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     )
 
-                    TextField("Independence country name", text: $independenceCountryName)
+                    TextField("Name des unabhängigen Landes", text: $independenceCountryName)
                         .textFieldStyle(.roundedBorder)
 
-                    TextField("Independence nation name", text: $independenceNationName)
+                    TextField("Name der unabhängigen Nation", text: $independenceNationName)
                         .textFieldStyle(.roundedBorder)
 
-                    Button("Declare Independence") {
+                    Button("Unabhängigkeit erklären") {
                         state.declareIndependence(
                             countryName: independenceCountryName,
                             nationName: independenceNationName
@@ -332,10 +332,10 @@ struct DebugControlsView: View {
                         || independenceNationName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     )
 
-                    TextField("Chat message", text: $chatMessageText)
+                    TextField("Chatnachricht", text: $chatMessageText)
                         .textFieldStyle(.roundedBorder)
 
-                    TextField("Private recipient player id (optional)", text: $chatPrivateRecipientId)
+                    TextField("Optionale Empfänger-Spieler-ID", text: $chatPrivateRecipientId)
                         .textFieldStyle(.roundedBorder)
 
                     if !state.incomingChatLog.isEmpty {
@@ -349,7 +349,7 @@ struct DebugControlsView: View {
                         }
                     }
 
-                    Button("Send Chat") {
+                    Button("Chatnachricht senden") {
                         state.sendChatMessage(
                             message: chatMessageText,
                             privateRecipientId: chatPrivateRecipientId
@@ -359,16 +359,16 @@ struct DebugControlsView: View {
                     .frame(maxWidth: .infinity)
                     .disabled(chatMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
-                    Button("Set Dead") {
+                    Button("Als ausgeschieden markieren") {
                         state.setLocalPlayerDead()
                     }
                     .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity)
 
-                    TextField("Claim land price", text: $claimLandPrice)
+                    TextField("Preis für Land beanspruchen", text: $claimLandPrice)
                         .textFieldStyle(.roundedBorder)
 
-                    Button("Claim Selected Tile") {
+                    Button("Ausgewähltes Feld beanspruchen") {
                         if let tileId = state.selectedTileId {
                             state.claimLand(price: claimLandPrice, tileId: tileId)
                         }
@@ -385,13 +385,13 @@ struct DebugControlsView: View {
     private func unitLocationLabel(_ unit: FreeColGame.Unit, in game: Game) -> String {
         guard let location = unit.location else { return "?" }
         if let carrier = game.units[location] {
-            return "Aboard \(carrier.unitType ?? carrier.id)"
+            return "An Bord von \(carrier.unitType.map(state.unitDisplayName) ?? "Transporter")"
         }
         if game.tiles[location] != nil {
             return location
         }
         if game.colonies[location] != nil {
-            return "In colony"
+            return "In der Kolonie"
         }
         return location
     }
@@ -402,14 +402,14 @@ struct DebugControlsView: View {
             parts.append("Route: \(tradeRoute)")
         }
         if unit.currentStop > 0 || unit.tradeRoute != nil {
-            parts.append("Stop: \(unit.currentStop)")
+            parts.append("Halt: \(unit.currentStop)")
         }
         if unit.treasureAmount > 0 {
-            parts.append("Treasure: \(unit.treasureAmount)")
+            parts.append("Schatz: \(unit.treasureAmount)")
         }
         if let carrierId = unit.location, game.units[carrierId] != nil {
             let cargoCount = game.units.values.filter { $0.location == carrierId }.count
-            parts.append("Cargo: \(cargoCount)")
+            parts.append("Fracht: \(cargoCount)")
         }
         return parts.joined(separator: " | ")
     }

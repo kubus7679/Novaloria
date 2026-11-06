@@ -1,106 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
-    <linearGradient id="sky" x1="0" y1="0" x2="0.15" y2="1">
-      <stop offset="0" stop-color="#193956"/>
-      <stop offset="0.55" stop-color="#537b83"/>
-      <stop offset="1" stop-color="#e4a66d"/>
+    <clipPath id="rounded">
+      <rect width="1024" height="1024" rx="190"/>
+    </clipPath>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#18394f"/>
+      <stop offset="1" stop-color="#568b91"/>
     </linearGradient>
-    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
-      <stop stop-color="#2c7d88"/>
-      <stop offset="1" stop-color="#173e55"/>
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#347f88"/>
+      <stop offset="1" stop-color="#183f56"/>
     </linearGradient>
-    <linearGradient id="sail" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#fff3d1"/>
-      <stop offset="1" stop-color="#dcbf8a"/>
-    </linearGradient>
-    <linearGradient id="land" x1="0" y1="0" x2="0.8" y2="1">
-      <stop stop-color="#8ba45e"/>
-      <stop offset="1" stop-color="#365c48"/>
-    </linearGradient>
-    <pattern id="mapLines" width="62" height="62" patternUnits="userSpaceOnUse" patternTransform="rotate(-18)">
-      <path d="M0 15H62M0 47H62" stroke="#f6d9a3" stroke-opacity=".11" stroke-width="2"/>
-    </pattern>
-    <filter id="shadow" x="-.3" y="-.3" width="1.6" height="1.8">
-      <feGaussianBlur stdDeviation="12"/>
-    </filter>
-    <g id="tree" stroke="#203d38" stroke-width="8" stroke-linejoin="round">
-      <path d="M0 0 34-62 66 0Z" fill="#55794c"/>
-      <path d="M10-30 34-80 57-30Z" fill="#799451"/>
-      <path d="M27 0h15v34H27z" fill="#684b37"/>
-    </g>
   </defs>
 
-  <!-- Painted-atlas sky, sea and sun -->
-  <rect width="1024" height="1024" fill="url(#sky)"/>
-  <rect width="1024" height="1024" fill="url(#mapLines)"/>
-  <circle cx="776" cy="290" r="118" fill="#f7cb83" opacity=".24"/>
-  <circle cx="776" cy="290" r="80" fill="#f6d28f" stroke="#263d4a" stroke-width="12"/>
-  <path d="M0 528Q166 483 312 525T608 512Q820 488 1024 524V1024H0Z" fill="url(#sea)" stroke="#263d4a" stroke-width="16"/>
-  <path d="M0 586Q162 548 321 581T639 570Q839 546 1024 581" fill="none" stroke="#e7bd7f" stroke-width="11" opacity=".8"/>
+  <g clip-path="url(#rounded)" stroke="#193748" stroke-linejoin="round" stroke-linecap="round">
+    <!-- Bold, simple setting: sunrise, coast and open sea -->
+    <rect width="1024" height="1024" fill="url(#sky)"/>
+    <circle cx="750" cy="330" r="144" fill="#f3c77d"/>
+    <path d="M0 536Q180 488 352 532T699 523Q865 493 1024 527V1024H0Z" fill="url(#water)" stroke-width="16"/>
+    <path d="M620 534Q684 472 765 463Q855 454 912 493Q961 521 1024 489V690H615Z" fill="#6e925b" stroke="none"/>
+    <path d="M620 534Q684 472 765 463Q855 454 912 493Q961 521 1024 489" fill="none" stroke-width="16"/>
+    <path d="M691 508 733 459 771 505M839 488 875 448 910 488" fill="none" stroke="#315d4c" stroke-width="18"/>
 
-  <!-- New coast and small settlement -->
-  <path d="M628 523Q695 464 752 454Q828 438 882 466Q935 491 1024 451V704H623Z" fill="url(#land)" stroke="#263d4a" stroke-width="14" stroke-linejoin="round"/>
-  <path d="M690 529 727 477 762 526M824 482 861 438 895 480M914 482 945 451 976 480" fill="#98a96a" stroke="#263d4a" stroke-width="10" stroke-linejoin="round"/>
-  <g transform="translate(930 535) scale(.7)">
-    <path d="M-58 4 0-38 59 4V69H-58Z" fill="#d7b477" stroke="#263d4a" stroke-width="10" stroke-linejoin="round"/>
-    <path d="M-72 5 0-48 72 5" fill="#a65d42" stroke="#263d4a" stroke-width="12" stroke-linejoin="round"/>
-    <path d="M-10 69V26H13V69M-45 27H-28V45H-45ZM29 27H46V45H29Z" fill="#694b3a" stroke="#263d4a" stroke-width="8"/>
-    <path d="M68 3V-86H111V3" fill="#bea06b" stroke="#263d4a" stroke-width="10"/>
-    <path d="M61-86 89-113 118-86" fill="#a65d42" stroke="#263d4a" stroke-width="10" stroke-linejoin="round"/>
-    <path d="M89-113V-139" stroke="#263d4a" stroke-width="7"/>
-    <path d="M91-138 123-129 91-118Z" fill="#c95647" stroke="#263d4a" stroke-width="6" stroke-linejoin="round"/>
-  </g>
-  <use href="#tree" transform="translate(728 540) scale(.7)"/>
-  <use href="#tree" transform="translate(812 518) scale(.57)"/>
+    <!-- A single, strong ship silhouette with broad, readable sails -->
+    <path d="M256 673Q472 708 835 646L766 786Q709 849 435 852Q319 823 256 673Z" fill="#a9573e" stroke-width="22"/>
+    <path d="M276 684Q500 714 815 656L783 718Q529 766 310 724Z" fill="#d09258" stroke-width="12"/>
+    <path d="M289 669 407 650 535 662 665 634 801 650 774 688Q525 726 284 692Z" fill="#e5c58f" stroke-width="16"/>
 
-  <!-- Ship shadow -->
-  <ellipse cx="435" cy="813" rx="329" ry="43" fill="#102d40" opacity=".55" filter="url(#shadow)"/>
+    <!-- Two masts and three large sails; intentionally no fine rigging -->
+    <path d="M451 228V663M658 347V649" fill="none" stroke-width="27"/>
+    <path d="M438 278 286 563 440 544Z" fill="#f6e4bc" stroke-width="17"/>
+    <path d="M467 290 608 555 469 535Z" fill="#e8cf9d" stroke-width="17"/>
+    <path d="M641 391 532 601 644 583Z" fill="#f6e4bc" stroke-width="16"/>
+    <path d="M451 225V175" fill="none" stroke-width="10"/>
+    <path d="M456 179 525 195 456 214Z" fill="#c95647" stroke-width="9"/>
 
-  <!-- Tall masts and rigging -->
-  <g fill="none" stroke="#263d4a" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M282 314V760M438 220V780M580 336V758" stroke-width="24"/>
-    <path d="M282 360 163 737M438 261 136 749M438 261 691 744M580 374 729 738" stroke-width="8"/>
-    <path d="M203 563H361M360 472H517M527 560H639" stroke-width="12"/>
-  </g>
-  <g stroke="#263d4a" stroke-width="12" stroke-linejoin="round">
-    <path d="M293 349 177 538 293 519Z" fill="url(#sail)"/>
-    <path d="M271 562 174 702 287 679Z" fill="#e5c893"/>
-    <path d="M428 264 313 456 431 439Z" fill="url(#sail)"/>
-    <path d="M451 280 553 466 451 447Z" fill="#f4e1b5"/>
-    <path d="M422 485 305 692 430 668Z" fill="#f4e1b5"/>
-    <path d="M450 485 559 682 450 663Z" fill="#d8bb88"/>
-    <path d="M572 370 499 526 577 513Z" fill="url(#sail)"/>
-    <path d="M589 391 658 532 587 519Z" fill="#e8d0a1"/>
-    <path d="M576 555 507 690 582 674Z" fill="#f4e1b5"/>
-  </g>
-  <!-- Sail seams, a few bold comic strokes -->
-  <g fill="none" stroke="#a88a61" stroke-width="6" opacity=".8">
-    <path d="M209 526 289 381M337 442 423 300M480 442 454 300M330 661 421 511M543 510 573 405"/>
-  </g>
-
-  <!-- Hull, deck and warm wood detail -->
-  <path d="M129 727Q301 760 694 699L646 799Q603 861 329 874Q202 851 129 727Z" fill="#994e38" stroke="#263d4a" stroke-width="18" stroke-linejoin="round"/>
-  <path d="M147 742Q355 782 679 711L649 763Q399 825 192 785Z" fill="#c47a4a" stroke="#263d4a" stroke-width="10" stroke-linejoin="round"/>
-  <path d="M202 807Q398 842 627 784M268 844Q428 863 581 822" fill="none" stroke="#683d35" stroke-width="9"/>
-  <path d="M180 710 304 690 416 701 552 674 665 704 643 741Q408 779 160 736Z" fill="#d5ad70" stroke="#263d4a" stroke-width="14" stroke-linejoin="round"/>
-  <path d="M191 719 641 711" stroke="#f0d49e" stroke-width="9"/>
-  <g fill="#e9d9b4" stroke="#263d4a" stroke-width="8">
-    <circle cx="252" cy="768" r="11"/><circle cx="345" cy="782" r="11"/><circle cx="438" cy="782" r="11"/><circle cx="531" cy="770" r="11"/>
-  </g>
-
-  <!-- Small red pennant and antique compass mark -->
-  <path d="M438 218V171" stroke="#263d4a" stroke-width="9"/>
-  <path d="M440 174 503 189 440 207Z" fill="#c95647" stroke="#263d4a" stroke-width="8" stroke-linejoin="round"/>
-  <g transform="translate(151 178)" stroke="#f3d39c" stroke-width="8" stroke-linejoin="round">
-    <circle r="48" fill="#1f4655" fill-opacity=".65"/>
-    <path d="M0-34 10-7 36 0 10 8 0 35-9 8-36 0-9-8Z" fill="#f0ca83"/>
-    <circle r="8" fill="#c95647" stroke="#263d4a" stroke-width="5"/>
-  </g>
-
-  <!-- Deliberate inked edge and subtle print flecks -->
-  <g fill="#f4d7a2" opacity=".55">
-    <circle cx="81" cy="470" r="6"/><circle cx="94" cy="492" r="4"/><circle cx="854" cy="623" r="5"/>
-    <path d="M61 638q36-12 68-1" fill="none" stroke="#f4d7a2" stroke-width="6"/>
-    <path d="M760 735q42-13 78-3" fill="none" stroke="#f4d7a2" stroke-width="6"/>
+    <!-- A few broad wave marks keep the sea legible at small sizes -->
+    <path d="M67 781Q148 750 226 781M804 884Q882 852 957 882" fill="none" stroke="#a8d0c2" stroke-width="18" opacity=".85"/>
+    <path d="M88 856Q136 837 184 855" fill="none" stroke="#a8d0c2" stroke-width="12" opacity=".58"/>
   </g>
 </svg>

@@ -15,6 +15,20 @@ enum GameLabels {
         }
     }()
 
+    private static let modelMessageTexts: [String: String] = {
+        do {
+            let url = Bundle.module.url(forResource: "model-message-texts-de", withExtension: "json")
+                ?? Bundle.module.resourceURL?.appendingPathComponent("model-message-texts-de.json")
+            guard let url else {
+                throw CocoaError(.fileNoSuchFile)
+            }
+            return try JSONDecoder().decode([String: String].self, from: Data(contentsOf: url))
+        } catch {
+            FreeColLogger.shared.error("Spielmeldungen konnten nicht geladen werden: \(error)")
+            return [:]
+        }
+    }()
+
     static func name(_ identifier: String) -> String {
         if let translated = names[identifier] { return translated }
         let short = identifier.split(separator: ".").last.map(String.init) ?? identifier
@@ -27,6 +41,10 @@ enum GameLabels {
             return fallback
         }
         return name(identifier)
+    }
+
+    static func modelMessageText(_ identifier: String) -> String? {
+        modelMessageTexts[identifier]
     }
 
     static func state(_ state: UnitState) -> String {

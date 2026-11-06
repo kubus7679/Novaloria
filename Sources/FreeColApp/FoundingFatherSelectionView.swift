@@ -15,9 +15,9 @@ struct FoundingFatherSelectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Continental Congress")
+            Text("Kontinentalkongress")
                 .font(.title2.bold())
-            Text("Choose a founding father.")
+            Text("Wähle einen Gründervater aus.")
                 .font(.body)
                 .foregroundColor(.secondary)
             GeometryReader { geometry in
@@ -43,7 +43,7 @@ struct FoundingFatherSelectionView: View {
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                     .padding(4)
                     if options.isEmpty {
-                        Text("No candidates available.")
+                        Text("Keine Kandidaten verfügbar.")
                             .foregroundColor(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -74,7 +74,7 @@ struct FoundingFatherSelectionView: View {
                             .font(.title3.bold())
                             .fixedSize(horizontal: false, vertical: true)
                             .lineLimit(2)
-                        Text(option.typeKey.capitalized)
+                        Text(categoryLabel(option.typeKey))
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }
@@ -112,6 +112,17 @@ struct FoundingFatherSelectionView: View {
         .buttonStyle(.plain)
         .disabled(!canChoose)
         .accessibilityIdentifier("founding-father-entry-\(option.fatherId)")
+    }
+
+    private func categoryLabel(_ key: String) -> String {
+        switch key.lowercased() {
+        case "trade": return "Handel"
+        case "exploration": return "Erkundung"
+        case "military": return "Militär"
+        case "political": return "Politik"
+        case "religious": return "Religion"
+        default: return GameLabels.name(key)
+        }
     }
 
     @ViewBuilder

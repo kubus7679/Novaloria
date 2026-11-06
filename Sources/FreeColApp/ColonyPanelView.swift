@@ -15,7 +15,7 @@ struct ColonyPanelView: View {
     let onClearSpeciality: () -> Void
     let onAssignTeacher: (String) -> Void
     let onClearTeacher: () -> Void
-    let onWorkAtLocation: (String) -> Void
+    let onWorkAtLocation: (String, String?) -> Void
     let onRenameColony: (String) -> Void
     let onPayForBuilding: () -> Void
     let onSetGoodsLevel: (ColonyExportData) -> Void
@@ -57,6 +57,9 @@ struct ColonyPanelView: View {
     @State private var goodsAmountInput: String = "10"
     @State private var showAbandonConfirmation: Bool = false
     @State private var showWarehouse: Bool = false
+    @State private var showAllGoods: Bool = false
+    @State private var pendingWorkField: ColonyTerrainField?
+    @State private var showFieldProductionChooser: Bool = false
     @State private var section: ColonySection = .overview
 
     enum ColonySection: String, CaseIterable {
@@ -80,7 +83,7 @@ struct ColonyPanelView: View {
         onClearSpeciality: @escaping () -> Void,
         onAssignTeacher: @escaping (String) -> Void,
         onClearTeacher: @escaping () -> Void,
-        onWorkAtLocation: @escaping (String) -> Void,
+        onWorkAtLocation: @escaping (String, String?) -> Void,
         onRenameColony: @escaping (String) -> Void,
         onPayForBuilding: @escaping () -> Void,
         onSetGoodsLevel: @escaping (ColonyExportData) -> Void,
@@ -164,15 +167,14 @@ struct ColonyPanelView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Label("Bevölkerung: \(population)", systemImage: "person.2")
-                Text("Nahrung: \(colony.goods["model.goods.food"] ?? colony.goods["model.goods.grain"] ?? 0)")
-                Spacer()
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                metricBadge("Bevölkerung", value: "\(population)", systemImage: "person.2")
+                if let food = colony.goods["model.goods.food"] ?? colony.goods["model.goods.grain"] {
+                    metricBadge("Nahrung", value: "\(food)", systemImage: "leaf")
+                }
+                Spacer(minLength: 0)
             }
-            .font(.caption)
-            Text("Bauauftrag: \(buildTargetLabel ?? "Keiner")")
-                .font(.caption)
             Picker("Bereich", selection: $section) {
                 ForEach(ColonySection.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
@@ -183,504 +185,261 @@ struct ColonyPanelView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
                     if section == .overview {
-                        HStack {
-                            Text(colony.name ?? colony.id)
-                                .font(.headline)
-                            Spacer()
-                            Text("\(colony.sonsOfLiberty)% Freiheitsstreben")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-
-                        Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 4) {
-                            GridRow {
-                                Text("Besitzer")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Text(ownerName)
-                                    .font(.caption)
-                            }
-                            GridRow {
-                                Text("Freiheit")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Text("\(colony.liberty)")
-                                    .font(.caption)
-                            }
-                            GridRow {
-                                Text("Einwanderung")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Text("\(colony.immigration)")
-                                    .font(.caption)
+                        panelCard("Status", systemImage: "building.2") {
+                            Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 7) {
+                                statRow("Besitzer", value: ownerName)
+                                statRow("Freiheitsstreben", value: "\(colony.sonsOfLiberty)%")
+                                statRow("Freiheit", value: "\(colony.liberty)")
+                                statRow("Einwanderung", value: "\(colony.immigration)")
+                                statRow("Gegründet", value: "\(colony.established)")
+                                statRow("Produktionsbonus", value: "\(colony.productionBonus)%")
                             }
                         }
-
-                        Divider()
-
-                        Text("Produktion")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                        Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 4) {
-                            GridRow {
-                                Text("Gegründet")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                Text("\(colony.established)")
-                                    .font(.caption2)
-                            }
-                            GridRow {
-                                Text("Produktionsbonus")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                Text("\(colony.productionBonus)%")
-                                    .font(.caption2)
-                            }
-                            GridRow {
-                                Text("Freiheit / Einwanderung")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                Text("\(colony.liberty) / \(colony.immigration)")
-                                    .font(.caption2)
-                            }
-                        }
-
-                        Divider()
                     }
 
                     if section == .workers {
-                        Picker("Arbeiter", selection: Binding(
-                            get: { selectedWorkerUnitId ?? "" },
-                            set: { onSelectWorker($0) }
-                        )) {
-                            if units.isEmpty { Text("Keine Arbeiter").tag("") }
-                            ForEach(units, id: \.id) { unit in
-                                Text("\(unit.unitType.map(GameLabels.name) ?? "Einheit") · \(unitWorkLabel(unit))")
-                                    .tag(unit.id)
-                            }
+                        VStack(alignment: .leading, spacing: 10) {
+                            terrainCard
+                            workerListCard
                         }
-                        .disabled(!canManage || units.isEmpty)
-                        ColonyTerrainView(fields: terrainFields, selectedWorkerId: selectedWorkerUnitId,
-                                          canManage: canManage, onAssign: onWorkAtLocation)
-                        Divider()
-                        Text("Arbeiter")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                        if units.isEmpty {
-                            Text("Keine sichtbaren Arbeiter in der Kolonie.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        } else {
-                            ForEach(units, id: \.id) { unit in
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        HStack(spacing: 4) {
-                                            Button(unit.unitType.map(GameLabels.name) ?? "Einheit") {
-                                                onSelectWorker(unit.id)
-                                            }
-                                            .font(.caption)
-                                            if selectedWorkerUnitId == unit.id {
-                                                Text("Ausgewählt")
-                                                    .font(.caption2)
-                                                    .padding(.horizontal, 4)
-                                                    .padding(.vertical, 1)
-                                                    .background(Color.accentColor.opacity(0.15))
-                                                    .cornerRadius(4)
-                                            }
-                                        }
-                                        Text(unitWorkLabel(unit))
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    Spacer()
-                                    VStack(alignment: .trailing, spacing: 2) {
-                                        Text(GameLabels.state(unit.state))
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                        Text("\(unit.displayMovesLeft) Bewegungspunkte")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                            }
-                        }
-
-                        Divider()
                     }
 
                     if section == .overview {
-                        Text("Verwaltung")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                        TextField("Koloniename", text: $colonyNameInput)
-                            .textFieldStyle(.roundedBorder)
-                            .accessibilityIdentifier("colony-name")
-                            .onSubmit {
-                                if canRename { onRenameColony(colonyNameInput) }
-                            }
-                        Button("Kolonie umbenennen") {
-                            onRenameColony(colonyNameInput)
-                        }
-                        .buttonStyle(.bordered)
-                        .accessibilityIdentifier("colony-rename")
-                        .disabled(!canRename)
-                        Button("Kolonie verlassen…", role: .destructive) {
-                            showAbandonConfirmation = true
-                        }
-                        .buttonStyle(.bordered)
-                        .accessibilityIdentifier("colony-abandon")
-                        .disabled(!canManage || !canAbandonColony)
-                    }
-
-                    if section == .production {
-                        Button("Bau bezahlen") {
-                            onPayForBuilding()
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(!canManage)
-                    }
-
-                    if section == .storage {
-                        Button("Export und Import…") {
-                            showWarehouse = true
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(!canManage)
-                        ForEach(storedGoods, id: \.id) { item in
-                            LabeledContent(item.label, value: "\(item.amount)")
-                        }
-                        if storedGoods.isEmpty {
-                            Text("Keine gelagerten Waren.").foregroundStyle(.secondary)
-                        }
-                    }
-                    if section == .workers {
-                        Text(
-                            "Arbeiter: \(units.first(where: { $0.id == selectedWorkerUnitId })?.unitType.map(GameLabels.name) ?? "Keiner")"
-                        )
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-
-                        Picker("Produktion", selection: $workTypeId) {
-                            ForEach(workTypeCandidates, id: \.id) { candidate in
-                                Text(GameLabels.name(candidate.id)).tag(candidate.id)
-                            }
-                        }
-                        .disabled(!canManage || selectedWorkerUnitId == nil)
-                        Button("Produktion ändern") {
-                            onChangeWorkType(workTypeId)
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(!canManage || selectedWorkerUnitId == nil
-                                  || !workTypeCandidates.contains(where: { $0.id == workTypeId }))
-
-                        if !workImprovementCandidates.isEmpty {
-                            Picker("Verbesserung", selection: $workImprovementTypeId) {
-                                ForEach(workImprovementCandidates, id: \.id) { candidate in
-                                    Text(GameLabels.name(candidate.id)).tag(candidate.id)
+                        DisclosureGroup("Verwaltung") {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack(spacing: 8) {
+                                    TextField("Koloniename", text: $colonyNameInput)
+                                        .textFieldStyle(.roundedBorder)
+                                        .accessibilityIdentifier("colony-name")
+                                        .onSubmit {
+                                            if canRename { onRenameColony(colonyNameInput) }
+                                        }
+                                    Button("Umbenennen") {
+                                        onRenameColony(colonyNameInput)
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .accessibilityIdentifier("colony-rename")
+                                    .disabled(!canRename)
+                                }
+                                if canManage && canAbandonColony {
+                                    Button("Kolonie verlassen…", role: .destructive) {
+                                        showAbandonConfirmation = true
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .accessibilityIdentifier("colony-abandon")
                                 }
                             }
-                            .disabled(!canManage || selectedWorkerUnitId == nil)
-                            Button("Verbesserung ändern") {
-                                onChangeWorkImprovementType(workImprovementTypeId)
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(!canManage || selectedWorkerUnitId == nil
-                                      || !workImprovementCandidates.contains(where: { $0.id == workImprovementTypeId }))
-                        }
-
-                        Button("Spezialisierung löschen") {
-                            onClearSpeciality()
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(!canManage || selectedWorkerUnitId == nil)
-
-                        Picker("Lehrer", selection: $teacherId) {
-                            Text("Keiner").tag("")
-                            ForEach(units.filter { $0.id != selectedWorkerUnitId }, id: \.id) { candidate in
-                                Text(candidate.unitType.map(GameLabels.name) ?? "Einheit").tag(candidate.id)
-                            }
-                        }
-                        .disabled(!canManage || selectedWorkerUnitId == nil)
-                        Button("Lehrer zuweisen") {
-                            onAssignTeacher(teacherId)
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(!canManage || selectedWorkerUnitId == nil || teacherId.isEmpty)
-
-                        Button("Lehrer entfernen") {
-                            onClearTeacher()
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(!canManage || selectedWorkerUnitId == nil)
-
-                        if let selectedWorkerUnitId,
-                            let selectedWorker = units.first(where: { $0.id == selectedWorkerUnitId })
-                        {
-                            Divider()
-                            Text("Ausgewählter Arbeiter")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Text(selectedWorker.unitType.map(GameLabels.name) ?? "Einheit")
-                                .font(.caption)
-                            Text(unitWorkLabel(selectedWorker))
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                            Text(
-                                "Lehrer: \(selectedWorker.teacher.flatMap { id in units.first(where: { $0.id == id })?.unitType }.map(GameLabels.name) ?? "Keiner")"
-                            )
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                        }
-
-                        if workLocationCandidates.isEmpty {
-                            Text("Keine Arbeitsplaetze verfügbar.")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        } else {
-                            Picker("Arbeitsplatz", selection: $workLocationId) {
-                                ForEach(workLocationCandidates, id: \.id) { candidate in
-                                    Text(candidate.label).tag(candidate.id)
-                                }
-                            }
-                            .disabled(!canManage || selectedWorkerUnitId == nil)
-                            Button("Arbeiter zuweisen") {
-                                onWorkAtLocation(workLocationId)
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(!canManage || selectedWorkerUnitId == nil || workLocationId.isEmpty)
+                            .padding(.top, 6)
                         }
                     }
 
                     if section == .production {
-                        if buildTargetLabel != nil || !storedGoods.isEmpty {
-                            Divider()
-
-                            Text("Produktionsschätzung")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-
-                            if let target = buildTargetLabel {
-                                Text("Bauauftrag: \(target)")
-                                    .font(.caption2)
-                                ForEach(buildRequirements, id: \.id) { requirement in
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        HStack {
-                                            Text(requirement.label)
-                                                .font(.caption2)
-                                            Spacer()
-                                            Text("\(requirement.stored)/\(requirement.required)")
-                                                .font(.caption2)
-                                                .foregroundColor(.secondary)
-                                        }
-                                        ProgressView(
-                                            value: requirement.required > 0
-                                                ? min(1.0, Double(requirement.stored) / Double(requirement.required))
-                                                : 1.0
-                                        )
-                                        .frame(width: 180)
-                                    }
-                                }
-                                HStack {
-                                    Text("Geschätzte Produktion")
-                                        .font(.caption2)
-                                    Spacer()
-                                    Text(estimatedBuildPerTurn > 0 ? "\(estimatedBuildPerTurn)/Runde" : "—")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                }
-                                if let eta = buildETATurns {
-                                    Text(eta == 0 ? "Nächste Runde fertig" : "Noch etwa \(eta) Runden")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                }
+                        if buildTargetLabel != nil || !estimatedProduction.isEmpty {
+                            HStack(alignment: .top, spacing: 10) {
+                                currentBuildCard
+                                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                                nextBuildQueueCard
+                                    .frame(maxWidth: .infinity, alignment: .topLeading)
                             }
-
-                            if !estimatedProduction.isEmpty {
-                                Text("Pro Runde (geschätzt)")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                ForEach(estimatedProduction, id: \.id) { item in
-                                    HStack {
-                                        Text(item.label)
-                                            .font(.caption2)
-                                        Spacer()
-                                        Text(item.amount >= 0 ? "+\(item.amount)" : "\(item.amount)")
-                                            .font(.caption2)
-                                            .foregroundColor(item.amount >= 0 ? .green : .red)
-                                    }
-                                }
-                            }
-                        }
-
-                        Text("Gebäude")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        if buildings.isEmpty {
-                            Text("Keine Gebäude gemeldet.")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
                         } else {
-                            ForEach(buildings, id: \.id) { building in
-                                Text(building.label)
-                                    .font(.caption2)
-                            }
+                            nextBuildQueueCard
                         }
 
-                        Text("Bauliste")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                        if buildableCandidates.isEmpty {
-                            Text("Keine Bauoptionen verfügbar.")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        } else {
-                            HStack {
-                                Picker("Bauvorhaben", selection: $selectedBuildableId) {
-                                    ForEach(buildableCandidates, id: \.id) { candidate in
-                                        Text(candidate.label).tag(candidate.id)
-                                    }
-                                }
-                                .labelsHidden()
-                                .frame(maxWidth: 220)
-
-                                Button("Hinzufügen") {
-                                    addBuildQueueItem()
-                                }
-                                .buttonStyle(.bordered)
-                                .disabled(!canManage || selectedBuildableId.isEmpty)
-                            }
-                        }
-
-                        if buildQueueItems.isEmpty {
-                            Text("Keine Bauliste festgelegt.")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        } else {
-                            VStack(alignment: .leading, spacing: 4) {
-                                ForEach(Array(buildQueueItems.enumerated()), id: \.offset) { index, item in
-                                    HStack {
-                                        Text(buildingLabel(item))
-                                            .font(.caption2)
-                                        Spacer()
-                                        Button("Hoch") {
-                                            moveBuildQueueItem(from: index, to: index - 1)
-                                        }
-                                        .buttonStyle(.bordered)
-                                        .disabled(!canManage || index == 0)
-
-                                        Button("Runter") {
-                                            moveBuildQueueItem(from: index, to: index + 1)
-                                        }
-                                        .buttonStyle(.bordered)
-                                        .disabled(!canManage || index == buildQueueItems.count - 1)
-
-                                        Button("Entfernen") {
-                                            buildQueueItems.remove(at: index)
-                                        }
-                                        .buttonStyle(.bordered)
-                                        .disabled(!canManage)
-                                    }
+                        if !buildings.isEmpty {
+                            panelCard("Gebäude", systemImage: "building.2") {
+                                ForEach(buildings, id: \.id) { building in
+                                    Label(building.label, systemImage: "building.2.crop.circle")
+                                        .font(.callout)
                                 }
                             }
                         }
-
-                        HStack {
-                            Button("Bauliste übernehmen") {
-                                onSetBuildQueue(buildQueueItems)
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(!canManage)
-
-                            Button("Zurücksetzen") {
-                                buildQueueItems = currentBuildQueue
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(!canManage || buildQueueItems == currentBuildQueue)
-                        }
-                    }
-
-                    if section == .workers {
-                        Button("Vor die Kolonie stellen") {
-                            onPutOutsideColony()
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(!canManage || !canPutOutsideColony)
                     }
 
                     if section == .storage {
-                        Divider()
-
-                        Text("Fracht")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                        Text(selectedCarrierId == nil ? "Kein Transporter ausgewählt." : "Transporter ausgewählt")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-
-                        Text("Waren an Bord")
-                            .font(.caption.bold())
-                        if selectedCarrierId == nil {
-                            Text("Kein Transporter ausgewählt.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } else if carrierGoods.isEmpty {
-                            Text("Keine Waren an Bord.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } else {
-                            ForEach(carrierGoods, id: \.id) { item in
-                                LabeledContent(item.label, value: "\(item.amount)")
+                        panelCard("Lagerbestand", systemImage: "shippingbox") {
+                            if goodsCandidates.count > storedGoods.count {
+                                Toggle("Auch Waren mit Bestand 0 anzeigen", isOn: $showAllGoods)
+                                    .toggleStyle(.checkbox)
                                     .font(.caption)
                             }
-                        }
-
-                        Picker("Ware", selection: $goodsTypeId) {
-                            ForEach(goodsCandidates, id: \.id) { candidate in
-                                Text(GameLabels.name(candidate.id)).tag(candidate.id)
+                            if visibleGoods.isEmpty {
+                                Text("Keine gelagerten Waren.")
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), alignment: .leading)],
+                                          alignment: .leading, spacing: 6) {
+                                    ForEach(visibleGoods, id: \.id) { item in
+                                        LabeledContent(item.label, value: "\(item.amount)")
+                                            .font(.callout)
+                                    }
+                                }
                             }
                         }
-                        TextField("Menge", text: $goodsAmountInput)
-                            .textFieldStyle(.roundedBorder)
 
-                        HStack {
-                            Button("Max laden") {
-                                goodsAmountInput = String(maximumLoadAmount(goodsTypeId))
+                        if canManage && !exportData.isEmpty {
+                            Button("Export- und Importregeln…") { showWarehouse = true }
+                                .buttonStyle(.bordered)
+                        }
+
+                        if let selectedCarrierId {
+                            panelCard("Fracht", systemImage: "shippingbox.fill") {
+                                if carrierGoods.isEmpty {
+                                    Text("Der Transporter ist leer.")
+                                        .font(.callout)
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    ForEach(carrierGoods, id: \.id) { item in
+                                        LabeledContent(item.label, value: "\(item.amount)")
+                                            .font(.callout)
+                                    }
+                                }
+
+                                if !transferGoodsCandidates.isEmpty {
+                                    Picker("Ware", selection: $goodsTypeId) {
+                                        ForEach(transferGoodsCandidates, id: \.id) { candidate in
+                                            Text(candidate.label).tag(candidate.id)
+                                        }
+                                    }
+                                    TextField("Menge", text: $goodsAmountInput)
+                                        .textFieldStyle(.roundedBorder)
+
+                                    let loadMaximum = maximumLoadAmount(goodsTypeId)
+                                    let unloadMaximum = maximumUnloadAmount(goodsTypeId)
+                                    HStack(spacing: 8) {
+                                        if loadMaximum > 0 {
+                                            Button("Max laden: \(loadMaximum)") {
+                                                goodsAmountInput = String(loadMaximum)
+                                            }
+                                            .buttonStyle(.bordered)
+                                        }
+                                        if unloadMaximum > 0 {
+                                            Button("Max entladen: \(unloadMaximum)") {
+                                                goodsAmountInput = String(unloadMaximum)
+                                            }
+                                            .buttonStyle(.bordered)
+                                        }
+                                    }
+                                    HStack(spacing: 8) {
+                                        if loadMaximum > 0 {
+                                            Button("Laden") {
+                                                onLoadGoods(goodsTypeId, Int(goodsAmountInput) ?? 0)
+                                            }
+                                            .buttonStyle(.borderedProminent)
+                                            .disabled(!canManage || !validTransferAmount(maximum: loadMaximum))
+                                        }
+                                        if unloadMaximum > 0 {
+                                            Button("Entladen") {
+                                                onUnloadGoods(goodsTypeId, Int(goodsAmountInput) ?? 0)
+                                            }
+                                            .buttonStyle(.bordered)
+                                            .disabled(!canManage || !validTransferAmount(maximum: unloadMaximum))
+                                        }
+                                    }
+                                }
                             }
-                            .buttonStyle(.bordered)
-                            .disabled(!canManage || selectedCarrierId == nil
-                                      || maximumLoadAmount(goodsTypeId) <= 0)
-
-                            Button("Max entladen") {
-                                goodsAmountInput = String(maximumUnloadAmount(goodsTypeId))
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(!canManage || selectedCarrierId == nil
-                                      || maximumUnloadAmount(goodsTypeId) <= 0)
+                            .accessibilityIdentifier("colony-carrier-\(selectedCarrierId)")
+                        } else {
+                            Text("Frachtaktionen werden angezeigt, wenn ein Transporter ausgewählt ist.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
-
-                        Button("Waren laden") {
-                            let amount = Int(goodsAmountInput) ?? 0
-                            onLoadGoods(goodsTypeId, amount)
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(!canManage || selectedCarrierId == nil
-                                  || !goodsCandidates.contains(where: { $0.id == goodsTypeId })
-                                  || (Int(goodsAmountInput) ?? 0) <= 0)
-
-                        Button("Waren entladen") {
-                            let amount = Int(goodsAmountInput) ?? 0
-                            onUnloadGoods(goodsTypeId, amount)
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(!canManage || selectedCarrierId == nil
-                                  || !goodsCandidates.contains(where: { $0.id == goodsTypeId })
-                                  || (Int(goodsAmountInput) ?? 0) <= 0)
                     }
+                    if section == .workers {
+                        if let selectedWorker = selectedWorker {
+                            panelCard("Arbeiteraktionen", systemImage: "person.crop.circle") {
+                                if workTypeCandidates.count > 1 {
+                                    HStack(spacing: 8) {
+                                        Picker("Produktion", selection: $workTypeId) {
+                                            ForEach(workTypeCandidates, id: \.id) { candidate in
+                                                Text(candidate.label).tag(candidate.id)
+                                            }
+                                        }
+                                        .disabled(!canManage)
+                                        Button("Ändern") { onChangeWorkType(workTypeId) }
+                                            .buttonStyle(.bordered)
+                                            .disabled(!canManage || !workTypeCandidates.contains { $0.id == workTypeId })
+                                    }
+                                }
+
+                                if !buildingWorkLocationCandidates.isEmpty {
+                                    HStack(spacing: 8) {
+                                        Picker("Gebäude", selection: $workLocationId) {
+                                            ForEach(buildingWorkLocationCandidates, id: \.id) { candidate in
+                                                Text(candidate.label).tag(candidate.id)
+                                            }
+                                        }
+                                        .disabled(!canManage)
+                                        Button("Zuweisen") { onWorkAtLocation(workLocationId, nil) }
+                                            .buttonStyle(.bordered)
+                                            .disabled(!canManage || workLocationId.isEmpty)
+                                    }
+                                    Text("Im Gebäude beginnt der Arbeiter automatisch mit der dortigen Produktion.")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                if !workImprovementCandidates.isEmpty {
+                                    HStack(spacing: 8) {
+                                        Picker("Verbesserung", selection: $workImprovementTypeId) {
+                                            ForEach(workImprovementCandidates, id: \.id) { candidate in
+                                                Text(candidate.label).tag(candidate.id)
+                                            }
+                                        }
+                                        .disabled(!canManage)
+                                        Button("Ändern") {
+                                            onChangeWorkImprovementType(workImprovementTypeId)
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .disabled(!canManage || !workImprovementCandidates.contains {
+                                            $0.id == workImprovementTypeId
+                                        })
+                                    }
+                                }
+
+                                let otherWorkers = units.filter { $0.id != selectedWorker.id }
+                                if !otherWorkers.isEmpty {
+                                    HStack(spacing: 8) {
+                                        Picker("Lehrer", selection: $teacherId) {
+                                            ForEach(otherWorkers, id: \.id) { candidate in
+                                                Text(candidate.unitType.map(GameLabels.name) ?? "Einheit")
+                                                    .tag(candidate.id)
+                                            }
+                                        }
+                                        .disabled(!canManage)
+                                        Button("Zuweisen") { onAssignTeacher(teacherId) }
+                                            .buttonStyle(.bordered)
+                                            .disabled(!canManage || teacherId.isEmpty)
+                                    }
+                                }
+                                if selectedWorker.teacher != nil {
+                                    Button("Lehrer entfernen", action: onClearTeacher)
+                                        .buttonStyle(.bordered)
+                                        .disabled(!canManage)
+                                }
+                                if selectedWorker.role != nil && selectedWorker.role != "model.role.default" {
+                                    Button("Spezialisierung löschen", action: onClearSpeciality)
+                                        .buttonStyle(.bordered)
+                                        .disabled(!canManage)
+                                }
+                                if canPutOutsideColony {
+                                    Button("Vor die Kolonie stellen", action: onPutOutsideColony)
+                                        .buttonStyle(.bordered)
+                                }
+                            }
+                        } else if canManage && !units.isEmpty {
+                            ContentUnavailableView(
+                                "Kein Arbeiter ausgewählt",
+                                systemImage: "person.crop.circle",
+                                description: Text("Wählen Sie einen Arbeiter aus der Liste aus.")
+                            )
+                        } else if !canManage && !units.isEmpty {
+                            Text("Arbeiterverwaltung ist derzeit nicht verfügbar.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
                 }
                 .padding(.vertical, 4)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -701,17 +460,36 @@ struct ColonyPanelView: View {
         } message: {
             Text("Die Kolonie wird unwiderruflich entfernt.")
         }
+        .confirmationDialog(
+            "Produktion für dieses Feld",
+            isPresented: $showFieldProductionChooser,
+            titleVisibility: .visible
+        ) {
+            if let field = pendingWorkField, let locationId = field.workLocationId {
+                ForEach(field.workOptions) { option in
+                    Button(option.label) {
+                        onWorkAtLocation(locationId, option.goodsType)
+                        pendingWorkField = nil
+                    }
+                }
+            }
+            Button("Abbrechen", role: .cancel) { pendingWorkField = nil }
+        } message: {
+            Text("Wählen Sie aus, welche Ware der Arbeiter auf diesem Feld erzeugen soll.")
+        }
         .sheet(isPresented: $showWarehouse) {
             WarehouseSheet(exportData: exportData, onApply: onSetGoodsLevel)
         }
         .onAppear {
             syncWorkerInputs()
-            if !workImprovementCandidates.contains(where: { $0.id == workImprovementTypeId }) {
-                workImprovementTypeId = workImprovementCandidates.first?.id ?? ""
-            }
+            syncGoodsInput()
         }
         .onChange(of: selectedWorkerUnitId) { _, _ in syncWorkerInputs() }
         .onChange(of: workTypeCandidates.map(\.id)) { _, _ in syncWorkerInputs() }
+        .onChange(of: workImprovementCandidates.map(\.id)) { _, _ in syncWorkerInputs() }
+        .onChange(of: buildingWorkLocationCandidates.map(\.id)) { _, _ in syncWorkerInputs() }
+        .onChange(of: selectedCarrierId) { _, _ in syncGoodsInput() }
+        .onChange(of: transferGoodsCandidates.map(\.id)) { _, _ in syncGoodsInput() }
         .onChange(of: colony.name) { _, name in colonyNameInput = name ?? "" }
         .onChange(of: colony.buildQueue) { _, newQueue in
             // Keep the draft in sync with server-driven queue changes.
@@ -725,13 +503,337 @@ struct ColonyPanelView: View {
             && name.caseInsensitiveCompare(colony.name ?? "") != .orderedSame
     }
 
+    private var selectedWorker: FreeColGame.Unit? {
+        guard let selectedWorkerUnitId else { return nil }
+        return units.first { $0.id == selectedWorkerUnitId }
+    }
+
+    private var terrainCard: some View {
+        panelCard("Koloniegelände", systemImage: "map") {
+            if terrainFields.isEmpty {
+                Text("Keine Felder verfügbar.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                ColonyTerrainView(
+                    fields: terrainFields,
+                    selectedWorkerId: selectedWorkerUnitId,
+                    canManage: canManage,
+                    onAssign: { onWorkAtLocation($0, nil) },
+                    onSelectField: selectWorkField,
+                    showsHeader: false
+                )
+            }
+        }
+    }
+
+    private var workerListCard: some View {
+        panelCard("Arbeiter", systemImage: "person.2") {
+            if units.isEmpty {
+                Text("Keine Arbeiter in dieser Kolonie.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(spacing: 5) {
+                    ForEach(units, id: \.id) { unit in
+                        Button {
+                            onSelectWorker(unit.id)
+                        } label: {
+                            HStack(spacing: 10) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(unit.unitType.map(GameLabels.name) ?? "Einheit")
+                                        .font(.subheadline.weight(.medium))
+                                    Text(unitWorkLabel(unit))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Text(workerLocationLabel(unit))
+                                        .font(.caption2)
+                                        .foregroundStyle(.tertiary)
+                                }
+                                Spacer(minLength: 4)
+                                if selectedWorkerUnitId == unit.id {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.tint)
+                                        .accessibilityLabel("Ausgewählt")
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(8)
+                            .background(
+                                selectedWorkerUnitId == unit.id
+                                    ? Color.accentColor.opacity(0.12)
+                                    : Color.clear,
+                                in: RoundedRectangle(cornerRadius: 8)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(!canManage)
+                        .accessibilityIdentifier("colony-worker-\(unit.id)")
+                    }
+                }
+            }
+        }
+    }
+
+    private var buildingWorkLocationCandidates: [(id: String, label: String)] {
+        let buildingIds = Set(colony.buildings.map(\.id))
+        return workLocationCandidates.filter { buildingIds.contains($0.id) }
+    }
+
+    private var currentBuildCard: some View {
+        panelCard(
+            buildTargetLabel == nil ? "Produktion" : "Aktueller Bauauftrag",
+            systemImage: "hammer"
+        ) {
+            Text("Basiswerte ohne Boni oder Warenverbrauch.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            if let target = buildTargetLabel {
+                Text(target)
+                    .font(.callout.weight(.medium))
+                ForEach(buildRequirements, id: \.id) { requirement in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(requirement.label)
+                                .font(.caption)
+                                .lineLimit(1)
+                            Spacer(minLength: 4)
+                            Text("\(requirement.stored)/\(requirement.required)")
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                        ProgressView(
+                            value: requirement.required > 0
+                                ? min(1.0, Double(requirement.stored) / Double(requirement.required))
+                                : 1.0
+                        )
+                    }
+                }
+                HStack {
+                    Text("Bauhämmer pro Runde (Basis)")
+                    Spacer(minLength: 4)
+                    Text(estimatedBuildPerTurn > 0 ? "\(estimatedBuildPerTurn)" : "—")
+                        .monospacedDigit()
+                }
+                .font(.caption)
+                if let eta = buildETATurns {
+                    Text(eta == 0 ? "Fertig in der nächsten Runde" : "Noch etwa \(eta) Runden")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if canManage {
+                    Button("Bau bezahlen", action: onPayForBuilding)
+                        .buttonStyle(.borderedProminent)
+                }
+            }
+
+            if !estimatedProduction.isEmpty {
+                if buildTargetLabel != nil { Divider() }
+                Text("Produktion pro Runde (Basis)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                ForEach(estimatedProduction, id: \.id) { item in
+                    HStack {
+                        Text(item.label)
+                            .font(.callout)
+                            .lineLimit(1)
+                        Spacer(minLength: 4)
+                        Text(item.amount >= 0 ? "+\(item.amount)" : "\(item.amount)")
+                            .font(.callout.monospacedDigit())
+                            .foregroundStyle(item.amount >= 0 ? .green : .red)
+                    }
+                }
+            }
+        }
+    }
+
+    private var nextBuildQueueCard: some View {
+        panelCard("Nächste Bauvorhaben", systemImage: "hammer") {
+            if canManage && !buildableCandidates.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Picker("Bauvorhaben", selection: $selectedBuildableId) {
+                        ForEach(buildableCandidates, id: \.id) { candidate in
+                            Text(candidate.label).tag(candidate.id)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(maxWidth: .infinity)
+
+                    Button {
+                        addBuildQueueItem()
+                    } label: {
+                        Label("Hinzufügen", systemImage: "plus")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(selectedBuildableId.isEmpty)
+                }
+            } else if buildableCandidates.isEmpty {
+                Text("Derzeit sind keine weiteren Bauvorhaben verfügbar.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if buildQueueItems.isEmpty {
+                Text("Keine Bauliste festgelegt.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 5) {
+                    ForEach(Array(buildQueueItems.enumerated()), id: \.offset) { index, item in
+                        HStack(spacing: 4) {
+                            Text(buildingLabel(item))
+                                .font(.callout)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .layoutPriority(1)
+                            Spacer(minLength: 0)
+                            if canManage {
+                                Button {
+                                    moveBuildQueueItem(from: index, to: index - 1)
+                                } label: {
+                                    Image(systemName: "arrow.up")
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .disabled(index == 0)
+                                .help("Bauvorhaben nach oben verschieben")
+                                .accessibilityLabel("\(buildingLabel(item)) nach oben verschieben")
+                                .accessibilityIdentifier("build-queue-up-\(index)")
+
+                                Button {
+                                    moveBuildQueueItem(from: index, to: index + 1)
+                                } label: {
+                                    Image(systemName: "arrow.down")
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .disabled(index == buildQueueItems.count - 1)
+                                .help("Bauvorhaben nach unten verschieben")
+                                .accessibilityLabel("\(buildingLabel(item)) nach unten verschieben")
+                                .accessibilityIdentifier("build-queue-down-\(index)")
+
+                                Button(role: .destructive) {
+                                    buildQueueItems.remove(at: index)
+                                } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .help("Bauvorhaben aus der Liste entfernen")
+                                .accessibilityLabel("\(buildingLabel(item)) entfernen")
+                                .accessibilityIdentifier("build-queue-remove-\(index)")
+                            }
+                        }
+                    }
+                }
+            }
+
+            if canManage {
+                HStack(spacing: 8) {
+                    Button("Bauliste übernehmen") { onSetBuildQueue(buildQueueItems) }
+                        .buttonStyle(.borderedProminent)
+                    Button("Zurücksetzen") { buildQueueItems = currentBuildQueue }
+                        .buttonStyle(.bordered)
+                        .disabled(buildQueueItems == currentBuildQueue)
+                }
+            }
+        }
+    }
+
+    private var visibleGoods: [(id: String, label: String, amount: Int)] {
+        guard showAllGoods else { return storedGoods }
+        let amounts = Dictionary(uniqueKeysWithValues: storedGoods.map { ($0.id, $0.amount) })
+        return goodsCandidates.map { candidate in
+            (id: candidate.id, label: candidate.label, amount: amounts[candidate.id] ?? 0)
+        }
+    }
+
+    private var transferGoodsCandidates: [(id: String, label: String)] {
+        goodsCandidates.filter {
+            maximumLoadAmount($0.id) > 0 || maximumUnloadAmount($0.id) > 0
+        }
+    }
+
+    private func metricBadge(_ title: String, value: String, systemImage: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: systemImage)
+                .foregroundStyle(.secondary)
+            Text(title)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .fontWeight(.semibold)
+                .monospacedDigit()
+        }
+        .font(.caption)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color.secondary.opacity(0.1), in: Capsule())
+    }
+
+    private func panelCard<Content: View>(
+        _ title: String,
+        systemImage: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Label(title, systemImage: systemImage)
+                .font(.headline)
+            content()
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            Color(NSColor.controlBackgroundColor).opacity(0.72),
+            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(Color.white.opacity(0.07), lineWidth: 1)
+        }
+    }
+
+    @ViewBuilder
+    private func statRow(_ title: String, value: String) -> some View {
+        GridRow {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.callout.weight(.medium))
+                .monospacedDigit()
+        }
+    }
+
+    private func selectWorkField(_ field: ColonyTerrainField) {
+        guard let locationId = field.workLocationId else { return }
+        if field.workOptions.count > 1 {
+            pendingWorkField = field
+            showFieldProductionChooser = true
+        } else {
+            onWorkAtLocation(locationId, field.workOptions.first?.goodsType)
+        }
+    }
+
+    private func validTransferAmount(maximum: Int) -> Bool {
+        guard let amount = Int(goodsAmountInput) else { return false }
+        return amount > 0 && amount <= maximum
+    }
+
     private func syncWorkerInputs() {
         let worker = units.first { $0.id == selectedWorkerUnitId }
         workTypeId = workTypeCandidates.first(where: { $0.id == worker?.workType })?.id
             ?? workTypeCandidates.first?.id ?? ""
-        workLocationId = workLocationCandidates.first(where: { $0.id == worker?.location })?.id
-            ?? workLocationCandidates.first?.id ?? ""
+        workLocationId = buildingWorkLocationCandidates.first(where: { $0.id == worker?.location })?.id
+            ?? buildingWorkLocationCandidates.first?.id ?? ""
         teacherId = worker?.teacher ?? ""
+        workImprovementTypeId = workImprovementCandidates.first(where: {
+            $0.id == worker?.workImprovementType
+        })?.id ?? workImprovementCandidates.first?.id ?? ""
+    }
+
+    private func syncGoodsInput() {
+        guard !transferGoodsCandidates.contains(where: { $0.id == goodsTypeId }) else { return }
+        goodsTypeId = transferGoodsCandidates.first?.id ?? goodsCandidates.first?.id ?? ""
     }
 
     private func addBuildQueueItem() {
@@ -766,6 +868,15 @@ struct ColonyPanelView: View {
             return "Kein Arbeitsauftrag"
         }
         return parts.joined(separator: " | ")
+    }
+
+    private func workerLocationLabel(_ unit: FreeColGame.Unit) -> String {
+        guard let location = unit.location else { return "Arbeitsplatz unbekannt" }
+        if location == colony.id || colony.tileId == location { return "Koloniezentrum" }
+        if let candidate = workLocationCandidates.first(where: { $0.id == location }) {
+            return "Arbeitsplatz: \(candidate.label)"
+        }
+        return "Arbeitsplatz nicht verfügbar"
     }
 }
 

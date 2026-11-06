@@ -423,7 +423,9 @@ struct EuropePanelView: View {
                             selectedCarrierId = carrier.id
                         } label: {
                             HStack {
-                                if let nsImg = TileImageCache.shared.unitImage(forUnitType: carrier.unitType) {
+                                if let nsImg = TileImageCache.shared.unitImage(
+                                    forUnitType: carrier.unitType, role: carrier.role
+                                ) {
                                     Image(nsImage: nsImg)
                                         .resizable()
                                         .interpolation(.high)

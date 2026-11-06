@@ -142,6 +142,11 @@ final class MapInteractionTests: XCTestCase {
             let image = try XCTUnwrap(TileImageCache.shared.unitImage(forUnitType: "model.unit.\(type)"))
             XCTAssertGreaterThan(image.size.width, 0)
         }
+        let pioneerImage = try XCTUnwrap(TileImageCache.shared.unitImage(
+            forUnitType: "model.unit.pettyCriminal", role: "model.role.pioneer"
+        ))
+        let roleImage = try XCTUnwrap(TileImageCache.shared.loadImage(named: "pioneer", folder: "units"))
+        XCTAssertTrue(pioneerImage === roleImage)
         for section in [EuropePanelView.EuropeSection.harbor, .recruitment] {
             try checkPanel(EuropePanelView(section: section).environment(state),
                            name: "europe-return-\(section)", width: 600, height: 480)
@@ -510,7 +515,9 @@ final class MapInteractionTests: XCTestCase {
             onSelectWorker: { state.selectUnit($0, onTile: colony.tileId) },
             onChangeWorkType: { _ in }, onChangeWorkImprovementType: { _ in },
             onClearSpeciality: {}, onAssignTeacher: { _ in }, onClearTeacher: {},
-            onWorkAtLocation: { state.assignSelectedColonyWorker(to: $0) }, onRenameColony: { _ in },
+            onWorkAtLocation: { location, workType in
+                state.assignSelectedColonyWorker(to: location, workTypeId: workType)
+            }, onRenameColony: { _ in },
             onPayForBuilding: {}, onSetGoodsLevel: { _ in },
             workLocationCandidates: state.selectedColonyWorkLocationCandidates,
             workTypeCandidates: state.selectedColonyWorkTypeCandidates, goodsCandidates: state.colonyGoodsCandidates,
@@ -562,13 +569,15 @@ final class MapInteractionTests: XCTestCase {
                 population: state.colonyPopulation(colony),
                 onChangeWorkType: { _ in }, onChangeWorkImprovementType: { _ in },
                 onClearSpeciality: {}, onAssignTeacher: { _ in }, onClearTeacher: {},
-                onWorkAtLocation: { _ in }, onRenameColony: { _ in }, onPayForBuilding: {},
+                onWorkAtLocation: { _, _ in }, onRenameColony: { _ in }, onPayForBuilding: {},
                 onSetGoodsLevel: { _ in },
                 workTypeCandidates: [("model.goods.food", "Nahrung"), ("model.goods.tools", "Werkzeuge")],
                 onAbandonColony: {}, canAbandonColony: false,
                 onSetBuildQueue: { _ in }, onPutOutsideColony: {}, canPutOutsideColony: false,
                 selectedCarrierId: "carrier-1", onLoadGoods: { _, _ in }, onUnloadGoods: { _, _ in },
                 buildableCandidates: [("model.building.warehouse", "Lagerhaus")],
+                currentBuildQueue: ["model.building.warehouse", "model.building.carpenterHouse"],
+                buildingLabel: { GameLabels.name($0) },
                 storedGoods: [("model.goods.food", "Nahrung", 100), ("model.goods.tools", "Werkzeuge", 20)],
                 carrierGoods: [("model.goods.food", "Nahrung", 100), ("model.goods.tools", "Werkzeuge", 40)],
                 buildTargetLabel: "Lagerhaus",
@@ -577,6 +586,11 @@ final class MapInteractionTests: XCTestCase {
             try checkPanel(panel, name: "colony-\(section)", width: 760, height: 480)
             try checkPanel(panel, name: "colony-\(section)-640", width: 640, height: 480)
         }
+        state.selectedUnitId = nil
+        state.selectedTileId = "tile-2-2"
+        state.errorMessage = "Ziel kann nicht erreicht werden. Diese lange Meldung muss auch bei schmaler Ansicht vollständig lesbar bleiben."
+        try checkPanel(GameView().environment(state), name: "game-unselected-error-900", width: 900, height: 620)
+        state.errorMessage = nil
         state.selectUnit("unit-1", onTile: "tile-2-2")
         for size in [CGSize(width: 900, height: 620), CGSize(width: 1200, height: 800)] {
             try checkPanel(GameView().environment(state), name: "game-\(Int(size.width))",
@@ -659,6 +673,46 @@ final class MapInteractionTests: XCTestCase {
         await fulfillment(of: [nextTurn], timeout: 1)
         XCTAssertTrue(state.canEndTurn)
         XCTAssertTrue(state.canChooseMoveDestination)
+    }
+
+    @MainActor
+    func testDisabledMoveReasonAndDisplayedShortcutsUseRegisteredSources() throws {
+        let state = try makeState()
+        state.selectUnit("unit-1", onTile: "tile-2-2")
+        XCTAssertTrue(state.canChooseMoveDestination)
+        XCTAssertNil(state.selectedUnitMoveDisabledReason)
+
+        try state.game?.applyPartial(XMLDecoder.decode("""
+        <partial id="unit-1" movesLeft="0"/>
+        """))
+        state.gameUpdateID += 1
+        XCTAssertFalse(state.canChooseMoveDestination)
+        XCTAssertEqual(state.selectedUnitMoveDisabledReason, "Diese Einheit hat keine Bewegungspunkte mehr.")
+
+        let shortcuts = try XCTUnwrap(state.keyboardShortcutsManager).shortcuts
+        XCTAssertEqual(shortcuts.first(where: { $0.description == "Kolonie bauen" })?.fullDisplay, "b")
+        XCTAssertEqual(shortcuts.first(where: { $0.description == "Warten / Überspringen" })?.fullDisplay, "w")
+        XCTAssertEqual(shortcuts.first(where: { $0.description == "Nächste Einheit auswählen" })?.fullDisplay, "n")
+        XCTAssertEqual(shortcuts.first(where: { $0.description == "Fernkampf" })?.fullDisplay, "⇧t")
+        XCTAssertFalse(shortcuts.contains(where: { $0.description == "Bewegen" }),
+                       "Das Einheitenpanel darf kein nicht registriertes Bewegungskürzel anzeigen")
+    }
+
+    @MainActor
+    func testSettlementLabelsLayoutAtMultipleZoomLevelsAndCanBeHidden() throws {
+        let state = try makeState()
+        state.selectedUnitId = nil
+        state.selectedTileId = "tile-2-2"
+        state.showFogOfWar = true
+
+        for zoom in [0.5, 1.0, 2.0, 5.0] {
+            state.mapZoomScale = zoom
+            try checkPanel(GameView().environment(state), name: "settlement-labels-\(zoom)",
+                           width: 900, height: 620)
+        }
+        state.showSettlementLabels = false
+        try checkPanel(GameView().environment(state), name: "settlement-labels-hidden",
+                       width: 900, height: 620)
     }
 
     func testTileCentersAndBoundsMatchDrawingAtEveryZoom() throws {

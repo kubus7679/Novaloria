@@ -54,8 +54,12 @@ final class TileImageCache {
         return loadImage(named: "clouds\(variant)", folder: "terrain")
     }
 
-    func unitImage(forUnitType unitType: String?) -> NSImage? {
+    func unitImage(forUnitType unitType: String?, role: String? = nil) -> NSImage? {
         guard let unitType else { return nil }
+        if role == "model.role.pioneer",
+           let roleImage = loadImage(named: "pioneer", folder: "units") {
+            return roleImage
+        }
         // "model.unit.freeColonist" → "freeColonist"
         let name = unitType.components(separatedBy: ".").last ?? unitType
         return loadImage(named: name, folder: "units")

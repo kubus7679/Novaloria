@@ -479,7 +479,7 @@ struct ReportPanelView: View {
                             .font(.caption.bold())
                         ForEach(Array(messages.suffix(8).reversed().enumerated()),
                                 id: \.offset) { _, message in
-                            Text("• \(message.label)")
+                            Text("• \(state.modelMessageText(message))")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -560,6 +560,9 @@ struct ReportPanelView: View {
                 empty("Keine Kolonien.")
             } else {
                 VStack(alignment: .leading, spacing: 10) {
+                    Text("Basiserträge aus Arbeitsplätzen und Koloniezentrum; ohne Boni oder Warenverbrauch.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     ForEach(colonies) { colony in
                         let workers = state.colonyWorkerUnits(colony)
                         VStack(alignment: .leading, spacing: 2) {
@@ -622,7 +625,7 @@ struct ReportPanelView: View {
                             if production.isEmpty {
                                 empty("Keine geschätzte Produktion.")
                             } else {
-                                table(headers: ["Ware", "Pro Runde"],
+                                table(headers: ["Ware", "Basis/Runde"],
                                       widths: [180, 80],
                                       rows: production.map { [$0.label, "\($0.amount)"] })
                             }

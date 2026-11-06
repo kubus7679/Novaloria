@@ -280,7 +280,7 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertTrue(state.canRespondToPendingDecision())
         XCTAssertEqual(
             state.pendingDecisionSummary,
-            "demand: model.goods.tribute, amount: 50, colony: colony-3, unit: unit-7"
+            "Ware: Tribut · Menge: 50 · Kolonie: Kolonie · Einheit: Einheit"
         )
 
         state.clearPendingDecision()
@@ -312,7 +312,7 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(options.count, 1)
         XCTAssertEqual(options.first?.type, "model.goods.sugar")
         XCTAssertEqual(options.first?.amount, 20)
-        XCTAssertEqual(state.pendingDecisionSummary, "winner: unit-9, loser: unit-2, goods stacks: 1")
+        XCTAssertEqual(state.pendingDecisionSummary, "Sieger: Einheit · Verlierer: Einheit · Warenstapel: 1")
     }
 
     @MainActor
@@ -399,7 +399,7 @@ final class FreeColProtocolTests: XCTestCase {
             children: []
         ))
         XCTAssertEqual(state.pendingServerDecision?.type, .monarchAction)
-        XCTAssertEqual(state.pendingDecisionSummary, "Raise tax act, tax: 6")
+        XCTAssertEqual(state.pendingDecisionSummary, "Steuern erhöhen · Steuern: 6")
 
         // Announcement-only actions need no prompt.
         state.clearPendingDecision()
@@ -506,7 +506,7 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(session.settlementToUnit.first?.price, 42)
         XCTAssertEqual(session.settlementToUnit.first?.amount, 20)
         XCTAssertEqual(session.unitToSettlement.first?.price, 12)
-        XCTAssertEqual(state.pendingDecisionSummary, "Can buy 1, can sell 1")
+        XCTAssertEqual(state.pendingDecisionSummary, "Kaufangebote: 1 · Verkaufsangebote: 1")
 
         state.applySessionMessage(ParsedMessage(tag: "nativeTrade", attributes: ["action": "CLOSE"], children: []))
         XCTAssertNil(state.pendingServerDecision)
@@ -535,7 +535,7 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(proposal.context, "DIPLOMATIC")
         XCTAssertEqual(proposal.clauses.count, 2)
         XCTAssertTrue(proposal.clauses[0].summary.contains("Gold 100"))
-        XCTAssertEqual(state.pendingDecisionSummary, "DIPLOMATIC: 2 clause(s)")
+        XCTAssertEqual(state.pendingDecisionSummary, "Diplomatie: 2 Klauseln")
 
         // Outcome echoes must close the prompt, not reopen it.
         let accepted = ParsedMessage(
@@ -775,10 +775,14 @@ final class FreeColProtocolTests: XCTestCase {
         <game id="game-1">
           <player id="player-1" username="Alice"/>
           <colony id="colony-1" name="Boston" owner="player-1" tile="tile-0-0" unitCount="3">
-            <building id="building-1" buildingType="model.building.carpenterHouse"/>
+            <building id="building-1" buildingType="model.building.carpenterHouse">
+              <unit id="worker-1" unitType="model.unit.freeColonist" owner="player-1"
+                    location="building-1" workType="model.goods.hammers"/>
+            </building>
             <goodsContainer id="colony-1-goods">
               <storedGoods>
                 <goods type="model.goods.hammers" amount="10"/>
+                <goods type="model.goods.lumber" amount="3"/>
               </storedGoods>
             </goodsContainer>
             <buildQueueItem id="model.building.lumberMill"/>
@@ -800,14 +804,20 @@ final class FreeColProtocolTests: XCTestCase {
         try game.load(from: parsed)
         let colony = try XCTUnwrap(game.colonies["colony-1"])
         let specification = try XCTUnwrap(game.specification)
+        let worker = try XCTUnwrap(game.units["worker-1"])
 
         XCTAssertEqual(colony.goods["model.goods.hammers"], 10)
-        XCTAssertEqual(GameState.estimatedBuildPerTurn(colony: colony, specification: specification), 3)
+        XCTAssertEqual(GameState.estimatedBuildPerTurn(colony: colony, specification: specification), 0,
+                       "Unstaffed buildings must not be treated as active production")
+        XCTAssertEqual(GameState.estimatedBuildPerTurn(colony: colony,
+                                                       specification: specification,
+                                                       workers: [worker]), 3)
         // 52 required - 10 stored = 42 remaining, at 3/turn = 14 turns.
         XCTAssertEqual(
             GameState.estimatedBuildTurns(colony: colony,
                                           buildableId: "model.building.lumberMill",
-                                          specification: specification),
+                                          specification: specification,
+                                          workers: [worker]),
             14
         )
         XCTAssertNil(
@@ -927,13 +937,25 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertTrue(ids2.contains("model.building.carpenterHouse"))
     }
 
-    func testColonyProductionEstimateIncludesCenterTile() throws {
+    func testColonyProductionEstimateUsesAssignedAndUnattendedProduction() throws {
         let game = Game()
         let parsed = try XMLDecoder.decode("""
         <game id="game-1">
           <player id="player-1" username="Alice"/>
           <colony id="colony-1" name="Boston" owner="player-1" tile="tile-0-0" unitCount="3">
-            <building id="b1" buildingType="model.building.carpenterHouse"/>
+            <building id="b1" buildingType="model.building.carpenterHouse">
+              <unit id="worker-1" unitType="model.unit.freeColonist" owner="player-1"
+                    location="b1" workType="model.goods.hammers"/>
+            </building>
+            <building id="bell-building" buildingType="model.building.townHall">
+              <unit id="bell-worker" unitType="model.unit.freeColonist" owner="player-1"
+                    location="bell-building" workType="model.goods.bells"/>
+            </building>
+            <colonyTile id="field-1" workTile="tile-1-0">
+              <unit id="field-worker" unitType="model.unit.freeColonist" owner="player-1"
+                    location="field-1" workType="model.goods.grain"/>
+            </colonyTile>
+            <goodsContainer><storedGoods><goods type="model.goods.lumber" amount="3"/></storedGoods></goodsContainer>
           </colony>
           <freecol-specification id="spec">
             <tile-type id="model.tile.plains">
@@ -949,6 +971,17 @@ final class FreeColProtocolTests: XCTestCase {
                 <input goods-type="model.goods.lumber" value="3"/>
                 <output goods-type="model.goods.hammers" value="3"/>
               </production>
+              <production>
+                <output goods-type="model.goods.bells" value="1"/>
+              </production>
+            </building-type>
+            <building-type id="model.building.townHall">
+              <production unattended="true">
+                <output goods-type="model.goods.bells" value="1"/>
+              </production>
+              <production>
+                <output goods-type="model.goods.bells" value="3"/>
+              </production>
             </building-type>
           </freecol-specification>
         </game>
@@ -956,14 +989,42 @@ final class FreeColProtocolTests: XCTestCase {
         try game.load(from: parsed)
         let colony = try XCTUnwrap(game.colonies["colony-1"])
         let specification = try XCTUnwrap(game.specification)
+        let worker = try XCTUnwrap(game.units["worker-1"])
+        let fieldWorker = try XCTUnwrap(game.units["field-worker"])
+        let bellWorker = try XCTUnwrap(game.units["bell-worker"])
+
+        let unstaffed = GameState.estimatedProduction(colony: colony,
+                                                      specification: specification,
+                                                      centerTileType: "model.tile.plains")
+        let unstaffedTotals = Dictionary(uniqueKeysWithValues: unstaffed.map { ($0.id, $0.amount) })
+        XCTAssertNil(unstaffedTotals["model.goods.hammers"])
+        XCTAssertEqual(unstaffedTotals["model.goods.bells"], 1,
+                       "An unattended building should use its unattended recipe")
+        XCTAssertNil(unstaffedTotals["model.goods.lumber"])
 
         let production = GameState.estimatedProduction(colony: colony,
                                                        specification: specification,
-                                                       centerTileType: "model.tile.plains")
+                                                       centerTileType: "model.tile.plains",
+                                                       workers: [worker, fieldWorker, bellWorker],
+                                                       workTileTypes: ["field-1": "model.tile.plains"])
         let totals = Dictionary(uniqueKeysWithValues: production.map { ($0.id, $0.amount) })
         XCTAssertEqual(totals["model.goods.hammers"], 3)
-        XCTAssertEqual(totals["model.goods.grain"], 3)   // unattended center output
-        XCTAssertEqual(totals["model.goods.lumber"], -3)
+        XCTAssertEqual(totals["model.goods.grain"], 8)   // center (3) + assigned field worker (5)
+        XCTAssertEqual(totals["model.goods.bells"], 3,
+                       "A staffed building should use its attended recipe")
+        XCTAssertNil(totals["model.goods.lumber"], "Input consumption is not mislabeled as production")
+
+        var outOfLumber = colony
+        outOfLumber.goods["model.goods.lumber"] = 0
+        let withoutInputs = GameState.estimatedProduction(
+            colony: outOfLumber,
+            specification: specification,
+            centerTileType: "model.tile.plains",
+            workers: [worker, fieldWorker, bellWorker],
+            workTileTypes: ["field-1": "model.tile.plains"]
+        )
+        XCTAssertFalse(withoutInputs.contains { $0.id == "model.goods.hammers" },
+                       "A staffed building with unavailable inputs should not show output")
     }
 
     // MARK: Phase 54 - inbound decision handling
@@ -985,13 +1046,13 @@ final class FreeColProtocolTests: XCTestCase {
 
         XCTAssertEqual(state.pendingServerDecision?.type, .foundingFather)
         XCTAssertTrue(state.hasPendingDecision)
-        XCTAssertEqual(state.pendingDecisionTitle, "Continental Congress")
+        XCTAssertEqual(state.pendingDecisionTitle, "Kontinentalkongress")
 
         let options = state.pendingFoundingFathers
         XCTAssertEqual(options.map(\.typeKey), ["trade", "military"])
         XCTAssertEqual(options.first?.fatherId, "model.foundingFather.adamSmith")
         XCTAssertEqual(options.first?.label, "Adam Smith")
-        XCTAssertEqual(state.pendingDecisionSummary, "2 candidate(s) available.")
+        XCTAssertEqual(state.pendingDecisionSummary, "2 Gründerväter verfügbar.")
         XCTAssertEqual(GameState.foundingFatherLabel("model.foundingFather.baronVonSteuben"),
                        "Baron Von Steuben")
     }
@@ -1021,7 +1082,7 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(state.pendingServerDecision?.type, .incite)
         XCTAssertEqual(state.pendingIncite?.gold, 750)
         XCTAssertEqual(state.pendingIncite?.enemy, "player-3")
-        XCTAssertEqual(state.pendingDecisionSummary, "Incite player-3 for 750 gold.")
+        XCTAssertEqual(state.pendingDecisionSummary, "Aufstand gegen gegnerische Nation anzetteln? Kosten: 750 Gold.")
         state.declinePendingIncite()
         XCTAssertNil(state.pendingServerDecision)
     }
@@ -1642,10 +1703,10 @@ final class FreeColProtocolTests: XCTestCase {
         state.startLocal(userName: "Alice", nationId: "model.nation.dutch")
 
         let connectionDeadline = Date().addingTimeInterval(5)
-        while state.phase.description != "In Game", Date() < connectionDeadline {
+        while state.phase.description != "Im Spiel", Date() < connectionDeadline {
             try await Task.sleep(nanoseconds: 20_000_000)
         }
-        XCTAssertEqual(state.phase.description, "In Game")
+        XCTAssertEqual(state.phase.description, "Im Spiel")
 
         let turnBefore = try XCTUnwrap(state.game?.turn.number)
         state.endTurn()
@@ -1798,7 +1859,7 @@ final class FreeColProtocolTests: XCTestCase {
 
         // No moves left: a move is rejected locally with a user-visible message.
         state.moveSelectedUnit(to: "tile-1")
-        XCTAssertEqual(state.errorMessage, "Ungueltige Bewegung.")
+        XCTAssertEqual(state.errorMessage, "Ungültige Bewegung.")
 
         // Empty colony name is rejected before any request is built.
         state.buildColony(name: "   ")

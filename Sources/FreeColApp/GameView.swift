@@ -9,43 +9,22 @@ struct GameView: View {
     @State private var mapViewport: MapViewportInfo?
     @State private var selectedLootTypes: Set<String> = []
     @State private var namePromptText: String = ""
-    @State private var showReports = false
     @State private var showNativeTrade = false
     @State private var showDiplomacy = false
-    @State private var showChat = false
-    @State private var showPreferences = false
-    @State private var showColopedia = false
-    @State private var showIndependence = false
     @State private var independenceCountry = "United States"
     @State private var independenceNation = "America"
-    @State private var showFindSettlement = false
     @State private var findSettlementQuery = ""
-    @State private var showTradeRoutes = false
     @State private var queuedActionToConfirm: GameState.QueuedGameplayAction?
     @State private var showQueuedActionConfirmation = false
 
     var body: some View {
         KeyboardShortcutHandlerView {
             VStack(spacing: 0) {
-            ScrollView(.horizontal) {
-                topBar
-            }
-            .fixedSize(horizontal: false, vertical: true)
+            topBar
 
             if !state.queuedGameplayActions.isEmpty {
                 ScrollView { queuedActionsPanel }
                     .frame(maxHeight: 130)
-            }
-            if let err = state.errorMessage, !err.isEmpty {
-                Text(err)
-                    .font(.caption)
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .frame(maxWidth: .infinity)
-                    .background(Color.red.opacity(0.85))
-                    .onTapGesture { state.errorMessage = nil }
             }
             if state.isChoosingMoveDestination {
                 HStack {
@@ -63,6 +42,12 @@ struct GameView: View {
                 MapView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .allowsHitTesting(state.pendingServerDecision == nil && !state.isDefeated && !state.isVictorious)
+                    .overlay(alignment: .topLeading) {
+                        if let message = state.errorMessage, !message.isEmpty {
+                            errorBanner(message)
+                                .padding(10)
+                        }
+                    }
                     .overlay(alignment: .topTrailing) {
                         if let tileId = state.tileActionTileId {
                             GeometryReader { geo in
@@ -92,43 +77,54 @@ struct GameView: View {
                         }
                     }
                 Divider()
-                if state.selectedUnit != nil {
-                    unitQuickActions
-                        .frame(width: 260)
-                } else {
-                    ScrollView { InfoPanelView() }
-                        .frame(width: 260)
+                GeometryReader { inspectorGeometry in
+                    VStack(spacing: 0) {
+                        MiniMapView(viewport: mapViewport, minimapWidth: 244, maxMiniHeight: 112)
+                            .frame(height: 112)
+                            .padding(8)
+                        Divider()
+                        Group {
+                            if state.selectedUnit != nil {
+                                unitQuickActions
+                            } else {
+                                ScrollView { InfoPanelView() }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    }
+                    .frame(width: 260, height: inspectorGeometry.size.height)
                 }
+                .frame(width: 260)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             Divider()
             HStack(spacing: 12) {
-                MiniMapView(viewport: mapViewport, minimapWidth: 140, maxMiniHeight: 72)
-                    .frame(width: 140, height: 72)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(state.turnStatusDescription)
-                        .font(.headline)
-                    Text("\(state.unitsAwaitingOrders.count) Einheiten ohne Befehl")
+                Text(state.turnStatusDescription)
+                    .font(.headline)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Spacer(minLength: 4)
+                if state.unitsAwaitingOrders.isEmpty {
+                    Label("Alle Einheiten befohlen", systemImage: "checkmark.circle")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Button("Zugbericht (\(state.localPlayerModelMessages.count))") {
-                        state.requestedReport = .turn
-                        showReports = true
+                } else {
+                    Button {
+                        state.selectAdjacentUnit(forward: true, onlyAwaitingOrders: true)
+                    } label: {
+                        Label("\(state.unitsAwaitingOrders.count) ohne Befehl",
+                              systemImage: "arrow.right.circle")
+                            .font(.caption)
                     }
+                    .buttonStyle(.plain)
+                    .help("Wählt die nächste Einheit ohne Befehl aus und zentriert die Karte, falls sie sich dort befindet.")
+                    .accessibilityLabel("\(state.unitsAwaitingOrders.count) Einheiten ohne Befehl. Nächste Einheit auswählen.")
+                    .accessibilityIdentifier("units-awaiting-orders")
                 }
-                Spacer(minLength: 0)
-                VStack(alignment: .trailing, spacing: 6) {
-                    HStack {
-                        Button("Kolonie (C)") { state.openColonyPanel() }
-                            .disabled(state.selectedColony == nil)
-                        Button("Nächste Einheit (N)") { state.selectNextUnit() }
-                            .disabled(state.cyclingLocalUnits.isEmpty)
-                    }
-                    Button("Zug beenden (⌃⏎)") { state.requestEndTurn() }
-                        .buttonStyle(GameActionButtonStyle())
-                        .disabled(!state.canEndTurn)
-                        .help("Vor dem Zugende werden Einheiten ohne Befehl angezeigt.")
+                Button("Zugbericht (\(state.localPlayerModelMessages.count))") {
+                    state.requestedReport = .turn
+                    state.showReportsPanel = true
                 }
             }
             .padding(8)
@@ -231,8 +227,8 @@ struct GameView: View {
                         onClearTeacher: {
                             state.clearTeacherForSelectedColonyWorker()
                         },
-                        onWorkAtLocation: { workLocationId in
-                            state.assignSelectedColonyWorker(to: workLocationId)
+                        onWorkAtLocation: { workLocationId, workTypeId in
+                            state.assignSelectedColonyWorker(to: workLocationId, workTypeId: workTypeId)
                         },
                         onRenameColony: { newName in
                             state.renameSelectedColony(to: newName)
@@ -299,9 +295,9 @@ struct GameView: View {
         ) {
             VStack(spacing: 0) {
                 HStack {
-                    Text("Debug").font(.headline)
+                    Text("Diagnose").font(.headline)
                     Spacer()
-                    Button("Close") { state.closeDebugPanel() }
+                    Button("Schließen") { state.closeDebugPanel() }
                         .keyboardShortcut(.cancelAction)
                 }
                 .padding()
@@ -311,16 +307,28 @@ struct GameView: View {
             .frame(minWidth: 520, idealWidth: 640,
                    minHeight: 400, idealHeight: 640, maxHeight: 760)
         }
-        .sheet(isPresented: $showReports) {
+        .sheet(isPresented: Binding(
+            get: { state.showReportsPanel },
+            set: { state.showReportsPanel = $0 }
+        )) {
             ReportPanelView()
         }
-        .sheet(isPresented: $showChat) {
+        .sheet(isPresented: Binding(
+            get: { state.showChatPanel },
+            set: { state.showChatPanel = $0 }
+        )) {
             ChatPanelView()
         }
-        .sheet(isPresented: $showPreferences) {
+        .sheet(isPresented: Binding(
+            get: { state.showPreferencesPanel },
+            set: { state.showPreferencesPanel = $0 }
+        )) {
             PreferencesView()
         }
-        .sheet(isPresented: $showColopedia) {
+        .sheet(isPresented: Binding(
+            get: { state.showColopediaPanel },
+            set: { state.showColopediaPanel = $0 }
+        )) {
             ColopediaView()
         }
         .sheet(isPresented: Binding(
@@ -335,13 +343,22 @@ struct GameView: View {
         )) {
             KeyboardShortcutsView()
         }
-        .sheet(isPresented: $showIndependence) {
+        .sheet(isPresented: Binding(
+            get: { state.showIndependencePanel },
+            set: { state.showIndependencePanel = $0 }
+        )) {
             independenceSheet
         }
-        .sheet(isPresented: $showFindSettlement) {
+        .sheet(isPresented: Binding(
+            get: { state.showFindSettlementPanel },
+            set: { state.showFindSettlementPanel = $0 }
+        )) {
             findSettlementSheet
         }
-        .sheet(isPresented: $showTradeRoutes) {
+        .sheet(isPresented: Binding(
+            get: { state.showTradeRoutesPanel },
+            set: { state.showTradeRoutesPanel = $0 }
+        )) {
             TradeRoutePanelView()
         }
         .sheet(isPresented: Binding(
@@ -351,15 +368,15 @@ struct GameView: View {
             endTurnDialog
         }
         .confirmationDialog(
-            "Confirm Attack",
+            "Angriff bestätigen",
             isPresented: Binding(
                 get: { state.showAttackConfirmation },
                 set: { if !$0 { state.dismissPendingAttack() } }
             ),
             titleVisibility: .visible
         ) {
-            Button("Attack", role: .destructive) { state.confirmPendingAttack() }
-            Button("Cancel", role: .cancel) { state.dismissPendingAttack() }
+            Button("Angreifen", role: .destructive) { state.confirmPendingAttack() }
+            Button("Abbrechen", role: .cancel) { state.dismissPendingAttack() }
         } message: {
             Text(state.pendingAttackSummary)
         }
@@ -378,29 +395,65 @@ struct GameView: View {
         }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Disconnect") { state.disconnect() }
+                Button("Verbindung trennen") { state.disconnect() }
             }
         }
         } // End KeyboardShortcutHandlerView
     }
 
     @ViewBuilder
+    private func errorBanner(_ message: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Label("Aktion fehlgeschlagen", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption.bold())
+                    .foregroundStyle(.red)
+                Spacer(minLength: 4)
+                Button("Schließen") { state.clearError() }
+                    .font(.caption)
+                    .buttonStyle(.plain)
+            }
+            Text(message)
+                .font(.callout)
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+                .accessibilityLabel("Fehler: \(message)")
+
+            if let recoveryTitle = state.errorRecoveryActionTitle {
+                Button(recoveryTitle) { state.performErrorRecoveryAction() }
+                    .buttonStyle(.bordered)
+                    .help("Behebt den bekannten Bewegungsfehler, sofern die Aktion weiterhin möglich ist.")
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: 420, alignment: .leading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.red.opacity(0.55), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.2), radius: 6, y: 2)
+        .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
     private var queuedActionsPanel: some View {
         if !state.queuedGameplayActions.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Pending actions — review before resending")
+                Text("Ausstehende Aktionen – vor dem erneuten Senden prüfen")
                     .font(.caption.bold())
                 ForEach(state.queuedGameplayActions) { action in
                     HStack {
                         Text(action.title)
                             .font(.caption)
                         Spacer()
-                        Button("Send again") {
+                        Button("Erneut senden") {
                             queuedActionToConfirm = action
                             showQueuedActionConfirmation = true
                         }
                         .disabled(state.phase != .inGame)
-                        Button("Discard") {
+                        Button("Verwerfen") {
                             state.discardQueuedGameplayAction(action)
                         }
                     }
@@ -412,18 +465,18 @@ struct GameView: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .padding(8)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .alert("Send action again?", isPresented: $showQueuedActionConfirmation) {
-                Button("Send again", role: .destructive) {
+            .alert("Aktion erneut senden?", isPresented: $showQueuedActionConfirmation) {
+                Button("Erneut senden", role: .destructive) {
                     if let action = queuedActionToConfirm {
                         state.resendQueuedGameplayAction(action)
                     }
                     queuedActionToConfirm = nil
                 }
-                Button("Cancel", role: .cancel) {
+                Button("Abbrechen", role: .cancel) {
                     queuedActionToConfirm = nil
                 }
             } message: {
-                Text("The server may already have processed this action before the connection was lost.")
+                Text("Der Server könnte diese Aktion bereits vor dem Verbindungsabbruch verarbeitet haben.")
             }
         }
     }
@@ -439,15 +492,18 @@ struct GameView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(state.unitsAwaitingOrders) { unit in
                         Button {
-                            let tileId = unit.location.flatMap {
-                                state.game?.tiles[$0] != nil ? $0 : nil
-                            }
+                            let tileId = state.game?.resolvedTileId(for: unit)
                             state.selectUnit(unit.id, onTile: tileId)
                             state.dismissEndTurnDialog()
                         } label: {
                             HStack {
-                                Text(unit.unitType.map(state.unitDisplayName) ?? "Einheit")
-                                    .font(.caption)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(state.unitDisplayLabel(unit))
+                                        .font(.caption)
+                                    Text(state.unitLocationDisplayName(unit))
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
                                 Spacer()
                                 Text("\(unit.displayMovesLeft) Bewegungspunkte")
                                     .font(.caption2)
@@ -472,14 +528,14 @@ struct GameView: View {
 
     private var defeatOverlay: some View {
         VStack(spacing: 14) {
-            Text("Defeated")
+            Text("Besiegt")
                 .font(.largeTitle.bold())
                 .foregroundColor(.white)
-            Text("Your nation has been eliminated.")
+            Text("Deine Nation wurde ausgeschaltet.")
                 .foregroundColor(.white)
             HStack(spacing: 12) {
                 if !state.isUndead {
-                    Button("Enter Revenge Mode") {
+                    Button("Rachemodus starten") {
                         state.enterRevengeModeFromDefeat()
                     }
                     .buttonStyle(.borderedProminent)
@@ -497,19 +553,19 @@ struct GameView: View {
 
     private var victoryOverlay: some View {
         VStack(spacing: 14) {
-            Text("Victory!")
+            Text("Sieg!")
                 .font(.largeTitle.bold())
                 .foregroundColor(.white)
             Text(state.gameEndedHighScore
-                 ? "You won the game with a high score."
-                 : "You won the game!")
+                 ? "Du hast das Spiel mit einer Spitzenpunktzahl gewonnen."
+                 : "Du hast das Spiel gewonnen!")
                 .foregroundColor(.white)
             HStack(spacing: 12) {
-                Button("Continue Playing") {
+                Button("Weiterspielen") {
                     state.continueAfterVictory()
                 }
                 .buttonStyle(.borderedProminent)
-                Button("Retire") {
+                Button("Aufgeben") {
                     state.retireAfterVictory()
                 }
                 .buttonStyle(.bordered)
@@ -523,48 +579,89 @@ struct GameView: View {
     }
 
     private var topBar: some View {
-        HStack(spacing: 12) {
-            GameMenuBar(
-                onChat: { showChat = true },
-                onReports: { showReports = true },
-                onPreferences: { showPreferences = true },
-                onColopedia: { showColopedia = true },
-                onIndependence: { showIndependence = true },
-                onFindSettlement: { showFindSettlement = true },
-                onTradeRoutes: { showTradeRoutes = true }
-            )
-            Divider().frame(height: 18)
+        HStack(spacing: 8) {
             if let game = state.game {
                 let turnInfo = yearSeason(for: game.turn.number)
-                Text("Runde \(game.turn.number)")
-                    .font(.headline)
-                if let season = turnInfo.season {
-                    Text("\(season) \(turnInfo.year)")
-                        .font(.caption)
-                } else {
-                    Text("Jahr \(String(turnInfo.year))")
-                        .font(.caption)
-                }
+                let date = turnInfo.season.map { "\($0) \(turnInfo.year)" } ?? "Jahr \(turnInfo.year)"
+                Text("R\(game.turn.number) · \(turnInfo.year)")
+                    .font(.headline.monospacedDigit())
+                    .lineLimit(1)
+                    .help("Runde \(game.turn.number), \(date)")
+                    .accessibilityLabel("Runde \(game.turn.number), \(date)")
                 if let local = state.localPlayer {
-                    Text("Gold: \(local.gold)")
-                    Text("Steuern: \(local.tax)%")
-                    Text("Punkte: \(local.score)")
+                    resourceItem("\(local.gold)", systemImage: "dollarsign.circle.fill", help: "Gold")
                 }
             }
-            Spacer()
-            if state.highScoresReport != nil || state.nationSummaryReport != nil {
-                Button("Berichte") { showReports = true }
-                    .font(.caption)
-            }
+            Spacer(minLength: 4)
             if !state.statusMessage.isEmpty, state.pendingServerDecision == nil {
                 Text(state.statusMessage)
                     .foregroundColor(.secondary)
                     .font(.caption)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: 150, alignment: .trailing)
             }
+            Button("Zug beenden") { state.requestEndTurn() }
+                .buttonStyle(GameActionButtonStyle())
+                .disabled(!state.canEndTurn)
+                .help("Vor dem Zugende werden Einheiten ohne Befehl angezeigt.")
+            Menu {
+                Button("Nächste Einheit") { state.selectNextUnit() }
+                    .disabled(state.cyclingLocalUnits.isEmpty)
+                Divider()
+                if let local = state.localPlayer {
+                    Section("Weitere Werte") {
+                        Text("Steuern: \(local.tax)%")
+                        Text("Freiheit: \(local.liberty)")
+                        if let required = local.immigrationRequired {
+                            Text("Einwanderung: \(local.immigration)/\(required)")
+                        }
+                        Text("Punkte: \(local.score)")
+                    }
+                }
+                Button("Berichte…") {
+                    state.requestedReport = .turn
+                    state.showReportsPanel = true
+                }
+                Button("Status…") { state.showStatusPanel = true }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .menuStyle(.borderlessButton)
+            .help("Weitere Spielwerte und Aktionen")
+            .accessibilityLabel("Weitere Spielwerte und Aktionen")
         }
         .padding(.horizontal)
         .padding(.vertical, 6)
         .background(Color(NSColor.controlBackgroundColor).opacity(0.92))
+    }
+
+    private func resourceItem(_ value: String, systemImage: String, help: String) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: systemImage)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .monospacedDigit()
+        }
+        .font(.caption)
+        .fixedSize()
+        .help(help)
+        .accessibilityLabel("\(help): \(value)")
+    }
+
+    private func shortcutLabel(_ title: String, description: String) -> String {
+        guard let shortcut = state.keyboardShortcutsManager?.shortcuts.first(
+            where: { $0.description == description }
+        ) else { return title }
+        return "\(title) (\(shortcut.fullDisplay))"
+    }
+
+    private func actionSectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.caption.bold())
+            .foregroundStyle(.secondary)
+            .padding(.top, 5)
+            .accessibilityAddTraits(.isHeader)
     }
 
     @ViewBuilder
@@ -713,10 +810,10 @@ struct GameView: View {
     private func lootDecisionControls() -> some View {
         let options = state.pendingLootOptions
         if options.isEmpty {
-            Text("No cargo available.")
+            Text("Keine Fracht verfügbar.")
                 .font(.caption2)
                 .foregroundColor(.secondary)
-            Button("Loot nothing") { state.lootPendingCargo(selected: []) }
+            Button("Nichts nehmen") { state.lootPendingCargo(selected: []) }
                 .buttonStyle(.bordered)
         } else {
             ForEach(options) { option in
@@ -727,19 +824,19 @@ struct GameView: View {
                         else { selectedLootTypes.remove(option.type) }
                     }
                 )) {
-                    Text("\(shortName(option.type, prefix: "model.goods.")) x\(option.amount)")
+                    Text("\(state.goodsDisplayName(option.type)) ×\(option.amount)")
                         .font(.caption2)
                         .foregroundColor(.white)
                 }
                 .toggleStyle(.checkbox)
             }
             HStack(spacing: 8) {
-                Button("Take selected") {
+                Button("Ausgewählte nehmen") {
                     state.lootPendingCargo(selected: options.filter { selectedLootTypes.contains($0.type) })
                     selectedLootTypes.removeAll()
                 }
                 .buttonStyle(.borderedProminent)
-                Button("Take none") {
+                Button("Nichts nehmen") {
                     state.lootPendingCargo(selected: [])
                     selectedLootTypes.removeAll()
                 }
@@ -752,7 +849,7 @@ struct GameView: View {
     private func emigrantDecisionControls() -> some View {
         let options = state.pendingEmigrantOptions
         if options.isEmpty {
-            Text("No emigrants available.")
+            Text("Keine Auswanderer verfügbar.")
                 .font(.caption2)
                 .foregroundColor(.secondary)
         } else {
@@ -760,7 +857,7 @@ struct GameView: View {
                 Button {
                     state.emigratePendingMigrant(slot: option.slot)
                 } label: {
-                    Text("Place \(shortName(option.unitType, prefix: "model.unit."))")
+                    Text("\(option.unitType.map(state.unitDisplayName) ?? "Einheit") platzieren")
                         .font(.caption2)
                 }
                 .buttonStyle(.bordered)
@@ -779,7 +876,7 @@ struct GameView: View {
                 .onAppear { namePromptText = defaultText }
                 .onChange(of: defaultText) { _, newValue in namePromptText = newValue }
             HStack(spacing: 8) {
-                Button("Confirm") {
+                Button("Bestätigen") {
                     guard let type = state.pendingServerDecision?.type else { return }
                     if type == .newLandName {
                         state.submitNewLandName(namePromptText)
@@ -796,24 +893,14 @@ struct GameView: View {
         }
     }
 
-    private func shortName(_ value: String?, prefix: String) -> String {
-        guard let value else { return "?" }
-        return value.hasPrefix(prefix) ? String(value.dropFirst(prefix.count)) : value
-    }
-
-    private func shortUnitName(_ value: String?) -> String? {
-        guard let value else { return nil }
-        return value.split(separator: ".").last.map(String.init) ?? value
-    }
-
     private var independenceSheet: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Declare Independence")
+            Text("Unabhängigkeit erklären")
                 .font(.title3.bold())
             HStack {
-                Text("Country:")
+                Text("Land:")
                     .frame(width: 70, alignment: .trailing)
-                TextField("Country", text: $independenceCountry)
+                TextField("Land", text: $independenceCountry)
                     .textFieldStyle(.roundedBorder)
             }
             HStack {
@@ -824,11 +911,11 @@ struct GameView: View {
             }
             HStack {
                 Spacer()
-                Button("Cancel") { showIndependence = false }
-                Button("Declare") {
+                Button("Abbrechen") { state.showIndependencePanel = false }
+                Button("Erklären") {
                     state.declareIndependence(countryName: independenceCountry,
                                               nationName: independenceNation)
-                    showIndependence = false
+                    state.showIndependencePanel = false
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(independenceCountry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -856,7 +943,7 @@ struct GameView: View {
                             if let tileId = colony.tileId {
                                 state.requestMapScroll(to: tileId)
                             }
-                            showFindSettlement = false
+                            state.showFindSettlementPanel = false
                         } label: {
                             HStack {
                                 Text(colony.name ?? "?")
@@ -873,7 +960,7 @@ struct GameView: View {
             }
             HStack {
                 Spacer()
-                Button("Schließen") { showFindSettlement = false }
+                Button("Schließen") { state.showFindSettlementPanel = false }
             }
         }
         .padding(16)
@@ -888,7 +975,10 @@ struct GameView: View {
                     InfoPanelView()
                     Divider()
 
-                    Button("Bewegen… (M)") { state.beginChoosingMoveDestination() }
+                    Button("Bewegen…") { state.beginChoosingMoveDestination() }
+                        .buttonStyle(.borderedProminent)
+                        .help(state.selectedUnitMoveDisabledReason
+                              ?? "Wählt ein Zielfeld per Linksklick. Alternativ bewegt ein Rechtsklick auf ein Feld die Einheit direkt.")
                         .disabled(!state.canChooseMoveDestination)
 
                     if let tileId = state.selectedTileId,
@@ -900,45 +990,91 @@ struct GameView: View {
                     }
 
                     if state.selectedColony != nil {
-                        Button("Kolonie öffnen") { state.openColonyPanel() }
+                        Button(shortcutLabel("Kolonie öffnen", description: "Kolonie-Panel öffnen")) {
+                            state.openColonyPanel()
+                        }
                     }
 
-                    Menu("Befehle") {
-                        Button("Warten (W)") { state.setSelectedUnitState(.skipped) }
-                            .disabled(!state.canChangeSelectedUnitState(to: .skipped))
-                        Button("Wache (S)") { state.setSelectedUnitState(.sentry) }
-                            .disabled(!state.canChangeSelectedUnitState(to: .sentry))
-                        Button("Befestigen (F)") { state.setSelectedUnitState(.fortifying) }
-                            .disabled(!state.canChangeSelectedUnitState(to: .fortifying))
-                        Button("Befehle löschen (⇧C)") { state.clearSelectedUnitOrders() }
-                            .disabled(!state.canClearSelectedUnitOrders)
-                        if state.showsEuropeTravelOrder {
-                            Button("Gehe nach Europa") { state.goSelectedShipToEurope() }
-                                .disabled(!state.canGoSelectedShipToEurope)
-                        }
-                        Divider()
-                        Button("Einheit auflösen…", role: .destructive) {
-                            state.disbandSelectedUnit()
-                        }
-                        .disabled(!state.canDisbandSelectedUnit)
-                    }
-                    .menuStyle(.borderlessButton)
-                    .padding(.vertical, 6)
-
-                    Button("Aktivieren (A)") {
+                    actionSectionTitle("Einheitenbefehle")
+                    Button(shortcutLabel("Aktivieren", description: "Einheit aktivieren")) {
                         state.setSelectedUnitState(.active)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .disabled(!state.canChangeSelectedUnitState(to: .active))
+                    .help(state.canChangeSelectedUnitState(to: .active)
+                          ? "Einheit wieder für Befehle aktivieren."
+                          : state.selectedUnitActionUnavailableReason)
+
+                    Button(shortcutLabel("Warten", description: "Warten / Überspringen")) {
+                        state.setSelectedUnitState(.skipped)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .disabled(!state.canChangeSelectedUnitState(to: .skipped))
+                    .help(state.canChangeSelectedUnitState(to: .skipped)
+                          ? "Einheit bis zu einem späteren Zug überspringen."
+                          : state.selectedUnitActionUnavailableReason)
+
+                    Button(shortcutLabel("Wache", description: "Wache halten")) {
+                        state.setSelectedUnitState(.sentry)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .disabled(!state.canChangeSelectedUnitState(to: .sentry))
+                    .help(state.canChangeSelectedUnitState(to: .sentry)
+                          ? "Einheit in Verteidigungsbereitschaft versetzen."
+                          : state.selectedUnitActionUnavailableReason)
+
+                    Button(shortcutLabel("Befestigen", description: "Befestigen")) {
+                        state.setSelectedUnitState(.fortifying)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .disabled(!state.canChangeSelectedUnitState(to: .fortifying))
+                    .help(state.canChangeSelectedUnitState(to: .fortifying)
+                          ? "Einheit befestigen."
+                          : state.selectedUnitActionUnavailableReason)
+
+                    if !state.selectedUnitImprovementCandidates.isEmpty {
+                        actionSectionTitle("Pionierarbeit")
+                        ForEach(state.selectedUnitImprovementCandidates, id: \.id) { candidate in
+                            Button("\(candidate.label) bauen") {
+                                state.changeSelectedUnitWorkImprovement(candidate.id)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .disabled(!state.canChangeSelectedUnitWorkImprovement)
+                        }
+                    }
+
+                    Button(shortcutLabel("Befehle löschen", description: "Befehle löschen")) {
+                        state.clearSelectedUnitOrders()
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .disabled(!state.canClearSelectedUnitOrders)
+                    .help(state.canClearSelectedUnitOrders
+                          ? "Marschziel und Einheitenstatus zurücksetzen."
+                          : state.selectedUnitActionUnavailableReason)
+
+                    if state.showsEuropeTravelOrder {
+                        Button("Gehe nach Europa") { state.goSelectedShipToEurope() }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .disabled(!state.canGoSelectedShipToEurope)
+                    }
+
+                    Button("Einheit auflösen…", role: .destructive) {
+                        state.disbandSelectedUnit()
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .disabled(!state.canDisbandSelectedUnit)
+                    .help(state.selectedUnitDisbandDisabledReason
+                          ?? "Einheit dauerhaft aus dem Spiel entfernen.")
 
                     if state.canBuildSelectedColony {
+                        actionSectionTitle("Kolonie")
                         TextField("Koloniename", text: $colonyName)
                             .textFieldStyle(.roundedBorder)
                             .onAppear { colonyName = state.suggestedColonyName }
                             .onChange(of: state.selectedUnitId) { _, _ in
                                 colonyName = state.suggestedColonyName
                             }
-                        Button("Kolonie gründen (B)") {
+                        Button(shortcutLabel("Kolonie gründen", description: "Kolonie bauen")) {
                             state.buildColony(name: colonyName)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -946,15 +1082,18 @@ struct GameView: View {
                     }
 
                     if state.canJoinSelectedColony {
-                        Button("In der Kolonie arbeiten (J)") {
+                        actionSectionTitle("Kolonie")
+                        Button(shortcutLabel("In der Kolonie arbeiten", description: "In der Kolonie arbeiten")) {
                             state.joinSelectedColony()
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
 
                     if !state.embarkCarrierOptions.isEmpty {
+                        actionSectionTitle("Transport")
                         ForEach(state.embarkCarrierOptions, id: \.id) { carrier in
-                            Button("An Bord: \(carrier.unitType.map(state.unitDisplayName) ?? "Transporter") (I)") {
+                            Button(shortcutLabel("An Bord: \(carrier.unitType.map(state.unitDisplayName) ?? "Transporter")",
+                                                description: "An Bord gehen")) {
                                 state.embarkSelectedUnit(onCarrier: carrier.id)
                             }
                             .disabled(!state.canEmbarkSelectedUnit(onCarrier: carrier.id))
@@ -963,7 +1102,8 @@ struct GameView: View {
                     }
 
                     if state.selectedUnitCarrier != nil {
-                        Button("Von Bord gehen (O)") {
+                        actionSectionTitle("Transport")
+                        Button(shortcutLabel("Von Bord gehen", description: "Von Bord gehen")) {
                             state.disembarkSelectedUnit()
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -979,19 +1119,27 @@ struct GameView: View {
                         state.canAttackSelectedUnitMelee(onTile: targetTileId)
                             || state.canAttackSelectedUnitRanged(onTile: targetTileId)
                     {
-                        Button("Nahkampf (T)") {
+                        actionSectionTitle("Angriff")
+                        Button(shortcutLabel("Nahkampf", description: "Nahkampf")) {
                             state.requestAttack(onTile: targetTileId, ranged: false)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .disabled(!state.canAttackSelectedUnitMelee(onTile: targetTileId))
+                        .help(state.canAttackSelectedUnitMelee(onTile: targetTileId)
+                              ? "Das ausgewählte Feld im Nahkampf angreifen."
+                              : state.selectedUnitActionUnavailableReason)
 
-                        Button("Fernkampf (⇧T)") {
+                        Button(shortcutLabel("Fernkampf", description: "Fernkampf")) {
                             state.requestAttack(onTile: targetTileId, ranged: true)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .disabled(!state.canAttackSelectedUnitRanged(onTile: targetTileId))
+                        .help(state.canAttackSelectedUnitRanged(onTile: targetTileId)
+                              ? "Das ausgewählte Feld im Fernkampf angreifen."
+                              : state.selectedUnitActionUnavailableReason)
                     }
 
+                    actionSectionTitle("Marschziel")
                     Button("Ausgewähltes Feld als Ziel") {
                         if let tileId = state.selectedTileId {
                             state.setSelectedUnitDestination(to: tileId)
@@ -999,14 +1147,21 @@ struct GameView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .disabled(!state.canSetDestinationToSelectedTile)
+                    .help(state.canSetDestinationToSelectedTile
+                          ? "Das ausgewählte Kartenfeld als Marschziel festlegen."
+                          : state.selectedUnitActionUnavailableReason)
 
                     Button("Ziel löschen") {
                         state.clearSelectedUnitDestination()
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .disabled(!state.canClearSelectedUnitDestination)
+                    .help(state.canClearSelectedUnitDestination
+                          ? "Das gespeicherte Marschziel entfernen."
+                          : state.selectedUnitActionUnavailableReason)
 
                     if state.canEquipSelectedUnitForRole {
+                        actionSectionTitle("Ausrüstung")
                         Button("Als Missionar ausrüsten") {
                             state.equipSelectedUnitForRole("model.role.missionary", count: 1)
                         }
@@ -1014,6 +1169,7 @@ struct GameView: View {
                     }
 
                     if state.canEquipSelectedUnitAsPioneer {
+                        if !state.canEquipSelectedUnitForRole { actionSectionTitle("Ausrüstung") }
                         Button(state.selectedUnit?.role == "model.role.pioneer"
                                ? "Pionier-Werkzeuge nachrüsten (+\(state.pioneerToolsPerRoleCount))"
                                : "Als Pionier ausrüsten (\(state.pioneerToolsPerRoleCount) Werkzeuge)") {
@@ -1026,11 +1182,10 @@ struct GameView: View {
                     }
 
                     if !state.selectedUnitCargoUnits.isEmpty {
-                        Text("Passagiere")
-                            .font(.caption.bold())
+                        actionSectionTitle("Passagiere")
                         ForEach(state.selectedUnitCargoUnits, id: \.id) { cargo in
                             Button("Auswählen: \(cargo.unitType.map(state.unitDisplayName) ?? "Einheit")") {
-                                let tileId = state.selectedUnit?.location
+                                let tileId = state.selectedUnitTileId
                                 state.selectUnit(
                                     cargo.id,
                                     onTile: tileId.flatMap { state.game?.tiles[$0] != nil ? $0 : nil })
@@ -1040,36 +1195,37 @@ struct GameView: View {
                     }
 
                     if !state.selectedUnitCargoGoods.isEmpty {
-                        Text("Ladung")
-                            .font(.caption.bold())
+                        actionSectionTitle("Ladung")
                         ForEach(state.selectedUnitCargoGoods, id: \.id) { item in
                             HStack {
                                 Text("\(item.label): \(item.amount)")
                                 Spacer()
-                                Menu {
-                                    Button("Ladung abwerfen…", role: .destructive) {
-                                        state.dumpSelectedUnitCargo(typeId: item.id, amount: item.amount)
-                                    }
+                                Button(role: .destructive) {
+                                    state.dumpSelectedUnitCargo(typeId: item.id, amount: item.amount)
                                 } label: {
-                                    Image(systemName: "ellipsis.circle")
+                                    Image(systemName: "trash")
                                 }
+                                .buttonStyle(.bordered)
+                                .help("\(item.label) abwerfen")
+                                .accessibilityLabel("\(item.label) abwerfen")
                             }
                         }
                     }
 
                     if let target = state.nativeTradeTargetsForSelectedUnit.first {
-                        Menu("Native Settlement: \(target.name)") {
-                            Button("Trade…") {
+                        actionSectionTitle("Ureinwohner-Siedlung")
+                        Menu("\(target.name)") {
+                            Button("Handeln…") {
                                 state.openNativeTradeWithSelectedUnit(settlementId: target.settlementId)
                             }
                             .disabled(!state.canOpenNativeTrade)
 
-                            Button("Deliver Gift") {
+                            Button("Geschenk überbringen") {
                                 state.deliverGiftToSettlement(target.settlementId)
                             }
                             .disabled(!state.canDeliverGiftWithSelectedUnit)
 
-                            Button("Demand Tribute") {
+                            Button("Tribut fordern") {
                                 if let direction = state.directionToAdjacentSettlement(target.settlementId) {
                                     state.demandTributeFromSettlement(direction: direction)
                                 }
@@ -1078,12 +1234,12 @@ struct GameView: View {
                                 !state.canDemandTributeWithSelectedUnit
                                     || state.directionToAdjacentSettlement(target.settlementId) == nil)
 
-                            Button("Spy") {
+                            Button("Ausspionieren") {
                                 state.spyOnNativeSettlement(settlementId: target.settlementId)
                             }
                             .disabled(!state.canSpyOnNativeSettlement)
 
-                            Button("Scout Settlement") {
+                            Button("Siedlung erkunden") {
                                 if let direction = state.directionToAdjacentSettlement(target.settlementId) {
                                     state.scoutIndianSettlement(direction: direction)
                                 }
@@ -1092,7 +1248,7 @@ struct GameView: View {
                                 !state.canScoutIndianSettlement
                                     || state.directionToAdjacentSettlement(target.settlementId) == nil)
 
-                            Button("Ask Skill") {
+                            Button("Fähigkeit erfragen") {
                                 if let direction = state.directionToAdjacentSettlement(target.settlementId) {
                                     state.askSkillAtSelectedUnit(direction: direction)
                                 }
@@ -1101,7 +1257,7 @@ struct GameView: View {
                                 !state.canAskSkillAtSelectedUnit
                                     || state.directionToAdjacentSettlement(target.settlementId) == nil)
 
-                            Button("Learn Skill") {
+                            Button("Fähigkeit erlernen") {
                                 if let direction = state.directionToAdjacentSettlement(target.settlementId) {
                                     state.learnSkillAtSelectedUnit(direction: direction)
                                 }
@@ -1110,7 +1266,7 @@ struct GameView: View {
                                 !state.canLearnSkillAtSelectedUnit
                                     || state.directionToAdjacentSettlement(target.settlementId) == nil)
 
-                            Menu("Incite…") {
+                            Menu("Aufstand anzetteln…") {
                                 ForEach(state.diplomacyVictimOptions(), id: \.id) { victim in
                                     Button(victim.label) {
                                         state.inciteSettlement(

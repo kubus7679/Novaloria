@@ -1,58 +1,49 @@
 import SwiftUI
 import FreeColGame
 
-/// In-game menu bar mirroring the Java client's `InGameMenuBar`
-/// (Game / View / Orders / Report / Colopedia).
-struct GameMenuBar: View {
-    @Environment(GameState.self) private var state
+/// Native macOS menu-bar commands for in-game actions and views.
+struct GameCommands: Commands {
+    let state: GameState
 
-    var onChat: () -> Void
-    var onReports: () -> Void
-    var onPreferences: () -> Void
-    var onColopedia: () -> Void
-    var onIndependence: () -> Void
-    var onFindSettlement: () -> Void
-    var onTradeRoutes: () -> Void
-
-    var body: some View {
-        HStack(spacing: 4) {
-            gameMenu
-            viewMenu
-            ordersMenu
-            reportMenu
-            colopediaMenu
-            helpMenu
+    var body: some Commands {
+        CommandMenu("Spiel") { gameMenu.disabled(state.phase != .inGame) }
+        CommandGroup(after: .sidebar) {
+            viewMenu.disabled(state.phase != .inGame)
         }
-        .menuStyle(.borderlessButton)
-        .fixedSize()
-        .font(.caption)
+        CommandMenu("Befehle") { ordersMenu.disabled(state.phase != .inGame) }
+        CommandMenu("Berichte") { reportMenu.disabled(state.phase != .inGame) }
+        CommandMenu("Colopädie") { colopediaMenu.disabled(state.phase != .inGame) }
+        CommandGroup(after: .help) {
+            helpMenu.disabled(state.phase != .inGame)
+        }
     }
 
     // MARK: - Game
 
     private var gameMenu: some View {
-        Menu("Spiel") {
+        Group {
             Button(state.isSavingGame ? "Wird gespeichert…" : "Spiel speichern…") {
                 state.showSaveGamePanel()
             }
+            .keyboardShortcut("s", modifiers: .command)
             .disabled(!state.canSaveGame)
             .help("Vollständigen Spielstand speichern. Erfordert die Java-Speichererweiterung und Administratorrechte im eigenen Zug.")
             Divider()
             Button("Zug beenden") { state.requestEndTurn() }
                 .disabled(!state.canEndTurn)
             Divider()
-            Button("Chat…") { onChat() }
-            Button("Unabhängigkeit erklären…") { onIndependence() }
+            Button("Chat…") { state.showChatPanel = true }
+            Button("Unabhängigkeit erklären…") { state.showIndependencePanel = true }
                 .disabled(!state.isLocalPlayersTurn)
             Button("Aufgeben…") { state.retireGame() }
                 .disabled(!state.isGameEnded && !state.isLocalPlayersTurn)
             Divider()
             Button("Bestenliste") {
                 state.requestedReport = .highScores
-                onReports()
+                state.showReportsPanel = true
             }
             Button("Status…") { state.showStatusPanel = true }
-            Button("Einstellungen…") { onPreferences() }
+            Button("Einstellungen…") { state.showPreferencesPanel = true }
             Divider()
             Button("Verbindung trennen") { state.disconnect() }
         }
@@ -61,7 +52,30 @@ struct GameMenuBar: View {
     // MARK: - View
 
     private var viewMenu: some View {
-        Menu("Ansicht") {
+        Group {
+            Button("Hineinzoomen") { state.zoomMap(in: true) }
+                .disabled(!state.canZoomMapIn)
+            Button("Herauszoomen") { state.zoomMap(in: false) }
+                .disabled(!state.canZoomMapOut)
+            Button("Zoom zurücksetzen") {
+                state.resetMapZoom()
+            }
+            .disabled(state.mapZoomScale == 2.0)
+            Divider()
+            Menu("Kartenüberlagerung") {
+                ForEach(GameState.MapOverlay.allCases) { overlay in
+                    Button {
+                        state.mapOverlay = overlay
+                    } label: {
+                        if state.mapOverlay == overlay {
+                            Label(overlay.title, systemImage: "checkmark")
+                        } else {
+                            Text(overlay.title)
+                        }
+                    }
+                }
+            }
+            Divider()
             Toggle("Kartenraster", isOn: Binding(
                 get: { state.showMapGrid },
                 set: { _ in state.toggleMapGrid() }
@@ -69,6 +83,10 @@ struct GameMenuBar: View {
             Toggle("Grenzen", isOn: Binding(
                 get: { state.showBorders },
                 set: { _ in state.toggleBorders() }
+            ))
+            Toggle("Siedlungsnamen", isOn: Binding(
+                get: { state.showSettlementLabels },
+                set: { state.showSettlementLabels = $0 }
             ))
             Toggle("Nebel des Krieges", isOn: Binding(
                 get: { state.showFogOfWar },
@@ -79,7 +97,7 @@ struct GameMenuBar: View {
                 .disabled(state.localPlayer?.europe == nil)
             Button("Kolonie öffnen…") { state.openColonyPanel() }
                 .disabled(state.selectedColony == nil)
-            Button("Siedlung suchen…") { onFindSettlement() }
+            Button("Siedlung suchen…") { state.showFindSettlementPanel = true }
             Button("Auswahl zentrieren") {
                 if let tileId = state.selectedUnitTileId ?? state.selectedTileId {
                     state.requestMapScroll(to: tileId)
@@ -92,15 +110,11 @@ struct GameMenuBar: View {
     // MARK: - Orders
 
     private var ordersMenu: some View {
-        Menu("Befehle") {
+        Group {
             Button("Bewegen…") { state.beginChoosingMoveDestination() }
                 .disabled(!state.canChooseMoveDestination)
             Divider()
             commandButton("Warten", shortcutDescription: "Warten / Überspringen") {
-                state.setSelectedUnitState(.skipped)
-            }
-                .disabled(!state.canChangeSelectedUnitState(to: .skipped))
-            commandButton("Überspringen", shortcutDescription: "Warten / Überspringen") {
                 state.setSelectedUnitState(.skipped)
             }
                 .disabled(!state.canChangeSelectedUnitState(to: .skipped))
@@ -122,6 +136,21 @@ struct GameMenuBar: View {
                     state.joinSelectedColony()
                 }
                     .disabled(!state.canJoinSelectedColony)
+            }
+            if state.selectedUnit?.role == "model.role.pioneer" {
+                Menu("Pionierarbeit") {
+                    if state.selectedUnitImprovementCandidates.isEmpty {
+                        Button("Keine passende Verbesserung verfügbar") {}
+                            .disabled(true)
+                    } else {
+                        ForEach(state.selectedUnitImprovementCandidates, id: \.id) { candidate in
+                            Button("\(candidate.label) bauen") {
+                                state.changeSelectedUnitWorkImprovement(candidate.id)
+                            }
+                            .disabled(!state.canChangeSelectedUnitWorkImprovement)
+                        }
+                    }
+                }
             }
             Menu("Verwalten") {
                 commandButton(
@@ -164,7 +193,7 @@ struct GameMenuBar: View {
             }
             .disabled(state.unitsAwaitingOrders.isEmpty)
             Divider()
-            Button("Handelsrouten…") { onTradeRoutes() }
+            Button("Handelsrouten…") { state.showTradeRoutesPanel = true }
                 .disabled(!state.canManageTradeRoutes)
         }
     }
@@ -185,11 +214,11 @@ struct GameMenuBar: View {
     // MARK: - Report
 
     private var reportMenu: some View {
-        Menu("Berichte") {
+        Group {
             ForEach(ReportKind.allCases) { kind in
                 Button(kind.title) {
                     state.requestedReport = kind
-                    onReports()
+                    state.showReportsPanel = true
                 }
             }
         }
@@ -198,19 +227,17 @@ struct GameMenuBar: View {
     // MARK: - Colopedia
 
     private var colopediaMenu: some View {
-        Menu("Colopädie") {
-            Button("Colopädie öffnen…") { onColopedia() }
+        Group {
+            Button("Colopädie öffnen…") { state.showColopediaPanel = true }
         }
     }
 
     // MARK: - Help
 
     private var helpMenu: some View {
-        Menu("Hilfe") {
-            Button("Tastaturkürzel…") {
-                state.showShortcutsHelp = true
-            }
-            .help("Zeigt alle verfügbaren Tastaturkürzel an")
+        Button("Tastaturkürzel…") {
+            state.showShortcutsHelp = true
         }
+        .help("Zeigt alle verfügbaren Tastaturkürzel an")
     }
 }

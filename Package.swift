@@ -19,12 +19,14 @@ let package = Package(
         .executableTarget(
             name: "FreeColApp",
             dependencies: ["FreeColProtocol", "FreeColGame", "FreeColClient"],
+            exclude: ["Resources/freecol_background.jpg"],
             resources: [
                 .copy("Resources/terrain"),
                 .copy("Resources/units"),
                 .copy("Resources/settlements"),
                 .copy("Resources/order-buttons"),
                 .copy("Resources/object-names-de.json"),
+                .copy("Resources/model-message-texts-de.json"),
                 .copy("Resources/colopedia-de.json"),
                 .copy("Resources/colopedia"),
                 .copy("Resources/FreeCol-COPYING"),

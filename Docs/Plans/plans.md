@@ -257,3 +257,23 @@ Erster echter Lauf der gesamten Suite gegen den Java-Server (Docker). Ergebnis u
 - [x] Nicht bestätigte Kernaktionen werden nach Transportabbruch zur manuellen Prüfung
   angeboten, einzeln erneut gesendet oder verworfen; keine blinde automatische Replay.
 - [x] Gezielter Reconnect-/UI-Test gegen einen realen Java-Server bleibt offen.
+
+## Phasen 109–114 — UI/UX der Spielansicht (Bestandsaufnahme aktualisiert)
+
+- 109: Kompakte, schließbare Fehlerkarte und ausgewählte Bewegungs-Recovery sind
+  im aktuellen Arbeitsbaum vorhanden. Offen: reine Zustandsmeldungen wie
+  „keine Bewegungspunkte“ nicht als „Aktion fehlgeschlagen“ kennzeichnen.
+- 110: Kontextuelles Einheitenpanel, Gruppierung und Hinweise bei deaktivierten
+  Aktionen sind vorhanden. Offen: den standardmäßig eingeklappten Inspektor
+  auffindbarer machen.
+- 111: Der Zähler „ohne Befehl“ wählt bereits die nächste passende Einheit.
+  Offen: Interaktion bei Einheiten ohne Kartentile und nach Modellupdates
+  regressionsprüfen.
+- 112: Kompakte Zug-/Ressourcenleiste, Überlaufmenü und Inspektor-Umschalter
+  sind vorhanden; schmale Fensterbreiten noch systematisch prüfen.
+- 113: Siedlungsnamen werden nach Zoom/Auswahl priorisiert und Kollisionen
+  reduziert; Kartenrouten in dichter Ansicht visuell gegenprüfen.
+- 114: Hauptaktionen, Einstellungen, Status und Tastaturhilfe sind weitgehend
+  deutsch; verbleibende Eigen-UI-Texte und Live-Shortcut-Verfügbarkeit prüfen.
+- Verbindliche Restarbeiten und Abnahmekriterien:
+  `Docs/Plans/ui-ux-improvement-plan.md`.

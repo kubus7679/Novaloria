@@ -13,60 +13,11 @@ struct KeyboardShortcutsView: View {
     @State private var searchText: String = ""
     
     private var manager: KeyboardShortcutsManager? {
-        // The manager should be accessible through GameState
-        // For now, we'll create a temporary one or access it from state
-        // In the final implementation, GameState should have the manager
-        return nil
+        state.keyboardShortcutsManager
     }
-    
-    // Mock data for preview
+
     private var shortcuts: [KeyboardShortcut] {
-        [
-            // Unit shortcuts
-            KeyboardShortcut(key: "b", modifier: .none, action: {}, description: "Kolonie bauen", category: .unit),
-            KeyboardShortcut(key: "r", modifier: .none, action: {}, description: "Straße bauen", category: .unit),
-            KeyboardShortcut(key: "w", modifier: .none, action: {}, description: "Warten / Überspringen", category: .unit),
-            KeyboardShortcut(key: "s", modifier: .none, action: {}, description: "Wache halten", category: .unit),
-            KeyboardShortcut(key: "f", modifier: .none, action: {}, description: "Befestigen", category: .unit),
-            KeyboardShortcut(key: "a", modifier: .none, action: {}, description: "Einheit aktivieren", category: .unit),
-            KeyboardShortcut(key: "e", modifier: .none, action: {}, description: "Einheit auflösen", category: .unit),
-            KeyboardShortcut(key: "n", modifier: .none, action: {}, description: "Nächste Einheit auswählen", category: .unit),
-            KeyboardShortcut(key: "p", modifier: .none, action: {}, description: "Vorherige Einheit auswählen", category: .unit),
-            KeyboardShortcut(key: "c", modifier: .shift, action: {}, description: "Befehle löschen", category: .unit),
-            KeyboardShortcut(key: "i", modifier: .none, action: {}, description: "An Bord gehen", category: .unit),
-            KeyboardShortcut(key: "o", modifier: .none, action: {}, description: "Von Bord gehen", category: .unit),
-            KeyboardShortcut(key: "t", modifier: .none, action: {}, description: "Nahkampf", category: .unit),
-            KeyboardShortcut(key: "t", modifier: .shift, action: {}, description: "Fernkampf", category: .unit),
-            
-            // Colony shortcuts
-            KeyboardShortcut(key: "c", modifier: .none, action: {}, description: "Kolonie-Panel öffnen", category: .colony),
-            KeyboardShortcut(key: "j", modifier: .none, action: {}, description: "In der Kolonie arbeiten", category: .colony),
-            
-            // Map shortcuts
-            KeyboardShortcut(key: "u", modifier: .none, action: {}, description: "Karte auf ausgewählte Einheit zentrieren", category: .map),
-            KeyboardShortcut(key: "l", modifier: .none, action: {}, description: "Siedlung suchen", category: .map),
-            KeyboardShortcut(key: "f", modifier: .shift, action: {}, description: "Nebel des Krieges umschalten", category: .map),
-            KeyboardShortcut(key: "g", modifier: .shift, action: {}, description: "Gitter anzeigen/verstecken", category: .map),
-            KeyboardShortcut(key: "b", modifier: .shift, action: {}, description: "Grenzen anzeigen/verstecken", category: .map),
-            KeyboardShortcut(key: "up", modifier: .none, action: {}, description: "Karte nach oben scrollen", category: .map),
-            KeyboardShortcut(key: "down", modifier: .none, action: {}, description: "Karte nach unten scrollen", category: .map),
-            KeyboardShortcut(key: "left", modifier: .none, action: {}, description: "Karte nach links scrollen", category: .map),
-            KeyboardShortcut(key: "right", modifier: .none, action: {}, description: "Karte nach rechts scrollen", category: .map),
-            
-            // Game shortcuts
-            KeyboardShortcut(key: "enter", modifier: .control, action: {}, description: "Zug beenden", category: .game),
-            KeyboardShortcut(key: "s", modifier: .command, action: {}, description: "Spiel speichern", category: .game),
-            KeyboardShortcut(key: "e", modifier: .shift, action: {}, description: "Europa-Panel öffnen", category: .game),
-            KeyboardShortcut(key: "r", modifier: .command, action: {}, description: "Berichte öffnen", category: .game),
-            KeyboardShortcut(key: "c", modifier: .command, action: {}, description: "Chat öffnen", category: .game),
-            
-            // View shortcuts
-            KeyboardShortcut(key: "/", modifier: .shift, action: {}, description: "Tastaturkürzel anzeigen/verstecken", category: .view),
-            KeyboardShortcut(key: "+", modifier: .none, action: {}, description: "Hineinzoomen", category: .view),
-            KeyboardShortcut(key: "-", modifier: .none, action: {}, description: "Herauszoomen", category: .view),
-            KeyboardShortcut(key: "0", modifier: .none, action: {}, description: "Zoom zurücksetzen", category: .view),
-            KeyboardShortcut(key: "d", modifier: .command, action: {}, description: "Debug-Panel öffnen", category: .view),
-        ]
+        manager?.registeredShortcuts ?? []
     }
     
     var body: some View {
@@ -91,6 +42,16 @@ struct KeyboardShortcutsView: View {
                 .textFieldStyle(.roundedBorder)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
+
+            HStack(spacing: 6) {
+                Image(systemName: "info.circle")
+                Text("„Verfügbar“ zeigt an, ob das Kürzel im aktuellen Spielzustand nutzbar ist.")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12)
+            .padding(.bottom, 8)
             
             Divider()
             
@@ -115,7 +76,7 @@ struct KeyboardShortcutsView: View {
             // Footer with hint
             Divider()
             HStack {
-                Text("Tip: \(KeyboardShortcut(key: "/", modifier: .shift, action: {}, description: "", category: .view).fullDisplay) - Tastaturkürzel anzeigen")
+                Text("Tipp: ⇧/ – Tastaturkürzel anzeigen")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -158,6 +119,12 @@ struct KeyboardShortcutsView: View {
                 .font(.body)
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
+
+            let isAvailable = manager?.isShortcutEnabled(shortcut) == true
+            Text(isAvailable ? "Verfügbar" : "Nicht verfügbar")
+                .font(.caption)
+                .foregroundStyle(isAvailable ? .green : .secondary)
+                .frame(width: 105, alignment: .trailing)
         }
         .padding(.vertical, 4)
     }

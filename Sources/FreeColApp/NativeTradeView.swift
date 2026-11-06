@@ -11,26 +11,26 @@ struct NativeTradeView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Native Trade")
+                Text("Handel mit Ureinwohnern")
                     .font(.title2.bold())
                 Spacer()
-                Button("Close") { state.closeNativeTrade() }
+                Button("Schließen") { state.closeNativeTrade() }
                     .keyboardShortcut(.cancelAction)
             }
 
             if let session = state.pendingNativeTrade {
-                Text("Settlement: \(settlementName(session.settlementId))")
+                Text("Siedlung: \(settlementName(session.settlementId))")
                     .font(.caption)
                     .foregroundColor(.secondary)
 
-                GroupBox("Buy from settlement") {
+                GroupBox("Von der Siedlung kaufen") {
                     itemList(session.settlementToUnit, action: .buy)
                 }
-                GroupBox("Sell to settlement") {
+                GroupBox("An die Siedlung verkaufen") {
                     itemList(session.unitToSettlement, action: .sell)
                 }
             } else {
-                Text("Keine aktive Handels-Session.")
+                Text("Kein aktiver Handel.")
                     .foregroundColor(.secondary)
             }
 
@@ -68,7 +68,7 @@ struct NativeTradeView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(valid) { item in
                         HStack(spacing: 8) {
-                            Text(shortName(item.goodsType, prefix: "model.goods."))
+                            Text(item.goodsType.map(state.goodsDisplayName) ?? "Ware")
                                 .font(.caption)
                             Spacer()
                             Text("x\(item.amount)")
@@ -78,7 +78,7 @@ struct NativeTradeView: View {
                                 .font(.caption)
                                 .foregroundColor(.yellow)
                             if item.haggleCount > 0 {
-                                Text("haggled \(item.haggleCount)x")
+                                Text("Nachverhandelt: \(item.haggleCount)×")
                                     .font(.caption2)
                                     .foregroundColor(.orange)
                             }
@@ -102,13 +102,13 @@ struct NativeTradeView: View {
             get: { offerPrices[item.id] ?? state.nativeTradeHaggleOffer(item, buying: buying) },
             set: { offerPrices[item.id] = max(1, $0) }
         ), in: 1...(max(2, item.price) * 3)) {
-            Text("Offer \(offer) G")
+            Text("Angebot: \(offer) G")
                 .font(.caption2)
                 .frame(width: 78, alignment: .leading)
         }
         .controlSize(.mini)
 
-        Button("Offer") {
+        Button("Anbieten") {
             if buying {
                 state.nativeTradeBuy(item, offerPrice: offer)
             } else {
@@ -118,7 +118,7 @@ struct NativeTradeView: View {
         .buttonStyle(.bordered)
         .controlSize(.small)
 
-        Button("Accept") {
+        Button("Annehmen") {
             if buying {
                 state.nativeTradeBuy(item)
             } else {
@@ -129,14 +129,10 @@ struct NativeTradeView: View {
         .controlSize(.small)
 
         if !buying {
-            Button("Gift") { state.nativeTradeGift(item) }
+            Button("Schenken") { state.nativeTradeGift(item) }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
         }
     }
 
-    private func shortName(_ value: String?, prefix: String) -> String {
-        guard let value else { return "?" }
-        return value.hasPrefix(prefix) ? String(value.dropFirst(prefix.count)) : value
-    }
 }

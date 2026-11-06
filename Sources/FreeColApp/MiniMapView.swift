@@ -2,8 +2,8 @@ import SwiftUI
 import FreeColGame
 import AppKit
 
-/// Bottom-left minimap, modelled on the Java client's MiniMap:
-/// terrain diamonds, fog overlay, viewport rectangle and click-to-center.
+/// Inspector minimap, modelled on the Java client's MiniMap: terrain diamonds,
+/// fog overlay, viewport rectangle and click-to-center.
 struct MiniMapView: View {
     @Environment(GameState.self) private var state
     var viewport: MapViewportInfo?

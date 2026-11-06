@@ -364,14 +364,33 @@ public final class Game: @unchecked Sendable {
 
     /// Remove carried goods from a unit (local mirror of a dump/unload).
     public func removeUnitGoods(unitId: String, typeId: String, amount: Int) {
+        guard let unit = units[unitId] else { return }
+        setUnitGoods(unitId: unitId, typeId: typeId,
+                     amount: (unit.goods[typeId] ?? 0) - amount)
+    }
+
+    /// Set the local mirror of one unit's carried goods amount.
+    public func setUnitGoods(unitId: String, typeId: String, amount: Int) {
         guard var unit = units[unitId] else { return }
-        let remaining = max(0, (unit.goods[typeId] ?? 0) - amount)
-        if remaining == 0 {
+        let normalizedAmount = max(0, amount)
+        if normalizedAmount == 0 {
             unit.goods.removeValue(forKey: typeId)
         } else {
-            unit.goods[typeId] = remaining
+            unit.goods[typeId] = normalizedAmount
         }
         units[unitId] = unit
+    }
+
+    /// Set the local mirror of one colony's stored goods amount.
+    public func setColonyGoods(colonyId: String, typeId: String, amount: Int) {
+        guard var colony = colonies[colonyId] else { return }
+        let normalizedAmount = max(0, amount)
+        if normalizedAmount == 0 {
+            colony.goods.removeValue(forKey: typeId)
+        } else {
+            colony.goods[typeId] = normalizedAmount
+        }
+        colonies[colonyId] = colony
     }
 
     /// Store a locally-updated colony (value type) back into the model.

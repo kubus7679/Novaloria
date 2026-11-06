@@ -8,26 +8,30 @@ struct PreferencesView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Preferences")
+                Text("Einstellungen")
                     .font(.title3.bold())
                 Spacer()
-                Button("Close") { dismiss() }
+                Button("Schließen") { dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
 
-            GroupBox("Display") {
+            GroupBox("Anzeige") {
                 VStack(alignment: .leading, spacing: 8) {
-                    Toggle("Map Grid", isOn: Binding(
+                    Toggle("Kartengitter", isOn: Binding(
                         get: { state.showMapGrid },
                         set: { state.showMapGrid = $0 }
                     ))
-                    Toggle("Territorial Borders", isOn: Binding(
+                    Toggle("Gebietsgrenzen", isOn: Binding(
                         get: { state.showBorders },
                         set: { state.showBorders = $0 }
                     ))
-                    Toggle("Fog of War", isOn: Binding(
+                    Toggle("Nebel des Krieges", isOn: Binding(
                         get: { state.showFogOfWar },
                         set: { state.showFogOfWar = $0 }
+                    ))
+                    Toggle("Siedlungsnamen", isOn: Binding(
+                        get: { state.showSettlementLabels },
+                        set: { state.showSettlementLabels = $0 }
                     ))
                 }
                 .padding(.vertical, 4)

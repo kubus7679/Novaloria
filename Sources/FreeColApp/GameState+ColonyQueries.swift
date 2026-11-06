@@ -38,6 +38,10 @@ extension GameState {
             let type = game.specification?.tileTypes[tile.type ?? ""]
             let outputs = location?.productionOutputs
                 ?? (id == tileId ? type?.centerOutputs : type?.workerOutputs) ?? [:]
+            let workOptions = id == tileId ? [] : outputs
+                .filter { $0.value > 0 }
+                .map { ColonyTerrainProduction(goodsType: $0.key, baseAmount: $0.value) }
+                .sorted { $0.goodsType < $1.goodsType }
             var production: [ColonyTerrainProduction] = []
             if id == tileId {
                 production = outputs.filter { $0.value > 0 }.map {
@@ -57,7 +61,8 @@ extension GameState {
                 tile: tile, offset: CGPoint(x: point.x - origin.x, y: point.y - origin.y),
                 workLocationId: location?.id,
                 workers: workers, unavailableReason: reason,
-                production: production.sorted { $0.goodsType < $1.goodsType }
+                production: production.sorted { $0.goodsType < $1.goodsType },
+                workOptions: workOptions
             )
         }
     }
@@ -154,7 +159,9 @@ extension GameState {
         }
         return Self.estimatedBuildPerTurn(colony: colony,
                                           specification: specification,
-                                          centerTileType: centerTileType(of: colony))
+                                          centerTileType: centerTileType(of: colony),
+                                          workers: colonyWorkerUnits(colony),
+                                          workTileTypes: workTileTypes(for: colony))
     }
 
     /// Estimated turns until the current build target completes (nil if unknown).
@@ -167,47 +174,102 @@ extension GameState {
         return Self.estimatedBuildTurns(colony: colony,
                                         buildableId: target.id,
                                         specification: specification,
-                                        centerTileType: centerTileType(of: colony))
+                                        centerTileType: centerTileType(of: colony),
+                                        workers: colonyWorkerUnits(colony),
+                                        workTileTypes: workTileTypes(for: colony))
     }
 
-    /// Estimate the construction-goods output per turn from present buildings.
+    /// Estimate base construction output from currently assigned workers.
     nonisolated static func estimatedBuildPerTurn(colony: Colony,
                                                    specification: Specification,
-                                                   centerTileType: String? = nil) -> Int {
+                                                   centerTileType: String? = nil,
+                                                   workers: [FreeColGame.Unit] = [],
+                                                   workTileTypes: [String: String] = [:]) -> Int {
         estimatedProduction(colony: colony,
                             specification: specification,
-                            centerTileType: centerTileType)
+                            centerTileType: centerTileType,
+                            workers: workers,
+                            workTileTypes: workTileTypes)
             .first { $0.id == buildingMaterialsGoodsId }?.amount ?? 0
     }
 
-    /// Estimated net per-turn goods output from present buildings plus the
-    /// colony-center tile (attended production preferred, unattended fallback).
+    /// Base output per turn from attended worker assignments and unattended
+    /// building/colony-center recipes. Omits input consumption and production
+    /// modifiers; never treats every building as attended by a worker.
     nonisolated static func estimatedProduction(colony: Colony,
                                                 specification: Specification,
-                                                centerTileType: String? = nil) -> [(id: String, amount: Int)] {
+                                                centerTileType: String? = nil,
+                                                workers: [FreeColGame.Unit] = [],
+                                                workTileTypes: [String: String] = [:]) -> [(id: String, amount: Int)] {
         var totals: [String: Int] = [:]
+
+        let centerLocation = colony.workTiles.first { $0.tileId == colony.tileId }
+        let centerOutputs = centerLocation?.productionOutputs
+            ?? centerTileType.flatMap { specification.tileTypes[$0]?.centerOutputs }
+            ?? [:]
+        for (goods, amount) in centerOutputs where amount > 0 {
+            totals[goods, default: 0] += amount
+        }
+
         for building in colony.buildings {
             guard let type = building.buildingType,
                   let info = specification.buildingTypes[type] else { continue }
-            for (goods, value) in info.productionOutputs {
-                totals[goods, default: 0] += value
-            }
-            for (goods, value) in info.productionInputs {
-                totals[goods, default: 0] -= value
+            let assignedWorkers = workers.filter { $0.location == building.id }
+            if assignedWorkers.isEmpty {
+                let outputs = info.unattendedProductionOutputs
+                let inputsAvailable = info.unattendedProductionInputs.allSatisfy { goods, amount in
+                    (colony.goods[goods] ?? 0) >= amount
+                }
+                guard inputsAvailable else { continue }
+                for (goods, amount) in outputs where amount > 0 {
+                    totals[goods, default: 0] += amount
+                }
+            } else {
+                let inputsAvailable = info.attendedProductionInputs.allSatisfy { goods, amount in
+                    (colony.goods[goods] ?? 0) >= amount * assignedWorkers.count
+                }
+                guard inputsAvailable else { continue }
+                addAssignedOutputs(info.attendedProductionOutputs,
+                                   workers: assignedWorkers,
+                                   to: &totals)
             }
         }
-        // The colony center tile is always worked (unattended production).
-        if let centerTileType, let tileInfo = specification.tileTypes[centerTileType] {
-            for (goods, value) in tileInfo.centerOutputs {
-                totals[goods, default: 0] += value
-            }
-            for (goods, value) in tileInfo.centerInputs {
-                totals[goods, default: 0] -= value
-            }
+
+        for location in colony.workTiles where location.tileId != colony.tileId {
+            let assignedWorkers = workers.filter { $0.location == location.id }
+            guard !assignedWorkers.isEmpty else { continue }
+            let tileType = workTileTypes[location.id]
+            let outputs = location.productionOutputs
+                ?? tileType.flatMap { specification.tileTypes[$0]?.workerOutputs }
+                ?? [:]
+            addAssignedOutputs(outputs, workers: assignedWorkers, to: &totals)
         }
+
         return totals
-            .filter { $0.value != 0 }
+            .filter { $0.value > 0 }
             .map { (id: $0.key, amount: $0.value) }
+            .sorted { $0.id < $1.id }
+    }
+
+    private nonisolated static func addAssignedOutputs(
+        _ outputs: [String: Int],
+        workers: [FreeColGame.Unit],
+        to totals: inout [String: Int]
+    ) {
+        let outputs = outputs.filter { $0.value > 0 }
+        for worker in workers {
+            let goodsType: String?
+            if let workType = worker.workType, outputs[workType] != nil {
+                goodsType = workType
+            } else if worker.workType == nil, outputs.count == 1 {
+                goodsType = outputs.keys.first
+            } else {
+                goodsType = nil
+            }
+            if let goodsType, let amount = outputs[goodsType] {
+                totals[goodsType, default: 0] += amount
+            }
+        }
     }
 
     // MARK: - Colony reports and worker selection
@@ -240,12 +302,14 @@ extension GameState {
         max(colony.unitCount, colonyWorkerUnits(colony).count)
     }
 
-    /// Net production estimate for a colony, with display names.
+    /// Base outputs from assigned workers and the colony center, with labels.
     func colonyProductionSummary(_ colony: Colony) -> [(id: String, label: String, amount: Int)] {
         guard let specification = cachedGame?.specification else { return [] }
         return Self.estimatedProduction(colony: colony,
                                         specification: specification,
-                                        centerTileType: centerTileType(of: colony))
+                                        centerTileType: centerTileType(of: colony),
+                                        workers: colonyWorkerUnits(colony),
+                                        workTileTypes: workTileTypes(for: colony))
             .map { (id: $0.id, label: goodsDisplayName($0.id), amount: $0.amount) }
             .sorted { $0.label < $1.label }
     }
@@ -279,7 +343,7 @@ extension GameState {
         }
     }
 
-    /// Estimated net production of the selected colony, with display names.
+    /// Estimated base output from selected-colony assignments, with labels.
     var selectedColonyEstimatedProduction: [(id: String, label: String, amount: Int)] {
         guard let colony = selectedColony,
               let specification = cachedGame?.specification else {
@@ -287,7 +351,9 @@ extension GameState {
         }
         return Self.estimatedProduction(colony: colony,
                                         specification: specification,
-                                        centerTileType: centerTileType(of: colony))
+                                        centerTileType: centerTileType(of: colony),
+                                        workers: colonyWorkerUnits(colony),
+                                        workTileTypes: workTileTypes(for: colony))
             .map { (id: $0.id, label: goodsDisplayName($0.id), amount: $0.amount) }
             .sorted { $0.label < $1.label }
     }
@@ -297,11 +363,23 @@ extension GameState {
         return cachedGame?.tiles[tileId]?.type
     }
 
+    private func workTileTypes(for colony: Colony) -> [String: String] {
+        var result: [String: String] = [:]
+        for location in colony.workTiles {
+            guard let tileId = location.tileId,
+                  let type = cachedGame?.tiles[tileId]?.type else { continue }
+            result[location.id] = type
+        }
+        return result
+    }
+
     /// Estimate the turns to complete a buildable, or nil when unknown.
     nonisolated static func estimatedBuildTurns(colony: Colony,
                                                 buildableId: String,
                                                 specification: Specification,
-                                                centerTileType: String? = nil) -> Int? {
+                                                centerTileType: String? = nil,
+                                                workers: [FreeColGame.Unit] = [],
+                                                workTileTypes: [String: String] = [:]) -> Int? {
         guard let info = specification.buildingTypes[buildableId],
               !info.requiredGoods.isEmpty else {
             return nil
@@ -312,7 +390,9 @@ extension GameState {
         guard remaining > 0 else { return 0 }
         let perTurn = estimatedBuildPerTurn(colony: colony,
                                             specification: specification,
-                                            centerTileType: centerTileType)
+                                            centerTileType: centerTileType,
+                                            workers: workers,
+                                            workTileTypes: workTileTypes)
         guard perTurn > 0 else { return nil }
         return (remaining + perTurn - 1) / perTurn
     }

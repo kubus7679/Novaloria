@@ -54,8 +54,8 @@ struct DiplomacyView: View {
                 VStack(alignment: .leading, spacing: 12) {
             if let proposal = state.pendingDiplomacy {
                 HStack(spacing: 12) {
-                    Text("Context: \(proposal.context ?? "?")")
-                    Text("From: \(proposal.sender ?? "?")")
+                    Text("Kontext: \(contextLabel(proposal.context))")
+                    Text("Von: \(proposal.sender.flatMap { state.game?.players[$0]?.name } ?? "Unbekannt")")
                         .foregroundColor(.secondary)
                     Text("Version: \(proposal.version)")
                         .foregroundColor(.secondary)
@@ -102,6 +102,14 @@ struct DiplomacyView: View {
         .onChange(of: state.pendingServerDecision?.id) { _, _ in
             newKind = .gold
             syncDrafts()
+        }
+    }
+
+    private func contextLabel(_ context: String?) -> String {
+        switch context?.uppercased() {
+        case "TRIBUTE": return "Tribut"
+        case "DIPLOMATIC": return "Diplomatie"
+        default: return context.map(GameLabels.name) ?? "Unbekannt"
         }
     }
 

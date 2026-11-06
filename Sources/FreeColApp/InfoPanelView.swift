@@ -33,7 +33,9 @@ struct InfoPanelView: View {
     private func unitContent(_ unit: FreeColGame.Unit) -> some View {
         HStack(spacing: 10) {
             if state.game != nil,
-               let nsImg = TileImageCache.shared.unitImage(forUnitType: unit.unitType) {
+               let nsImg = TileImageCache.shared.unitImage(
+                   forUnitType: unit.unitType, role: unit.role
+               ) {
                 Image(nsImage: nsImg)
                     .resizable()
                     .interpolation(.high)
@@ -48,14 +50,18 @@ struct InfoPanelView: View {
             }
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(displayUnitName(unit.unitType))
+                Text(state.unitDisplayLabel(unit))
                     .font(.headline)
                     .lineLimit(2)
                     .foregroundColor(.white)
                 Text(GameLabels.state(unit.state))
                     .font(.caption)
                     .foregroundColor(.yellow)
-                Text(movesLabel(unit))
+                Text(unitLocationLabel(unit))
+                    .font(.caption)
+                    .foregroundColor(.white)
+                    .lineLimit(2)
+                Text("Bewegungspunkte: \(unit.displayMovesLeft)")
                     .font(.caption)
                     .foregroundColor(.white)
                 Button {
@@ -89,7 +95,9 @@ struct InfoPanelView: View {
             if !state.selectedUnitCargoUnits.isEmpty {
                 HStack(spacing: 4) {
                     ForEach(Array(state.selectedUnitCargoUnits.prefix(6)), id: \.id) { cargoUnit in
-                        if let nsImg = TileImageCache.shared.unitImage(forUnitType: cargoUnit.unitType) {
+                        if let nsImg = TileImageCache.shared.unitImage(
+                            forUnitType: cargoUnit.unitType, role: cargoUnit.role
+                        ) {
                             Image(nsImage: nsImg)
                                 .resizable()
                                 .interpolation(.high)
@@ -113,7 +121,7 @@ struct InfoPanelView: View {
 
     private func unitDetails(_ unit: FreeColGame.Unit) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(displayUnitName(unit.unitType))
+            Text(state.unitDisplayLabel(unit))
                 .font(.headline)
             detailRow("Erfahrung", "\(unit.experience)")
             detailRow("Rolle", unit.role.map { displayIdentifier($0) } ?? "Standard")
@@ -190,8 +198,15 @@ struct InfoPanelView: View {
         return state.unitDisplayName(unitType)
     }
 
-    private func movesLabel(_ unit: FreeColGame.Unit) -> String {
-        state.unitTravelStatus(unit) ?? "Bewegungspunkte: \(unit.displayMovesLeft)"
+    private func unitLocationLabel(_ unit: FreeColGame.Unit) -> String {
+        if let travelStatus = state.unitTravelStatus(unit) { return travelStatus }
+        guard let game = state.game,
+              let tileId = state.selectedUnitTileId,
+              let tile = game.tiles[tileId] else { return "Standort unbekannt" }
+        if let colony = game.colonies.values.first(where: { $0.tileId == tileId }) {
+            return "Standort: \(colony.name ?? "Kolonie")"
+        }
+        return "Standort: \(tile.x), \(tile.y)"
     }
 
     // MARK: - TILE mode
@@ -232,7 +247,7 @@ struct InfoPanelView: View {
                         .font(.caption2)
                         .foregroundColor(tile.type == nil ? .secondary : .green)
                     if let ownerId = tile.owner, let game = state.game {
-                        Text(game.players[ownerId]?.name ?? ownerId)
+                         Text(game.players[ownerId]?.name ?? "Unbekannt")
                             .font(.caption)
                             .foregroundColor(.yellow)
                     }
@@ -245,7 +260,7 @@ struct InfoPanelView: View {
 
             if let region = tile.region {
                 let regionName = state.game?.regions[region]?.displayName
-                    ?? short(region, prefix: "model.region.")
+                    ?? GameLabels.name(region)
                 Text("Region: \(regionName)")
                     .font(.caption2)
                     .foregroundColor(.secondary)
@@ -283,7 +298,7 @@ struct InfoPanelView: View {
             }
             if let settlementId = tile.settlement,
                let settlement = state.game?.colonies[settlementId] {
-                Text("Settlement: \(settlement.name ?? settlementId)")
+                     Text("Siedlung: \(settlement.name ?? "Siedlung")")
                     .font(.caption2)
                     .foregroundColor(.secondary)
                 if settlement.learnableSkill != nil
@@ -291,22 +306,22 @@ struct InfoPanelView: View {
                     || settlement.mostHated != nil {
                     VStack(alignment: .leading, spacing: 2) {
                         if let skill = settlement.learnableSkill {
-                            Text("Skill: \(short(skill, prefix: "model.unit."))")
+                            Text("Fähigkeit: \(GameLabels.name(skill))")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
                         if !settlement.wantedGoods.isEmpty {
-                            Text("Wants: \(settlement.wantedGoods.map { short($0, prefix: "model.goods.") }.joined(separator: ", "))")
+                            Text("Gesuchte Waren: \(settlement.wantedGoods.map(state.goodsDisplayName).joined(separator: ", "))")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
                         if let hated = settlement.mostHated {
-                            Text("Most hated: \(state.game?.players[hated]?.name ?? hated)")
+                            Text("Am meisten verhasst: \(state.game?.players[hated]?.name ?? "Unbekannt")")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
                         if let localId = state.localPlayerId, let alarm = settlement.alarm[localId] {
-                            Text("Alarm: \(alarm)")
+                            Text("Alarmstufe: \(alarm)")
                                 .font(.caption2)
                                 .foregroundColor(alarm > 50 ? .red : .secondary)
                         }
@@ -361,10 +376,6 @@ struct InfoPanelView: View {
         return game.units.values
             .filter { game.resolvedTileId(for: $0) == tileId }
             .sorted { ($0.unitType ?? "") < ($1.unitType ?? "") }
-    }
-
-    private func short(_ value: String, prefix: String) -> String {
-        value.hasPrefix(prefix) ? String(value.dropFirst(prefix.count)) : value
     }
 
     private func typeLabel(_ type: String?) -> String {

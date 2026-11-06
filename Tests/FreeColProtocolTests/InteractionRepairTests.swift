@@ -73,6 +73,79 @@ final class InteractionRepairTests: XCTestCase {
     }
 
     @MainActor
+    func testMonarchTaxWarPromptShowsServerProvidedDetails() throws {
+        let state = GameState()
+        state.phase = .inGame
+        let prompt = try XMLDecoder.decode("""
+        <monarchAction action="raise_tax_war" tax="17">
+          <stringTemplate id="model.monarch.action.raiseTaxWar.text" templateType="TEMPLATE">
+            <pair value="%nation%"><stringTemplate id="model.nation.spanish" templateType="KEY"/></pair>
+            <pair value="%amount%"><stringTemplate id="17" templateType="NAME"/></pair>
+            <pair value="%goods%"><stringTemplate id="model.goods.tobacco" templateType="KEY"/></pair>
+          </stringTemplate>
+        </monarchAction>
+        """)
+        state.applySessionMessage(prompt)
+
+        XCTAssertTrue(state.monarchActionMessage.contains("Krieg gegen Spanisch"))
+        XCTAssertTrue(state.monarchActionMessage.contains("Steuern auf 17% anheben"))
+        XCTAssertTrue(state.monarchActionMessage.contains("Tabakblätter boykottieren"))
+        XCTAssertFalse(state.monarchActionMessage.contains("RAISE TAX WAR"))
+    }
+
+    @MainActor
+    func testModelMessagesTranslateTemplatesAndResolveDisplayObjects() throws {
+        let game = Game()
+        try game.load(from: XMLDecoder.decode("""
+        <game id="game-1" clientUserName="Alice">
+          <player id="player-1" username="Alice"/>
+          <colony id="colony-1" name="Boston" owner="player-1"/>
+          <unit id="unit:5882" owner="player-1" unitType="model.unit.freeColonist"/>
+        </game>
+        """))
+        let state = GameState()
+        state.installGame(game)
+
+        let warehouseMessage = ModelMessage(
+            id: "model.colony.warehouseSoonFull",
+            source: "colony-1",
+            display: "model.goods.lumber",
+            messageType: "WAREHOUSE_CAPACITY",
+            hasBeenDisplayed: false,
+            replacements: [
+                "%colony%": "Boston",
+                "%goods%": "model.goods.lumber.name",
+                "%amount%": "25",
+            ]
+        )
+        let warehouseText = state.modelMessageText(warehouseMessage)
+        XCTAssertTrue(warehouseText.contains("Boston"))
+        XCTAssertTrue(warehouseText.contains("Holzscheite"))
+        XCTAssertTrue(warehouseText.contains("25"))
+        XCTAssertFalse(warehouseText.contains("model.goods"))
+
+        let unitMessage = ModelMessage(
+            id: "mod.customUnitEvent",
+            source: "unit:5882",
+            display: "unit:5882",
+            messageType: "UNIT_ADDED",
+            hasBeenDisplayed: false
+        )
+        let unitText = state.modelMessageText(unitMessage)
+        XCTAssertEqual(unitText, "Neue Einheit: Freier Kolonist.")
+        XCTAssertFalse(unitText.contains("5882"))
+
+        let independenceMessage = ModelMessage(
+            id: "model.message.independence",
+            source: nil,
+            display: nil,
+            messageType: "DEFAULT",
+            hasBeenDisplayed: false
+        )
+        XCTAssertEqual(state.modelMessageText(independenceMessage), "Die Unabhängigkeit wurde erklärt.")
+    }
+
+    @MainActor
     func testLostCityRumourResultsFromServerAreReadable() throws {
         let game = Game()
         try game.load(from: XMLDecoder.decode("""
@@ -310,6 +383,7 @@ final class InteractionRepairTests: XCTestCase {
         state.setSelectedUnitDestination(to: "tile-4-2")
         try await waitUntil { state.movingUnitId == nil }
         XCTAssertEqual(state.selectedUnit?.destination, "tile-4-2")
+        XCTAssertNil(state.errorMessage, "An acknowledged correction should clear the stale server rejection")
         state.clearSelectedUnitDestination()
         XCTAssertEqual(state.selectedUnit?.destination, "tile-4-2")
         XCTAssertFalse(state.canClearSelectedUnitDestination)
@@ -1328,6 +1402,44 @@ final class InteractionRepairTests: XCTestCase {
     }
 
     @MainActor
+    func testAwaitingOrdersIncludesOffMapUnitsAndDoesNotCenterInvalidTile() throws {
+        let state = try makeState()
+        let game = try XCTUnwrap(state.game)
+        try game.applyPartial(XMLDecoder.decode("""
+        <partial id="europe-worker" state="ACTIVE" movesLeft="3"/>
+        """))
+        state.gameUpdateID += 1
+        state.selectedUnitId = nil
+        state.selectedTileId = nil
+
+        XCTAssertTrue(state.unitsAwaitingOrders.contains { $0.id == "europe-worker" })
+        let firstAwaiting = try XCTUnwrap(state.unitsAwaitingOrders.first)
+        XCTAssertEqual(firstAwaiting.id, "europe-worker")
+        state.selectAdjacentUnit(forward: true, onlyAwaitingOrders: true)
+
+        XCTAssertEqual(state.selectedUnitId, firstAwaiting.id)
+        XCTAssertNil(state.selectedUnitTileId)
+        XCTAssertNil(state.selectedTileId)
+        XCTAssertNil(state.requestedMapScrollTileId)
+    }
+
+    @MainActor
+    func testMovementErrorOffersOnlyGuardedRecoveryAndUnknownErrorsRemain() throws {
+        let state = try makeState()
+        state.isChoosingMoveDestination = true
+        state.errorMessage = "Kein begehbarer Weg zum Ziel verfügbar."
+
+        XCTAssertEqual(state.errorRecoveryActionTitle, "Zielauswahl abbrechen")
+        state.performErrorRecoveryAction()
+        XCTAssertFalse(state.isChoosingMoveDestination)
+        XCTAssertEqual(state.errorMessage, "Kein begehbarer Weg zum Ziel verfügbar.")
+
+        state.errorMessage = "Unbekannte Serverdiagnose"
+        XCTAssertNil(state.errorRecoveryActionTitle)
+        XCTAssertEqual(state.errorMessage, "Unbekannte Serverdiagnose")
+    }
+
+    @MainActor
     func testNestedColonyWorkersAndSelectionSurviveUpdates() throws {
         let state = try makeState()
         XCTAssertNotNil(state.game?.units["field-worker"])
@@ -1394,6 +1506,7 @@ final class InteractionRepairTests: XCTestCase {
         state.selectUnit("field-worker", onTile: "tile-2-2")
         var east = try XCTUnwrap(state.selectedColonyTerrain.first { $0.id == "tile-3-2" })
         XCTAssertEqual(east.production.map(\.goodsType), ["model.goods.grain"])
+        XCTAssertEqual(east.workOptions.map(\.goodsType), ["model.goods.grain"])
         XCTAssertEqual(east.production.first?.baseAmount, 3)
         let center = try XCTUnwrap(state.selectedColonyTerrain.first { $0.id == "tile-2-2" })
         XCTAssertEqual(center.production.map(\.goodsType), ["model.goods.grain", "model.goods.hammers"])
@@ -1414,6 +1527,29 @@ final class InteractionRepairTests: XCTestCase {
         state.gameUpdateID += 1
         east = try XCTUnwrap(state.selectedColonyTerrain.first { $0.id == "tile-3-2" })
         XCTAssertNil(east.production.first?.baseAmount, "An empty server production must not use a spec fallback")
+    }
+
+    @MainActor
+    func testTerrainExposesEveryProductionChoiceForAnUnassignedField() throws {
+        let xml = Self.gameXML
+            .replacingOccurrences(
+                of: #"<goods-type id="model.goods.grain"/>"#,
+                with: #"<goods-type id="model.goods.grain"/><goods-type id="model.goods.tobacco"/>"#
+            )
+            .replacingOccurrences(
+                of: #"<production><output goods-type="model.goods.grain" value="3"/></production>"#,
+                with: #"<production><output goods-type="model.goods.grain" value="3"/><output goods-type="model.goods.tobacco" value="2"/></production>"#
+            )
+        let game = Game()
+        try game.load(from: XMLDecoder.decode(xml))
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+        state.selectUnit("field-worker", onTile: "tile-2-2")
+
+        let west = try XCTUnwrap(state.selectedColonyTerrain.first { $0.id == "tile-1-2" })
+        XCTAssertTrue(west.production.isEmpty)
+        XCTAssertEqual(west.workOptions.map(\.goodsType), ["model.goods.grain", "model.goods.tobacco"])
     }
 
     @MainActor
@@ -1543,6 +1679,33 @@ final class InteractionRepairTests: XCTestCase {
     }
 
     @MainActor
+    func testPioneerRoleIsShownAlongsideUnchangedBaseUnitType() throws {
+        let game = Game()
+        try game.load(from: XMLDecoder.decode("""
+        <game id="pioneer-label" clientUserName="Alice">
+          <player id="player-1" username="Alice"/>
+          <unit id="criminal" owner="player-1" unitType="model.unit.pettyCriminal"
+                role="model.role.default" roleCount="0"/>
+        </game>
+        """))
+        let state = GameState()
+        state.installGame(game)
+
+        let criminal = try XCTUnwrap(game.units["criminal"])
+        XCTAssertEqual(state.unitDisplayLabel(criminal), "Kleinkrimineller")
+
+        try game.applyPartial(XMLDecoder.decode("""
+        <partial id="criminal" role="model.role.pioneer" roleCount="1"/>
+        """))
+
+        let pioneer = try XCTUnwrap(game.units["criminal"])
+        XCTAssertEqual(pioneer.role, "model.role.pioneer")
+        XCTAssertEqual(pioneer.unitType, "model.unit.pettyCriminal",
+                       "Equipping changes the role, not the underlying unit type")
+        XCTAssertEqual(state.unitDisplayLabel(pioneer), "Pionier (Kleinkrimineller)")
+    }
+
+    @MainActor
     func testImprovementsRequireAnOutdoorEquippedWorker() throws {
         let state = try makeState()
         for id in ["ship", "wagon", "field-worker", "building-worker", "outside-worker"] {
@@ -1551,11 +1714,14 @@ final class InteractionRepairTests: XCTestCase {
             XCTAssertFalse(state.canChangeSelectedUnitWorkImprovement)
         }
         try state.game?.applyPartial(XMLDecoder.decode("""
-        <partial id="outside-worker" role="model.role.pioneer" roleCount="1"/>
+        <partial id="outside-worker" unitType="model.unit.pettyCriminal"
+                 role="model.role.pioneer" roleCount="1" movesLeft="0"/>
         """))
         state.gameUpdateID += 1
         XCTAssertEqual(state.selectedUnitImprovementCandidates.map(\.id), ["model.improvement.road"])
-        XCTAssertTrue(state.canChangeSelectedUnitWorkImprovement)
+        XCTAssertEqual(state.selectedUnit?.movesLeft, 0)
+        XCTAssertTrue(state.canChangeSelectedUnitWorkImprovement,
+                      "Assigning pioneer work is allowed even after movement points are spent")
         state.changeSelectedUnitWorkImprovement("model.improvement.unknown")
         XCTAssertNotNil(state.errorMessage)
     }
@@ -1596,7 +1762,7 @@ final class InteractionRepairTests: XCTestCase {
         state.openColonyPanel()
         state.renameSelectedColony(to: "Neu-Boston")
         try await waitUntil { state.selectedColony?.name == "Neu-Boston" }
-        state.assignSelectedColonyWorker(to: "field-west")
+        state.assignSelectedColonyWorker(to: "field-west", workTypeId: "model.goods.grain")
         try await waitUntil { state.game?.units["field-worker"]?.location == "field-west" }
         XCTAssertEqual(state.selectedColonyWorkerUnitId, "field-worker")
         XCTAssertTrue(state.showColonyPanel)
@@ -1607,9 +1773,12 @@ final class InteractionRepairTests: XCTestCase {
         try await waitUntil { state.errorMessage?.contains("abgelehnt") == true }
         XCTAssertEqual(state.selectedColony?.name, "Neu-Boston")
         let requests = try await serverTask.value
-        XCTAssertEqual(requests.map(\.tag), ["rename", "work", "rearrangeColony", "rename"])
+        XCTAssertEqual(requests.map(\.tag), ["rename", "rearrangeColony", "rearrangeColony", "rename"])
         XCTAssertEqual(requests[0].attributes, ["nameable": "colony-1", "name": "Neu-Boston"])
-        XCTAssertEqual(requests[1].attributes, ["unit": "field-worker", "workLocation": "field-west"])
+        XCTAssertEqual(requests[1].attributes["xLength"], "1")
+        XCTAssertEqual(requests[1].attributes["x0unit"], "field-worker")
+        XCTAssertEqual(requests[1].attributes["x0loc"], "field-west")
+        XCTAssertEqual(requests[1].attributes["x0work"], "model.goods.grain")
         XCTAssertEqual(requests[2].attributes["xLength"], "2")
         XCTAssertEqual(requests[2].attributes["x0work"], "model.goods.hammers")
         XCTAssertEqual(requests[2].attributes["x1work"], "model.goods.grain")
@@ -1692,6 +1861,73 @@ final class InteractionRepairTests: XCTestCase {
         XCTAssertEqual(game.units["outside-worker"]?.movesLeft, 0)
         XCTAssertEqual(game.units["outside-worker"]?.destination, "tile-0-2")
         XCTAssertNotEqual(game.units["outside-worker"]?.location, "tile-0-2")
+    }
+
+    @MainActor
+    func testSavedDestinationRetriesAfterStaleTurnOwnershipUpdate() async throws {
+        let server = MockServer()
+        let state = GameState()
+        let serverTask = Task {
+            try await server.doHandshake(gameResponse: Self.gameXML.replacingOccurrences(of: "\n", with: " "))
+            var requests: [ParsedMessage] = []
+            for response in [
+                #"<partial id="outside-worker" destination="tile-4-2"/>"#,
+                #"<error message="Not the current player"/>"#,
+                #"<partial id="outside-worker" location="tile-3-2" movesLeft="1"/>"#,
+                #"<partial id="outside-worker" location="tile-4-2" movesLeft="0"/>"#,
+                #"<partial id="outside-worker" destination=""/>"#,
+            ] {
+                let question = try XMLDecoder.decode(await server.nextLine())
+                XCTAssertEqual(question.tag, "question")
+                let request = try XCTUnwrap(question.children.first)
+                requests.append(request)
+                let replyId = try XCTUnwrap(question.attributes["networkReplyId"])
+                await server.send("<reply networkReplyId=\"\(replyId)\">\(response)</reply>")
+                await server.flush()
+            }
+            return requests
+        }
+        defer {
+            state.disconnect()
+            serverTask.cancel()
+            Task { await server.stop() }
+        }
+        state.connect(host: "127.0.0.1", port: server.port)
+        try await waitUntil { state.phase == .login }
+        state.login(userName: "Alice", nationId: "model.nation.dutch")
+        try await waitUntil { state.phase == .inGame && state.game != nil }
+
+        state.selectUnit("outside-worker", onTile: "tile-2-2")
+        state.setSelectedUnitDestination(to: "tile-4-2")
+        try await waitUntil {
+            state.movingUnitId == nil
+                && state.game?.units["outside-worker"]?.destination == "tile-4-2"
+        }
+        let game = try XCTUnwrap(state.game)
+
+        // A new-turn update can arrive before ownership changes. A move
+        // attempted in that brief stale state is rejected by the server.
+        game.turn = Turn(2)
+        state.syncAfterModelUpdate()
+        try await waitUntil { state.movingUnitId == nil && state.errorMessage != nil }
+
+        // The next local turn can still have the same global turn number.
+        // Losing and regaining ownership must therefore release the retry
+        // guard so the saved destination is attempted again.
+        game.currentPlayerId = "player-2"
+        state.syncAfterModelUpdate()
+        game.currentPlayerId = "player-1"
+        state.syncAfterModelUpdate()
+
+        try await waitUntil {
+            state.movingUnitId == nil
+                && game.units["outside-worker"]?.location == "tile-4-2"
+                && game.units["outside-worker"]?.destination == nil
+        }
+        XCTAssertNil(state.errorMessage)
+        let requests = try await serverTask.value
+        XCTAssertEqual(requests.map(\.tag), ["setDestination", "move", "move", "move", "setDestination"])
+        XCTAssertEqual(requests.filter { $0.tag == "move" }.map { $0.attributes["direction"] }, ["E", "E", "E"])
     }
 
     @MainActor

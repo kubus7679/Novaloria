@@ -144,16 +144,12 @@ private func colorForTile(_ type: String?) -> Color {
 struct MapView: View {
     @Environment(GameState.self) private var state
 
-    @State private var zoomScale: Double = 2.0
-    private let minZoom: Double = 0.5
-    private let maxZoom: Double = 5.0
-
     // Custom camera: canvas coordinate shown at the viewport's top-left.
     @State private var camera: CGPoint = .zero
     @State private var viewportSize: CGSize = .zero
 
-    private var tileW: Double { baseTileW * zoomScale }
-    private var tileH: Double { baseTileH * zoomScale }
+    private var tileW: Double { baseTileW * state.mapZoomScale }
+    private var tileH: Double { baseTileH * state.mapZoomScale }
 
     private func resolveUnitTileId(_ unit: FreeColGame.Unit, in game: Game) -> String? {
         if let loc = unit.location, game.tiles[loc] != nil {
@@ -233,7 +229,6 @@ struct MapView: View {
     var body: some View {
         if let game = state.game, let data = renderData(for: game) {
             VStack(spacing: 0) {
-                zoomControls
                 GeometryReader { geo in
                     ZStack {
                         Canvas { ctx, size in
@@ -379,7 +374,9 @@ struct MapView: View {
                                     ctx.stroke(Path(ellipseIn: dotRect), with: .color(.black), lineWidth: 1.5)
 
                                     // Draw unit sprite on top if available, fitted to the tile.
-                                    if let nsImg = TileImageCache.shared.unitImage(forUnitType: unit.unitType) {
+                                     if let nsImg = TileImageCache.shared.unitImage(
+                                         forUnitType: unit.unitType, role: unit.role
+                                     ) {
                                         let fitted = fitSize(nsImg.size,
                                                              into: CGSize(width: tileW * 0.5,
                                                                           height: tileH * 0.95))
@@ -421,49 +418,45 @@ struct MapView: View {
                             ))
                         }
 
-                        // Labels must follow all sprites so later tiles cannot paint over them.
-                        for tile in visibleTiles {
-                            guard tile.type != nil, let colony = data.colonyByTile[tile.id] else { continue }
-                            let origin = tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
-                            let label = Text("\(colony.name ?? "?") · Bevölkerung: \(state.colonyPopulation(colony))")
-                                .font(.system(size: max(8, tileW * 0.10), weight: .semibold))
-                                .foregroundColor(.white)
-                            let resolved = ctx.resolve(label)
-                            let measured = resolved.measure(in: CGSize(width: tileW * 2, height: tileH))
-                            let rect = CGRect(x: origin.x - measured.width / 2 - 4,
-                                              y: origin.y + tileH * 0.3,
-                                              width: measured.width + 8, height: measured.height + 4)
-                            ctx.fill(Path(roundedRect: rect, cornerRadius: 3), with: .color(.black.opacity(0.8)))
-                            ctx.draw(resolved, at: CGPoint(x: rect.midX, y: rect.midY))
-                        }
+                        // Labels follow all sprites, but are visibility-aware,
+                        // zoom-prioritized, and omitted when they would collide.
+                        drawSettlementLabels(on: visibleTiles, data: data, context: &ctx)
 
                         if state.mapOverlay == .tradeRoutes {
                             let routeColors: [Color] = [.cyan, .orange, .pink, .green, .purple]
                             for (routeIndex, route) in state.localPlayerTradeRoutes.enumerated() {
-                                let points = route.stops.compactMap { stop -> CGPoint? in
+                                let stopTileIds = route.stops.map { stop -> String? in
                                     guard let locationId = stop.locationId,
                                           let tileId = game.tiles[locationId] != nil
                                             ? locationId
                                             : game.colonies[locationId]?.tileId,
-                                          let tile = game.tiles[tileId],
+                                          game.tiles[tileId] != nil,
                                           data.visibleTileIds.contains(tileId) || !state.showFogOfWar else {
                                         return nil
                                     }
-                                    return tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
+                                    return tileId
                                 }
-                                guard points.count > 1 else { continue }
-                                var path = Path()
-                                path.move(to: points[0])
-                                for point in points.dropFirst() {
-                                    path.addLine(to: point)
-                                }
-                                path.addLine(to: points[0])
                                 let color = routeColors[routeIndex % routeColors.count]
-                                ctx.stroke(path, with: .color(color), style: StrokeStyle(
-                                    lineWidth: max(2, tileW * 0.025),
-                                    dash: [8, 5]
-                                ))
-                                for point in points {
+                                guard stopTileIds.count > 1 else { continue }
+                                for index in stopTileIds.indices {
+                                    let nextIndex = (index + 1) % stopTileIds.count
+                                    guard let fromId = stopTileIds[index],
+                                          let toId = stopTileIds[nextIndex],
+                                          let fromTile = game.tiles[fromId],
+                                          let toTile = game.tiles[toId] else { continue }
+                                    let from = tileOrigin(x: fromTile.x, y: fromTile.y, tileW: tileW, tileH: tileH)
+                                    let to = tileOrigin(x: toTile.x, y: toTile.y, tileW: tileW, tileH: tileH)
+                                    var path = Path()
+                                    path.move(to: from)
+                                    path.addLine(to: to)
+                                    ctx.stroke(path, with: .color(color), style: StrokeStyle(
+                                        lineWidth: max(2, tileW * 0.025),
+                                        dash: [8, 5]
+                                    ))
+                                }
+                                for tileId in stopTileIds.compactMap({ $0 }) {
+                                    guard let tile = game.tiles[tileId] else { continue }
+                                    let point = tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
                                     let marker = Path(ellipseIn: CGRect(
                                         x: point.x - 5, y: point.y - 5, width: 10, height: 10
                                     ))
@@ -476,6 +469,13 @@ struct MapView: View {
                         for selectedUnit in game.units.values.sorted(by: { $0.id < $1.id })
                             where selectedUnit.owner == state.localPlayerId
                                 && (selectedUnit.id == state.selectedUnitId || state.mapOverlay == .paths) {
+                            let route = state.movementPath(for: selectedUnit)
+                            if state.showFogOfWar,
+                               !route.allSatisfy({ data.visibleTileIds.contains($0) })
+                                || (state.showFogOfWar
+                                    && selectedUnit.destination.map({ !data.visibleTileIds.contains($0) }) == true) {
+                                continue
+                            }
                            if
                            let destinationTileId = selectedUnit.destination,
                            let destinationTile = game.tiles[destinationTileId],
@@ -484,8 +484,7 @@ struct MapView: View {
                             let sourceOrigin = tileOrigin(x: sourceTile.x, y: sourceTile.y, tileW: tileW, tileH: tileH)
                             var previewPath = Path()
                             previewPath.move(to: sourceOrigin)
-                            let route = state.movementPath(for: selectedUnit)
-                            for nextTileId in route.dropFirst() {
+                             for nextTileId in route.dropFirst() {
                                 guard let nextTile = game.tiles[nextTileId] else { break }
                                 let nextOrigin = tileOrigin(
                                     x: nextTile.x,
@@ -601,10 +600,10 @@ struct MapView: View {
                             value: MapViewportInfo(
                                 canvasSize: data.canvasSize,
                                 visibleRect: CGRect(
-                                    x: camera.x / zoomScale,
-                                    y: camera.y / zoomScale,
-                                    width: geo.size.width / zoomScale,
-                                    height: geo.size.height / zoomScale
+                                    x: camera.x / state.mapZoomScale,
+                                    y: camera.y / state.mapZoomScale,
+                                    width: geo.size.width / state.mapZoomScale,
+                                    height: geo.size.height / state.mapZoomScale
                                 )
                             )
                         )
@@ -618,8 +617,19 @@ struct MapView: View {
                                                            canvas: data.canvasSize)
                         viewportSize = newSize
                     }
-                    .onChange(of: zoomScale) { _, _ in
-                        centerOnSelectedUnit(data: data, game: game)
+                    .onChange(of: state.mapZoomScale) { oldZoom, newZoom in
+                        guard oldZoom > 0 else { return }
+                        let mapCenter = CGPoint(
+                            x: (camera.x + viewportSize.width / 2) / oldZoom,
+                            y: (camera.y + viewportSize.height / 2) / oldZoom
+                        )
+                        camera = clampCamera(
+                            CGPoint(
+                                x: mapCenter.x * newZoom - viewportSize.width / 2,
+                                y: mapCenter.y * newZoom - viewportSize.height / 2
+                            ),
+                            canvas: data.canvasSize
+                        )
                     }
                     .onChange(of: state.selectedUnitTileId) { _, _ in
                         // Keep the camera on the active unit as it moves,
@@ -638,70 +648,52 @@ struct MapView: View {
                 }
             }
         } else {
-            Text("No map loaded")
+            Text("Keine Karte geladen")
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
-    private var zoomControls: some View {
-        HStack(spacing: 8) {
-            Button {
-                zoomScale = max(minZoom, zoomScale / 1.4)
-            } label: {
-                Image(systemName: "minus.magnifyingglass")
-            }
-            .buttonStyle(.plain)
-
-            Text("\(Int(zoomScale * 100))%")
-                .font(.caption.monospacedDigit())
-                .frame(width: 44)
-
-            Button {
-                zoomScale = min(maxZoom, zoomScale * 1.4)
-            } label: {
-                Image(systemName: "plus.magnifyingglass")
-            }
-            .buttonStyle(.plain)
-
-            Button {
-                zoomScale = 2.0
-            } label: {
-                Text("Zurücksetzen")
-                    .font(.caption)
-            }
-            .buttonStyle(.plain)
-
-            Menu {
-                ForEach(GameState.MapOverlay.allCases) { overlay in
-                    Button {
-                        state.mapOverlay = overlay
-                    } label: {
-                        if state.mapOverlay == overlay {
-                            Label(overlay.title, systemImage: "checkmark")
-                        } else {
-                            Text(overlay.title)
-                        }
-                    }
-                }
-            } label: {
-                Label(state.mapOverlay.title, systemImage: "square.3.layers.3d")
-                    .font(.caption)
-            }
-            Spacer()
+    private func drawSettlementLabels(on visibleTiles: [Tile],
+                                      data: RenderData,
+                                      context: inout GraphicsContext) {
+        guard state.showSettlementLabels else { return }
+        var priorityTileIds = Set([state.selectedTileId, state.selectedUnitTileId].compactMap { $0 })
+        if let destination = state.selectedUnit?.destination {
+            priorityTileIds.insert(destination)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Color(white: 0.12))
-        .help(mapOverlayLegend)
-    }
 
-    private var mapOverlayLegend: String {
-        switch state.mapOverlay {
-        case .none: return "Overlays off"
-        case .resources: return "Orange marker: resource"
-        case .tradeRoutes: return "Dashed colors: trade routes"
-        case .paths: return "Yellow line: selected unit path"
+        let candidates = visibleTiles.compactMap { tile -> (Tile, Colony, Bool)? in
+            guard tile.type != nil,
+                  !state.showFogOfWar || data.visibleTileIds.contains(tile.id),
+                  let colony = data.colonyByTile[tile.id] else { return nil }
+            let isPriority = priorityTileIds.contains(tile.id)
+            guard state.mapZoomScale >= 1.25 || isPriority else { return nil }
+            return (tile, colony, isPriority)
+        }.sorted {
+            if $0.2 != $1.2 { return $0.2 }
+            if $0.0.y != $1.0.y { return $0.0.y < $1.0.y }
+            return $0.0.x < $1.0.x
+        }
+
+        var occupiedRects: [CGRect] = []
+        for (tile, colony, _) in candidates {
+            let origin = tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
+            let title = "\(colony.name ?? "?") · Bevölkerung: \(state.colonyPopulation(colony))"
+            let label = Text(title)
+                .font(.system(size: max(7, min(12, tileW * 0.10)), weight: .semibold))
+                .foregroundColor(.white)
+            let resolved = context.resolve(label)
+            let measured = resolved.measure(in: CGSize(width: min(240, max(96, tileW * 2.4)), height: 24))
+            let rect = CGRect(x: origin.x - measured.width / 2 - 4,
+                              y: origin.y + tileH * 0.3,
+                              width: measured.width + 8, height: measured.height + 4)
+            guard !occupiedRects.contains(where: { $0.insetBy(dx: -4, dy: -2).intersects(rect) }) else {
+                continue
+            }
+            occupiedRects.append(rect)
+            context.fill(Path(roundedRect: rect, cornerRadius: 3), with: .color(.black.opacity(0.8)))
+            context.draw(resolved, at: CGPoint(x: rect.midX, y: rect.midY))
         }
     }
 
@@ -740,7 +732,7 @@ struct MapView: View {
                     var furrow = Path()
                     furrow.move(to: CGPoint(x: origin.x - tileW * 0.22, y: origin.y + tileH * offset))
                     furrow.addLine(to: CGPoint(x: origin.x + tileW * 0.1, y: origin.y + tileH * (offset + 0.16)))
-                    context.stroke(furrow, with: .color(.brown.opacity(0.7)), lineWidth: max(1, zoomScale))
+                    context.stroke(furrow, with: .color(.brown.opacity(0.7)), lineWidth: max(1, state.mapZoomScale))
                 }
             }
             let isRoad = improvement.type == "model.improvement.road"
@@ -760,7 +752,7 @@ struct MapView: View {
                                          y: origin.y + tileH * directions[index].y))
             }
             context.stroke(route, with: .color(isRiver ? .cyan.opacity(0.8) : .brown),
-                           style: StrokeStyle(lineWidth: max(1.5, zoomScale * (isRiver ? 2 : 1)), lineCap: .round))
+                           style: StrokeStyle(lineWidth: max(1.5, state.mapZoomScale * (isRiver ? 2 : 1)), lineCap: .round))
         }
     }
 

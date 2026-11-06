@@ -19,6 +19,7 @@ struct ColonyTerrainField: Identifiable {
     let workers: [FreeColGame.Unit]
     let unavailableReason: String?
     var production: [ColonyTerrainProduction] = []
+    var workOptions: [ColonyTerrainProduction] = []
 }
 
 struct ColonyTerrainView: View {
@@ -26,10 +27,14 @@ struct ColonyTerrainView: View {
     let selectedWorkerId: String?
     let canManage: Bool
     let onAssign: (String) -> Void
+    var onSelectField: ((ColonyTerrainField) -> Void)? = nil
+    var showsHeader: Bool = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Koloniegelände").font(.headline)
+            if showsHeader {
+                Text("Koloniegelände").font(.headline)
+            }
             Text("Arbeiter auswählen, dann ein Feld anklicken. Ein belegtes Feld tauscht die Arbeiter.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -41,7 +46,11 @@ struct ColonyTerrainView: View {
                 let height = width / 2
                 ForEach(fields) { field in
                     Button {
-                        if let locationId = field.workLocationId { onAssign(locationId) }
+                        if let onSelectField {
+                            onSelectField(field)
+                        } else if let locationId = field.workLocationId {
+                            onAssign(locationId)
+                        }
                     } label: {
                         ZStack {
                             if let image = TileImageCache.shared.terrainImage(forType: field.tile.type) {
@@ -86,7 +95,9 @@ struct ColonyTerrainView: View {
                                 .background(.black.opacity(0.75), in: RoundedRectangle(cornerRadius: 3))
                             } else if let worker = field.workers.first {
                                 VStack(spacing: 0) {
-                                    if let image = TileImageCache.shared.unitImage(forUnitType: worker.unitType) {
+                                    if let image = TileImageCache.shared.unitImage(
+                                        forUnitType: worker.unitType, role: worker.role
+                                    ) {
                                         Image(nsImage: image).resizable().scaledToFit().frame(height: height * 0.6)
                                     }
                                     productionBadges(field)
@@ -117,8 +128,10 @@ struct ColonyTerrainView: View {
     }
 
     private func productionBadges(_ field: ColonyTerrainField) -> some View {
-        HStack(spacing: 4) {
-            ForEach(field.production) { output in
+        let outputs = field.workers.isEmpty && field.offset != .zero
+            ? field.workOptions : field.production
+        return HStack(spacing: 4) {
+            ForEach(outputs) { output in
                 HStack(spacing: 2) {
                     if let image = TileImageCache.shared.goodsImage(for: output.goodsType) {
                         Image(nsImage: image).resizable().scaledToFit().frame(width: 20, height: 20)

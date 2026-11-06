@@ -9,60 +9,60 @@ struct StatusPanelView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Status")
+                Text("Spielstatus")
                     .font(.title2.bold())
                 Spacer()
-                Button("Close") { dismiss() }
+                Button("Schließen") { dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
 
             ScrollView([.horizontal, .vertical]) {
                 VStack(alignment: .leading, spacing: 12) {
             if let game = state.game {
-                GroupBox("Game") {
+                GroupBox("Spiel") {
                     VStack(alignment: .leading, spacing: 4) {
-                        row("Game id", game.id)
-                        row("Turn", "\(game.turn.number)")
-                        row("Current player", game.players[game.currentPlayerId ?? ""]?.name ?? "—")
-                        row("Players", "\(game.players.count)")
-                        row("Colonies", "\(game.colonies.count)")
-                        row("Units", "\(game.units.count)")
+                        row("Spielkennung", game.id)
+                        row("Runde", "\(game.turn.number)")
+                        row("Aktueller Spieler", game.players[game.currentPlayerId ?? ""]?.name ?? "—")
+                        row("Spieler", "\(game.players.count)")
+                        row("Kolonien", "\(game.colonies.count)")
+                        row("Einheiten", "\(game.units.count)")
                         if !game.tiles.isEmpty {
                             let explored = game.exploredTileIds().count
                             let total = game.tiles.count
                             let percent = total > 0 ? Int(Double(explored) / Double(total) * 100) : 0
-                            row("Explored", "\(explored) / \(total) (\(percent)%)")
+                             row("Erkundet", "\(explored) / \(total) (\(percent)%)")
                         }
                     }
                     .padding(.vertical, 4)
                 }
 
-                GroupBox("Players") {
+                GroupBox("Spieler") {
                     playerTable(game: game)
                         .padding(.vertical, 4)
                 }
 
-                GroupBox("Local Player") {
+                GroupBox("Eigener Spieler") {
                     if let local = state.localPlayer {
                         VStack(alignment: .leading, spacing: 4) {
                             row("Name", local.name ?? local.id)
                             row("Gold", "\(local.gold)")
-                            row("Tax", "\(local.tax)%")
-                            row("Immigration", "\(local.immigration)")
-                            row("Liberty", "\(local.liberty)")
-                            row("Score", "\(local.score)")
-                            row("Founding fathers", "\(local.foundingFathers.count)")
-                            row("Model messages", "\(local.modelMessages.count)")
+                            row("Steuern", "\(local.tax)%")
+                            row("Einwanderung", "\(local.immigration)")
+                            row("Freiheit", "\(local.liberty)")
+                            row("Punkte", "\(local.score)")
+                            row("Gründerväter", "\(local.foundingFathers.count)")
+                            row("Spielmeldungen", "\(local.modelMessages.count)")
                         }
                         .padding(.vertical, 4)
                     } else {
-                        Text("No local player.")
+                        Text("Kein eigener Spieler.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                 }
             } else {
-                Text("No game loaded.")
+                Text("Kein Spiel geladen.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -80,19 +80,19 @@ struct StatusPanelView: View {
     private func playerTable(game: Game) -> some View {
         let players = state.lobbyPlayers
         if players.isEmpty {
-            Text("No players.")
+            Text("Keine Spieler.")
                 .font(.caption)
                 .foregroundColor(.secondary)
         } else {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 0) {
-                    Text("Player").frame(width: 110, alignment: .leading)
+                    Text("Spieler").frame(width: 110, alignment: .leading)
                     Text("Nation").frame(width: 90, alignment: .leading)
-                    Text("Type").frame(width: 50, alignment: .leading)
+                    Text("Typ").frame(width: 150, alignment: .leading)
                     Text("Gold").frame(width: 60, alignment: .trailing)
-                    Text("Score").frame(width: 50, alignment: .trailing)
-                    Text("Units").frame(width: 45, alignment: .trailing)
-                    Text("Colonies").frame(width: 60, alignment: .trailing)
+                    Text("Punkte").frame(width: 50, alignment: .trailing)
+                    Text("Einheiten").frame(width: 45, alignment: .trailing)
+                    Text("Kolonien").frame(width: 60, alignment: .trailing)
                 }
                 .font(.caption2.bold())
                 .foregroundColor(.secondary)
@@ -107,7 +107,7 @@ struct StatusPanelView: View {
                         Text(short(player.nationId, prefix: "model.nation."))
                             .frame(width: 90, alignment: .leading)
                         Text(playerTypeLabel(player))
-                            .frame(width: 50, alignment: .leading)
+                            .frame(width: 150, alignment: .leading)
                         Text("\(player.gold)")
                             .frame(width: 60, alignment: .trailing)
                         Text("\(player.score)")
@@ -125,10 +125,10 @@ struct StatusPanelView: View {
 
     private func playerTypeLabel(_ player: Player) -> String {
         switch player.playerType {
-        case .indian: return "Native"
-        case .ref: return "REF"
-        case .undead: return "Undead"
-        case .european: return player.ai ? "AI" : "Human"
+        case .indian: return "Ureinwohner"
+        case .ref: return "Königliche Expeditionsstreitkräfte"
+        case .undead: return "Untot"
+        case .european: return player.ai ? "KI" : "Mensch"
         }
     }
 

@@ -465,12 +465,14 @@ final class KeyboardShortcutsManager {
         
         // Try exact match first
         if let shortcut = shortcut(for: key, modifier: modifier) {
+            guard isShortcutEnabled(shortcut) else { return false }
             shortcut.action()
             return true
         }
         
         // Try without modifier if no exact match
         if modifier == .none, let shortcut = shortcut(for: key, modifier: .none) {
+            guard isShortcutEnabled(shortcut) else { return false }
             shortcut.action()
             return true
         }
@@ -501,16 +503,19 @@ final class KeyboardShortcutsManager {
         return modifier
     }
     
-    /// Get all shortcuts that are currently available (enabled)
-    var availableShortcuts: [KeyboardShortcut] {
-        // For now, return all shortcuts
-        // In the future, we can filter based on game state
+    /// All registered shortcuts, including those unavailable in the current context.
+    var registeredShortcuts: [KeyboardShortcut] {
         shortcuts
+    }
+
+    /// Get shortcuts that are currently enabled based on the game state.
+    var availableShortcuts: [KeyboardShortcut] {
+        shortcuts.filter(isShortcutEnabled)
     }
     
     /// Check if a shortcut is currently enabled based on game state
     func isShortcutEnabled(_ shortcut: KeyboardShortcut) -> Bool {
-        guard let state = gameState else { return true }
+        guard let state = gameState, state.pendingServerDecision == nil else { return false }
         
         // Check based on shortcut description/action type
         switch (shortcut.category, shortcut.description) {
@@ -548,29 +553,27 @@ final class KeyboardShortcutsManager {
     
     /// Zoom map in/out
     func zoomMap(in zoomIn: Bool) {
-        // This would need implementation to zoom the map
-        gameState?.statusMessage = zoomIn ? "Hineinzoomen" : "Herauszoomen"
+        gameState?.zoomMap(in: zoomIn)
     }
     
     /// Reset map zoom to default
     func resetMapZoom() {
-        // This would need implementation
-        gameState?.statusMessage = "Zoom zurückgesetzt"
+        gameState?.resetMapZoom()
     }
     
     /// Show reports panel
     func showReports() {
-        gameState?.requestedReport = .turn
+        gameState?.showReports()
     }
     
     /// Show chat panel
     func showChat() {
-        // This would need implementation
+        gameState?.showChat()
     }
     
     /// Toggle find settlement panel
     func toggleFindSettlement() {
-        // This would need implementation
+        gameState?.toggleFindSettlement()
     }
     
     /// Prompt to save game

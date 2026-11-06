@@ -271,3 +271,4 @@ Verzeichnisse und standardmäßig Port 3559; ein belegter Port führt zum Abbruc
 - `Docs/Plans/plans.md` — Gesamtplanung und Phasenprotokoll
 - `Docs/Plans/freecol-client-roadmap.md` — Roadmap
 - `Docs/Plans/phase90-recruitment-immigration-e2e-plan.md` — Beispiel für die korrigierten Wire-Formate
+- `Docs/Plans/ui-ux-improvement-plan.md` — aktualisierte UI-Bestandsaufnahme und offene UI/UX-Arbeiten für Phasen 109–114

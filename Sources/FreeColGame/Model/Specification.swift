@@ -167,10 +167,16 @@ public struct BuildingTypeInfo: @unchecked Sendable {
     public var extendsId: String?
     /// Goods required to construct this building, keyed by goods type id.
     public var requiredGoods: [String: Int]
-    /// Summed production outputs across `<production>` blocks, keyed by goods type id.
+    /// Effective outputs: attended blocks when present, otherwise unattended.
     public var productionOutputs: [String: Int]
-    /// Summed production inputs across `<production>` blocks, keyed by goods type id.
+    /// Effective inputs: attended blocks when present, otherwise unattended.
     public var productionInputs: [String: Int]
+    /// Attended production blocks, retained for assignment-aware estimates.
+    public var attendedProductionOutputs: [String: Int]
+    public var attendedProductionInputs: [String: Int]
+    /// Unattended production blocks, which may run with no assigned worker.
+    public var unattendedProductionOutputs: [String: Int]
+    public var unattendedProductionInputs: [String: Int]
 
     public init(id: String,
                 upkeep: Int,
@@ -179,7 +185,11 @@ public struct BuildingTypeInfo: @unchecked Sendable {
                 extendsId: String?,
                 requiredGoods: [String: Int] = [:],
                 productionOutputs: [String: Int] = [:],
-                productionInputs: [String: Int] = [:]) {
+                productionInputs: [String: Int] = [:],
+                attendedProductionOutputs: [String: Int] = [:],
+                attendedProductionInputs: [String: Int] = [:],
+                unattendedProductionOutputs: [String: Int] = [:],
+                unattendedProductionInputs: [String: Int] = [:]) {
         self.id = id
         self.upkeep = upkeep
         self.requiredPopulation = requiredPopulation
@@ -188,6 +198,10 @@ public struct BuildingTypeInfo: @unchecked Sendable {
         self.requiredGoods = requiredGoods
         self.productionOutputs = productionOutputs
         self.productionInputs = productionInputs
+        self.attendedProductionOutputs = attendedProductionOutputs
+        self.attendedProductionInputs = attendedProductionInputs
+        self.unattendedProductionOutputs = unattendedProductionOutputs
+        self.unattendedProductionInputs = unattendedProductionInputs
     }
 
     /// Display name derived from the id (`model.building.townHall` → `townHall`).
@@ -549,7 +563,11 @@ public final class Specification: @unchecked Sendable {
                     extendsId: child.attributes["extends"],
                     requiredGoods: requiredGoods,
                     productionOutputs: outputs,
-                    productionInputs: inputs
+                    productionInputs: inputs,
+                    attendedProductionOutputs: attendedOutputs,
+                    attendedProductionInputs: attendedInputs,
+                    unattendedProductionOutputs: unattendedOutputs,
+                    unattendedProductionInputs: unattendedInputs
                 )
             }
             collectBuildingTypes(from: child)
