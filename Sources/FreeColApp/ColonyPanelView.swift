@@ -32,11 +32,14 @@ struct ColonyPanelView: View {
     let selectedCarrierId: String?
     let onLoadGoods: (String, Int) -> Void
     let onUnloadGoods: (String, Int) -> Void
+    let maximumLoadAmount: (String) -> Int
+    let maximumUnloadAmount: (String) -> Int
     let buildableCandidates: [(id: String, label: String)]
     let buildings: [(id: String, label: String)]
     let currentBuildQueue: [String]
     let buildingLabel: (String) -> String
     let storedGoods: [(id: String, label: String, amount: Int)]
+    let carrierGoods: [(id: String, label: String, amount: Int)]
     let buildTargetLabel: String?
     let buildRequirements: [(id: String, label: String, required: Int, stored: Int)]
     let buildETATurns: Int?
@@ -94,11 +97,14 @@ struct ColonyPanelView: View {
         selectedCarrierId: String?,
         onLoadGoods: @escaping (String, Int) -> Void,
         onUnloadGoods: @escaping (String, Int) -> Void,
+        maximumLoadAmount: @escaping (String) -> Int = { _ in 0 },
+        maximumUnloadAmount: @escaping (String) -> Int = { _ in 0 },
         buildableCandidates: [(id: String, label: String)] = [],
         buildings: [(id: String, label: String)] = [],
         currentBuildQueue: [String] = [],
         buildingLabel: @escaping (String) -> String = { $0 },
         storedGoods: [(id: String, label: String, amount: Int)] = [],
+        carrierGoods: [(id: String, label: String, amount: Int)] = [],
         buildTargetLabel: String? = nil,
         buildRequirements: [(id: String, label: String, required: Int, stored: Int)] = [],
         buildETATurns: Int? = nil,
@@ -136,11 +142,14 @@ struct ColonyPanelView: View {
         self.selectedCarrierId = selectedCarrierId
         self.onLoadGoods = onLoadGoods
         self.onUnloadGoods = onUnloadGoods
+        self.maximumLoadAmount = maximumLoadAmount
+        self.maximumUnloadAmount = maximumUnloadAmount
         self.buildableCandidates = buildableCandidates
         self.buildings = buildings
         self.currentBuildQueue = currentBuildQueue
         self.buildingLabel = buildingLabel
         self.storedGoods = storedGoods
+        self.carrierGoods = carrierGoods
         self.buildTargetLabel = buildTargetLabel
         self.buildRequirements = buildRequirements
         self.buildETATurns = buildETATurns
@@ -613,6 +622,23 @@ struct ColonyPanelView: View {
                             .font(.caption2)
                             .foregroundColor(.secondary)
 
+                        Text("Waren an Bord")
+                            .font(.caption.bold())
+                        if selectedCarrierId == nil {
+                            Text("Kein Transporter ausgewählt.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else if carrierGoods.isEmpty {
+                            Text("Keine Waren an Bord.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(carrierGoods, id: \.id) { item in
+                                LabeledContent(item.label, value: "\(item.amount)")
+                                    .font(.caption)
+                            }
+                        }
+
                         Picker("Ware", selection: $goodsTypeId) {
                             ForEach(goodsCandidates, id: \.id) { candidate in
                                 Text(GameLabels.name(candidate.id)).tag(candidate.id)
@@ -620,6 +646,22 @@ struct ColonyPanelView: View {
                         }
                         TextField("Menge", text: $goodsAmountInput)
                             .textFieldStyle(.roundedBorder)
+
+                        HStack {
+                            Button("Max laden") {
+                                goodsAmountInput = String(maximumLoadAmount(goodsTypeId))
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(!canManage || selectedCarrierId == nil
+                                      || maximumLoadAmount(goodsTypeId) <= 0)
+
+                            Button("Max entladen") {
+                                goodsAmountInput = String(maximumUnloadAmount(goodsTypeId))
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(!canManage || selectedCarrierId == nil
+                                      || maximumUnloadAmount(goodsTypeId) <= 0)
+                        }
 
                         Button("Waren laden") {
                             let amount = Int(goodsAmountInput) ?? 0

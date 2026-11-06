@@ -266,11 +266,18 @@ struct GameView: View {
                         onUnloadGoods: { typeId, amount in
                             state.unloadGoodsFromSelectedCarrier(typeId: typeId, amount: amount)
                         },
+                        maximumLoadAmount: { typeId in
+                            state.maximumGoodsLoadAmountForSelectedColony(typeId: typeId)
+                        },
+                        maximumUnloadAmount: { typeId in
+                            state.maximumGoodsUnloadAmountFromSelectedCarrier(typeId: typeId)
+                        },
                         buildableCandidates: state.selectedColonyBuildableCandidates,
                         buildings: state.selectedColonyBuildings,
                         currentBuildQueue: state.selectedColonyBuildQueue,
                         buildingLabel: { state.buildingDisplayName($0) },
                         storedGoods: state.selectedColonyStoredGoods,
+                        carrierGoods: state.selectedColonyCarrierGoods,
                         buildTargetLabel: state.selectedColonyBuildTarget?.label,
                         buildRequirements: state.selectedColonyBuildRequirements,
                         buildETATurns: state.selectedColonyEstimatedBuildTurns,
@@ -577,7 +584,8 @@ struct GameView: View {
                                 canChoose: state.canRespondToPendingDecision(),
                                 onChoose: state.choosePendingFoundingFather
                             )
-                            .frame(width: max(0, min(720, geometry.size.width - 32)))
+                            .frame(width: max(0, geometry.size.width - 32),
+                                   height: max(360, geometry.size.height - 32))
                         case .nativeTrade where showNativeTrade:
                             NativeTradeView()
                                 .frame(width: max(460, min(760, geometry.size.width - 32)))
@@ -905,8 +913,8 @@ struct GameView: View {
                         Button("Befehle löschen (⇧C)") { state.clearSelectedUnitOrders() }
                             .disabled(!state.canClearSelectedUnitOrders)
                         if state.showsEuropeTravelOrder {
-                            Button("Nach Europa") { state.sendSelectedUnitToEurope() }
-                                .disabled(!state.canSendSelectedUnitToEurope)
+                            Button("Gehe nach Europa") { state.goSelectedShipToEurope() }
+                                .disabled(!state.canGoSelectedShipToEurope)
                         }
                         Divider()
                         Button("Einheit auflösen…", role: .destructive) {
@@ -1001,6 +1009,18 @@ struct GameView: View {
                     if state.canEquipSelectedUnitForRole {
                         Button("Als Missionar ausrüsten") {
                             state.equipSelectedUnitForRole("model.role.missionary", count: 1)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    if state.canEquipSelectedUnitAsPioneer {
+                        Button(state.selectedUnit?.role == "model.role.pioneer"
+                               ? "Pionier-Werkzeuge nachrüsten (+\(state.pioneerToolsPerRoleCount))"
+                               : "Als Pionier ausrüsten (\(state.pioneerToolsPerRoleCount) Werkzeuge)") {
+                            state.equipSelectedUnitForRole(
+                                "model.role.pioneer",
+                                count: state.selectedUnitPioneerEquipmentCount
+                            )
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }

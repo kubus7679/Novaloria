@@ -214,13 +214,23 @@ final class NewGameTests: XCTestCase {
         let launch = try JavaServerLaunch.prepare(configuration: config, java: URL(fileURLWithPath: "/usr/bin/false"),
                                                   port: 34567, name: "A & B; $(false)", seed: "42",
                                                   root: directory.appendingPathComponent("games"))
-        XCTAssertEqual(try String(contentsOf: launch.optionsFile), try config.specificationXML())
+        XCTAssertEqual(try String(contentsOf: XCTUnwrap(launch.optionsFile)), try config.specificationXML())
         XCTAssertEqual(try Data(contentsOf: source), before)
         XCTAssertEqual(launch.arguments[try XCTUnwrap(launch.arguments.firstIndex(of: "--server-name")) + 1], "A & B; $(false)")
         XCTAssertTrue(launch.arguments.contains("--private"))
         XCTAssertTrue(launch.arguments.contains("127.0.0.1"))
         let spec = launch.directory.appendingPathComponent("freecol-data/rules/\(NewGameConfiguration.rulesID)/specification.xml")
         XCTAssertEqual(spec.resolvingSymlinksInPath(), launch.optionsFile)
+        let savegame = directory.appendingPathComponent("autosave.fsg")
+        try Data("save".utf8).write(to: savegame)
+        let saveLaunch = try JavaServerLaunch.prepareSavegame(savegame, installation: directory, java: launch.executable,
+                                                              port: 34568, name: "Geladen", root: directory.appendingPathComponent("games"))
+        XCTAssertNil(saveLaunch.optionsFile)
+        XCTAssertEqual(saveLaunch.arguments.suffix(2), ["--load-savegame", saveLaunch.directory.appendingPathComponent("savegame.fsg").path])
+        XCTAssertFalse(saveLaunch.arguments.contains("--rules"))
+        XCTAssertEqual(try Data(contentsOf: saveLaunch.directory.appendingPathComponent("savegame.fsg")), Data("save".utf8))
+        XCTAssertThrowsError(try JavaServerLaunch.prepareSavegame(directory.appendingPathComponent("notes.txt"), installation: directory,
+                                                                  java: launch.executable, port: 34568, name: "", root: directory))
         let manifest = try JSONSerialization.jsonObject(with: Data(contentsOf: launch.directory.appendingPathComponent("launch-arguments.json")))
         XCTAssertEqual(manifest as? [String], [launch.executable.path] + launch.arguments)
         for invalidPort in [0, 65536] {

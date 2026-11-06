@@ -481,6 +481,7 @@ final class GameState {
     private var javaServerStartID: UUID?
     private var connectionAttemptID: UUID?
     private(set) var hostedGameDirectory: URL?
+    private(set) var hostedSavegameName: String?
     var usesLocalServer: Bool { server != nil }
     private var messageLoopTask: Task<Void, Never>?
     private var localServerTask: Task<Void, Never>?
@@ -501,6 +502,7 @@ final class GameState {
     private(set) var movingUnitId: String?
     private var movementTask: Task<Void, Never>?
     private var movementAttempts: [String: Int] = [:]
+    private var europeTravelOrders: Set<String> = []
     var isReadyToStart: Bool = false
     var localPlayerName: String?
     private var remoteHost: String?
@@ -1226,10 +1228,16 @@ final class GameState {
         }
         return game.units.values
             .filter {
-                $0.id != selectedUnit.id
-                && $0.owner == localPlayerId
-                && $0.location == selectedTile
-                && isLikelyCarrier($0, in: game)
+                guard $0.id != selectedUnit.id,
+                      $0.owner == localPlayerId,
+                      let carrierLocation = $0.location,
+                      isLikelyCarrier($0, in: game) else {
+                    return false
+                }
+                return carrierLocation == selectedTile
+                    || (game.tiles[selectedTile] != nil
+                        && game.tiles[carrierLocation] != nil
+                        && attackDirection(fromTileId: selectedTile, toTileId: carrierLocation, in: game) != nil)
             }
             .sorted { $0.id < $1.id }
     }
@@ -1542,15 +1550,33 @@ final class GameState {
         guard phase == .disconnected || phase == .lobby else {
             throw NewGameError.invalid("Eine neue Partie kann nur außerhalb eines laufenden Spiels erstellt werden.")
         }
-        let root = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
-                                              appropriateFor: nil, create: true)
-            .appendingPathComponent("FreeColClient/Games")
         let launch = try JavaServerLaunch.prepare(configuration: configuration, java: java, port: port,
-                                                 name: name, seed: seed, root: root)
+                                                 name: name, seed: seed, root: try hostedGamesRoot())
+        startHostedServer(launch, savegameName: nil)
+    }
+
+    func loadJavaSavegame(_ savegame: URL, installation: URL, java: URL, port: Int, name: String) throws {
+        guard phase == .disconnected || phase == .lobby else {
+            throw NewGameError.invalid("Ein Spielstand kann nur außerhalb eines laufenden Spiels geladen werden.")
+        }
+        let launch = try JavaServerLaunch.prepareSavegame(savegame, installation: installation, java: java,
+                                                         port: port, name: name, root: try hostedGamesRoot())
+        startHostedServer(launch, savegameName: savegame.deletingPathExtension().lastPathComponent)
+    }
+
+    private func hostedGamesRoot() throws -> URL {
+        try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
+                                    appropriateFor: nil, create: true)
+            .appendingPathComponent("FreeColClient/Games")
+    }
+
+    private func startHostedServer(_ launch: JavaServerLaunch, savegameName: String?) {
+        let port = launch.port
         let previousServer = javaServer
         if phase == .lobby { disconnect() }
         resetSessionState()
         hostedGameDirectory = launch.directory
+        hostedSavegameName = savegameName
         let server = LocalJavaServer()
         javaServer = server
         server.onUnexpectedExit = { [weak self] message in
@@ -1590,6 +1616,7 @@ final class GameState {
         javaServerStartTask = nil
         javaServer?.stop()
         javaServer = nil
+        hostedSavegameName = nil
     }
 
     func connect(host: String, port: Int) {
@@ -1648,6 +1675,8 @@ final class GameState {
                 let result = try await client.login(userName: userName, nationId: nationId)
                 cachedGame = await client.game
                 applyLoginResult(result)
+                // The server ignores the nationId of the login and assigns the first vacant nation.
+                if result.nationId != nationId { setLocalPlayerNation(nationId) }
                 statusMessage = ""
                 startMessageLoop(client: client, server: nil)
             } catch {
@@ -2806,6 +2835,7 @@ final class GameState {
 
     private func resetSessionState() {
         movementAttempts.removeAll()
+        europeTravelOrders.removeAll()
         saveRequestID = nil
         movementTask?.cancel()
         movementTask = nil
@@ -2900,7 +2930,11 @@ final class GameState {
 
         errorMessage = nil
         let previousNationId = localNationId
+        let previousPlayerNationId = cachedGame?.players[playerId]?.nationId
         localNationId = trimmedNationId
+        // The server does not echo setNation to its sender, so the local model is updated here.
+        try? cachedGame?.applyPlayerChange(tag: "setNation", attributes: ["player": playerId, "value": trimmedNationId])
+        gameUpdateID += 1
 
         Task {
             do {
@@ -2912,6 +2946,10 @@ final class GameState {
                 try await client?.send(message: msg)
             } catch {
                 localNationId = previousNationId
+                if let previousPlayerNationId {
+                    try? cachedGame?.applyPlayerChange(tag: "setNation", attributes: ["player": playerId, "value": previousPlayerNationId])
+                }
+                gameUpdateID += 1
                 errorMessage = ServerErrorMessage.description(for: error)
             }
         }
@@ -3694,6 +3732,7 @@ final class GameState {
 
     private func startMovingSelectedUnit(to destinationTileId: String) {
         guard let unitId = selectedUnitId else { return }
+        europeTravelOrders.remove(unitId)
         startMovingUnit(unitId, to: destinationTileId)
     }
 
@@ -3702,8 +3741,9 @@ final class GameState {
         errorMessage = nil
         movingUnitId = unitId
         movementAttempts[unitId] = game.turn.number
+        let sendsToEurope = europeTravelOrders.contains(unitId)
         let storesDestination = game.units[unitId].map { unit in
-            unit.destination == destinationTileId
+            sendsToEurope || unit.destination == destinationTileId
                 || resolveUnitTileId(unit, in: game).map {
                     attackDirection(fromTileId: $0, toTileId: destinationTileId, in: game) == nil
                 } == true
@@ -3752,7 +3792,23 @@ final class GameState {
                         selectedTileId = resolveUnitTileId(moved, in: game)
                     }
                 }
-                if storesDestination, cachedGame === game, let unit = game.units[unitId],
+                if sendsToEurope, cachedGame === game,
+                   let unit = game.units[unitId],
+                   resolveUnitTileId(unit, in: game) == destinationTileId,
+                   game.tiles[destinationTileId]?.moveToEurope == true,
+                   let europeId = localPlayer?.europe?.id {
+                    try await sendCoreGameplayAction(
+                        Self.moveToMessage(unitId: unitId, destinationId: europeId),
+                        queueIfDisconnected: false
+                    )
+                    if server != nil {
+                        game.setUnitDestination(unitId: unitId, destinationId: europeId)
+                        gameUpdateID += 1
+                    }
+                    europeTravelOrders.remove(unitId)
+                    statusMessage = "Segelt nach Europa."
+                }
+                if storesDestination, !sendsToEurope, cachedGame === game, let unit = game.units[unitId],
                    resolveUnitTileId(unit, in: game) == destinationTileId {
                     try await sendCoreGameplayAction(ParsedMessage(
                         tag: "setDestination", attributes: ["unit": unitId], children: []
@@ -3863,9 +3919,12 @@ final class GameState {
               !isNavalUnit(unit),
               let unitLoc = unit.location,
               let carrierLoc = carrier.location,
-              unitLoc == carrierLoc,
-                            unit.id != carrier.id,
-                            isCarrierUnit(carrier),
+              unit.id != carrier.id,
+              isCarrierUnit(carrier) else {
+            return false
+        }
+        let direction = unitLoc == carrierLoc ? nil : attackDirection(fromTileId: unitLoc, toTileId: carrierLoc, in: game)
+        guard unitLoc == carrierLoc || (direction != nil && unit.movesLeft > 0),
               game.tiles[unitLoc] != nil || localPlayer?.europe?.id == unitLoc else {
             return false
         }
@@ -3894,15 +3953,18 @@ final class GameState {
             do {
                 let msg = ParsedMessage(
                     tag: "embark",
-                    attributes: ["unit": unitId, "carrier": carrierId],
+                    attributes: embarkAttributes(unitId: unitId, carrierId: carrierId, in: game),
                     children: []
                 )
                 try await sendCoreGameplayAction(msg, queueIfDisconnected: false)
                 guard cachedGame === game else { return }
-                if usesLocalServer {
-                    game.embarkUnit(unitId: unitId, carrierId: carrierId)
-                    gameUpdateID += 1
-                }
+                // Java replies to an embark-from-adjacent-tile with an
+                // animateMove to the carrier's tile, not a passenger location
+                // update. Reconcile that animation to the requested carrier
+                // after the server confirms the action, or the passenger is
+                // left as a separate unit on the ship's map tile.
+                game.embarkUnit(unitId: unitId, carrierId: carrierId)
+                gameUpdateID += 1
                 guard game.units[unitId]?.location == carrierId else {
                     throw UserFacingActionError(message: "Der Server hat das Einschiffen nicht bestätigt.")
                 }
@@ -3912,6 +3974,17 @@ final class GameState {
                 errorMessage = ServerErrorMessage.description(for: error)
             }
         }
+    }
+
+    private func embarkAttributes(unitId: String, carrierId: String, in game: Game) -> [String: String] {
+        var attributes = ["unit": unitId, "carrier": carrierId]
+        if let unitLocation = game.units[unitId]?.location,
+           let carrierLocation = game.units[carrierId]?.location,
+           unitLocation != carrierLocation,
+           let direction = attackDirection(fromTileId: unitLocation, toTileId: carrierLocation, in: game) {
+            attributes["direction"] = direction
+        }
+        return attributes
     }
 
     func disembarkSelectedUnit() {
@@ -4056,6 +4129,7 @@ final class GameState {
 
     private func updateMovementOrders(_ unitId: String, destination: String?, activate: Bool, in game: Game) {
         errorMessage = nil
+        europeTravelOrders.remove(unitId)
         movingUnitId = unitId
         movementAttempts[unitId] = game.turn.number
         Task {
@@ -4175,7 +4249,8 @@ final class GameState {
     var unitsAwaitingOrders: [FreeColGame.Unit] {
         guard let game = cachedGame else { return [] }
         return cyclingLocalUnits.filter {
-            $0.movesLeft > 0 && $0.state == .active && game.resolvedTileId(for: $0) != nil
+            $0.movesLeft > 0 && $0.state == .active && $0.destination == nil
+                && game.resolvedTileId(for: $0) != nil
         }
     }
 
@@ -4240,6 +4315,76 @@ final class GameState {
         }
     }
 
+    /// Whether the selected ship can reach a high-seas exit and travel to Europe.
+    var canGoSelectedShipToEurope: Bool {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              movingUnitId == nil,
+              !isSavingGame,
+              !isEndingTurn,
+              let game = cachedGame,
+              let unitId = selectedUnitId,
+              let unit = game.units[unitId],
+              let localPlayerId = resolveLocalPlayerId(),
+              unit.owner == localPlayerId,
+              isNavalUnit(unit),
+              canIssueMovementOrders(for: unit, in: game),
+              let source = resolveUnitTileId(unit, in: game),
+              game.tiles[source] != nil,
+              localPlayer?.europe?.id != nil else {
+            return false
+        }
+        return nearestEuropeExit(from: source, for: unit, in: game) != nil
+    }
+
+    /// Route the selected ship to its nearest reachable high-seas exit, then send it to Europe.
+    func goSelectedShipToEurope() {
+        guard canGoSelectedShipToEurope,
+              let unitId = selectedUnitId,
+              let unit = selectedUnit,
+              let game = cachedGame,
+              let source = resolveUnitTileId(unit, in: game),
+              let exit = nearestEuropeExit(from: source, for: unit, in: game) else {
+            errorMessage = "Kein befahrbarer Weg zu einem Hochsee-Ausfahrtsfeld nach Europa gefunden."
+            return
+        }
+        errorMessage = nil
+        europeTravelOrders.insert(unitId)
+        startMovingUnit(unitId, to: exit)
+    }
+
+    /// Breadth-first search to the nearest traversable tile that leads to Europe.
+    private func nearestEuropeExit(from source: String, for unit: FreeColGame.Unit, in game: Game) -> String? {
+        guard game.tiles[source] != nil else { return nil }
+        var queue = [source]
+        var head = 0
+        var visited: Set<String> = [source]
+
+        while head < queue.count {
+            let current = queue[head]
+            head += 1
+            if game.tiles[current]?.moveToEurope == true { return current }
+
+            for neighbor in game.neighborTileIds(of: current) where !visited.contains(neighbor) {
+                guard canNavalUnitTraverse(unit, to: neighbor, in: game) else { continue }
+                visited.insert(neighbor)
+                queue.append(neighbor)
+            }
+        }
+        return nil
+    }
+
+    private func canNavalUnitTraverse(_ unit: FreeColGame.Unit, to tileId: String, in game: Game) -> Bool {
+        guard let tile = game.tiles[tileId], tile.type != nil,
+              let owner = unit.owner,
+              !hasHostileUnit(onTile: tileId, in: game, friendlyOwner: owner),
+              !game.colonies.values.contains(where: { $0.tileId == tileId && $0.owner != owner }) else {
+            return false
+        }
+        return isWaterTile(tile, in: game)
+            || game.colonies.values.contains { $0.tileId == tileId && $0.owner == owner }
+    }
+
     func canSendShipToAmerica(_ unitId: String) -> Bool {
         guard phase == .inGame, isLocalPlayersTurn, !usesLocalServer,
               !isSavingGame, !isEndingTurn, movingUnitId == nil,
@@ -4291,10 +4436,15 @@ final class GameState {
     var selectedUnitImprovementCandidates: [(id: String, label: String)] {
         guard let game = cachedGame, let specification = game.specification,
               let unit = selectedUnit, canUnitWorkInColony(unit),
-              let location = unit.location, game.tiles[location] != nil else { return [] }
+              let location = unit.location, let tile = game.tiles[location] else { return [] }
         return specification.improvementTypes.values
-            .filter {
-                !$0.isNatural && ($0.requiredRole.map { $0 == unit.role }
+            .filter { improvement in
+                !improvement.isNatural
+                    && (improvement.expendedAmount == 0 || unit.roleCount >= improvement.expendedAmount)
+                    && !tile.improvements.contains {
+                        $0.type == improvement.id && $0.turns == 0
+                    }
+                    && (improvement.requiredRole.map { $0 == unit.role }
                     ?? (unit.role == "model.role.pioneer"
                         || specification.effectiveAbility(unitTypeId: unit.unitType ?? "",
                             abilityId: "model.ability.improveTerrain") == true))
@@ -4306,6 +4456,23 @@ final class GameState {
     /// Pioneer improvements available in the colony worker controls.
     var selectedColonyWorkImprovementCandidates: [(id: String, label: String)] {
         selectedUnitImprovementCandidates
+    }
+
+    /// Raw tools consumed when the selected improvement completes.
+    func selectedUnitImprovementToolCost(for improvementTypeId: String) -> Int {
+        guard let specification = cachedGame?.specification,
+              let improvement = specification.improvementTypes[improvementTypeId] else { return 0 }
+        let roleId = improvement.requiredRole
+            ?? (selectedUnit?.role == "model.role.pioneer" ? "model.role.pioneer" : nil)
+        guard let roleId else { return 0 }
+        let toolsPerRoleCount = specification.roleTypes[roleId]?
+            .requiredGoods["model.goods.tools"] ?? 20
+        return improvement.expendedAmount * toolsPerRoleCount
+    }
+
+    var pioneerToolsPerRoleCount: Int {
+        cachedGame?.specification?.roleTypes["model.role.pioneer"]?
+            .requiredGoods["model.goods.tools"] ?? 20
     }
 
     var canChangeSelectedUnitWorkImprovement: Bool {
@@ -5086,6 +5253,50 @@ final class GameState {
         }
     }
 
+    /// Maximum amount of one goods type that can be loaded from the selected colony.
+    /// A goods stack uses one cargo slot per 100 units; an existing partial stack
+    /// can be filled before another slot is needed.
+    func maximumGoodsLoadAmountForSelectedColony(typeId: String) -> Int {
+        guard !typeId.isEmpty,
+              let colony = selectedColony,
+              let carrierId = selectedColonyCarrierId,
+              let carrier = cachedGame?.units[carrierId],
+              let game = cachedGame,
+              let specification = game.specification,
+              let carrierTypeId = carrier.unitType,
+              specification.hasAbility("model.ability.carryGoods", unitType: carrierTypeId),
+              let cargoCapacity = specification.unitTypes[carrierTypeId]?.cargoSpace else {
+            return 0
+        }
+
+        let availableGoods = max(0, colony.goods[typeId] ?? 0)
+        guard availableGoods > 0 else { return 0 }
+        let carriedUnitSpace = game.units.values
+            .filter { $0.location == carrierId }
+            .reduce(0) { total, cargoUnit in
+                total + (cargoUnit.unitType.flatMap {
+                    specification.unitTypes[$0]?.spaceTakenOnCarrier
+                } ?? 1)
+            }
+        let loadableAmount = Self.loadableGoodsAmount(
+            cargoCapacity: cargoCapacity,
+            goodsAmounts: Array(carrier.goods.values),
+            carriedUnitSpace: carriedUnitSpace,
+            selectedGoodsAmount: carrier.goods[typeId] ?? 0
+        )
+        return min(availableGoods, loadableAmount)
+    }
+
+    /// All goods of the selected type currently carried by the selected transporter.
+    func maximumGoodsUnloadAmountFromSelectedCarrier(typeId: String) -> Int {
+        guard !typeId.isEmpty,
+              let carrierId = selectedColonyCarrierId,
+              let carrier = cachedGame?.units[carrierId] else {
+            return 0
+        }
+        return max(0, carrier.goods[typeId] ?? 0)
+    }
+
     func loadGoodsForSelectedColony(typeId: String, amount: Int) {
         let trimmedType = typeId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedType.isEmpty else {
@@ -5117,7 +5328,7 @@ final class GameState {
                     ],
                     children: []
                 )
-                try await client?.send(message: msg)
+                try await sendCoreGameplayAction(msg, queueIfDisconnected: false)
             } catch {
                 errorMessage = ServerErrorMessage.description(for: error)
             }
@@ -5153,7 +5364,7 @@ final class GameState {
                     ],
                     children: []
                 )
-                try await client?.send(message: msg)
+                try await sendCoreGameplayAction(msg, queueIfDisconnected: false)
             } catch {
                 errorMessage = ServerErrorMessage.description(for: error)
             }
@@ -5399,10 +5610,9 @@ final class GameState {
     }
 
     func equipSelectedUnitForRole(_ roleId: String, count: Int) {
-        guard roleId == "model.role.missionary", count == 1,
-              canEquipSelectedUnitForRole,
+        guard canEquipSelectedUnit(forRole: roleId, count: count),
               let unitId = selectedUnitId else {
-            errorMessage = "Unit kann diese Rolle nicht annehmen."
+            errorMessage = "Einheit kann diese Rolle mit der verfügbaren Ausrüstung nicht annehmen."
             return
         }
         errorMessage = nil
@@ -5458,6 +5668,19 @@ final class GameState {
     }
 
     var canEquipSelectedUnitForRole: Bool {
+        canEquipSelectedUnit(forRole: "model.role.missionary", count: 1)
+    }
+
+    var selectedUnitPioneerEquipmentCount: Int {
+        guard let unit = selectedUnit, unit.role == "model.role.pioneer" else { return 1 }
+        return unit.roleCount + 1
+    }
+
+    var canEquipSelectedUnitAsPioneer: Bool {
+        canEquipSelectedUnit(forRole: "model.role.pioneer", count: selectedUnitPioneerEquipmentCount)
+    }
+
+    func canEquipSelectedUnit(forRole roleId: String, count: Int) -> Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,
               let game = cachedGame,
@@ -5466,22 +5689,83 @@ final class GameState {
               let localPlayerId = resolveLocalPlayerId(),
               unit.owner == localPlayerId,
               canUnitWorkInColony(unit),
-              unit.role != "model.role.missionary" else {
+              count > 0 else {
             return false
         }
-        if game.specification?.effectiveAbility(unitTypeId: unit.unitType ?? "",
-                                                abilityId: "model.ability.canBeEquipped") == false {
+
+        guard roleId == "model.role.missionary" || roleId == "model.role.pioneer",
+              unit.role != roleId || roleId == "model.role.pioneer",
+              let specification = game.specification else {
             return false
         }
-        if unit.location == localPlayer?.europe?.id { return true }
+
+        let roleInfo = specification.roleTypes[roleId]
+        let maximumCount = roleInfo?.maximumCount ?? (roleId == "model.role.pioneer" ? 5 : 1)
+        guard count <= maximumCount else { return false }
+        if let unitType = unit.unitType {
+            if specification.effectiveAbility(unitTypeId: unitType,
+                                              abilityId: "model.ability.canBeEquipped") == false {
+                return false
+            }
+            for (abilityId, expectedValue) in roleInfo?.requiredAbilities ?? [:] {
+                let actualValue = specification.effectiveAbility(unitTypeId: unitType,
+                                                                 abilityId: abilityId) ?? false
+                if actualValue != expectedValue { return false }
+            }
+        } else if !(roleInfo?.requiredAbilities.isEmpty ?? true) {
+            return false
+        }
+
+        let goodsDelta = Self.roleEquipmentGoodsDelta(unit: unit,
+                                                      targetRoleId: roleId,
+                                                      targetCount: count,
+                                                      roleTypes: specification.roleTypes)
+        let neededGoods = goodsDelta.filter { $0.value > 0 }
+
+        if unit.location == localPlayer?.europe?.id {
+            guard let player = game.players[localPlayerId] else { return false }
+            var totalCost = 0
+            for (goodsType, amount) in neededGoods {
+                guard let marketData = player.market?.entry(for: goodsType),
+                      marketData.arrears <= 0 else { return false }
+                let price = MarketPricing.prices(for: marketData, specification: specification).costToBuy
+                guard price > 0 else { return false }
+                totalCost += amount * price
+            }
+            return player.gold >= totalCost
+        }
+
         guard let tileId = resolveUnitTileId(unit, in: game),
               let colony = game.colonies.values.first(where: {
                   $0.tileId == tileId && $0.owner == localPlayerId
               }) else { return false }
-        return unit.unitType == "model.unit.jesuitMissionary"
-            || colony.buildings.contains {
+
+        if roleId == "model.role.missionary",
+           unit.unitType != "model.unit.jesuitMissionary",
+           !colony.buildings.contains(where: {
                 ["model.building.church", "model.building.cathedral"].contains($0.buildingType ?? "")
-            }
+           }) {
+            return false
+        }
+        return neededGoods.allSatisfy { colony.goods[$0.key, default: 0] >= $0.value }
+    }
+
+    private nonisolated static func roleEquipmentGoodsDelta(
+        unit: FreeColGame.Unit,
+        targetRoleId: String,
+        targetCount: Int,
+        roleTypes: [String: RoleTypeInfo]
+    ) -> [String: Int] {
+        let currentRoleId = unit.role
+        let currentGoods = currentRoleId.flatMap { roleTypes[$0]?.requiredGoods } ?? [:]
+        let targetGoods = roleTypes[targetRoleId]?.requiredGoods ?? [:]
+        var result: [String: Int] = [:]
+        for goodsType in Set(currentGoods.keys).union(targetGoods.keys) {
+            let currentAmount = currentGoods[goodsType, default: 0] * unit.roleCount
+            let targetAmount = targetGoods[goodsType, default: 0] * targetCount
+            result[goodsType] = targetAmount - currentAmount
+        }
+        return result
     }
 
     var canSendMissionaryAction: Bool {

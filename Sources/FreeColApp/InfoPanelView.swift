@@ -120,6 +120,11 @@ struct InfoPanelView: View {
             if unit.roleCount > 0 {
                 detailRow("Ausrüstung", "\(unit.roleCount)")
             }
+            if unit.role == "model.role.pioneer" {
+                let toolsPerRoleCount = state.game?.specification?.roleTypes["model.role.pioneer"]?
+                    .requiredGoods["model.goods.tools"] ?? 20
+                detailRow("Verbleibende Werkzeuge", "\(unit.roleCount * toolsPerRoleCount)")
+            }
             if unit.hitPoints > 0 {
                 detailRow("Trefferpunkte", "\(unit.hitPoints)")
             }

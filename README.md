@@ -50,6 +50,19 @@ enthalten. Beim Trennen oder Beenden der App wird nur der von der App gestartete
 Server beendet. Nicht gespeicherter Spielfortschritt geht dabei verloren.
 Eine bestehende Lobby wird erst nach Bestätigung verlassen.
 
+### Spielstand laden
+
+1. In der Startansicht oder Lobby **Spielstand laden…** öffnen und eine `.fsg`-Datei wählen.
+2. FreeCol-Installation und Java-Programm wie bei einer neuen Partie wählen; beide Angaben werden geteilt.
+3. **Server mit Spielstand starten** kopiert den Spielstand in den Partieordner unter
+   `~/Library/Application Support/FreeColClient/Games/<UUID>/`, startet Java mit `--load-savegame`
+   und verbindet den Client.
+4. Anmelden mit dem exakten Namen eines menschlichen Spielers aus dem Spielstand. Optionen, Karte
+   und Regeln kommen aus dem Spielstand; nach der Anmeldung läuft das Spiel direkt, ohne Lobby und ohne Startknopf.
+   KI-Spieler lassen sich nicht anmelden.
+
+Der Spielstand muss zur Version der gewählten Java-Installation passen.
+
 Gezielter Integrationstest mit einer gebauten Java-Installation:
 
 ```bash

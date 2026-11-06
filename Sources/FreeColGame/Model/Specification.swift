@@ -118,19 +118,43 @@ public struct ImprovementTypeInfo: @unchecked Sendable {
     public var addWorkTurns: Int
     /// Natural improvements (e.g. rivers) cannot be built by pioneers.
     public var isNatural: Bool
+    /// Number of role equipment units expended when the improvement completes.
+    public var expendedAmount: Int
 
     public init(id: String,
                 requiredRole: String?,
                 addWorkTurns: Int,
-                isNatural: Bool) {
+                isNatural: Bool,
+                expendedAmount: Int = 0) {
         self.id = id
         self.requiredRole = requiredRole
         self.addWorkTurns = addWorkTurns
         self.isNatural = isNatural
+        self.expendedAmount = expendedAmount
     }
 
     public var displayName: String {
         id.split(separator: ".").last.map(String.init) ?? id
+    }
+}
+
+/// Parsed equipment requirements for a `<role>` definition.
+public struct RoleTypeInfo: @unchecked Sendable {
+    public var id: String
+    public var maximumCount: Int
+    /// Goods required for each role-count unit, keyed by goods type id.
+    public var requiredGoods: [String: Int]
+    /// Required unit abilities and their expected values.
+    public var requiredAbilities: [String: Bool]
+
+    public init(id: String,
+                maximumCount: Int = 1,
+                requiredGoods: [String: Int] = [:],
+                requiredAbilities: [String: Bool] = [:]) {
+        self.id = id
+        self.maximumCount = maximumCount
+        self.requiredGoods = requiredGoods
+        self.requiredAbilities = requiredAbilities
     }
 }
 
@@ -217,6 +241,8 @@ public final class Specification: @unchecked Sendable {
     public private(set) var tileTypes: [String: TileTypeInfo] = [:]
     /// Pioneer improvement definitions keyed by id (`model.improvement.*`).
     public private(set) var improvementTypes: [String: ImprovementTypeInfo] = [:]
+    /// Unit equipment roles keyed by id (`model.role.*`).
+    public private(set) var roleTypes: [String: RoleTypeInfo] = [:]
 
     public init(parsed: ParsedMessage) {
         id = parsed.attributes["id"]
@@ -227,6 +253,7 @@ public final class Specification: @unchecked Sendable {
         collectBuildingTypes(from: parsed)
         collectTileTypes(from: parsed)
         collectImprovementTypes(from: parsed)
+        collectRoleTypes(from: parsed)
         resolveUnitTypeTraits()
     }
 
@@ -433,10 +460,41 @@ public final class Specification: @unchecked Sendable {
                     id: improvementId,
                     requiredRole: child.attributes["required-role"],
                     addWorkTurns: child.attributes.int("add-work-turns"),
-                    isNatural: child.attributes.bool("natural", default: false)
+                    isNatural: child.attributes.bool("natural", default: false),
+                    expendedAmount: child.attributes.int("expended-amount")
                 )
             }
             collectImprovementTypes(from: child)
+        }
+    }
+
+    private func collectRoleTypes(from node: ParsedMessage) {
+        for child in node.children {
+            if child.tag == "role", let roleId = child.attributes["id"] {
+                var requiredGoods: [String: Int] = [:]
+                var requiredAbilities: [String: Bool] = [:]
+                for requirement in child.children {
+                    switch requirement.tag {
+                    case "required-goods":
+                        if let goodsId = requirement.attributes["id"] {
+                            requiredGoods[goodsId] = requirement.attributes.int("value")
+                        }
+                    case "required-ability":
+                        if let abilityId = requirement.attributes["id"] {
+                            requiredAbilities[abilityId] = requirement.attributes.bool("value", default: true)
+                        }
+                    default:
+                        break
+                    }
+                }
+                roleTypes[roleId] = RoleTypeInfo(
+                    id: roleId,
+                    maximumCount: max(1, child.attributes.int("maximum-count", default: 1)),
+                    requiredGoods: requiredGoods,
+                    requiredAbilities: requiredAbilities
+                )
+            }
+            collectRoleTypes(from: child)
         }
     }
 

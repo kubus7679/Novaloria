@@ -147,8 +147,8 @@ struct GameMenuBar: View {
             }
                 .disabled(!state.canClearSelectedUnitOrders)
             if state.showsEuropeTravelOrder {
-                Button("Nach Europa") { state.sendSelectedUnitToEurope() }
-                    .disabled(!state.canSendSelectedUnitToEurope)
+                Button("Gehe nach Europa") { state.goSelectedShipToEurope() }
+                    .disabled(!state.canGoSelectedShipToEurope)
             }
             Divider()
             commandButton("Nächste Einheit", shortcutDescription: "Nächste Einheit auswählen") {
@@ -175,18 +175,11 @@ struct GameMenuBar: View {
         role: ButtonRole? = nil,
         action: @escaping () -> Void
     ) -> some View {
-        Button(role: role, action: action) {
-            HStack {
-                Text(title)
-                Spacer(minLength: 24)
-                if let shortcut = state.keyboardShortcutsManager?.shortcuts.first(
-                    where: { $0.description == shortcutDescription }
-                ) {
-                    Text(shortcut.fullDisplay)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
+        let shortcut = state.keyboardShortcutsManager?.shortcuts.first(
+            where: { $0.description == shortcutDescription }
+        )
+        let label = shortcut.map { "\(title)    \($0.fullDisplay)" } ?? title
+        return Button(label, role: role, action: action)
     }
 
     // MARK: - Report

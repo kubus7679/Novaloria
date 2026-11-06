@@ -1539,15 +1539,26 @@ final class FreeColProtocolTests: XCTestCase {
         let parsed = try XMLDecoder.decode("""
         <freecol-specification id="spec">
           <tile-improvement-type id="model.improvement.plow"
-                                 required-role="model.role.pioneer" add-work-turns="2"/>
+                                 required-role="model.role.pioneer" add-work-turns="2"
+                                 expended-amount="1"/>
           <tile-improvement-type id="model.improvement.river" natural="true"/>
+          <roles>
+            <role id="model.role.pioneer" maximum-count="5">
+              <required-goods id="model.goods.tools" value="20"/>
+              <required-ability id="model.ability.canBeEquipped" value="true"/>
+            </role>
+          </roles>
         </freecol-specification>
         """)
         let spec = Specification(parsed: parsed)
         XCTAssertEqual(spec.improvementTypes["model.improvement.plow"]?.requiredRole,
                        "model.role.pioneer")
         XCTAssertEqual(spec.improvementTypes["model.improvement.plow"]?.addWorkTurns, 2)
+        XCTAssertEqual(spec.improvementTypes["model.improvement.plow"]?.expendedAmount, 1)
         XCTAssertEqual(spec.improvementTypes["model.improvement.river"]?.isNatural, true)
+        XCTAssertEqual(spec.roleTypes["model.role.pioneer"]?.maximumCount, 5)
+        XCTAssertEqual(spec.roleTypes["model.role.pioneer"]?.requiredGoods["model.goods.tools"], 20)
+        XCTAssertEqual(spec.roleTypes["model.role.pioneer"]?.requiredAbilities["model.ability.canBeEquipped"], true)
     }
 
     func testMoveToMessageShape() {

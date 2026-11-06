@@ -115,6 +115,16 @@ extension GameState {
             .sorted { $0.label < $1.label }
     }
 
+    /// Goods aboard the transporter currently used by the selected colony.
+    var selectedColonyCarrierGoods: [(id: String, label: String, amount: Int)] {
+        guard let carrierId = selectedColonyCarrierId,
+              let carrier = cachedGame?.units[carrierId] else { return [] }
+        return carrier.goods
+            .map { (id: $0.key, label: goodsDisplayName($0.key), amount: $0.value) }
+            .filter { $0.amount > 0 }
+            .sorted { $0.label < $1.label }
+    }
+
     /// First item of the selected colony build queue.
     var selectedColonyBuildTarget: (id: String, label: String)? {
         guard let first = selectedColony?.buildQueue.first else { return nil }

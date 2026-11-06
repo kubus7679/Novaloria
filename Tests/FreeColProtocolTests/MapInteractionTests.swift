@@ -567,9 +567,10 @@ final class MapInteractionTests: XCTestCase {
                 workTypeCandidates: [("model.goods.food", "Nahrung"), ("model.goods.tools", "Werkzeuge")],
                 onAbandonColony: {}, canAbandonColony: false,
                 onSetBuildQueue: { _ in }, onPutOutsideColony: {}, canPutOutsideColony: false,
-                selectedCarrierId: nil, onLoadGoods: { _, _ in }, onUnloadGoods: { _, _ in },
+                selectedCarrierId: "carrier-1", onLoadGoods: { _, _ in }, onUnloadGoods: { _, _ in },
                 buildableCandidates: [("model.building.warehouse", "Lagerhaus")],
                 storedGoods: [("model.goods.food", "Nahrung", 100), ("model.goods.tools", "Werkzeuge", 20)],
+                carrierGoods: [("model.goods.food", "Nahrung", 100), ("model.goods.tools", "Werkzeuge", 40)],
                 buildTargetLabel: "Lagerhaus",
                 section: section
             )
@@ -889,15 +890,17 @@ final class MapInteractionTests: XCTestCase {
                 options: state.pendingFoundingFathers,
                 canChoose: state.canRespondToPendingDecision(),
                 onChoose: { _ in XCTFail("Layout must not choose a candidate.") }
-            ).frame(width: width)
+            ).frame(width: width, height: 588)
             let host = NSHostingView(rootView: panel)
-            host.frame = CGRect(x: 0, y: 0, width: width, height: 220)
+            // The panel uses the minimum-window height after its 16pt margins.
+            host.frame = CGRect(x: 0, y: 0, width: width, height: 620)
             host.layoutSubtreeIfNeeded()
-            XCTAssertEqual(host.fittingSize.height, 220)
+            XCTAssertEqual(host.fittingSize.height, 588)
             XCTAssertLessThanOrEqual(host.fittingSize.width, width)
             let renderer = ImageRenderer(content: panel)
             let image = try XCTUnwrap(renderer.nsImage)
-            XCTAssertEqual(image.size, CGSize(width: width, height: 220))
+            XCTAssertEqual(image.size.width, width)
+            XCTAssertEqual(image.size.height, 588)
         }
 
         let gameHost = NSHostingView(rootView: GameView().environment(state))

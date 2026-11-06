@@ -4,31 +4,89 @@ import FreeColProtocol
 
 struct JavaServerLaunch {
     let directory: URL
-    let optionsFile: URL
+    let optionsFile: URL?
     let executable: URL
     let arguments: [String]
     let port: Int
 
     static func prepare(configuration: NewGameConfiguration, java: URL, port: Int,
                         name: String, seed: String, root: URL) throws -> Self {
+        try validate(java: java, port: port)
+        guard seed.isEmpty || Int64(seed) != nil else {
+            throw NewGameError.invalid("Der Zufallsstartwert muss eine ganze 64-Bit-Zahl sein.")
+        }
+        let xml = try configuration.specificationXML()
+        let fm = FileManager.default
+        let directory = try makeRunDirectory(root: root)
+        let data = try makeDataDirectory(installation: configuration.installation, in: directory)
+        let rules = data.appendingPathComponent("rules")
+        let customRules = rules.appendingPathComponent(NewGameConfiguration.rulesID)
+        try fm.createDirectory(at: customRules, withIntermediateDirectories: true)
+        let optionsFile = directory.appendingPathComponent("game-options.xml")
+        try xml.write(to: optionsFile, atomically: true, encoding: .utf8)
+        try fm.createSymbolicLink(at: customRules.appendingPathComponent("specification.xml"), withDestinationURL: optionsFile)
+        try XMLEncoder.encode(tag: "mod", attributes: ["id": NewGameConfiguration.rulesID])
+            .write(to: customRules.appendingPathComponent("mod.xml"), atomically: true, encoding: .utf8)
+        var arguments = serverArguments(installation: configuration.installation, data: data, directory: directory,
+                                        name: name, port: port,
+                                        rules: ["--rules", NewGameConfiguration.rulesID,
+                                                "--difficulty", configuration.difficulty.argument])
+        if !seed.isEmpty { arguments += ["--seed", seed] }
+        return try finish(directory: directory, optionsFile: optionsFile, java: java, port: port, arguments: arguments)
+    }
+
+    /// Starts the server with a copy of an existing savegame. Options, map and rules come from the savegame.
+    static func prepareSavegame(_ savegame: URL, installation: URL, java: URL, port: Int,
+                                name: String, root: URL) throws -> Self {
+        try validate(java: java, port: port)
+        guard savegame.pathExtension.lowercased() == "fsg" else {
+            throw NewGameError.invalid("Bitte eine Spielstand-Datei mit der Endung .fsg wählen.")
+        }
+        let directory = try makeRunDirectory(root: root)
+        let data = try makeDataDirectory(installation: installation, in: directory)
+        let copy = directory.appendingPathComponent("savegame.fsg")
+        try FileManager.default.copyItem(at: savegame, to: copy)
+        let arguments = serverArguments(installation: installation, data: data, directory: directory,
+                                        name: name, port: port, rules: [])
+            + ["--load-savegame", copy.path]
+        return try finish(directory: directory, optionsFile: nil, java: java, port: port, arguments: arguments)
+    }
+
+    private static func validate(java: URL, port: Int) throws {
         guard (1...65535).contains(port) else {
             throw NewGameError.invalid("Der Serverport muss zwischen 1 und 65535 liegen.")
         }
         guard FileManager.default.isExecutableFile(atPath: java.path) else {
             throw NewGameError.invalid("Die gewählte Java-Datei ist nicht ausführbar.")
         }
-        guard seed.isEmpty || Int64(seed) != nil else {
-            throw NewGameError.invalid("Der Zufallsstartwert muss eine ganze 64-Bit-Zahl sein.")
-        }
-        let xml = try configuration.specificationXML()
+    }
+
+    private static func makeRunDirectory(root: URL) throws -> URL {
         let fm = FileManager.default
         let directory = root.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try fm.createDirectory(at: directory, withIntermediateDirectories: true)
         try fm.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path)
+        for folder in ["config", "cache", "data"] {
+            try fm.createDirectory(at: directory.appendingPathComponent(folder), withIntermediateDirectories: true)
+        }
+        try """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <clientOptions>
+          <option id="model.option.languageOption" value="clientOptions.gui.languageOption.autoDetectLanguage"/>
+          <option id="model.option.usePixmaps" value="true"/>
+          <option id="model.option.useOpenGL" value="false"/>
+          <option id="model.option.useXRender" value="false"/>
+        </clientOptions>
+        """.write(to: directory.appendingPathComponent("client-options.xml"), atomically: true, encoding: .utf8)
+        return directory
+    }
+
+    private static func makeDataDirectory(installation: URL, in directory: URL) throws -> URL {
+        let fm = FileManager.default
         let data = directory.appendingPathComponent("freecol-data")
         let rules = data.appendingPathComponent("rules")
         try fm.createDirectory(at: rules, withIntermediateDirectories: true)
-        let originalData = configuration.installation.appendingPathComponent("data")
+        let originalData = installation.appendingPathComponent("data")
         for entry in try fm.contentsOfDirectory(at: originalData, includingPropertiesForKeys: nil)
             where entry.lastPathComponent != "rules" {
             try fm.createSymbolicLink(at: data.appendingPathComponent(entry.lastPathComponent), withDestinationURL: entry)
@@ -40,39 +98,27 @@ struct JavaServerLaunch {
             }
             try fm.createSymbolicLink(at: rules.appendingPathComponent(entry.lastPathComponent), withDestinationURL: entry)
         }
-        let customRules = rules.appendingPathComponent(NewGameConfiguration.rulesID)
-        try fm.createDirectory(at: customRules, withIntermediateDirectories: true)
-        let optionsFile = directory.appendingPathComponent("game-options.xml")
-        try xml.write(to: optionsFile, atomically: true, encoding: .utf8)
-        try fm.createSymbolicLink(at: customRules.appendingPathComponent("specification.xml"), withDestinationURL: optionsFile)
-        try XMLEncoder.encode(tag: "mod", attributes: ["id": NewGameConfiguration.rulesID])
-            .write(to: customRules.appendingPathComponent("mod.xml"), atomically: true, encoding: .utf8)
-        for folder in ["config", "cache", "data"] {
-            try fm.createDirectory(at: directory.appendingPathComponent(folder), withIntermediateDirectories: true)
-        }
-        let clientOptions = directory.appendingPathComponent("client-options.xml")
-        try """
-        <?xml version="1.0" encoding="UTF-8"?>
-        <clientOptions>
-          <option id="model.option.languageOption" value="clientOptions.gui.languageOption.autoDetectLanguage"/>
-          <option id="model.option.usePixmaps" value="true"/>
-          <option id="model.option.useOpenGL" value="false"/>
-          <option id="model.option.useXRender" value="false"/>
-        </clientOptions>
-        """.write(to: clientOptions, atomically: true, encoding: .utf8)
-        var arguments = [
-            "-Djava.awt.headless=true", "-Xmx2G", "-jar", configuration.installation.appendingPathComponent("FreeCol.jar").path,
+        return data
+    }
+
+    private static func serverArguments(installation: URL, data: URL, directory: URL, name: String,
+                                        port: Int, rules: [String]) -> [String] {
+        [
+            "-Djava.awt.headless=true", "-Xmx2G", "-jar", installation.appendingPathComponent("FreeCol.jar").path,
             "--freecol-data", data.path, "--default-locale", "en", "--server", "--private",
             "--server-ip", "127.0.0.1", "--server-port", String(port),
-            "--server-name", name, "--rules", NewGameConfiguration.rulesID,
-            "--difficulty", configuration.difficulty.argument,
+            "--server-name", name,
+        ] + rules + [
             "--user-config-directory", directory.appendingPathComponent("config").path,
             "--user-cache-directory", directory.appendingPathComponent("cache").path,
             "--user-data-directory", directory.appendingPathComponent("data").path,
-            "--clientOptions", clientOptions.path,
+            "--clientOptions", directory.appendingPathComponent("client-options.xml").path,
             "--log-file", directory.appendingPathComponent("server.log").path,
         ]
-        if !seed.isEmpty { arguments += ["--seed", seed] }
+    }
+
+    private static func finish(directory: URL, optionsFile: URL?, java: URL, port: Int,
+                               arguments: [String]) throws -> Self {
         let launch = Self(directory: directory, optionsFile: optionsFile, executable: java,
                           arguments: arguments, port: port)
         // Keep the exact argument vector, without shell interpolation, for reproducing a startup.

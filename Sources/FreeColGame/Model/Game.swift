@@ -499,11 +499,17 @@ public final class Game: @unchecked Sendable {
               let carrier = units[carrierId],
               let unitLoc = unit.location,
               let carrierLoc = carrier.location,
-              unitLoc == carrierLoc,
               unitId != carrierId else {
             return
         }
+        let canEmbarkInPlace = unitLoc == carrierLoc
+        let canEmbarkFromAdjacentTile = tiles[unitLoc] != nil
+            && tiles[carrierLoc] != nil
+            && unit.movesLeft > 0
+            && neighborTileIds(of: unitLoc).contains(carrierLoc)
+        guard canEmbarkInPlace || canEmbarkFromAdjacentTile else { return }
         unit.location = carrierId
+        unit.movesLeft = 0
         units[unitId] = unit
     }
 

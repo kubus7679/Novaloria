@@ -6,6 +6,10 @@ import AppKit
 final class ApplicationDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.setActivationPolicy(.regular)
+        if let iconURL = Bundle.module.url(forResource: "freecol-app-icon", withExtension: "svg"),
+           let icon = NSImage(contentsOf: iconURL) {
+            NSApplication.shared.applicationIconImage = icon
+        }
         NSApplication.shared.activate()
         NSApplication.shared.windows.first?.makeKeyAndOrderFront(nil)
     }

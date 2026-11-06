@@ -43,8 +43,9 @@ struct TilePopupView: View {
                     .disabled(!state.canChangeSelectedUnitState(to: .sentry))
                 Button("Warten") { state.setSelectedUnitState(.skipped) }
                     .disabled(!state.canChangeSelectedUnitState(to: .skipped))
-                if state.canSendSelectedUnitToEurope {
-                    Button("Nach Europa") { state.sendSelectedUnitToEurope() }
+                if state.showsEuropeTravelOrder {
+                    Button("Gehe nach Europa") { state.goSelectedShipToEurope() }
+                        .disabled(!state.canGoSelectedShipToEurope)
                 }
                 if state.canChangeSelectedUnitWorkImprovement {
                     Divider()
@@ -110,6 +111,12 @@ struct TilePopupView: View {
                 }
             }
             .labelsHidden()
+            let toolCost = state.selectedUnitImprovementToolCost(for: improvementTypeId)
+            if toolCost > 0 {
+                Text("Verbrauch bei Fertigstellung: \(toolCost) Werkzeuge")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
             Button("Verbesserung bauen") {
                 state.changeSelectedUnitWorkImprovement(improvementTypeId)
             }

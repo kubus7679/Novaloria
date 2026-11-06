@@ -14,30 +14,46 @@ struct FoundingFatherSelectionView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("Continental Congress")
-                .font(.headline)
+                .font(.title2.bold())
             Text("Choose a founding father.")
-                .font(.callout)
+                .font(.body)
                 .foregroundColor(.secondary)
-            ScrollView {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 8)], spacing: 8) {
-                    ForEach(options) { option in
-                        fatherButton(option, entry: entriesById[option.fatherId])
+            GeometryReader { geometry in
+                let spacing: CGFloat = 16
+                let minimumCardWidth: CGFloat = 640
+                let columnCount = max(1, min(2, Int((geometry.size.width + spacing)
+                                                    / (minimumCardWidth + spacing))))
+                let rows = stride(from: 0, to: options.count, by: columnCount).map { start in
+                    Array(options[start..<min(start + columnCount, options.count)])
+                }
+
+                ScrollView(.vertical) {
+                    Grid(alignment: .leading, horizontalSpacing: spacing, verticalSpacing: spacing) {
+                        ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                            GridRow(alignment: .top) {
+                                ForEach(row) { option in
+                                    fatherButton(option, entry: entriesById[option.fatherId])
+                                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                                }
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .padding(4)
+                    if options.isEmpty {
+                        Text("No candidates available.")
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
-                .padding(4)
-                if options.isEmpty {
-                    Text("No candidates available.")
-                        .foregroundColor(.secondary)
-                }
+                .scrollIndicators(.visible)
             }
-            .scrollIndicators(.visible)
-            .clipped()
         }
-        .padding(12)
+        .padding(16)
         .frame(minWidth: 0, maxWidth: .infinity)
-        .frame(height: 220)
+        .frame(minHeight: 360, maxHeight: .infinity)
         .background(.regularMaterial)
     }
 
@@ -48,43 +64,52 @@ struct FoundingFatherSelectionView: View {
         Button {
             onChoose(option.fatherId)
         } label: {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top, spacing: 14) {
                     if let entry {
                         entryIcon(entry)
                     }
-                    VStack(alignment: .leading, spacing: 3) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(entry?.title ?? option.label)
-                            .font(.callout.bold())
+                            .font(.title3.bold())
+                            .fixedSize(horizontal: false, vertical: true)
+                            .lineLimit(2)
                         Text(option.typeKey.capitalized)
-                            .font(.caption)
+                            .font(.callout)
                             .foregroundStyle(.secondary)
                     }
                 }
                 if let entry {
                     if !entry.summary.isEmpty {
                         Text(entry.summary)
-                            .font(.caption)
+                            .font(.body)
                             .fixedSize(horizontal: false, vertical: true)
+                            .lineLimit(4)
                     }
                     if !entry.text.isEmpty {
                         Text(entry.text)
-                            .font(.caption)
+                            .font(.callout)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
+                            .lineLimit(5)
                     }
                     ForEach(Array(entry.facts.enumerated()), id: \.offset) { _, fact in
                         LabeledContent(fact.label, value: fact.value)
-                            .font(.caption2)
+                            .font(.callout)
                     }
                 }
             }
             .multilineTextAlignment(.leading)
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            .padding(8)
+            .frame(maxWidth: .infinity, minHeight: 320, alignment: .topLeading)
+            .padding(16)
             .contentShape(Rectangle())
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(Color.primary.opacity(0.14), lineWidth: 1)
+            }
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(.plain)
         .disabled(!canChoose)
         .accessibilityIdentifier("founding-father-entry-\(option.fatherId)")
     }
@@ -95,13 +120,13 @@ struct FoundingFatherSelectionView: View {
             Image(nsImage: image)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 48, height: 48)
+                .frame(width: 64, height: 64)
         } else {
             Image(systemName: entry.category.symbol)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 30, height: 30)
-                .frame(width: 48, height: 48)
+                .frame(width: 40, height: 40)
+                .frame(width: 64, height: 64)
                 .foregroundStyle(Color.accentColor)
         }
     }

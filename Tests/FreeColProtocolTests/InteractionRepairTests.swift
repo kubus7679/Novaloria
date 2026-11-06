@@ -657,6 +657,46 @@ final class InteractionRepairTests: XCTestCase {
     }
 
     @MainActor
+    func testEmbarkFromAdjacentCoastalTileSendsDirection() async throws {
+        let server = MockServer()
+        let state = GameState()
+        let xml = Self.gameXML.replacingOccurrences(
+            of: #"id="ship" owner="player-1" unitType="model.unit.caravel" location="tile-2-2""#,
+            with: #"id="ship" owner="player-1" unitType="model.unit.caravel" location="tile-2-4""#
+        ).replacingOccurrences(of: "\n", with: " ")
+        let serverTask = Task {
+            try await server.doHandshake(gameResponse: xml)
+            let question = try XMLDecoder.decode(await server.nextLine())
+            let message = try XCTUnwrap(question.children.first)
+            XCTAssertEqual(message.tag, "embark")
+            XCTAssertEqual(message.attributes["unit"], "outside-worker")
+            XCTAssertEqual(message.attributes["carrier"], "ship")
+            XCTAssertEqual(message.attributes["direction"], "S")
+            let replyId = try XCTUnwrap(question.attributes["networkReplyId"])
+            await server.send("<reply networkReplyId=\"\(replyId)\"><animateMove oldTile=\"tile-2-2\" newTile=\"tile-2-4\" unit=\"outside-worker\"/></reply>")
+            await server.flush()
+        }
+        defer { state.disconnect(); serverTask.cancel(); Task { await server.stop() } }
+        state.connect(host: "127.0.0.1", port: server.port)
+        try await waitUntil { state.phase == .login }
+        state.login(userName: "Alice", nationId: "model.nation.dutch")
+        try await waitUntil { state.phase == .inGame && state.game != nil }
+
+        state.selectUnit("outside-worker", onTile: "tile-2-2")
+        XCTAssertTrue(state.embarkCarrierOptions.contains { $0.id == "ship" })
+        XCTAssertTrue(state.canEmbarkSelectedUnit(onCarrier: "ship"))
+        state.embarkSelectedUnit(onCarrier: "ship")
+        try await waitUntil { state.game?.units["outside-worker"]?.location == "ship" && state.movingUnitId == nil }
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(state.game?.units["outside-worker"]?.movesLeft, 0)
+        XCTAssertNil(state.game?.tiles[state.game?.units["outside-worker"]?.location ?? ""])
+        state.selectUnit("ship", onTile: "tile-2-4")
+        XCTAssertEqual(state.selectedUnitCargoUnits.map(\.id), ["outside-worker"])
+        try await serverTask.value
+        await server.stop()
+    }
+
+    @MainActor
     func testEuropeDepartureRequiresHighSeasExitAndOwnShipOnOwnTurn() throws {
         let state = try makeState()
         let game = try XCTUnwrap(state.game)
@@ -690,6 +730,81 @@ final class InteractionRepairTests: XCTestCase {
             state.gameUpdateID += 1
             XCTAssertFalse(state.canSendSelectedUnitToEurope)
         }
+    }
+
+    @MainActor
+    func testGoToEuropeIsAvailableWhenShipCanReachAHighSeasExit() throws {
+        let state = try makeState()
+        state.selectUnit("ship", onTile: "tile-2-2")
+        XCTAssertFalse(state.canGoSelectedShipToEurope)
+
+        let xml = Self.gameXML.replacingOccurrences(
+            of: #"id="tile-2-4" x="2" y="4" type="model.tile.ocean" owner="player-1""#,
+            with: #"id="tile-2-4" x="2" y="4" type="model.tile.highSeas" moveToEurope="true" owner="player-1""#
+        )
+        let game = Game()
+        try game.load(from: XMLDecoder.decode(xml))
+        state.installGame(game)
+        state.selectUnit("ship", onTile: "tile-2-2")
+        XCTAssertTrue(state.canGoSelectedShipToEurope)
+
+        game.currentPlayerId = "player-2"
+        state.gameUpdateID += 1
+        XCTAssertFalse(state.canGoSelectedShipToEurope, "The order is only available during the local turn")
+    }
+
+    @MainActor
+    func testGoToEuropeMovesToExitThenStartsTheEuropeCrossing() async throws {
+        let server = MockServer()
+        let state = GameState()
+        let gameXML = Self.gameXML
+            .replacingOccurrences(
+                of: #"id="tile-2-4" x="2" y="4" type="model.tile.ocean" owner="player-1""#,
+                with: #"id="tile-2-4" x="2" y="4" type="model.tile.highSeas" moveToEurope="true" owner="player-1""#
+            )
+            .replacingOccurrences(of: "\n", with: " ")
+        let serverTask = Task {
+            try await server.doHandshake(gameResponse: gameXML)
+            let responses = [
+                #"<partial id="ship" destination="tile-2-4"/>"#,
+                #"<partial id="ship" location="tile-2-4" movesLeft="3"/>"#,
+                #"<partial id="ship" location="highSeas:1" destination="europe-1" state="TO_EUROPE" workLeft="3"/>"#,
+            ]
+            var requests: [ParsedMessage] = []
+            for response in responses {
+                let question = try XMLDecoder.decode(await server.nextLine())
+                let replyId = try XCTUnwrap(question.attributes["networkReplyId"])
+                requests.append(try XCTUnwrap(question.children.first))
+                await server.send("<reply networkReplyId=\"\(replyId)\">\(response)</reply>")
+                await server.flush()
+            }
+            return requests
+        }
+        defer {
+            state.disconnect()
+            serverTask.cancel()
+            Task { await server.stop() }
+        }
+        state.connect(host: "127.0.0.1", port: server.port)
+        try await waitUntil { state.phase == .login }
+        state.login(userName: "Alice", nationId: "model.nation.dutch")
+        try await waitUntil { state.phase == .inGame && state.game != nil }
+
+        state.selectUnit("ship", onTile: "tile-2-2")
+        XCTAssertTrue(state.canGoSelectedShipToEurope)
+        state.goSelectedShipToEurope()
+        try await waitUntil {
+            state.movingUnitId == nil && state.game?.units["ship"]?.location == "highSeas:1"
+        }
+
+        let requests = try await serverTask.value
+        XCTAssertEqual(requests.map(\.tag), ["setDestination", "move", "moveTo"])
+        XCTAssertEqual(requests[0].attributes["destination"], "tile-2-4")
+        XCTAssertEqual(requests[1].attributes["direction"], "S")
+        XCTAssertEqual(requests[2].attributes["destination"], "europe-1")
+        XCTAssertEqual(state.game?.units["ship"]?.destination, "europe-1")
+        XCTAssertNil(state.errorMessage)
+        await server.stop()
     }
 
     func testEuropeExitUsesTerrainAbilityUnlessTileOverridesIt() throws {
@@ -1194,6 +1309,25 @@ final class InteractionRepairTests: XCTestCase {
     }
 
     @MainActor
+    func testUnitsWithSavedDestinationsAreExcludedFromTurnWarning() throws {
+        let state = try makeState()
+        let game = try XCTUnwrap(state.game)
+        try game.applyPartial(XMLDecoder.decode("""
+        <partial id="outside-worker" destination="tile-3-2"/>
+        """))
+        state.gameUpdateID += 1
+
+        XCTAssertFalse(state.unitsAwaitingOrders.contains { $0.id == "outside-worker" })
+        XCTAssertEqual(Set(state.unitsAwaitingOrders.map(\.id)), ["ship", "wagon"])
+
+        try game.applyPartial(XMLDecoder.decode("""
+        <partial id="outside-worker" destination=""/>
+        """))
+        state.gameUpdateID += 1
+        XCTAssertTrue(state.unitsAwaitingOrders.contains { $0.id == "outside-worker" })
+    }
+
+    @MainActor
     func testNestedColonyWorkersAndSelectionSurviveUpdates() throws {
         let state = try makeState()
         XCTAssertNotNil(state.game?.units["field-worker"])
@@ -1301,6 +1435,111 @@ final class InteractionRepairTests: XCTestCase {
         """))
         state.gameUpdateID += 1
         XCTAssertFalse(state.canEquipSelectedUnitForRole)
+    }
+
+    @MainActor
+    func testPioneerEquipmentUsesToolsAndImprovementConsumesRoleEquipment() throws {
+        let game = Game()
+        try game.load(from: XMLDecoder.decode("""
+        <game id="pioneering" clientUserName="Alice" currentPlayer="player-1">
+          <freecol-specification>
+            <unit-type id="model.unit.freeColonist">
+              <ability id="model.ability.person" value="true"/>
+              <ability id="model.ability.canBeEquipped" value="true"/>
+            </unit-type>
+            <goods-type id="model.goods.tools">
+              <market initial-amount="1000" initial-price="2" price-difference="1"/>
+            </goods-type>
+            <role id="model.role.pioneer" maximum-count="5">
+              <required-goods id="model.goods.tools" value="20"/>
+              <required-ability id="model.ability.canBeEquipped" value="true"/>
+            </role>
+            <tile-improvement-type id="model.improvement.road"
+                                   required-role="model.role.pioneer" expended-amount="1"/>
+          </freecol-specification>
+          <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="5000">
+            <europe id="europe-1"/>
+            <market owner="player-1">
+              <marketData goods-type="model.goods.tools" amount="150" initialPrice="2"/>
+            </market>
+          </player>
+          <map id="map-1" width="1" height="1">
+            <tile id="tile-0" x="0" y="0" type="model.tile.plains" owner="player-1"/>
+          </map>
+          <colony id="colony-1" name="Boston" owner="player-1" tile="tile-0">
+            <goodsContainer><storedGoods><goods type="model.goods.tools" amount="19"/></storedGoods></goodsContainer>
+          </colony>
+          <unit id="europe-worker" owner="player-1" unitType="model.unit.freeColonist" location="europe-1"/>
+          <unit id="colony-worker" owner="player-1" unitType="model.unit.freeColonist"
+                location="tile-0" movesLeft="3"/>
+        </game>
+        """))
+
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+
+        state.selectUnit("europe-worker", onTile: nil)
+        XCTAssertTrue(state.canEquipSelectedUnitAsPioneer,
+                      "Europe can buy the 20 tools required for a pioneer")
+        XCTAssertEqual(state.pioneerToolsPerRoleCount, 20)
+
+        state.selectUnit("colony-worker", onTile: "tile-0")
+        XCTAssertFalse(state.canEquipSelectedUnitAsPioneer,
+                       "A colony needs 20 stored tools to equip a pioneer")
+        try game.applyUpdate(XMLDecoder.decode("""
+        <update><colony id="colony-1" name="Boston" owner="player-1" tile="tile-0">
+          <goodsContainer><storedGoods><goods type="model.goods.tools" amount="40"/></storedGoods></goodsContainer>
+        </colony></update>
+        """))
+        state.gameUpdateID += 1
+        XCTAssertTrue(state.canEquipSelectedUnitAsPioneer)
+
+        try game.applyPartial(XMLDecoder.decode("""
+        <partial id="colony-worker" role="model.role.pioneer" roleCount="1"/>
+        """))
+        state.gameUpdateID += 1
+        XCTAssertEqual(state.selectedUnitImprovementCandidates.map(\.id), ["model.improvement.road"])
+        XCTAssertEqual(state.selectedUnitImprovementToolCost(for: "model.improvement.road"), 20)
+
+        // The Java server reports tool use by lowering roleCount when work finishes.
+        try game.applyPartial(XMLDecoder.decode("""
+        <partial id="colony-worker" role="model.role.default" roleCount="0"/>
+        """))
+        state.gameUpdateID += 1
+        XCTAssertTrue(state.selectedUnitImprovementCandidates.isEmpty)
+    }
+
+    @MainActor
+    func testEquippingPioneerSendsRoleAndAppliesServerEquipmentUpdate() async throws {
+        let server = MockServer()
+        let state = GameState()
+        let serverTask = Task {
+            try await server.doHandshake(gameResponse: Self.gameXML.replacingOccurrences(of: "\n", with: " "))
+            let question = try XMLDecoder.decode(await server.nextLine())
+            let action = try XCTUnwrap(question.children.first)
+            XCTAssertEqual(action.tag, "equipForRole")
+            XCTAssertEqual(action.attributes["unit"], "europe-worker")
+            XCTAssertEqual(action.attributes["role"], "model.role.pioneer")
+            XCTAssertEqual(action.attributes["count"], "1")
+            let replyId = try XCTUnwrap(question.attributes["networkReplyId"])
+            await server.send("<reply networkReplyId=\"\(replyId)\"><partial id=\"europe-worker\" role=\"model.role.pioneer\" roleCount=\"1\"/></reply>")
+            await server.flush()
+        }
+        defer { state.disconnect(); serverTask.cancel(); Task { await server.stop() } }
+        state.connect(host: "127.0.0.1", port: server.port)
+        try await waitUntil { state.phase == .login }
+        state.login(userName: "Alice", nationId: "model.nation.dutch")
+        try await waitUntil { state.phase == .inGame && state.game != nil }
+
+        state.selectUnit("europe-worker", onTile: nil)
+        XCTAssertTrue(state.canEquipSelectedUnitAsPioneer)
+        state.equipSelectedUnitForRole("model.role.pioneer", count: 1)
+        try await waitUntil { state.game?.units["europe-worker"]?.role == "model.role.pioneer" }
+        XCTAssertEqual(state.game?.units["europe-worker"]?.roleCount, 1)
+        XCTAssertNil(state.errorMessage)
+        try await serverTask.value
+        await server.stop()
     }
 
     @MainActor

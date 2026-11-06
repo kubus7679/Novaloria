@@ -57,6 +57,7 @@ struct LoginView: View {
     // Erweiterte Optionen (vorselektioniert)
     @State private var startingMoneyValue: String = "3000"
     @State private var showNewGame = false
+    @State private var showLoadSavegame = false
 
     // Berechnete Eigenschaften
     private var availableNations: [(id: String, name: String, description: String)] {
@@ -252,11 +253,19 @@ struct LoginView: View {
 
                             // Verbindungsbuttons
                             if state.phase == .disconnected || isLobby {
-                                Button("Neues Spiel erstellen…", systemImage: "plus.circle") {
-                                    showNewGame = true
+                                HStack(spacing: 12) {
+                                    Button("Neues Spiel erstellen…", systemImage: "plus.circle") {
+                                        showNewGame = true
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(Color(red: 0.72, green: 0.48, blue: 0.19))
+
+                                    Button("Spielstand laden…", systemImage: "square.and.arrow.down") {
+                                        showLoadSavegame = true
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .tint(Color(red: 0.88, green: 0.71, blue: 0.39))
                                 }
-                                .buttonStyle(.borderedProminent)
-                                .tint(Color(red: 0.72, green: 0.48, blue: 0.19))
                             }
                             HStack(spacing: 12) {
                                 if state.phase == .disconnected {
@@ -400,6 +409,13 @@ struct LoginView: View {
                                         state.setLocalPlayerColor(selectedColor)
                                     }
                                 }
+                            }
+
+                            if state.phase == .login, let savegameName = state.hostedSavegameName {
+                                Text("Spielstand „\(savegameName)“ läuft auf diesem Mac. Melde dich mit dem Namen eines menschlichen Spielers aus dem Spielstand an.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
 
                             // Anmeldebutton (nur in Login-Phase)
@@ -557,6 +573,13 @@ struct LoginView: View {
         }
         .sheet(isPresented: $showNewGame) {
             NewGameView { port in
+                host = "127.0.0.1"
+                portString = String(port)
+            }
+            .environment(state)
+        }
+        .sheet(isPresented: $showLoadSavegame) {
+            LoadSavegameView { port in
                 host = "127.0.0.1"
                 portString = String(port)
             }
