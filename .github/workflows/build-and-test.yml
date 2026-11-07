@@ -24,18 +24,25 @@ jobs:
       - name: Build app bundle
         run: bash Tools/build-app.sh
 
-      - name: Package app bundle
+      - name: Create DMG
         run: |
           bin_dir="$(swift build --show-bin-path)"
-          mkdir -p dist
-          ditto -c -k --sequesterRsrc --keepParent \
+          mkdir -p dist/dmg-root
+          ditto \
             "$bin_dir/Novaloria.app" \
-            dist/Novaloria-macOS.zip
+            dist/dmg-root/Novaloria.app
+          ln -s /Applications dist/dmg-root/Applications
+          hdiutil create \
+            -volname "Novaloria" \
+            -srcfolder dist/dmg-root \
+            -ov \
+            -format UDZO \
+            dist/Novaloria-macOS.dmg
 
       - name: Upload app package
         uses: actions/upload-artifact@v6
         with:
           name: Novaloria-macOS
-          path: dist/Novaloria-macOS.zip
+          path: dist/Novaloria-macOS.dmg
           if-no-files-found: error
           retention-days: 14
