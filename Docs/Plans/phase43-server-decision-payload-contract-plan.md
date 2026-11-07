@@ -49,7 +49,7 @@ References:
 
 ## Validation
 
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 - `swift test`
 
 ## Expected Result

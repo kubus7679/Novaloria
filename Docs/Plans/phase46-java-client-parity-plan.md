@@ -60,7 +60,7 @@ Key evidence:
    - Parse `<unit-type id= line-of-sight=>` into `unitTypes[id].lineOfSight`
      (the spec is already received at login; currently only 3 scalar fields
      are read).
-3. `FreeColApp/MapView.swift`
+3. `Novaloria/MapView.swift`
    - Compute `explored` and `visible` sets once per render (avoid per-tile
      `contains` scans by precomputing).
    - Unexplored → cloud texture (unchanged).
@@ -69,7 +69,7 @@ Key evidence:
    - Visible → terrain + units + settlements (unchanged).
    - Respect `state.showFogOfWar` (no fog overlay when false) and
      `state.showMapGrid` (grid stroke).
-4. `FreeColApp/MiniMapView.swift`
+4. `Novaloria/MiniMapView.swift`
    - Terrain from `exploredTileIds`; clouds only unexplored.
    - Units/settlements only when visible.
    - Keep aspect-fit scale and viewport-rect tracking from the previous fix.
@@ -79,7 +79,7 @@ Key evidence:
 
 ### Validation
 
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 - `swift test`
 - `swift run FreeColProtocolCLI`
 - Manual: reconnect to the running Java server → explored area is visible,
@@ -95,19 +95,19 @@ Key evidence:
 
 ### Implementation Steps
 
-1. `FreeColApp/GameMenuBar.swift` (new): `Menu`s wired into `GameView.topBar`
+1. `Novaloria/GameMenuBar.swift` (new): `Menu`s wired into `GameView.topBar`
    (SwiftUI `.commands` cannot host in-canvas state easily; use in-view menus).
    - Game: End Turn, Chat, Declare Independence, Retire, High Scores.
    - View: Grid, Borders, Fog of War, Tile Text, Zoom +/-.
    - Orders: Wait, Skip, Sentry, Fortify, Build Colony, Disband, Clear orders.
    - Report: entry points for the report sheet.
-2. `FreeColApp/ReportPanelView.swift` (new) + concrete report models derived
+2. `Novaloria/ReportPanelView.swift` (new) + concrete report models derived
    from the game model (no new protocol needed):
    - Colony, Cargo, Trade, Labour/Production, Education, Military, Naval,
      Foreign Affairs, Indian, Exploration, Turn, History, Requirements,
      Continental Congress.
    - Reuse `ReportsView` for `highScores`/`nationSummary`.
-3. `FreeColApp/ChatPanelView.swift` (new): transcript of `incomingChatLog`
+3. `Novaloria/ChatPanelView.swift` (new): transcript of `incomingChatLog`
    + text field calling `sendChatMessage`.
 4. `GameState`: add a `reportSelection`/`showReport` enum; expose computed
    report data (units by type, goods in colonies, stances, etc.).
@@ -162,5 +162,5 @@ Key evidence:
 - 46D: cargo report added; dedicated panels deferred, trade-route editor
   delivered in Phase 47 (`Docs/Plans/phase47-trade-route-editor-plan.md`).
 - 46E: `ColopediaView` (spec unit/goods browser), `PreferencesView`.
-- Validation: `swift build --target FreeColApp`, `swift test` (26),
+- Validation: `swift build --target Novaloria`, `swift test` (26),
   `swift run FreeColProtocolCLI` (118) — all green.

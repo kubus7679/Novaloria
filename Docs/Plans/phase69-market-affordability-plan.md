@@ -21,7 +21,7 @@ instead. Therefore market stock is not a valid purchase-quantity cap.
 
 ## Validierung
 
-- `swift build --target FreeColApp` erfolgreich.
+- `swift build --target Novaloria` erfolgreich.
 - `swift test`: 67 Tests erfolgreich, inklusive Affordability-Grenzfälle.
 - `swift run FreeColProtocolCLI`: 132 Prüfungen erfolgreich.
 - `Tools/e2e-java-server.sh`: Smoke/Deep/Gameplay jeweils 1/0; Java bestätigte

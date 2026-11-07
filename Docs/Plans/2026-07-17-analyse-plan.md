@@ -48,7 +48,7 @@ Codebase-Analyse des FreeCol-Clients mit Fokus auf Architektur, Risiken und aktu
 
 ### Mittel
 
-1. Session-Zustand ist über `GameState`, `FreeColClient`, `GameStateManager` und `Game` verteilt. Reconnect-/Reload-/Selection-Recovery funktioniert, hängt aber an mehreren Reset- und Reconcile-Pfaden.
+1. Session-Zustand ist über `GameState`, `NovaloriaClient`, `GameStateManager` und `Game` verteilt. Reconnect-/Reload-/Selection-Recovery funktioniert, hängt aber an mehreren Reset- und Reconcile-Pfaden.
 2. Viele Spielregeln und Reject-Pfade werden über String-Heuristiken klassifiziert (`ship`, `missionary`, `can not ...`, `server.reject`). Das ist praktisch, aber fragil gegen neue Einheiten, neue Servertexte oder lokalisierte Antworten.
 3. Map-/Path-/Visibility-Logik arbeitet an mehreren Stellen mit linearen Scans über Tiles und Units. Für die aktuelle Größe okay, bei größeren Karten aber ein klarer Performance-Hotspot.
 

@@ -25,7 +25,7 @@ Expose first colony management actions from the SwiftUI client:
 
 ## Validation
 
-- swift build --target FreeColApp
+- swift build --target Novaloria
 - swift run FreeColProtocolCLI
 
 ## Expected Result

@@ -1,5 +1,5 @@
 import Foundation
-import FreeColClient
+import NovaloriaClient
 import FreeColGame
 import FreeColProtocol
 

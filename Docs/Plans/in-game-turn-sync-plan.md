@@ -23,7 +23,7 @@ Stabilize turn progression in active games so local end-turn behavior remains le
 
 ## Validation
 
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 - `swift run FreeColProtocolCLI`
 
 ## Expected Result

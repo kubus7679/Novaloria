@@ -12,7 +12,7 @@ public protocol ClientDelegate: AnyObject {
 }
 
 /// High-level FreeCol client that manages connection, login, and game state.
-public actor FreeColClient {
+public actor NovaloriaClient {
     private let connection: Connection
     private let stateManager: GameStateManager
     public weak var delegate: ClientDelegate?
@@ -37,7 +37,7 @@ public actor FreeColClient {
     /// Connect to the server.
     public func connect() async throws {
         // Establish TCP connection and read initial server messages (gameState and vacantPlayers)
-        FreeColLogger.shared.info("FreeColClient connect: establishing TCP connection")
+        FreeColLogger.shared.info("NovaloriaClient connect: establishing TCP connection")
         await MainActor.run {
             stateManager.reset()
         }
@@ -57,7 +57,7 @@ public actor FreeColClient {
 
     /// Disconnect.
     public func disconnect() async {
-        FreeColLogger.shared.info("FreeColClient disconnecting...")
+        FreeColLogger.shared.info("NovaloriaClient disconnecting...")
         await connection.disconnect()
         initialVacantPlayers = nil
         initialGameState = nil
@@ -65,7 +65,7 @@ public actor FreeColClient {
 
     /// Perform the full login handshake.
     public func login(userName: String, nationId: String) async throws -> LoginResult {
-        FreeColLogger.shared.info("FreeColClient login")
+        FreeColLogger.shared.info("NovaloriaClient login")
         // Initial messages (gameState + vacantPlayers) were already consumed by connect()
         let result = try await Handshake.login(
             connection,

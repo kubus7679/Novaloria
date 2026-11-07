@@ -17,7 +17,7 @@ market and the selected carrier before a trade is sent.
 
 ## Validierung
 
-- `swift build --target FreeColApp` erfolgreich.
+- `swift build --target Novaloria` erfolgreich.
 - `swift test`: 67 Tests erfolgreich, inklusive Market-Limit-Regression.
 - `swift run FreeColProtocolCLI`: 132 Prüfungen erfolgreich.
 - `Tools/e2e-java-server.sh`: Smoke/Deep/Gameplay jeweils 1/0; der Java-Server

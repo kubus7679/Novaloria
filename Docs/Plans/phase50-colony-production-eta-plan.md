@@ -22,11 +22,11 @@ turns-to-complete based on the specification's building production.
    `requiredGoods`, `productionOutputs`, `productionInputs`.
 2. `FreeColGame/Model/Colony.swift`: parse `<goodsContainer>` into
    `Colony.goods`.
-3. `FreeColApp/GameState.swift`: `selectedColonyStoredGoods`,
+3. `Novaloria/GameState.swift`: `selectedColonyStoredGoods`,
    `selectedColonyBuildTarget`, `selectedColonyBuildRequirements`,
    `selectedColonyEstimatedBuildPerTurn`, `selectedColonyEstimatedBuildTurns`
    (+ `nonisolated static` helpers for testability), `goodsDisplayName(_:)`.
-4. `FreeColApp/ColonyPanelView.swift`: "Production Estimate" block with
+4. `Novaloria/ColonyPanelView.swift`: "Production Estimate" block with
    progress bars, per-turn estimate, ETA and stored-goods list.
 5. Tests: goods/required-goods/production parsing (CLI) and ETA math (XCTest).
 

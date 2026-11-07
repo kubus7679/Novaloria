@@ -17,7 +17,7 @@ Add the first Java-client parity action cluster to the Swift client:
 
 ## Execution Steps
 
-1. Add action guards and methods in `Sources/FreeColApp/GameState.swift`:
+1. Add action guards and methods in `Sources/Novaloria/GameState.swift`:
    - `canJoinSelectedColony`
    - `joinSelectedColony()`
    - `canEmbarkSelectedUnit(onCarrier:)`
@@ -28,7 +28,7 @@ Add the first Java-client parity action cluster to the Swift client:
    - `joinColony(unitId:colonyId:)`
    - `embarkUnit(unitId:carrierId:)`
    - `disembarkUnit(unitId:)`
-3. Expose new controls in `Sources/FreeColApp/GameView.swift`:
+3. Expose new controls in `Sources/Novaloria/GameView.swift`:
    - Join Colony button when selected tile has colony and selected unit is valid.
    - Embark button when selected tile has a friendly carrier unit.
    - Disembark button when selected unit is embarked.
@@ -42,7 +42,7 @@ Add the first Java-client parity action cluster to the Swift client:
 
 ## Validation
 
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 - `swift run FreeColProtocolCLI`
 
 ## Expected Result

@@ -126,7 +126,7 @@ Deliverable:
 
 Primary checks:
 
-- swift build --target FreeColApp
+- swift build --target Novaloria
 - swift run FreeColProtocolCLI
 
 Manual integration checks against Java server:
@@ -220,13 +220,13 @@ Notes from deep probe:
 - Centralized the remote/local transport choice in `GameState.sendCoreGameplayAction`.
 - `move`, `moveTo`, `buildColony`, and `endTurn` now await Java-server replies in remote sessions; server rejection reasons are surfaced through `errorMessage`.
 - Updated the CLI integration probe to validate question wrappers, request attributes, and reply correlation for all core action tags.
-- Validation passed: `swift build --target FreeColApp`, `swift test` (78 tests), `swift run FreeColProtocolCLI` (132 checks), and `Tools/e2e-java-server.sh` (Smoke/Deep/Gameplay each 1/0).
+- Validation passed: `swift build --target Novaloria`, `swift test` (78 tests), `swift run FreeColProtocolCLI` (132 checks), and `Tools/e2e-java-server.sh` (Smoke/Deep/Gameplay each 1/0).
 
 ## Movement Legality And Selection Regression Follow-Up (2026-10-13)
 
 - Normal `move` eligibility now requires the selected unit to be located directly on a map tile. Embarked units cannot issue standalone movement orders; `moveTo` remains the route for high-seas travel.
 - Added regression coverage for local-turn gating, adjacent movement versus path-followed destinations, colony-founding eligibility, embarked-unit movement rejection, and stale selection after server removal.
-- Validation passed: `swift build --target FreeColApp`, `swift test` (78 tests), `swift run FreeColProtocolCLI` (132 checks), and `Tools/e2e-java-server.sh` (Smoke/Deep/Gameplay each 1/0).
+- Validation passed: `swift build --target Novaloria`, `swift test` (78 tests), `swift run FreeColProtocolCLI` (132 checks), and `Tools/e2e-java-server.sh` (Smoke/Deep/Gameplay each 1/0).
 
 ## End-Turn Duplicate-Request Guard Follow-Up (2026-10-13)
 
@@ -234,27 +234,27 @@ Notes from deep probe:
 - Local MockServer turns keep the shorter safety retry interval because local turn changes arrive through the push path.
 - `canEndTurn` disables the UI control while a request is pending and becomes available again after server turn synchronization.
 - Regression checks cover both timeout policies and a local-game integration test proving duplicate endTurn calls advance only one turn.
-- Validation passed: `swift build --target FreeColApp`, `swift test` (78 tests), and `swift run FreeColProtocolCLI` (132 checks).
+- Validation passed: `swift build --target Novaloria`, `swift test` (78 tests), and `swift run FreeColProtocolCLI` (132 checks).
 
 ## Local Rejection Feedback (2026-10-13)
 
 - Illegal `move` (no moves left) and `buildColony` (empty name, unit without moves) are rejected before any request is built, set a user-facing `errorMessage`, and leave the model unchanged.
 - Covered by `testIllegalCoreActionsSetUserFacingErrorsWithoutSending`.
-- Validation passed: `swift build --target FreeColApp`, `swift test` (79 tests), and `swift run FreeColProtocolCLI` (132 checks).
+- Validation passed: `swift build --target Novaloria`, `swift test` (79 tests), and `swift run FreeColProtocolCLI` (132 checks).
 
 ## Live Java Rejection Capture (2026-10-13)
 
 - New env-gated probe `REAL_SERVER_REJECT_E2E=1` in `FreeColProtocolCLI`, wired into `Tools/e2e-java-server.sh` as a fourth step.
 - It sends a `move` for a non-existent unit to the real Java server and requires a `serverError` reply, then verifies the client model (unit count and turn) is unchanged.
 - Captured Java text: `Not a net.sf.freecol.server.model.ServerUnit: unit:does-not-exist/null`. This is a raw server exception message and is shown verbatim via `errorMessage`; it is not a localized FreeCol template.
-- Validation passed: `Tools/e2e-java-server.sh` (Smoke/Deep/Gameplay/Rejection each 1/0), `swift build --target FreeColApp`, `swift test` (79 tests), and `swift run FreeColProtocolCLI` (132 checks).
+- Validation passed: `Tools/e2e-java-server.sh` (Smoke/Deep/Gameplay/Rejection each 1/0), `swift build --target Novaloria`, `swift test` (79 tests), and `swift run FreeColProtocolCLI` (132 checks).
 
 ## User-Facing Java Rejection Messages (2026-10-13)
 
 - `GameState.sendCoreGameplayAction` maps `serverError` replies to German messages via `GameState.userFacingServerError`, for example `Die Einheit ist auf dem Server nicht bekannt.` for the captured `ServerUnit` text.
 - Unknown server texts are kept verbatim after the prefix `Der Server hat die Aktion abgelehnt:`, so no information is lost.
 - Covered by `testJavaRejectionTextsMapToUserFacingMessages`, which uses the captured Java text.
-- Validation passed: `swift build --target FreeColApp`, `swift test` (80 tests), and `swift run FreeColProtocolCLI` (132 checks). The Java rejection probe reads raw `FreeColProtocolError` values from the CLI client path and is unaffected by this change; it was not rerun against Docker.
+- Validation passed: `swift build --target Novaloria`, `swift test` (80 tests), and `swift run FreeColProtocolCLI` (132 checks). The Java rejection probe reads raw `FreeColProtocolError` values from the CLI client path and is unaffected by this change; it was not rerun against Docker.
 
 ## Acceptance Status (2026-10-13)
 

@@ -24,7 +24,7 @@ Add minimal colony-related goods transfer actions to the Swift client:
 
 ## Validation
 
-- swift build --target FreeColApp
+- swift build --target Novaloria
 - swift run FreeColProtocolCLI
 
 ## Expected Result

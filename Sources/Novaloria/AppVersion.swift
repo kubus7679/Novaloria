@@ -1,4 +1,4 @@
-/// Version information for the FreeColClient app.
+/// Version information for the NovaloriaClient app.
 /// Update `version` on releases; `build` is the git commit count.
 enum AppVersion {
     static let version = "0.1.0"

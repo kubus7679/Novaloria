@@ -20,6 +20,6 @@ Add a lightweight client-side fog overlay so the map better reflects what the lo
 
 ## Validation
 
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 - `swift run FreeColProtocolCLI`
 - `swift test`

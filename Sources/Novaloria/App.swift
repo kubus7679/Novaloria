@@ -1,12 +1,12 @@
 import SwiftUI
-import FreeColClient
+import NovaloriaClient
 #if canImport(AppKit)
 import AppKit
 
 final class ApplicationDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.setActivationPolicy(.regular)
-        if let iconURL = Bundle.module.url(forResource: "freecol-app-icon", withExtension: "svg"),
+        if let iconURL = Bundle.module.url(forResource: "novaloria-app-icon", withExtension: "svg"),
            let icon = NSImage(contentsOf: iconURL) {
             NSApplication.shared.applicationIconImage = icon
         }
@@ -114,15 +114,15 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
             if let localized = titles[title] {
                 item.title = localized
             } else if title.hasPrefix("about ") {
-                item.title = "Über FreeColClient"
+                item.title = "Über Novaloria"
             } else if title.hasPrefix("hide ") {
-                item.title = "FreeColClient ausblenden"
+                item.title = "Novaloria ausblenden"
             } else if title.hasPrefix("quit ") {
                 item.title = "Beenden"
             } else if title.hasPrefix("close ") {
                 item.title = "Fenster schließen"
             } else if title.hasSuffix(" help") {
-                item.title = "FreeColClient-Hilfe"
+                item.title = "Novaloria-Hilfe"
             }
 
             if let submenu = item.submenu {
@@ -140,7 +140,7 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
 #endif
 
 @main
-struct FreeColApp: App {
+struct Novaloria: App {
     @State private var gameState = GameState()
 #if canImport(AppKit)
     @NSApplicationDelegateAdaptor(ApplicationDelegate.self) private var applicationDelegate
@@ -179,7 +179,7 @@ struct FreeColApp: App {
             CommandGroup(replacing: .printItem) { }
             CommandGroup(replacing: .appSettings) { }
             CommandGroup(replacing: .appInfo) {
-                Button("Über FreeColClient") {
+                Button("Über Novaloria") {
                     showAboutPanel()
                 }
             }
@@ -189,11 +189,11 @@ struct FreeColApp: App {
     private func showAboutPanel() {
 #if canImport(AppKit)
         NSApplication.shared.orderFrontStandardAboutPanel(options: [
-            .applicationName: "FreeColClient",
+            .applicationName: "Novaloria",
             .applicationVersion: AppVersion.version,
             .version: AppVersion.gitHash,
             .credits: NSAttributedString(
-                string: "Open-Source-macOS-Client für das FreeCol-Rundenstrategiespiel.\nhttps://github.com/Copilot/FreeColClient",
+                string: "Inoffizieller Open-Source-macOS-Client für FreeCol.\nhttps://github.com/kubus7679/Novaloria",
                 attributes: [.font: NSFont.systemFont(ofSize: 11)]
             ),
         ])

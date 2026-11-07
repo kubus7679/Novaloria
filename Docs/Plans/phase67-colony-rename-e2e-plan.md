@@ -19,5 +19,5 @@ einschließlich der zurückgelieferten Modelländerung.
 - `Tools/e2e-java-server.sh`: Smoke, Deep und Gameplay jeweils 1/0.
 - Gameplay gründete und benannte eine Kolonie um, kaufte und verkaufte danach
   100 Pferde in Europa.
-- `swift build --target FreeColApp`, `swift test` (66 Tests) und
+- `swift build --target Novaloria`, `swift test` (66 Tests) und
   `swift run FreeColProtocolCLI` (132 Prüfungen) erfolgreich.

@@ -14,7 +14,7 @@ Add visual trend indicators (up/down/stable) to market prices in the Europe pane
 
 ## Validierung
 
-- `swift build --target FreeColApp` erfolgreich
+- `swift build --target Novaloria` erfolgreich
 - `swift test`: 74 Tests erfolgreich
 - `swift run FreeColProtocolCLI`: 132 Prüfungen erfolgreich
 - `Tools/e2e-java-server.sh`: Smoke/Deep/Gameplay jeweils 1/0; Trend-Indikatoren werden im Europe-Panel angezeigt

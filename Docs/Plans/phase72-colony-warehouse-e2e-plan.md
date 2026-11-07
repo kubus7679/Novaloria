@@ -16,7 +16,7 @@ and confirm the returned settings in the client model.
 
 ## Validierung
 
-- `swift build --target FreeColApp` erfolgreich.
+- `swift build --target Novaloria` erfolgreich.
 - `swift test`: 69 Tests erfolgreich.
 - `swift run FreeColProtocolCLI`: 132 Prüfungen erfolgreich.
 - `Tools/e2e-java-server.sh`: Smoke/Deep/Gameplay jeweils 1/0; Gameplay

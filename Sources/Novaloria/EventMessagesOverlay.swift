@@ -1,6 +1,6 @@
 import SwiftUI
 import FreeColGame
-import FreeColClient
+import NovaloriaClient
 
 struct EventMessagesOverlay: View {
     @Environment(GameState.self) private var state

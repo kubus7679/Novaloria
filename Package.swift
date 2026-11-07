@@ -2,23 +2,23 @@
 import PackageDescription
 
 let package = Package(
-    name: "FreeColClient",
+    name: "Novaloria",
     platforms: [
         .macOS(.v14)
     ],
     products: [
         .library(name: "FreeColProtocol", targets: ["FreeColProtocol"]),
         .library(name: "FreeColGame", targets: ["FreeColGame"]),
-        .library(name: "FreeColClient", targets: ["FreeColClient"]),
+        .library(name: "NovaloriaClient", targets: ["NovaloriaClient"]),
     ],
     targets: [
         .target(name: "FreeColProtocol"),
         .target(name: "FreeColGame", dependencies: ["FreeColProtocol"]),
-        .target(name: "FreeColClient", dependencies: ["FreeColGame", "FreeColProtocol"]),
-        .executableTarget(name: "FreeColProtocolCLI", dependencies: ["FreeColProtocol", "FreeColGame", "FreeColClient"]),
+        .target(name: "NovaloriaClient", dependencies: ["FreeColGame", "FreeColProtocol"]),
+        .executableTarget(name: "FreeColProtocolCLI", dependencies: ["FreeColProtocol", "FreeColGame", "NovaloriaClient"]),
         .executableTarget(
-            name: "FreeColApp",
-            dependencies: ["FreeColProtocol", "FreeColGame", "FreeColClient"],
+            name: "Novaloria",
+            dependencies: ["FreeColProtocol", "FreeColGame", "NovaloriaClient"],
             exclude: ["Resources/freecol_background.jpg"],
             resources: [
                 .copy("Resources/terrain"),
@@ -31,12 +31,12 @@ let package = Package(
                 .copy("Resources/colopedia"),
                 .copy("Resources/FreeCol-COPYING"),
                 .copy("Resources/lobby-background.jpg"),
-                .copy("Resources/freecol-app-icon.svg"),
+                .copy("Resources/novaloria-app-icon.svg"),
             ]
         ),
         .testTarget(
             name: "FreeColProtocolTests",
-            dependencies: ["FreeColProtocol", "FreeColGame", "FreeColApp"]
+            dependencies: ["FreeColProtocol", "FreeColGame", "Novaloria"]
         ),
     ]
 )

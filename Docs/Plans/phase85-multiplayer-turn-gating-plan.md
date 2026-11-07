@@ -159,7 +159,7 @@ start_server
 
 **Ziel:** Klare visuelle Rückmeldung, welcher Spieler am Zug ist und wer wartet.
 
-#### Änderungen in `Sources/FreeColApp/`
+#### Änderungen in `Sources/Novaloria/`
 
 **GameState.swift:**
 ```swift
@@ -456,8 +456,8 @@ Tools/e2e-java-server.sh  # Sollte Multiplayer-Probe enthalten
 | `Tools/e2e-java-server.sh` | Modifikation | Multiplayer-Probe hinzufügen |
 | `Sources/FreeColProtocolCLI/main.swift` | Erweiterung | Multiplayer-E2E-Logik |
 | `Sources/FreeColProtocolCLI/MultiplayerE2EHarness.swift` | Neu | E2E-Harness |
-| `Sources/FreeColApp/GameState.swift` | Modifikation | Server-Rejection-Handling |
-| `Sources/FreeColApp/GameView.swift` oder `StatusBarView.swift` | Neu/Modifikation | Turn-Status UI |
+| `Sources/Novaloria/GameState.swift` | Modifikation | Server-Rejection-Handling |
+| `Sources/Novaloria/GameView.swift` oder `StatusBarView.swift` | Neu/Modifikation | Turn-Status UI |
 | `Tests/FreeColProtocolTests/FreeColProtocolTests.swift` | Erweiterung | Neue Tests |
 | `Docs/Plans/phase85-multiplayer-turn-gating-plan.md` | Neu | Dieser Plan |
 | `Docs/Plans/plans.md` | Modifikation | Phase 85 hinzufügen |
@@ -467,4 +467,4 @@ Tools/e2e-java-server.sh  # Sollte Multiplayer-Probe enthalten
 - `Docs/Plans/core-gameplay-actions-plan.md` (Turn-Gating Basis)
 - `Docs/Plans/phase62-java-server-e2e-plan.md` (E2E-Proben Struktur)
 - `Docs/Plans/phase63-gameplay-e2e-plan.md` (Gameplay-Probe Referenz)
-- `Sources/FreeColApp/GameState.swift` (Implementierung)
+- `Sources/Novaloria/GameState.swift` (Implementierung)

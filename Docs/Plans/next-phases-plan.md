@@ -86,7 +86,7 @@ sind `<highSeas>` und `<europe>` unbemerkt durchgerutscht.
   sichtbare UI im echten Spiel müssen noch geprüft werden. Der Next-Unit-Pfad wurde
   mit einer High-Seas-Einheit regressionsgetestet: die Einheit ist auswählbar, hat
   kein Kartentile und erscheint nicht unter den Einheiten mit offenen Kartenbefehlen.
-- Verifiziert: vollständige Swift-Tests (85) und `swift build --target FreeColApp`
+- Verifiziert: vollständige Swift-Tests (85) und `swift build --target Novaloria`
   sind erfolgreich. Der Debug-Audit meldete keine übrigen unhandled-Tags. Seit dem
   zusätzlichen Abandonment-Probe hat der Java-Gesamtlauf 11 Pässe, 1 Skip und 0 Fehler;
   die native UI-Sichtprüfung bleibt offen.

@@ -1,5 +1,5 @@
 import Foundation
-import FreeColClient
+import NovaloriaClient
 import FreeColGame
 import FreeColProtocol
 
@@ -7,7 +7,7 @@ func runGameplayActionIntegrationTests() async {
   await integrationTest("client sends combat action messages") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-12" turn="1">
@@ -73,7 +73,7 @@ func runGameplayActionIntegrationTests() async {
   await integrationTest("client sends equipForRole action") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-equip-1" turn="1">
@@ -125,7 +125,7 @@ func runGameplayActionIntegrationTests() async {
   await integrationTest("client sends missionary action") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-missionary-1" turn="1">
@@ -177,7 +177,7 @@ func runGameplayActionIntegrationTests() async {
   await integrationTest("client sends learnSkill action") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-learn-1" turn="1">
@@ -227,7 +227,7 @@ func runGameplayActionIntegrationTests() async {
   await integrationTest("client sends newLandName action") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-newland-1" turn="1">
@@ -276,7 +276,7 @@ func runGameplayActionIntegrationTests() async {
   await integrationTest("client sends newRegionName action") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-newregion-1" turn="1">
@@ -337,7 +337,7 @@ func runGameplayActionIntegrationTests() async {
   await integrationTest("client sends incite action") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-incite-1" turn="1">
@@ -398,7 +398,7 @@ func runGameplayActionIntegrationTests() async {
   await integrationTest("client sends deliverGift action") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-gift-1" turn="1">
@@ -450,7 +450,7 @@ func runGameplayActionIntegrationTests() async {
   await integrationTest("client sends demandTribute action") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-tribute-1" turn="1">
@@ -503,7 +503,7 @@ func runGameplayActionIntegrationTests() async {
   await integrationTest("client sends nativeGift action") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-gift-native-1" turn="1">
@@ -555,7 +555,7 @@ func runGameplayActionIntegrationTests() async {
   await integrationTest("client sends spySettlement action") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-spy-1" turn="1">
@@ -607,7 +607,7 @@ func runGameplayActionIntegrationTests() async {
   await integrationTest("client sends scoutIndianSettlement action") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-scout-1" turn="1">
@@ -660,7 +660,7 @@ func runGameplayActionIntegrationTests() async {
   await integrationTest("client sends scoutSpeakToChief action") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-chief-1" turn="1">
@@ -716,7 +716,7 @@ func runGameplayActionIntegrationTests() async {
   await integrationTest("client sends diplomacy action") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-diplo-1" turn="1">

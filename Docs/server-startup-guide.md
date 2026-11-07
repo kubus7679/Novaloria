@@ -161,7 +161,7 @@ net.sf.freecol.level=FINER
 
 ```bash
 # Docker-Modus
-cd /Users/marcel/projects/FreeColClient
+  cd ~/projects/Novaloria
 Tools/e2e-java-server.sh
 
 # Oder manuell mit spezifischem Savegame
@@ -208,7 +208,7 @@ kill $SERVER_PID
 ### Beispiel 1: Docker mit Savegame und maximalem Logging
 
 ```bash
-cd /Users/marcel/projects/FreeColClient
+  cd ~/projects/Novaloria
 
 # Volume für Daten anlegen
 docker volume create freecol-data
@@ -249,7 +249,7 @@ java -Djava.awt.headless=true \
 ### Beispiel 3: E2E-Test mit spezifischem Savegame
 
 ```bash
-cd /Users/marcel/projects/FreeColClient
+  cd ~/projects/Novaloria
 
 # Nur bestimmte Proben ausführen
 ONLY="nativetrade abandon disembark" Tools/e2e-java-server.sh
@@ -467,4 +467,4 @@ java -Xmx4G -jar FreeCol.jar ...
 
 ---
 
-*Dokumentation erstellt für FreeColClient – Stand: 2024*
+*Dokumentation für Novaloria – Stand: 2024*

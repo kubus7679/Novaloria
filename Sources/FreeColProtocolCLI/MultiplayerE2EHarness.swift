@@ -1,10 +1,10 @@
 import Foundation
 import FreeColProtocol
 import FreeColGame
-import FreeColClient
+import NovaloriaClient
 
 struct MultiplayerClient {
-    let client: FreeColClient
+    let client: NovaloriaClient
     let nationIndex: Int
     let userName: String
     let nationId: String
@@ -47,7 +47,7 @@ actor MultiplayerE2EHarness {
         var result: [MultiplayerClient] = []
 
         // First, connect one client to get available nations
-        let probeClient = FreeColClient(host: serverHost, port: serverPort)
+        let probeClient = NovaloriaClient(host: serverHost, port: serverPort)
         try await probeClient.connect()
         let vacant = await probeClient.initialVacantPlayers
         let nations = vacant?.children.compactMap { $0.attributes["nationId"] } ?? ["model.nation.dutch", "model.nation.english", "model.nation.french", "model.nation.spanish"]
@@ -55,7 +55,7 @@ actor MultiplayerE2EHarness {
 
         // Connect each player with a different nation
         for i in 0..<min(playerCount, nations.count) {
-            let client = FreeColClient(host: serverHost, port: serverPort)
+            let client = NovaloriaClient(host: serverHost, port: serverPort)
             let userName = "MPTest\(i)-\(Int(Date().timeIntervalSince1970))"
             let nationId = nations[i]
 
@@ -88,7 +88,7 @@ actor MultiplayerE2EHarness {
         return result
     }
 
-    private func waitForInGame(client: FreeColClient) async throws {
+    private func waitForInGame(client: NovaloriaClient) async throws {
         var waited = 0
         while true {
             let current = await client.game
@@ -177,7 +177,7 @@ actor MultiplayerE2EHarness {
         print("    New current player: \(newCurrentClient.userName)")
     }
 
-    private func waitForTurnAdvance(client: FreeColClient, fromTurn: Int) async throws {
+    private func waitForTurnAdvance(client: NovaloriaClient, fromTurn: Int) async throws {
         var waited = 0
         while true {
             let current = await client.game

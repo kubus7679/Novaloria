@@ -26,7 +26,7 @@ Implement basic destination orders for selected units via `setDestination`.
 
 ## Validation
 
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 - `swift run FreeColProtocolCLI`
 
 ## Expected Result

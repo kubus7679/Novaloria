@@ -16,7 +16,7 @@ price step.
 
 ## Validierung
 
-- `swift build --target FreeColApp` erfolgreich.
+- `swift build --target Novaloria` erfolgreich.
 - `swift test`: 74 Tests erfolgreich, inklusive Quote-/Steuerberechnung und
   Transaktionsgrenzen.
 - `swift run FreeColProtocolCLI`: 132 Prüfungen erfolgreich.

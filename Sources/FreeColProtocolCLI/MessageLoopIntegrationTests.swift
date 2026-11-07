@@ -1,5 +1,5 @@
 import Foundation
-import FreeColClient
+import NovaloriaClient
 import FreeColGame
 import FreeColProtocol
 
@@ -7,7 +7,7 @@ func runMessageLoopIntegrationTests() async {
   await integrationTest("message loop forwards animate events") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
     let delegate = TestDelegate()
     await client.setDelegate(delegate)
 
@@ -56,7 +56,7 @@ func runMessageLoopIntegrationTests() async {
   await integrationTest("message loop processes question payload and replies") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-4" turn="1">
@@ -103,7 +103,7 @@ func runMessageLoopIntegrationTests() async {
   await integrationTest("decision-action asks use emigrateUnit and lootCargo contract") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-5" turn="1">
@@ -200,7 +200,7 @@ func runMessageLoopIntegrationTests() async {
   await integrationTest("message loop routes ask replies while running") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-8" turn="1">
@@ -250,7 +250,7 @@ func runMessageLoopIntegrationTests() async {
   await integrationTest("prompt replies use firstContact/monarchAction/newLandName contract") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-6" turn="1">
@@ -370,7 +370,7 @@ func runMessageLoopIntegrationTests() async {
   await integrationTest("client sends nativeTrade and diplomacy sessions") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-7" turn="1">
@@ -481,7 +481,7 @@ func runMessageLoopIntegrationTests() async {
   await integrationTest("message loop applies inbound stance/ai/chat/logout") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-43" turn="1">
@@ -528,7 +528,7 @@ func runMessageLoopIntegrationTests() async {
   await integrationTest("message loop forwards founding-father and death prompts") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
     let delegate = TestDelegate()
     await client.setDelegate(delegate)
 

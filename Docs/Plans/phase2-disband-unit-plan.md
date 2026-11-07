@@ -24,7 +24,7 @@ Implement a guarded unit disband action in the Swift client parity layer.
 
 ## Validation
 
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 - `swift run FreeColProtocolCLI`
 
 ## Expected Result

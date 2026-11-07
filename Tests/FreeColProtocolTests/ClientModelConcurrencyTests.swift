@@ -1,14 +1,14 @@
 import XCTest
-import FreeColClient
+import NovaloriaClient
 import FreeColGame
 import FreeColProtocol
-@testable import FreeColApp
+@testable import Novaloria
 
 final class ClientModelConcurrencyTests: XCTestCase {
     @MainActor
     func testIncomingModelChangesAreSerializedWithUIReads() async throws {
         let server = MockServer()
-        let client = FreeColClient(host: "127.0.0.1", port: server.port)
+        let client = NovaloriaClient(host: "127.0.0.1", port: server.port)
         let state = GameState()
         var events: [String] = []
         var europeOrderAvailability: [Bool] = []

@@ -13,7 +13,7 @@ import net.sf.freecol.server.FreeColServer;
 import net.sf.freecol.server.model.ServerPlayer;
 
 /**
- * Optional FreeColClient extension: export a full server save to the game host.
+ * Optional NovaloriaClient extension: export a full server save to the game host.
  */
 public final class SaveGameMessage extends AttributeMessage {
     public static final String TAG = "saveGame";

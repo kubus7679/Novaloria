@@ -190,7 +190,7 @@ Erster echter Lauf der gesamten Suite gegen den Java-Server (Docker). Ergebnis u
 
 - [x] Regionsmodell, unbekannte Update-Protokollierung sowie Schiffsstatus auf hoher See
   und Ankunftsmeldung implementiert.
-- [x] 85 Swift-Tests und `swift build --target FreeColApp` erfolgreich; alle 11 Java-
+- [x] 85 Swift-Tests und `swift build --target Novaloria` erfolgreich; alle 11 Java-
   E2E-Proben ohne Skip oder Fehler.
 - [ ] Native UI-Sichtprüfung für Transit-/Ankunftsanzeige und Einheitenwahl.
 

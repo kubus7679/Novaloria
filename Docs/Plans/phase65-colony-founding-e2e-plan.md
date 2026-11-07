@@ -50,7 +50,7 @@ serverseitige Koloniegründung samt Modellupdate bestätigen.
 
 ## Validierung
 
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 - `swift test` (66 Tests)
 - `swift run FreeColProtocolCLI` (132 Prüfungen)
 - `Tools/e2e-java-server.sh` mit verpflichtender Koloniegründung gegen FreeCol 0.120.

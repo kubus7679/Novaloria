@@ -1,5 +1,5 @@
 import SwiftUI
-import FreeColClient
+import NovaloriaClient
 import FreeColGame
 
 struct GameView: View {

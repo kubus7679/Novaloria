@@ -1,5 +1,5 @@
 import Foundation
-import FreeColClient
+import NovaloriaClient
 import FreeColGame
 import FreeColProtocol
 
@@ -7,7 +7,7 @@ func runSessionMessageIntegrationTests() async {
   await integrationTest("client sends ready and requestLaunch messages") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-3" turn="1">
@@ -52,7 +52,7 @@ func runSessionMessageIntegrationTests() async {
   await integrationTest("client sends setNation message") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-3b" turn="1">
@@ -94,7 +94,7 @@ func runSessionMessageIntegrationTests() async {
   await integrationTest("client sends setNationType message") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-3c" turn="1">
@@ -136,7 +136,7 @@ func runSessionMessageIntegrationTests() async {
   await integrationTest("client sends setColor message") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-3d" turn="1">
@@ -178,7 +178,7 @@ func runSessionMessageIntegrationTests() async {
   await integrationTest("client sends updateGameOptions message") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-3e" turn="1">
@@ -229,7 +229,7 @@ func runSessionMessageIntegrationTests() async {
   await integrationTest("client sends updateMapGeneratorOptions message") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-3f" turn="1">
@@ -280,7 +280,7 @@ func runSessionMessageIntegrationTests() async {
   await integrationTest("client sends chooseFoundingFather message") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-3g" turn="1">
@@ -321,7 +321,7 @@ func runSessionMessageIntegrationTests() async {
   await integrationTest("client sends continue message") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-3h" turn="1">
@@ -355,7 +355,7 @@ func runSessionMessageIntegrationTests() async {
   await integrationTest("client sends retire message") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-3i" turn="1">
@@ -388,7 +388,7 @@ func runSessionMessageIntegrationTests() async {
   await integrationTest("client sends enterRevengeMode message") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-3j" turn="1">
@@ -422,7 +422,7 @@ func runSessionMessageIntegrationTests() async {
   await integrationTest("client sends declineMounds message") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-3k" turn="1">
@@ -464,7 +464,7 @@ func runSessionMessageIntegrationTests() async {
   await integrationTest("client sends monarchAction message") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-3l" turn="1">
@@ -508,7 +508,7 @@ func runSessionMessageIntegrationTests() async {
   await integrationTest("client sends setAI message") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-3m" turn="1">
@@ -552,7 +552,7 @@ func runSessionMessageIntegrationTests() async {
   await integrationTest("client sends setAvailable message") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-3n" turn="1">
@@ -596,7 +596,7 @@ func runSessionMessageIntegrationTests() async {
   await integrationTest("client sends setStance message") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-3o" turn="1">
@@ -644,7 +644,7 @@ func runSessionMessageIntegrationTests() async {
   await integrationTest("client sends declareIndependence message") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-3p" turn="1">
@@ -688,7 +688,7 @@ func runSessionMessageIntegrationTests() async {
   await integrationTest("client sends chat message") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-3q" turn="1">
@@ -736,7 +736,7 @@ func runSessionMessageIntegrationTests() async {
   await integrationTest("client sends setDead message") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-3r" turn="1">
@@ -777,7 +777,7 @@ func runSessionMessageIntegrationTests() async {
   await integrationTest("client sends claimLand message") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     let gameXML = """
       <game id="game-3s" turn="1">

@@ -13,7 +13,7 @@ Show both buy and sale prices over time for the selected goods in Europe.
 
 ## Validierung
 
-- `swift build --target FreeColApp` erfolgreich.
+- `swift build --target Novaloria` erfolgreich.
 - `swift test`: 74 Tests erfolgreich, inklusive beider Preisverläufe.
 - `swift run FreeColProtocolCLI`: 132 Prüfungen erfolgreich.
 - `Tools/e2e-java-server.sh`: Smoke/Deep/Gameplay jeweils 1/0; Kauf/Verkauf

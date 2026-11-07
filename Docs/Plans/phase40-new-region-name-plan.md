@@ -42,7 +42,7 @@ Added two new methods:
 
 ## Validation Status
 
-✅ `swift build --target FreeColApp` — Success  
+✅ `swift build --target Novaloria` — Success
 ✅ `swift run FreeColProtocolCLI` — 79 passed, 0 failed  
 ✅ `swift test` — 11 tests, 0 failures
 

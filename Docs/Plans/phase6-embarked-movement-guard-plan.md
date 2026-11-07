@@ -20,6 +20,6 @@ Prevent embarked units from being treated as directly movable map units.
 
 ## Validation
 
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 - `swift run FreeColProtocolCLI`
 - `swift test`

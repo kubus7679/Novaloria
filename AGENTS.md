@@ -1,12 +1,12 @@
-# FreeColClient — Agent Instructions
+# Novaloria — Agent Instructions
 
 A native macOS SwiftUI client for [FreeCol](https://www.freecol.org), a turn-based strategy game. Connects via TCP/XML to a Java FreeCol server.
 
 ## Build & Test
 
 ```bash
-swift build --target FreeColApp    # build the app
-swift run FreeColApp               # run the SwiftUI app
+swift build --target Novaloria    # build the app
+swift run Novaloria               # run the SwiftUI app
 swift run FreeColProtocolCLI       # run the CLI protocol-debug tool
 swift test                         # run all tests
 Tools/build-app.sh                 # build & create .app bundle
@@ -23,11 +23,11 @@ needs Docker and a locally built `docker-freecol-server` image
 |--------|------|
 | `FreeColProtocol` | TCP connection, XML wire protocol, 150+ message types, handshake |
 | `FreeColGame` | Game data model (`Game`, `Player`, `Tile`, `Unit`, `Colony`), XML deserialization |
-| `FreeColClient` | High-level `FreeColClient` actor — orchestrates connect/login/message loop |
-| `FreeColApp` | SwiftUI views (`LoginView`, `GameView`, `MapView`), `GameState` observable |
+| `NovaloriaClient` | High-level `NovaloriaClient` actor — orchestrates connect/login/message loop |
+| `Novaloria` | SwiftUI views (`LoginView`, `GameView`, `MapView`), `GameState` observable |
 | `FreeColProtocolCLI` | CLI tool for protocol debugging |
 
-See [Docs/plans.md](Docs/plans.md) and [Docs/protocol.md](Docs/protocol.md) for design docs.
+See [Docs/Plans/plans.md](Docs/Plans/plans.md) and [Docs/protocol.md](Docs/protocol.md) for design docs.
 
 ## Wire Protocol Conventions
 

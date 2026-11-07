@@ -21,7 +21,7 @@ Replace the placeholder-only handling for `fountainOfYouth`, `indianDemand`, and
 
 ## Validation
 
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 - `swift test`
 
 ## Expected Result

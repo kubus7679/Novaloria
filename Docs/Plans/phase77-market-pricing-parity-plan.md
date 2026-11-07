@@ -15,7 +15,7 @@ arithmetic and its New World goods clamp for refined goods.
 
 ## Validierung
 
-- `swift build --target FreeColApp` erfolgreich.
+- `swift build --target Novaloria` erfolgreich.
 - `swift test`: 73 Tests erfolgreich, einschließlich made-from clamp and
   zero-initial-amount cases.
 - `swift run FreeColProtocolCLI`: 132 Prüfungen erfolgreich.

@@ -24,7 +24,7 @@ Implement first tactical combat actions from the Swift client:
 
 ## Validation
 
-- swift build --target FreeColApp
+- swift build --target Novaloria
 - swift run FreeColProtocolCLI
 
 ## Expected Result

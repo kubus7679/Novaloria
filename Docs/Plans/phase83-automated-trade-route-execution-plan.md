@@ -19,7 +19,7 @@ Implement automatic execution of trade routes: move assigned carriers along thei
 
 ## Validierung
 
-- `swift build --target FreeColApp` erfolgreich
+- `swift build --target Novaloria` erfolgreich
 - `swift test`: 74 Tests erfolgreich
 - `swift run FreeColProtocolCLI`: 132 Prüfungen erfolgreich
 - `Tools/e2e-java-server.sh` deckt die automatische Routen-Ausführung derzeit nicht als eigenen Probe-Schritt ab; Java-E2E dafür bleibt offen.

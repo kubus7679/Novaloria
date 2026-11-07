@@ -94,7 +94,7 @@ Out of scope (deferred to Phase 45):
 
 ## Validation
 
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 - `swift test`
 - `swift run FreeColProtocolCLI`
 

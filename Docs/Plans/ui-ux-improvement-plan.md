@@ -46,8 +46,8 @@ Recovery-Aktion wird für diesen Fall zu Recht nicht angeboten.
 
 **Betroffene Stellen**
 
-- `Sources/FreeColApp/GameView.swift` — `errorBanner(_:)`
-- `Sources/FreeColApp/GameState.swift` — `errorMessage`,
+- `Sources/Novaloria/GameView.swift` — `errorBanner(_:)`
+- `Sources/Novaloria/GameState.swift` — `errorMessage`,
   `errorRecoveryActionTitle`, Bewegungs-Guards
 - `Tests/FreeColProtocolTests/InteractionRepairTests.swift`
 - `Tests/FreeColProtocolTests/MapInteractionTests.swift`
@@ -86,7 +86,7 @@ Recovery-Aktion wird für diesen Fall zu Recht nicht angeboten.
   Recovery-Fälle ergänzen bzw. vorhandene Tests anpassen.
 - `swift test --filter InteractionRepairTests`
 - `swift test --filter MapInteractionTests`
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 - Native Sichtprüfung: Einheit mit 0 Bewegungspunkten, unerreichbares Ziel,
   unbekannte Serverablehnung.
 
@@ -103,12 +103,12 @@ als Tooltip verfügbar.
 
 **Betroffene Stellen**
 
-- `Sources/FreeColApp/GameView.swift` — `isInspectorVisible`, `topBar`,
+- `Sources/Novaloria/GameView.swift` — `isInspectorVisible`, `topBar`,
   `unitQuickActions`
-- `Sources/FreeColApp/GameState.swift` — bestehende
+- `Sources/Novaloria/GameState.swift` — bestehende
   `selectedUnitMoveDisabledReason`- und
   `selectedUnitActionUnavailableReason`-Guards
-- `Sources/FreeColApp/GameCommands.swift` — bereits vorhandene
+- `Sources/Novaloria/GameCommands.swift` — bereits vorhandene
   Menü-/Inspektoraktionen
 - `Tests/FreeColProtocolTests/MapInteractionTests.swift`
 
@@ -144,7 +144,7 @@ als Tooltip verfügbar.
 - Interaktion manuell mit ausgewählter beweglicher Einheit, Einheit ohne
   Bewegungspunkte und ohne ausgewählte Einheit prüfen.
 - `swift test --filter MapInteractionTests`
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 
 **Priorität/Aufwand:** Hoch; etwa 0,5–1 Tag.
 
@@ -189,9 +189,9 @@ Bedienfehler verursacht.
 
 **Betroffene Stellen**
 
-- `Sources/FreeColApp/MapView.swift` — `drawSettlementLabels(on:data:context:)`
+- `Sources/Novaloria/MapView.swift` — `drawSettlementLabels(on:data:context:)`
   und Routen-Rendering
-- `Sources/FreeColApp/GameCommands.swift` — Kartenüberlagerungen und
+- `Sources/Novaloria/GameCommands.swift` — Kartenüberlagerungen und
   „Siedlungsnamen“
 - `Tests/FreeColProtocolTests/MapInteractionTests.swift`
 
@@ -259,7 +259,7 @@ bei belegtem Problem.
 **Prüfung**
 
 - Manuelle Sicht- und Bediencheckliste.
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 - `swift test`
 
 **Priorität/Aufwand:** Mittel; etwa 0,5 Tag.
@@ -283,7 +283,7 @@ Arbeitspaket 2 verwendet die Meldungsklassifikation aus Arbeitspaket 1. Die
 - Inspektor und offene Befehle sind ohne versteckte Bedienwege nutzbar.
 - Shortcut-Hilfe, Kartenoverlays, Fog of War und deutsche UI sind in den
   betroffenen Zuständen geprüft.
-- `swift build --target FreeColApp` und `swift test` sind nach der Umsetzung
+- `swift build --target Novaloria` und `swift test` sind nach der Umsetzung
   erfolgreich.
 - Die uncommitteten UI-Änderungen wurden berücksichtigt und nicht überschrieben.
 

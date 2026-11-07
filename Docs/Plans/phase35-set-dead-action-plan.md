@@ -13,5 +13,5 @@ Close another small action/UI gap by adding support for `setDead` from the Swift
 
 ## Validation Checklist
 
-- [x] `swift build --target FreeColApp`
+- [x] `swift build --target Novaloria`
 - [x] `swift run FreeColProtocolCLI`

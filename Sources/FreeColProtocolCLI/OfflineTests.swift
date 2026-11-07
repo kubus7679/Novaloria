@@ -1,7 +1,7 @@
 import Foundation
 import FreeColProtocol
 import FreeColGame
-import FreeColClient
+import NovaloriaClient
 
 func runOfflineTests() {
 test("decode trivial message") {

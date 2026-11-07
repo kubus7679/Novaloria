@@ -44,7 +44,7 @@ Close the server→client message-handling gaps identified against the Java clie
 
 ## Validation
 
-- [x] `swift build --target FreeColApp`
+- [x] `swift build --target Novaloria`
 - [x] `swift run FreeColProtocolCLI`
 - [x] `swift test`
 

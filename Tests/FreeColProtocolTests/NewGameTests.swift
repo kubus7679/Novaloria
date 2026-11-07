@@ -1,8 +1,8 @@
 import Darwin
 import XCTest
 import FreeColProtocol
-import FreeColClient
-@testable import FreeColApp
+import NovaloriaClient
+@testable import Novaloria
 
 final class NewGameTests: XCTestCase {
     private func fixture() throws -> URL {
@@ -312,7 +312,7 @@ final class NewGameTests: XCTestCase {
         let server = LocalJavaServer()
         defer { server.stop() }
         try await server.start(launch)
-        let client = FreeColClient(host: "127.0.0.1", port: reserved.port)
+        let client = NovaloriaClient(host: "127.0.0.1", port: reserved.port)
         do {
             try await client.connect()
             let login = try await client.login(userName: "OptionTest", nationId: "model.nation.dutch")

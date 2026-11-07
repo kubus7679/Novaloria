@@ -15,7 +15,7 @@ Extend the market price history chart with a proper time axis showing turn numbe
 
 ## Validierung
 
-- `swift build --target FreeColApp` erfolgreich.
+- `swift build --target Novaloria` erfolgreich.
 - `swift test`: 74 Tests erfolgreich, inklusive Time-Axis-Grafik.
 - `swift run FreeColProtocolCLI`: 132 Prüfungen erfolgreich.
 - `Tools/e2e-java-server.sh`: Smoke/Deep/Gameplay jeweils 1/0; der Marktverlauf

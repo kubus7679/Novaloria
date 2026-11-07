@@ -19,7 +19,7 @@ Close one concrete gap from "missing action messages and UI affordances" by addi
 
 ## Validation
 
-- swift build --target FreeColApp
+- swift build --target Novaloria
 - swift run FreeColProtocolCLI
 
 ## Expected Result

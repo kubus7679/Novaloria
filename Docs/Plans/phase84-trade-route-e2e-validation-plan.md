@@ -162,7 +162,7 @@ docker run -d --name "$CONTAINER" -p "$PORT":3541 -v "$VOLUME":/data \
 
 ### 1. Build und lokale Tests
 ```bash
-swift build --target FreeColApp
+swift build --target Novaloria
 swift test  # Ziel: 80 Tests passieren
 ```
 
@@ -265,4 +265,4 @@ Tools/e2e-java-server.sh  # Ziel: 5/5 Proben erfolgreich
 - `Docs/Plans/phase83-automated-trade-route-execution-plan.md`
 - `Docs/Plans/phase63-gameplay-e2e-plan.md` (Gameplay-Probe Referenz)
 - `Docs/Plans/phase64-market-trade-e2e-plan.md` (E2E-Proben Struktur)
-- `Sources/FreeColApp/GameState+TradeRoutes.swift` (Implementierung)
+- `Sources/Novaloria/GameState+TradeRoutes.swift` (Implementierung)

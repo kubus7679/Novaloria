@@ -28,7 +28,7 @@ Add first tactical unit state controls to Swift client parity layer:
 
 ## Validation
 
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 - `swift run FreeColProtocolCLI`
 
 ## Expected Result

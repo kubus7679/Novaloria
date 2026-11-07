@@ -4,7 +4,7 @@ import XCTest
 import Observation
 import FreeColGame
 import FreeColProtocol
-@testable import FreeColApp
+@testable import Novaloria
 
 final class MapInteractionTests: XCTestCase {
     @MainActor

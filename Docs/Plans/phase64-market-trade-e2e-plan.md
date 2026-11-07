@@ -33,7 +33,7 @@ Carrier bereits in Europa steht.
 
 ## Validierung
 
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 - `swift test`
 - `swift run FreeColProtocolCLI`
 - Lokale Regressionen: 66 XCTest und 130 CLI-Prüfungen bestanden.

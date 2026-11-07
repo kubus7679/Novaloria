@@ -1,6 +1,6 @@
 //
 //  KeyboardShortcutsManager.swift
-//  FreeColClient
+//  NovaloriaClient
 //
 //  Manages keyboard shortcuts for the game, similar to the Java FreeCol client.
 //

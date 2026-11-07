@@ -1,8 +1,8 @@
 import XCTest
-import FreeColClient
+import NovaloriaClient
 import FreeColGame
 import FreeColProtocol
-@testable import FreeColApp
+@testable import Novaloria
 
 final class InteractionRepairTests: XCTestCase {
     @MainActor

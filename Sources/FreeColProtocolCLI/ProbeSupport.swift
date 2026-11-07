@@ -1,5 +1,5 @@
 import Foundation
-import FreeColClient
+import NovaloriaClient
 import FreeColGame
 import FreeColProtocol
 
@@ -52,7 +52,7 @@ class TestDelegate: ClientDelegate {
 }
 
 func connectAndLogin(
-  _ client: FreeColClient,
+  _ client: NovaloriaClient,
   userName: String,
   fallbackNationId: String = "model.nation.dutch"
 ) async throws -> LoginResult {
@@ -66,7 +66,7 @@ func connectAndLogin(
 }
 
 func endTurnAndWait(
-  client: FreeColClient,
+  client: NovaloriaClient,
   localPlayerId: String,
   maxPolls: Int = 180
 ) async throws {

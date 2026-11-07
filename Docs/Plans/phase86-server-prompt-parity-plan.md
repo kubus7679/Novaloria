@@ -727,10 +727,10 @@ Tools/e2e-java-server.sh  # Sollte Prompt-Probe enthalten
 |-------|-------------|--------------|
 | `Tools/e2e-java-server.sh` | Modifikation | Prompt-Probe hinzufügen |
 | `Sources/FreeColProtocolCLI/main.swift` | Erweiterung | Prompt-E2E-Logik |
-| `Sources/FreeColApp/GameState.swift` | Modifikation | Prompt-Handler |
-| `Sources/FreeColApp/MonarchActionDialog.swift` | Neu | Monarch-Action-Dialog |
-| `Sources/FreeColApp/FirstContactDialog.swift` | Neu | First-Contact-Dialog |
-| `Sources/FreeColApp/IndianDemandDialog.swift` | Neu | Indian-Demand-Dialog |
+| `Sources/Novaloria/GameState.swift` | Modifikation | Prompt-Handler |
+| `Sources/Novaloria/MonarchActionDialog.swift` | Neu | Monarch-Action-Dialog |
+| `Sources/Novaloria/FirstContactDialog.swift` | Neu | First-Contact-Dialog |
+| `Sources/Novaloria/IndianDemandDialog.swift` | Neu | Indian-Demand-Dialog |
 | `Tests/FreeColProtocolTests/FreeColProtocolTests.swift` | Erweiterung | Neue Tests |
 | `Docs/Plans/phase86-server-prompt-parity-plan.md` | Neu | Dieser Plan |
 | `Docs/Plans/plans.md` | Modifikation | Phase 86 hinzufügen |

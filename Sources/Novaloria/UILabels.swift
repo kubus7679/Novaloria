@@ -1,6 +1,6 @@
 import Foundation
 
-/// Centralized UI string localization for FreeColClient.
+/// Centralized UI string localization for NovaloriaClient.
 /// This struct provides all user-visible strings in German, preparing for future multi-language support.
 /// When adding support for additional languages, this can be extended with language selection.
 
@@ -213,7 +213,7 @@ enum UILabels {
 
     static let game = "Spiel"
     static let saveGame = "Spiel speichern…"
-    static let about = "Über FreeColClient"
+    static let about = "Über Novaloria"
 
     // MARK: - Stances (for diplomacy)
 

@@ -99,7 +99,7 @@ def import_colopedia(source, target, resources, resolve, messages):
 
 def main():
     source = Path(sys.argv[1]).resolve()
-    target = Path(__file__).resolve().parents[1] / "Sources/FreeColApp/Resources"
+    target = Path(__file__).resolve().parents[1] / "Sources/Novaloria/Resources"
     resources = properties(source / "data/default/resources.properties")
 
     def resolve(key):

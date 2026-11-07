@@ -36,7 +36,7 @@ FreeCol 1.x has **no** dedicated `buy`/`sell` XML messages. Buy/sell in Europe i
 
 ## Validation
 
-- [x] `swift build --target FreeColApp`
+- [x] `swift build --target Novaloria`
 - [x] `swift run FreeColProtocolCLI`
 - [x] `swift test`
 

@@ -9,7 +9,7 @@ extension GameState {
         }
         let panel = NSSavePanel()
         panel.title = "Spiel speichern"
-        panel.message = "Vollständiger Server-Spielstand (.fsg). Der Java-Server muss mit der FreeColClient-Speichererweiterung gestartet sein."
+        panel.message = "Vollständiger Server-Spielstand (.fsg). Der Java-Server muss mit der NovaloriaClient-Speichererweiterung gestartet sein."
         panel.allowedContentTypes = [UTType(filenameExtension: "fsg") ?? .data]
         panel.nameFieldStringValue = "FreeCol-Runde-\(game?.turn.number ?? 1).fsg"
         panel.canCreateDirectories = true

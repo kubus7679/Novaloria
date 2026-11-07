@@ -13,5 +13,5 @@ Close another small action/UI gap by adding support for `claimLand` from the Swi
 
 ## Validation Checklist
 
-- [x] `swift build --target FreeColApp`
+- [x] `swift build --target Novaloria`
 - [x] `swift run FreeColProtocolCLI`

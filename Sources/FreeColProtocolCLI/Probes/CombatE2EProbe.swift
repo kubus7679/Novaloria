@@ -1,12 +1,12 @@
 import Foundation
 import FreeColProtocol
 import FreeColGame
-import FreeColClient
+import NovaloriaClient
 
 func combatE2EProbe() async throws {
     let host = ProcessInfo.processInfo.environment["REAL_SERVER_HOST"] ?? "127.0.0.1"
     let port = Int(ProcessInfo.processInfo.environment["REAL_SERVER_PORT"] ?? "3541") ?? 3541
-    let client = FreeColClient(host: host, port: port)
+    let client = NovaloriaClient(host: host, port: port)
     let delegate = TestDelegate()
     await client.setDelegate(delegate)
 

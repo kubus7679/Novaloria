@@ -1,7 +1,7 @@
 import SwiftUI
 import FreeColProtocol
 import FreeColGame
-import FreeColClient
+import NovaloriaClient
 
 private enum MarketTradeError: Error, CustomStringConvertible {
     case message(String)
@@ -556,7 +556,7 @@ final class GameState {
     /// Latest `nationSummary` report from the server, if any.
     var nationSummaryReport: ParsedMessage?
 
-    private(set) var client: FreeColClient?
+    private(set) var client: NovaloriaClient?
     // Expose vacant players after connection, before login
     var vacantPlayers: ParsedMessage?
     var serverState: ServerState?
@@ -637,7 +637,7 @@ final class GameState {
                 FreeColLogger.shared.error("Saving game failed: \(error)")
                 errorMessage = "Spiel konnte nicht gespeichert werden: \(ServerErrorMessage.description(for: error))"
                 if let protocolError = error as? FreeColProtocolError, case .timeout = protocolError {
-                    errorMessage = "Keine Speicherbestätigung vom Server erhalten. Es wurde keine Datei gespeichert. Der Java-Server benötigt die FreeColClient-Speichererweiterung."
+                    errorMessage = "Keine Speicherbestätigung vom Server erhalten. Es wurde keine Datei gespeichert. Der Java-Server benötigt die NovaloriaClient-Speichererweiterung."
                 }
                 statusMessage = "Speichern fehlgeschlagen."
             }
@@ -1749,7 +1749,7 @@ final class GameState {
         Task {
             let actualPort = await server.port
             FreeColLogger.shared.info("MockServer on port \(actualPort)")
-            let client = FreeColClient(host: "127.0.0.1", port: actualPort)
+            let client = NovaloriaClient(host: "127.0.0.1", port: actualPort)
             self.client = client
             await client.setDelegate(bridge)
             do {
@@ -1844,9 +1844,27 @@ final class GameState {
     }
 
     private func hostedGamesRoot() throws -> URL {
-        try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
-                                    appropriateFor: nil, create: true)
-            .appendingPathComponent("FreeColClient/Games")
+        let fileManager = FileManager.default
+        let supportDirectory = try fileManager.url(for: .applicationSupportDirectory, in: .userDomainMask,
+                                                   appropriateFor: nil, create: true)
+        let root = supportDirectory.appendingPathComponent("Novaloria/Games", isDirectory: true)
+        let legacyRoot = supportDirectory.appendingPathComponent("FreeColClient/Games", isDirectory: true)
+
+        try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
+        if let legacyDirectories = try? fileManager.contentsOfDirectory(
+            at: legacyRoot, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]
+        ) {
+            for legacyDirectory in legacyDirectories {
+                let destination = root.appendingPathComponent(legacyDirectory.lastPathComponent, isDirectory: true)
+                guard !fileManager.fileExists(atPath: destination.path) else { continue }
+                do {
+                    try fileManager.moveItem(at: legacyDirectory, to: destination)
+                } catch {
+                    FreeColLogger.shared.error("Could not migrate legacy hosted game directory: \(error)")
+                }
+            }
+        }
+        return root
     }
 
     private func startHostedServer(_ launch: JavaServerLaunch, savegameName: String?) {
@@ -1907,7 +1925,7 @@ final class GameState {
         resetSessionState()
         phase = .connecting
         statusMessage = "Verbindung zu \(host):\(port) wird hergestellt …"
-        let client = FreeColClient(host: host, port: port)
+        let client = NovaloriaClient(host: host, port: port)
         self.client = client
         let bridge = ClientBridge(gameState: self)
         self.bridge = bridge
@@ -7360,7 +7378,7 @@ final class GameState {
         return Self.isBuildableColonyTile(tile, in: game)
     }
 
-    private func startMessageLoop(client: FreeColClient, server: MockServer? = nil) {
+    private func startMessageLoop(client: NovaloriaClient, server: MockServer? = nil) {
         messageLoopTask = Task {
             await client.startMessageLoop()
         }
@@ -7394,7 +7412,7 @@ final class GameState {
                 }
                 if Task.isCancelled { return }
                 do {
-                    let newClient = FreeColClient(host: remoteHost, port: remotePort)
+                    let newClient = NovaloriaClient(host: remoteHost, port: remotePort)
                     let newBridge = ClientBridge(gameState: self)
                     await newClient.setDelegate(newBridge)
                     try await newClient.connect()

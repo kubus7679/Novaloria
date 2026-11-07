@@ -35,13 +35,13 @@ assign them to carriers, all driven by the existing wire messages.
 3. `FreeColGame/Model/Player.swift`: parse `<tradeRoute>` children into the game.
 4. `FreeColGame/State/GameStateManager.swift`: handle inbound `newTradeRoute`,
    `updateTradeRoute`, `deleteTradeRoute` (top-level and nested in `<update>`).
-5. `FreeColApp/GameState.swift`: `tradeRoutes`, `tradeRouteStopCandidates`
+5. `Novaloria/GameState.swift`: `tradeRoutes`, `tradeRouteStopCandidates`
    (owned colonies + Europe), `createTradeRoute()`, `saveTradeRoute(_:)`,
    `deleteTradeRoute(id:)`, guard on local turn.
-6. `FreeColApp/TradeRoutePanelView.swift` (new): route list + editor
+6. `Novaloria/TradeRoutePanelView.swift` (new): route list + editor
    (name, stop list with location picker and cargo toggles, add/remove stop),
    save/delete, assign to selected carrier.
-7. `FreeColApp/GameMenuBar.swift` + `GameView.swift`: Orders menu entry
+7. `Novaloria/GameMenuBar.swift` + `GameView.swift`: Orders menu entry
    ("Trade Routes…") + sheet wiring.
 8. Tests: model round-trip parse of `<tradeRoute>`, `GameStateManager` inbound
    `newTradeRoute`/`updateTradeRoute`/`deleteTradeRoute`, outbound
@@ -49,7 +49,7 @@ assign them to carriers, all driven by the existing wire messages.
 
 ## Validation
 
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 - `swift test`
 - `swift run FreeColProtocolCLI`
 

@@ -27,19 +27,19 @@ id text fields.
 2. `FreeColGame/Model/Colony.swift`: parse `buildQueueItem`,
    `populationQueueItem`, `building` children into ordered queues and a
    `buildings` list (`ColonyBuilding`).
-3. `FreeColApp/GameState.swift`: `selectedColonyBuildableCandidates` (spec-known,
+3. `Novaloria/GameState.swift`: `selectedColonyBuildableCandidates` (spec-known,
    not yet built, population requirement met), `selectedColonyBuildings`,
    `selectedColonyBuildQueue`, `buildingDisplayName(_:)`.
-4. `FreeColApp/ColonyPanelView.swift`: Buildings list, build-queue picker +
+4. `Novaloria/ColonyPanelView.swift`: Buildings list, build-queue picker +
    Add/Up/Down/Remove, Set/Reset buttons, and draft sync on server-driven
    `colony.buildQueue` changes.
-5. `FreeColApp/GameView.swift`: pass the new model-derived inputs.
+5. `Novaloria/GameView.swift`: pass the new model-derived inputs.
 6. Tests: colony queue/building parsing + specification building types (CLI and
    XCTest).
 
 ## Validation
 
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 - `swift test`
 - `swift run FreeColProtocolCLI`
 

@@ -23,7 +23,7 @@ Show minimal visual cues for server-sent animation events:
 
 ## Validation
 
-- swift build --target FreeColApp
+- swift build --target Novaloria
 - swift run FreeColProtocolCLI
 
 ## Expected Result

@@ -1,5 +1,5 @@
 import SwiftUI
-import FreeColClient
+import NovaloriaClient
 import FreeColProtocol
 
 // MARK: - LoginView
@@ -560,7 +560,7 @@ struct LoginView: View {
                     }
 
                     // Versionsinfo
-                    Text("FreeColClient \(AppVersion.displayString)")
+                    Text("Novaloria \(AppVersion.displayString)")
                         .font(.caption2)
                         .foregroundColor(Color(white: 0.6))
                         .padding(.top, 8)

@@ -27,7 +27,7 @@ machen.
   wartete fälschlich auf ein `<reply>` → auf `send` umgestellt.
 - `endTurn` kann serverseitig bis zum eigenen Zug zurückgehalten werden; der
   Probe-Ask darf deshalb nicht fehlschlagen (Timeout toleriert).
-- `FreeColClient.ask(message:timeout:)` um einen Timeout-Parameter erweitert.
+- `NovaloriaClient.ask(message:timeout:)` um einen Timeout-Parameter erweitert.
 - Die beiden Real-Server-Tests sind auf einer Serverinstanz exklusiv (der
   Launch verbraucht die Pre-Game-Lobby); der Deep-Test läuft daher nur ohne
   gesetztes `REAL_SERVER_E2E`.

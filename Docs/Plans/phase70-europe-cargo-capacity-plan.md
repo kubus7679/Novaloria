@@ -17,7 +17,7 @@ remaining goods capacity, matching Java FreeCol cargo slots.
 
 ## Validierung
 
-- `swift build --target FreeColApp` erfolgreich.
+- `swift build --target Novaloria` erfolgreich.
 - `swift test`: 69 Tests erfolgreich, inklusive Cargo-Space-Inheritance und
   Loadable-Amount-Grenzfällen.
 - `swift run FreeColProtocolCLI`: 132 Prüfungen erfolgreich.

@@ -20,7 +20,7 @@ Add a minimal visual path preview for unit destination orders.
 
 ## Validation
 
-- swift build --target FreeColApp
+- swift build --target Novaloria
 - swift run FreeColProtocolCLI
 
 ## Expected Result

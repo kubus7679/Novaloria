@@ -17,7 +17,7 @@ Spezifikationsdaten.
 
 ## Validierung
 
-- `swift build --target FreeColApp` erfolgreich.
+- `swift build --target Novaloria` erfolgreich.
 - `swift test`: 66 Tests erfolgreich.
 - `swift run FreeColProtocolCLI`: 132 Prüfungen erfolgreich; darunter die
   bestehende Regression für das `changeWorkImprovementType`-Payload.

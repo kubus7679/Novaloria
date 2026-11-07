@@ -127,7 +127,7 @@ Falls Proben zeigen, dass Server andere Regeln nutzt (z.B. Mindest-Gold, Slot-Li
 ### 1. Build und lokale Tests
 
 ```bash
-swift build --target FreeColApp
+swift build --target Novaloria
 swift test                      # Ziel: 80+ XCTest ohne Regression
 swift run FreeColProtocolCLI    # Ziel: 132+ CLI-Prüfungen ohne Regression
 ```

@@ -12,7 +12,7 @@ Normalize common server reject responses into clearer UI messages and keep local
 
 ## Execution Steps
 
-1. [x] Add a shared reject-message mapper in `FreeColClient`.
+1. [x] Add a shared reject-message mapper in `NovaloriaClient`.
 2. [x] Use the mapper from `GameState` error handling.
 3. [x] Add CLI regressions for common reject cases.
 4. [x] Extended message-specific mappings (not-your-turn, amphibious, native
@@ -21,6 +21,6 @@ Normalize common server reject responses into clearer UI messages and keep local
 
 ## Validation
 
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 - `swift run FreeColProtocolCLI`
 - `swift test`

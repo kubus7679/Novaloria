@@ -13,5 +13,5 @@ Close another gameplay action/UI gap by adding support for `declareIndependence`
 
 ## Validation Checklist
 
-- [x] `swift build --target FreeColApp`
+- [x] `swift build --target Novaloria`
 - [x] `swift run FreeColProtocolCLI`

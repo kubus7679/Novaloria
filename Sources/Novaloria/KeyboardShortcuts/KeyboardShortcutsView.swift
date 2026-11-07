@@ -1,6 +1,6 @@
 //
 //  KeyboardShortcutsView.swift
-//  FreeColClient
+//  NovaloriaClient
 //
 //  Displays the available keyboard shortcuts in a help panel.
 //

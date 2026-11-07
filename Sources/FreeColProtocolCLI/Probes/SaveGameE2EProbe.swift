@@ -1,10 +1,10 @@
 import Foundation
 import FreeColProtocol
-import FreeColClient
+import NovaloriaClient
 
 func saveGameE2EProbe() async throws {
     let environment = ProcessInfo.processInfo.environment
-    let client = FreeColClient(
+    let client = NovaloriaClient(
         host: environment["REAL_SERVER_HOST"] ?? "127.0.0.1",
         port: Int(environment["REAL_SERVER_PORT"] ?? "3541") ?? 3541
     )

@@ -1,6 +1,6 @@
 //
 //  KeyboardShortcutHandlerView.swift
-//  FreeColClient
+//  NovaloriaClient
 //
 //  Handles keyboard shortcuts for the game view.
 //

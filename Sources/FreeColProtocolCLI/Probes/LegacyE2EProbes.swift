@@ -1,7 +1,7 @@
 import Foundation
 import FreeColProtocol
 import FreeColGame
-import FreeColClient
+import NovaloriaClient
 
 @MainActor
 func runLegacyE2EProbes() async {
@@ -9,7 +9,7 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_E2E"] == "1" {
     await integrationTest("real Java server connect/login smoke") {
         let host = ProcessInfo.processInfo.environment["REAL_SERVER_HOST"] ?? "127.0.0.1"
         let port = Int(ProcessInfo.processInfo.environment["REAL_SERVER_PORT"] ?? "3541") ?? 3541
-        let client = FreeColClient(host: host, port: port)
+        let client = NovaloriaClient(host: host, port: port)
         let delegate = TestDelegate()
         await client.setDelegate(delegate)
 
@@ -47,7 +47,7 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_DEEP_E2E"] == "1"
     await integrationTest("real Java server pregame-to-ingame probe") {
         let host = ProcessInfo.processInfo.environment["REAL_SERVER_HOST"] ?? "127.0.0.1"
         let port = Int(ProcessInfo.processInfo.environment["REAL_SERVER_PORT"] ?? "3541") ?? 3541
-        let client = FreeColClient(host: host, port: port)
+        let client = NovaloriaClient(host: host, port: port)
         let delegate = TestDelegate()
         await client.setDelegate(delegate)
 
@@ -132,7 +132,7 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_GAMEPLAY_E2E"] == "1" {
     await integrationTest("real Java server gameplay probe") {
         let host = ProcessInfo.processInfo.environment["REAL_SERVER_HOST"] ?? "127.0.0.1"
         let port = Int(ProcessInfo.processInfo.environment["REAL_SERVER_PORT"] ?? "3541") ?? 3541
-        let client = FreeColClient(host: host, port: port)
+        let client = NovaloriaClient(host: host, port: port)
 
         try await client.connect()
         let vacant = await client.initialVacantPlayers
@@ -966,7 +966,7 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_REJECT_E2E"] == "1" {
     await integrationTest("real Java server rejection probe") {
         let host = ProcessInfo.processInfo.environment["REAL_SERVER_HOST"] ?? "127.0.0.1"
         let port = Int(ProcessInfo.processInfo.environment["REAL_SERVER_PORT"] ?? "3541") ?? 3541
-        let client = FreeColClient(host: host, port: port)
+        let client = NovaloriaClient(host: host, port: port)
 
         try await client.connect()
         let vacant = await client.initialVacantPlayers
@@ -1024,7 +1024,7 @@ if ProcessInfo.processInfo.environment["REAL_SERVER_TRADE_ROUTE_E2E"] == "1" {
     await integrationTest("real Java server trade route execution probe") {
         let host = ProcessInfo.processInfo.environment["REAL_SERVER_HOST"] ?? "127.0.0.1"
         let port = Int(ProcessInfo.processInfo.environment["REAL_SERVER_PORT"] ?? "3541") ?? 3541
-        let client = FreeColClient(host: host, port: port)
+        let client = NovaloriaClient(host: host, port: port)
 
         try await client.connect()
         let nationId = "model.nation.dutch"

@@ -2,7 +2,7 @@ import XCTest
 import SwiftUI
 @testable import FreeColProtocol
 import FreeColGame
-@testable import FreeColApp
+@testable import Novaloria
 
 final class FreeColProtocolTests: XCTestCase {
 

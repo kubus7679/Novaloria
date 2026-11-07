@@ -20,10 +20,10 @@ price. The player can now make an offer price and haggle with the settlement.
 
 ## Implementation Steps
 
-1. `FreeColApp/GameState.swift`: `nativeTradeBuy(_:offerPrice:)` /
+1. `Novaloria/GameState.swift`: `nativeTradeBuy(_:offerPrice:)` /
    `nativeTradeSell(_:offerPrice:)` overloads, `nativeTradeHaggleOffer(_:buying:)`
    (10% better than the current price), shared `sendNativeTradeOffer`.
-2. `FreeColApp/NativeTradeView.swift`: per-item offer stepper, "Offer" (haggle),
+2. `Novaloria/NativeTradeView.swift`: per-item offer stepper, "Offer" (haggle),
    "Accept" (current price) and "Gift"; haggle-count badge.
 3. Tests: native-trade-item serialization (CLI) and haggle-offer math (XCTest).
 

@@ -108,7 +108,7 @@ Falls Proben zeigen, dass Server andere Regeln nutzt (z.B. nur Jesuiten können 
 ### 1. Build und lokale Tests
 
 ```bash
-swift build --target FreeColApp
+swift build --target Novaloria
 swift test                      # Ziel: 80+ XCTest ohne Regression
 swift run FreeColProtocolCLI    # Ziel: 132+ CLI-Prüfungen ohne Regression
 ```
@@ -216,7 +216,7 @@ Tools/e2e-java-server.sh        # Ziel: 11/11 Proben erfolgreich
 |-------|-------------|--------------|
 | `Tools/e2e-java-server.sh` | Modifikation | 11. Probe hinzufügen |
 | `Sources/FreeColProtocolCLI/main.swift` | Erweiterung | Missionary & Spy E2E-Probe |
-| `Sources/FreeColApp/GameState.swift` | ggf. Modifikation | Guard-Parität |
+| `Sources/Novaloria/GameState.swift` | ggf. Modifikation | Guard-Parität |
 | `Docs/Plans/plans.md` | Modifikation | Phase 89 hinzufügen |
 | `Docs/Plans/freecol-client-roadmap.md` | Modifikation | Phase 89 hinzufügen |
 | `Docs/Plans/phase89-missionary-spy-e2e-plan.md` | Neu | Dieser Plan |
@@ -227,4 +227,4 @@ Tools/e2e-java-server.sh        # Ziel: 11/11 Proben erfolgreich
 - `Docs/Plans/phase58-diplomacy-native-depth-plan.md`
 - `Docs/Plans/phase87-diplomacy-native-trade-e2e-plan.md` (Probe-Muster)
 - `Docs/Plans/phase88-combat-e2e-plan.md` (Probe-Muster)
-- `Sources/FreeColApp/GameState.swift` (`sendMissionary`, `spySettlement`, `applyModelMessage`)
+- `Sources/Novaloria/GameState.swift` (`sendMissionary`, `spySettlement`, `applyModelMessage`)

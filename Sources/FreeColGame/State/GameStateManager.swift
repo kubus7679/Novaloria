@@ -26,7 +26,7 @@ public final class GameStateManager: @unchecked Sendable {
         FreeColLogger.shared.debug("GameStateManager processing <\(parsed.tag)>")
         switch parsed.tag {
         case "question":
-            // Defensive fallback: payload should normally be handled in FreeColClient.
+            // Defensive fallback: payload should normally be handled in NovaloriaClient.
             // If a wrapped question reaches the model layer, still apply its payload.
             if let payload = parsed.children.first {
                 return try process(payload)

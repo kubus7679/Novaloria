@@ -1,5 +1,5 @@
 import SwiftUI
-import FreeColClient
+import NovaloriaClient
 import FreeColGame
 
 /// Protocol-/Server-Test-Werkzeuge, die vom Java-Client-Debug-Menue inspiriert sind.

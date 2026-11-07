@@ -21,7 +21,7 @@ Harden destination order lifecycle handling so stale selection/order references 
 
 ## Validation
 
-- swift build --target FreeColApp
+- swift build --target Novaloria
 - swift run FreeColProtocolCLI
 
 ## Expected Result

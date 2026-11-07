@@ -4,7 +4,7 @@
             "type": "swift",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:FreeColClient}",
+            "cwd": "${workspaceFolder:Novaloria}",
             "name": "Debug FreeColProtocolCLI",
             "target": "FreeColProtocolCLI",
             "configuration": "debug",
@@ -14,7 +14,7 @@
             "type": "swift",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:FreeColClient}",
+            "cwd": "${workspaceFolder:Novaloria}",
             "name": "Release FreeColProtocolCLI",
             "target": "FreeColProtocolCLI",
             "configuration": "release",
@@ -24,21 +24,21 @@
             "type": "swift",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:FreeColClient}",
-            "name": "Debug FreeColApp",
-            "target": "FreeColApp",
+            "cwd": "${workspaceFolder:Novaloria}",
+            "name": "Debug Novaloria",
+            "target": "Novaloria",
             "configuration": "debug",
-            "preLaunchTask": "swift: Build Debug FreeColApp"
+            "preLaunchTask": "swift: Build Debug Novaloria"
         },
         {
             "type": "swift",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:FreeColClient}",
-            "name": "Release FreeColApp",
-            "target": "FreeColApp",
+            "cwd": "${workspaceFolder:Novaloria}",
+            "name": "Release Novaloria",
+            "target": "Novaloria",
             "configuration": "release",
-            "preLaunchTask": "swift: Build Release FreeColApp"
+            "preLaunchTask": "swift: Build Release Novaloria"
         }
     ]
 }

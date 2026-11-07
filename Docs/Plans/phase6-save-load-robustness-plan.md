@@ -17,6 +17,6 @@ Prevent stale state from surviving when a full game snapshot is loaded into an e
 
 ## Validation
 
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 - `swift run FreeColProtocolCLI`
 - `swift test`

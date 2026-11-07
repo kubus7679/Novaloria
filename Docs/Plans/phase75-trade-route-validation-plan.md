@@ -16,7 +16,7 @@ Warn about trade routes that Java FreeCol will reject before sending
 
 ## Validierung
 
-- `swift build --target FreeColApp` erfolgreich.
+- `swift build --target Novaloria` erfolgreich.
 - `swift test`: 71 Tests erfolgreich, einschließlich Java-kompatibler
   Trade-Route-Validierungsfälle.
 - `swift run FreeColProtocolCLI`: 132 Prüfungen erfolgreich.

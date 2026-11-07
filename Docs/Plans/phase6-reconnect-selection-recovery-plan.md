@@ -21,6 +21,6 @@ Make disconnect/reconnect handling more forgiving by recovering selection state 
 
 ## Validation
 
-- `swift build --target FreeColApp`
+- `swift build --target Novaloria`
 - `swift run FreeColProtocolCLI`
 - `swift test`

@@ -7,7 +7,7 @@ Introduce a minimal in-game colony panel for selected settlements.
 ## Scope
 
 - Add selection-derived colony access in GameState.
-- Add a dedicated ColonyPanelView in FreeColApp.
+- Add a dedicated ColonyPanelView in Novaloria.
 - Show basic colony facts and stationed units without changing network behavior.
 
 ## Execution Steps
@@ -20,7 +20,7 @@ Introduce a minimal in-game colony panel for selected settlements.
 
 ## Validation
 
-- swift build --target FreeColApp
+- swift build --target Novaloria
 - swift run FreeColProtocolCLI
 
 ## Expected Result

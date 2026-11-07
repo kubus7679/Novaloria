@@ -1,14 +1,14 @@
 import Foundation
 import FreeColProtocol
 import FreeColGame
-import FreeColClient
+import NovaloriaClient
 
 func diplomacyE2EProbe() async throws {
     let tribute = ProcessInfo.processInfo.environment["REAL_SERVER_TRIBUTE_E2E"] == "1"
     let context = tribute ? "TRIBUTE" : "DIPLOMATIC"
     let host = ProcessInfo.processInfo.environment["REAL_SERVER_HOST"] ?? "127.0.0.1"
     let port = Int(ProcessInfo.processInfo.environment["REAL_SERVER_PORT"] ?? "3541") ?? 3541
-    let client = FreeColClient(host: host, port: port)
+    let client = NovaloriaClient(host: host, port: port)
     let delegate = TestDelegate()
     await client.setDelegate(delegate)
 

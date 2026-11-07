@@ -22,9 +22,9 @@ gold / goods / colony / stance clauses.
 
 1. `FreeColGame/Model/DiplomaticTrade.swift`: `DiplomaticClauseKind`,
    `DiplomaticClauseDraft` (+ reconstruction from a received clause).
-2. `FreeColApp/GameState.swift`: `sendDiplomacyCounterProposal(_:)`,
+2. `Novaloria/GameState.swift`: `sendDiplomacyCounterProposal(_:)`,
    `pendingDiplomacyDrafts`, `diplomacyClauseNode(_:ourId:otherId:)`.
-3. `FreeColApp/DiplomacyView.swift`: editable clause list (add/remove),
+3. `Novaloria/DiplomacyView.swift`: editable clause list (add/remove),
    direction picker, per-kind fields (gold/goods/colony/stance) and
    "Send Counter-Proposal".
 4. Tests: clause serialization + draft reconstruction (XCTest).

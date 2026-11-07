@@ -61,7 +61,7 @@
   bereits vorhanden. Die Empfangslogik und das Zeilen-Framing waren jedoch eng
   gekoppelt; das Framing ist jetzt ein separat testbarer Typ, und der
   Netzwerk-Callback übergibt Daten zur Verarbeitung an den `Connection`-Actor.
-- `FreeColApp/GameState.swift` bleibt ein großer Einstiegspunkt; Fehler-Mapping
+- `Novaloria/GameState.swift` bleibt ein großer Einstiegspunkt; Fehler-Mapping
   wurde aus der UI-Logik gelöst. CLI-Integrationstests liegen jetzt nach
   Lifecycle, Session, Gameplay und Nachrichtenfluss getrennt.
 - Actor-isolierte CLI-APIs werden in den extrahierten Tests korrekt mit `await`
@@ -80,7 +80,7 @@
 | 7 — Transport-Sicherheitsabnahme | Abhängig von Phase 5 | Verbindungsfehler, Zertifikatsprüfung und Downgrade-Verhalten gegen den TLS-fähigen Server/Tunnel testen; Klartext nur für explizit konfigurierte lokale/vertrauenswürdige Verbindungen zulassen. |
 | 8 — Eingabevalidierung | Mittel, abgeschlossen | Login-Port wird nur im Bereich 1–65535 akzeptiert; ungültige Eingaben werden sichtbar erklärt und können nicht still auf einen anderen Port zurückfallen. |
 
-Phasen 1–4 sowie 8 wurden mit `swift test`, `swift build --target FreeColApp` und
+Phasen 1–4 sowie 8 wurden mit `swift test`, `swift build --target Novaloria` und
 `swift build --target FreeColProtocolCLI` geprüft. Die CLI-Integrationstests sind
 zusätzlich über `swift run FreeColProtocolCLI` ausführbar. Phase 5 bleibt von einer
 kompatiblen, serverseitig unterstützten TLS-/Tunnel-Lösung abhängig. Die neuen
@@ -299,7 +299,7 @@ eigenem und fremdem Zug live prüfen.
   Die Prüfung der kleineren Dialogbreiten deckte erzwungene Mindestbreiten
   durch lange Bereichsreiter auf; die korrigierten Layouts passen ohne
   abgeschnittene Navigation oder Schließen-Schaltfläche.
-- `swift build --product FreeColApp` und `git diff --check` erfolgreich.
+- `swift build --product Novaloria` und `git diff --check` erfolgreich.
 - Die laufende Mehrspielerpartie wurde für diese Implementierung nicht
   unterbrochen oder neu gestartet. Die vorangehende Live-Prüfung der Runden
   6–9 bleibt getrennt von dieser Fixture-/Layoutabnahme. Eine erneute

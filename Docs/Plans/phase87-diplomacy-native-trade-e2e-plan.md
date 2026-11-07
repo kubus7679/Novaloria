@@ -226,7 +226,7 @@ Redesign). Dokumentation der Abweichung im Plan-Status.
 ### 1. Build und lokale Tests
 
 ```bash
-swift build --target FreeColApp
+swift build --target Novaloria
 swift test                      # Ziel: 80+ XCTest ohne Regression
 swift run FreeColProtocolCLI    # Ziel: 132+ CLI-Prüfungen ohne Regression
 ```
@@ -327,7 +327,7 @@ Tools/e2e-java-server.sh        # Ziel: 9/9 Proben erfolgreich
 - `NativeTradeSession` / `NativeTradeItem` Modelle vorhanden ✅
   (`Sources/FreeColGame/Model/NativeTrade.swift`)
 - `beginDiplomacy(otherColonyId:)` und `DiplomaticTradeProposal` vorhanden ✅
-  (`Sources/FreeColApp/GameState.swift`)
+  (`Sources/Novaloria/GameState.swift`)
 - Java-Server-Docker-Image verfügbar (`docker-freecol-server:latest`)
 - Turn-Advance- und Adjacency-Helper aus Phase 63/84 wiederverwendbar ✅
 
@@ -337,8 +337,8 @@ Tools/e2e-java-server.sh        # Ziel: 9/9 Proben erfolgreich
 |-------|-------------|--------------|
 | `Tools/e2e-java-server.sh` | Modifikation | 8. und 9. Probe hinzufügen |
 | `Sources/FreeColProtocolCLI/main.swift` | Erweiterung | Native-Trade- und Diplomatie-Proben |
-| `Sources/FreeColApp/GameState.swift` | ggf. Modifikation | Guard-Parität (nur bei Abweichung) |
-| `Sources/FreeColApp/GameState.swift` | ggf. Modifikation | Neue `userFacingServerError`-Mappings |
+| `Sources/Novaloria/GameState.swift` | ggf. Modifikation | Guard-Parität (nur bei Abweichung) |
+| `Sources/Novaloria/GameState.swift` | ggf. Modifikation | Neue `userFacingServerError`-Mappings |
 | `Docs/Plans/plans.md` | Modifikation | Phase 87 hinzufügen |
 | `Docs/Plans/freecol-client-roadmap.md` | Modifikation | Phase 87 hinzufügen |
 | `Docs/Plans/phase87-diplomacy-native-trade-e2e-plan.md` | Neu | Dieser Plan |
@@ -351,4 +351,4 @@ Tools/e2e-java-server.sh        # Ziel: 9/9 Proben erfolgreich
 - `Docs/Plans/phase58-diplomacy-native-depth-plan.md`
 - `Docs/Plans/phase84-trade-route-e2e-validation-plan.md` (Probe-Muster)
 - `Sources/FreeColGame/Model/NativeTrade.swift`
-- `Sources/FreeColApp/GameState.swift` (`beginDiplomacy`, `applyNativeTradeMessage`, `applyDiplomacyMessage`)
+- `Sources/Novaloria/GameState.swift` (`beginDiplomacy`, `applyNativeTradeMessage`, `applyDiplomacyMessage`)

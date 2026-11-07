@@ -1,5 +1,5 @@
 import Foundation
-import FreeColClient
+import NovaloriaClient
 import FreeColGame
 import FreeColProtocol
 
@@ -8,7 +8,7 @@ func runClientLifecycleIntegrationTests() async {
     let server = MockServer()
     let port = server.port
 
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
     let gameXML = """
       <game id="game-0" turn="1">
         <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"/>
@@ -67,7 +67,7 @@ func runClientLifecycleIntegrationTests() async {
       </game>
       """
 
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
     let delegate = TestDelegate()
     await client.setDelegate(delegate)
 
@@ -107,7 +107,7 @@ func runClientLifecycleIntegrationTests() async {
   await integrationTest("connect captures vacantPlayers sent after gameState") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     try await withThrowingTaskGroup(of: Void.self) { group in
       group.addTask {
@@ -145,7 +145,7 @@ func runClientLifecycleIntegrationTests() async {
   await integrationTest("connect does not block when vacantPlayers is absent") {
     let server = MockServer()
     let port = server.port
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     try await withThrowingTaskGroup(of: Void.self) { group in
       group.addTask {
@@ -182,7 +182,7 @@ func runClientLifecycleIntegrationTests() async {
       </game>
       """
 
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
     let delegate = TestDelegate()
     await client.setDelegate(delegate)
 
@@ -222,7 +222,7 @@ func runClientLifecycleIntegrationTests() async {
       </game>
       """
 
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
     let delegate = TestDelegate()
     await client.setDelegate(delegate)
 
@@ -262,7 +262,7 @@ func runClientLifecycleIntegrationTests() async {
       </game>
       """
 
-    let client = FreeColClient(host: "127.0.0.1", port: port)
+    let client = NovaloriaClient(host: "127.0.0.1", port: port)
 
     try await withThrowingTaskGroup(of: Void.self) { group in
       group.addTask {
