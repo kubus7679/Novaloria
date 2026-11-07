@@ -9,7 +9,7 @@ permissions:
 jobs:
   build-and-test:
     name: macOS build and tests
-    runs-on: macos-15
+    runs-on: [self-hosted, macOS, ARM64]
 
     steps:
       - name: Check out repository
