@@ -125,6 +125,8 @@ public struct GoodsTypeInfo: @unchecked Sendable {
     public var isTradeGoods: Bool
     /// Whether goods of this type can be stored/traded (`storable`, default true).
     public var isStorable: Bool
+    /// Fixed price for non-storable goods used by the building payment quote.
+    public var price: Int
     /// New-world goods participate in the market price clamp work-around.
     public var isNewWorldGoods: Bool
     /// Market reference amount from the `<market>` child.
@@ -142,6 +144,7 @@ public struct GoodsTypeInfo: @unchecked Sendable {
                 isBuildingMaterial: Bool,
                 isTradeGoods: Bool,
                 isStorable: Bool = true,
+                price: Int = 0,
                 isNewWorldGoods: Bool = false,
                 marketInitialAmount: Int = 0,
                 marketInitialPrice: Int = 1,
@@ -153,6 +156,7 @@ public struct GoodsTypeInfo: @unchecked Sendable {
         self.isBuildingMaterial = isBuildingMaterial
         self.isTradeGoods = isTradeGoods
         self.isStorable = isStorable
+        self.price = price
         self.isNewWorldGoods = isNewWorldGoods
         self.marketInitialAmount = marketInitialAmount
         self.marketInitialPrice = marketInitialPrice
@@ -697,6 +701,7 @@ public final class Specification: @unchecked Sendable {
                     isTradeGoods: child.attributes.bool("trade-goods",
                                                         default: child.attributes.bool("tradeGoods", default: false)),
                     isStorable: child.attributes.bool("storable", default: true),
+                    price: child.attributes.int("price", default: 0),
                     isNewWorldGoods: child.attributes.bool("new-world-goods", default: false),
                     marketInitialAmount: market?.attributes.int("initial-amount") ?? 0,
                     marketInitialPrice: market?.attributes.int("initial-price") ?? 1,

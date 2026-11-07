@@ -122,10 +122,6 @@ struct GameView: View {
                     .accessibilityLabel("\(state.unitsAwaitingOrders.count) Einheiten ohne Befehl. Nächste Einheit auswählen.")
                     .accessibilityIdentifier("units-awaiting-orders")
                 }
-                Button("Zugbericht (\(state.localPlayerModelMessages.count))") {
-                    state.requestedReport = .turn
-                    state.showReportsPanel = true
-                }
             }
             .padding(8)
             .background(Color(NSColor.controlBackgroundColor))
@@ -243,6 +239,7 @@ struct GameView: View {
                         },
                         exportData: state.selectedColonyExportData,
                         workLocationCandidates: state.selectedColonyWorkLocationCandidates,
+                        buildingWorkplaces: state.selectedColonyBuildingWorkplaces,
                         teacherCandidates: state.selectedColonyTeacherCandidates,
                         workTypeCandidates: state.selectedColonyWorkTypeCandidates,
                         goodsCandidates: state.colonyGoodsCandidates,
@@ -260,6 +257,10 @@ struct GameView: View {
                         canPutOutsideColony: state.canPutSelectedColonyWorkerOutside,
                         selectedCarrierId: state.selectedColonyCarrierId,
                         selectedCarrierDescription: state.selectedColonyCarrierDescription,
+                        carrierCandidates: state.selectedColonyCarrierCandidates,
+                        onSelectCarrier: { carrierId in
+                            state.selectUnit(carrierId, onTile: selectedColony.tileId)
+                        },
                         onLoadGoods: { typeId, amount in
                             state.loadGoodsForSelectedColony(typeId: typeId, amount: amount)
                         },
@@ -280,9 +281,12 @@ struct GameView: View {
                         carrierGoods: state.selectedColonyCarrierGoods,
                         buildTargetLabel: state.selectedColonyBuildTarget?.label,
                         buildRequirements: state.selectedColonyBuildRequirements,
+                        buildPaymentCost: state.selectedColonyBuildPaymentCost,
                         buildETATurns: state.selectedColonyEstimatedBuildTurns,
                         estimatedBuildPerTurn: state.selectedColonyEstimatedBuildPerTurn,
-                        estimatedProduction: state.selectedColonyEstimatedProduction
+                        estimatedProduction: state.selectedColonyEstimatedProduction,
+                        growthETATurns: state.selectedColonyEstimatedGrowthTurns,
+                        foodGoodsIds: state.selectedColonyFoodGoodsIds
                     )
                     .id(selectedColony.id)
                 }
@@ -584,56 +588,37 @@ struct GameView: View {
 
     private var topBar: some View {
         HStack(spacing: 8) {
-            if let game = state.game {
-                let turnInfo = yearSeason(for: game.turn.number)
-                let date = turnInfo.season.map { "\($0) \(turnInfo.year)" } ?? "Jahr \(turnInfo.year)"
-                Text("R\(game.turn.number) · \(turnInfo.year)")
-                    .font(.headline.monospacedDigit())
-                    .lineLimit(1)
-                    .help("Runde \(game.turn.number), \(date)")
-                    .accessibilityLabel("Runde \(game.turn.number), \(date)")
-                if let local = state.localPlayer {
-                    resourceItem("\(local.gold)", systemImage: "dollarsign.circle.fill", help: "Gold")
+            Group {
+                if let game = state.game {
+                    let turnInfo = yearSeason(for: game.turn.number)
+                    let date = turnInfo.season.map { "\($0) \(turnInfo.year)" } ?? "Jahr \(turnInfo.year)"
+                    Text("R\(game.turn.number) · \(turnInfo.year)")
+                        .font(.headline.monospacedDigit())
+                        .lineLimit(1)
+                        .help("Runde \(game.turn.number), \(date)")
+                        .accessibilityLabel("Runde \(game.turn.number), \(date)")
+                    if let local = state.localPlayer {
+                        resourceItem("\(local.gold)", systemImage: "dollarsign.circle.fill", help: "Gold")
+                        Text("Steuern \(local.tax)%")
+                        Text("Freiheit \(local.liberty)")
+                        if let required = local.immigrationRequired {
+                            Text("Einwanderung \(local.immigration)/\(required)")
+                        }
+                    }
                 }
             }
-            Spacer(minLength: 4)
-            if !state.statusMessage.isEmpty, state.pendingServerDecision == nil {
-                Text(state.statusMessage)
-                    .foregroundColor(.secondary)
-                    .font(.caption)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: 150, alignment: .trailing)
-            }
+            .font(.caption)
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
+            .fixedSize()
+            Spacer(minLength: 8)
+            Button("Nächste Einheit") { state.selectNextUnit() }
+                .disabled(state.cyclingLocalUnits.isEmpty)
+                .help("Wählt die nächste eigene Einheit aus.")
             Button("Zug beenden") { state.requestEndTurn() }
                 .buttonStyle(GameActionButtonStyle())
                 .disabled(!state.canEndTurn)
                 .help("Vor dem Zugende werden Einheiten ohne Befehl angezeigt.")
-            Menu {
-                Button("Nächste Einheit") { state.selectNextUnit() }
-                    .disabled(state.cyclingLocalUnits.isEmpty)
-                Divider()
-                if let local = state.localPlayer {
-                    Section("Weitere Werte") {
-                        Text("Steuern: \(local.tax)%")
-                        Text("Freiheit: \(local.liberty)")
-                        if let required = local.immigrationRequired {
-                            Text("Einwanderung: \(local.immigration)/\(required)")
-                        }
-                        Text("Punkte: \(local.score)")
-                    }
-                }
-                Button("Berichte…") {
-                    state.requestedReport = .turn
-                    state.showReportsPanel = true
-                }
-                Button("Status…") { state.showStatusPanel = true }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-            }
-            .menuStyle(.borderlessButton)
-            .help("Weitere Spielwerte und Aktionen")
-            .accessibilityLabel("Weitere Spielwerte und Aktionen")
         }
         .padding(.horizontal)
         .padding(.vertical, 6)

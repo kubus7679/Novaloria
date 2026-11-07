@@ -1627,6 +1627,76 @@ final class GameState {
         return candidates.sorted { $0.label < $1.label }
     }
 
+    /// Built buildings with occupied slots and the single active goods output
+    /// shown by the colony work-location panel.
+    var selectedColonyBuildingWorkplaces: [ColonyBuildingWorkplace] {
+        guard let colony = selectedColony,
+              let specification = cachedGame?.specification else { return [] }
+
+        return colony.buildings.map { building in
+            let typeId = building.buildingType ?? building.id
+            let workers = selectedColonyUnits.filter { $0.location == building.id }
+            let attendedOutputs = specification.buildingOutputs(
+                for: typeId, unattended: false
+            ).filter { $0.value > 0 }
+            let unattendedOutputs = specification.buildingOutputs(
+                for: typeId, unattended: true
+            ).filter { $0.value > 0 }
+
+            func mostProductiveGoods(in outputs: [String: Int]) -> String? {
+                outputs.sorted {
+                    $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value
+                }.first?.key
+            }
+
+            let assignedGoods = Dictionary(grouping: workers.compactMap { worker in
+                worker.workType.flatMap { attendedOutputs[$0] == nil ? nil : $0 }
+            }, by: { $0 }).mapValues(\.count)
+            let activeGoods = assignedGoods.sorted {
+                $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value
+            }.first?.key
+
+            let goodsTypeId: String?
+            if workers.isEmpty {
+                goodsTypeId = mostProductiveGoods(in: unattendedOutputs)
+                    ?? mostProductiveGoods(in: attendedOutputs)
+            } else {
+                goodsTypeId = activeGoods
+                    ?? (attendedOutputs.count == 1 ? attendedOutputs.keys.first : nil)
+                    ?? mostProductiveGoods(in: attendedOutputs)
+            }
+
+            let productionPerTurn: Int
+            if let goodsTypeId, workers.isEmpty {
+                productionPerTurn = unattendedOutputs[goodsTypeId] ?? 0
+            } else if let goodsTypeId {
+                let unitOutput = attendedOutputs[goodsTypeId] ?? 0
+                productionPerTurn = workers.reduce(into: 0) { total, worker in
+                    let workerGoods = worker.workType
+                        ?? (attendedOutputs.count == 1 ? goodsTypeId : nil)
+                    if workerGoods == goodsTypeId {
+                        total += unitOutput
+                    }
+                }
+            } else {
+                productionPerTurn = 0
+            }
+
+            return ColonyBuildingWorkplace(
+                id: building.id,
+                buildingTypeId: typeId,
+                label: buildingDisplayName(typeId),
+                workers: workers,
+                capacity: specification.buildingWorkplaces(for: typeId),
+                goodsTypeId: goodsTypeId,
+                productionPerTurn: productionPerTurn,
+                isTeachingBuilding: specification.buildingHasAbility(
+                    "model.ability.teach", buildingTypeId: typeId
+                )
+            )
+        }.sorted { $0.label < $1.label }
+    }
+
     /// Colony units that can serve as teachers according to the built
     /// education buildings' skill limits. The server uses the same rule when
     /// validating an `assignTeacher` request.

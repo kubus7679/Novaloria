@@ -2078,11 +2078,21 @@ final class InteractionRepairTests: XCTestCase {
     @MainActor
     func testWagonTrainIsRecognizedAsColonyGoodsCarrier() throws {
         let state = try makeState()
+        let game = try XCTUnwrap(state.game)
+        try game.applyUpdate(XMLDecoder.decode("""
+        <update><unit id="wagon-2" owner="player-1" unitType="model.unit.wagonTrain"
+                      name="Zweiter Wagen" location="tile-2-2"/></update>
+        """))
+        state.gameUpdateID += 1
         state.selectUnit("wagon", onTile: "tile-2-2")
         state.openColonyPanel()
 
         XCTAssertEqual(state.selectedColonyCarrierId, "wagon")
         XCTAssertEqual(state.selectedColonyCarrierDescription?.contains("Wagenzug"), true)
+        XCTAssertEqual(Set(state.selectedColonyCarrierCandidates.map(\.id)), ["wagon", "wagon-2"])
+
+        state.selectUnit("wagon-2", onTile: "tile-2-2")
+        XCTAssertEqual(state.selectedColonyCarrierId, "wagon-2")
     }
 
     @MainActor

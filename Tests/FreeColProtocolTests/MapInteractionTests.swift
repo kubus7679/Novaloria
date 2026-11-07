@@ -62,6 +62,26 @@ final class MapInteractionTests: XCTestCase {
         XCTAssertTrue(try XCTUnwrap(game.tiles["tile-3-2"]).resources.isEmpty)
     }
 
+    func testOriginalTileImprovementGraphicsCoverRiverStylesAndPlowing() throws {
+        let cache = TileImageCache.shared
+        for styleNumber in 0..<81 {
+            var value = styleNumber
+            var style = ""
+            for _ in 0..<4 {
+                style.append(String(value % 3))
+                value /= 3
+            }
+            let image = try XCTUnwrap(cache.riverImage(forStyle: style), style)
+            XCTAssertGreaterThan(image.size.width, 0)
+        }
+        XCTAssertNil(cache.riverImage(forStyle: "000"))
+        XCTAssertNil(cache.riverImage(forStyle: "0003"))
+        XCTAssertGreaterThan(try XCTUnwrap(cache.improvementImage(forType: "model.improvement.plow")).size.width, 0)
+        let fishBonus = try XCTUnwrap(cache.improvementBonusImage(forType: "model.improvement.fishBonusRiver"))
+        XCTAssertTrue(fishBonus === cache.resourceImage(for: "model.resource.fish"))
+        XCTAssertTrue(try XCTUnwrap(cache.improvementBonusImage(forType: "model.improvement.fishBonusLand")) === fishBonus)
+    }
+
     @MainActor
     func testRumourMarkerAppearsWithoutSecretTypeAndDisappearsAfterExploration() throws {
         let state = try makeState()
@@ -520,11 +540,60 @@ final class MapInteractionTests: XCTestCase {
             }, onRenameColony: { _ in },
             onPayForBuilding: {}, onSetGoodsLevel: { _ in },
             workLocationCandidates: state.selectedColonyWorkLocationCandidates,
+            buildingWorkplaces: state.selectedColonyBuildingWorkplaces,
             workTypeCandidates: state.selectedColonyWorkTypeCandidates, goodsCandidates: state.colonyGoodsCandidates,
             onAbandonColony: {}, canAbandonColony: false, onSetBuildQueue: { _ in },
             onPutOutsideColony: {}, canPutOutsideColony: false, selectedCarrierId: nil,
             onLoadGoods: { _, _ in }, onUnloadGoods: { _, _ in }, section: .workers
         ), name: "colony-workers-interactive", width: 760, height: 600)
+    }
+
+    @MainActor
+    func testBuildingWorkplaceSummaryAndPanel() throws {
+        let game = Game()
+        try game.load(from: XMLDecoder.decode(InteractionRepairTests.gameXML))
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+        state.selectUnit("building-worker", onTile: "tile-2-2")
+
+        let workplace = try XCTUnwrap(state.selectedColonyBuildingWorkplaces.first)
+        XCTAssertEqual(workplace.id, "building-1", "The building instance, not its type, is the workplace identity")
+        XCTAssertEqual(workplace.workers.map(\.id), ["building-worker"])
+        XCTAssertEqual(workplace.capacity, 3)
+        XCTAssertEqual(workplace.goodsTypeId, "model.goods.hammers")
+        XCTAssertEqual(workplace.productionPerTurn, 3)
+
+        let colony = try XCTUnwrap(state.selectedColony)
+        try checkPanel(ColonyPanelView(
+            colony: colony,
+            ownerName: "Alice",
+            units: state.selectedColonyUnits.filter { state.canUnitWorkInColony($0) },
+            canManage: true,
+            selectedWorkerUnitId: state.selectedColonyWorkerUnitId,
+            terrainFields: state.selectedColonyTerrain,
+            onSelectWorker: { state.selectUnit($0, onTile: colony.tileId) },
+            onChangeWorkType: { _ in },
+            onChangeWorkImprovementType: { _ in },
+            onClearSpeciality: {},
+            onAssignTeacher: { _ in },
+            onClearTeacher: {},
+            onWorkAtLocation: { _, _ in },
+            onRenameColony: { _ in },
+            onPayForBuilding: {},
+            onSetGoodsLevel: { _ in },
+            workLocationCandidates: state.selectedColonyWorkLocationCandidates,
+            buildingWorkplaces: state.selectedColonyBuildingWorkplaces,
+            onAbandonColony: {},
+            canAbandonColony: false,
+            onSetBuildQueue: { _ in },
+            onPutOutsideColony: {},
+            canPutOutsideColony: false,
+            selectedCarrierId: nil,
+            onLoadGoods: { _, _ in },
+            onUnloadGoods: { _, _ in },
+            section: .workers
+        ), name: "colony-worker-and-workplace-layout", width: 900, height: 720)
     }
 
     @MainActor
@@ -631,13 +700,27 @@ final class MapInteractionTests: XCTestCase {
                 workTypeCandidates: [("model.goods.food", "Nahrung"), ("model.goods.tools", "Werkzeuge")],
                 onAbandonColony: {}, canAbandonColony: false,
                 onSetBuildQueue: { _ in }, onPutOutsideColony: {}, canPutOutsideColony: false,
-                selectedCarrierId: "carrier-1", onLoadGoods: { _, _ in }, onUnloadGoods: { _, _ in },
+                selectedCarrierId: "carrier-1",
+                carrierCandidates: [("carrier-1", "Wagenzug"), ("carrier-2", "Schiff")],
+                onSelectCarrier: { _ in },
+                onLoadGoods: { _, _ in }, onUnloadGoods: { _, _ in },
                 buildableCandidates: [("model.building.warehouse", "Lagerhaus")],
                 currentBuildQueue: ["model.building.warehouse", "model.building.carpenterHouse"],
                 buildingLabel: { GameLabels.name($0) },
                 storedGoods: [("model.goods.food", "Nahrung", 100), ("model.goods.tools", "Werkzeuge", 20)],
                 carrierGoods: [("model.goods.food", "Nahrung", 100), ("model.goods.tools", "Werkzeuge", 40)],
                 buildTargetLabel: "Lagerhaus",
+                estimatedProduction: [
+                    ColonyGoodsFlow(
+                        id: "model.goods.grain", label: "Getreide",
+                        produced: 8, consumed: 5, explanation: ""
+                    ),
+                    ColonyGoodsFlow(
+                        id: "model.goods.tools", label: "Werkzeuge",
+                        produced: 4, consumed: 1, explanation: ""
+                    )
+                ],
+                growthETATurns: 3,
                 section: section
             )
             try checkPanel(panel, name: "colony-\(section)", width: 760, height: 480)

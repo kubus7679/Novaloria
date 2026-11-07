@@ -171,7 +171,7 @@ struct LoginView: View {
                             .font(.system(size: 25))
                             .foregroundStyle(Color(red: 0.88, green: 0.71, blue: 0.39))
                             .padding(.bottom, 2)
-                        Text("FreeCol")
+                        Text("novaloria")
                             .font(.system(size: 42, weight: .bold, design: .serif))
                             .foregroundStyle(Color(red: 0.98, green: 0.94, blue: 0.84))
                         Text("EINE NEUE WELT ERWARTET DICH")

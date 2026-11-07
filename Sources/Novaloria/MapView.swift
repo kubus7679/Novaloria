@@ -726,34 +726,10 @@ struct MapView: View {
 
     /// Scale an image's size down to fit within `maxSize`, preserving aspect ratio.
     private func drawImprovements(_ tile: Tile, at origin: CGPoint, context: inout GraphicsContext) {
-        for improvement in tile.improvements where improvement.turns == 0 {
-            if improvement.type == "model.improvement.plow" {
-                for offset in [-0.12, 0.0, 0.12] {
-                    var furrow = Path()
-                    furrow.move(to: CGPoint(x: origin.x - tileW * 0.22, y: origin.y + tileH * offset))
-                    furrow.addLine(to: CGPoint(x: origin.x + tileW * 0.1, y: origin.y + tileH * (offset + 0.16)))
-                    context.stroke(furrow, with: .color(.brown.opacity(0.7)), lineWidth: max(1, state.mapZoomScale))
-                }
-            }
-            let isRoad = improvement.type == "model.improvement.road"
-            let isRiver = improvement.type == "model.improvement.river"
-            guard isRoad || isRiver, let style = improvement.style else { continue }
-            let directions: [CGPoint] = isRoad
-                ? [CGPoint(x: 0, y: -0.5), CGPoint(x: 0.25, y: -0.25),
-                   CGPoint(x: 0.5, y: 0), CGPoint(x: 0.25, y: 0.25),
-                   CGPoint(x: 0, y: 0.5), CGPoint(x: -0.25, y: 0.25),
-                   CGPoint(x: -0.5, y: 0), CGPoint(x: -0.25, y: -0.25)]
-                : [CGPoint(x: 0.25, y: -0.25), CGPoint(x: 0.25, y: 0.25),
-                   CGPoint(x: -0.25, y: 0.25), CGPoint(x: -0.25, y: -0.25)]
-            var route = Path()
-            for (index, connection) in style.enumerated() where connection != "0" && index < directions.count {
-                route.move(to: origin)
-                route.addLine(to: CGPoint(x: origin.x + tileW * directions[index].x,
-                                         y: origin.y + tileH * directions[index].y))
-            }
-            context.stroke(route, with: .color(isRiver ? .cyan.opacity(0.8) : .brown),
-                           style: StrokeStyle(lineWidth: max(1.5, state.mapZoomScale * (isRiver ? 2 : 1)), lineCap: .round))
-        }
+        let rect = CGRect(x: origin.x - tileW / 2, y: origin.y - tileH / 2,
+                          width: tileW, height: tileH)
+        TileImprovementRenderer.draw(tile.improvements, in: &context, rect: rect,
+                                     zoomScale: CGFloat(state.mapZoomScale))
     }
 
     private func fitSize(_ size: CGSize, into maxSize: CGSize) -> CGSize {

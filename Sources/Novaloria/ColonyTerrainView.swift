@@ -27,6 +27,7 @@ struct ColonyTerrainView: View {
     let selectedWorkerId: String?
     let canManage: Bool
     let onAssign: (String) -> Void
+    var onSelectWorker: ((String) -> Void)? = nil
     var onSelectField: ((ColonyTerrainField) -> Void)? = nil
     var showsHeader: Bool = true
 
@@ -66,6 +67,13 @@ struct ColonyTerrainView: View {
                                     .scaledToFit()
                                     .frame(width: width, height: height)
                             }
+                            Canvas { context, size in
+                                TileImprovementRenderer.draw(
+                                    field.tile.improvements, in: &context,
+                                    rect: CGRect(origin: .zero, size: size)
+                                )
+                            }
+                            .frame(width: width, height: height)
                             if let image = TileImageCache.shared.highSeasExitImage(for: field.tile) {
                                 Image(nsImage: image)
                                     .resizable()
@@ -93,15 +101,13 @@ struct ColonyTerrainView: View {
                                 }
                                 .padding(3)
                                 .background(.black.opacity(0.75), in: RoundedRectangle(cornerRadius: 3))
-                            } else if let worker = field.workers.first {
+                            } else if let worker = field.workers.first, onSelectWorker == nil {
                                 VStack(spacing: 0) {
-                                    if let image = TileImageCache.shared.unitImage(
-                                        forUnitType: worker.unitType, role: worker.role
-                                    ) {
-                                        Image(nsImage: image).resizable().scaledToFit().frame(height: height * 0.6)
-                                    }
+                                    workerPortrait(worker, height: height)
                                     productionBadges(field)
                                 }
+                            } else if !field.workers.isEmpty {
+                                productionBadges(field)
                             } else if field.unavailableReason != nil {
                                 Image(systemName: "lock.fill")
                                     .foregroundStyle(.white)
@@ -120,6 +126,33 @@ struct ColonyTerrainView: View {
                     .accessibilityIdentifier("colony-field-\(field.id)")
                     .position(x: geometry.size.width / 2 + field.offset.x * width,
                               y: geometry.size.height / 2 + field.offset.y * height)
+
+                    if let worker = field.workers.first,
+                       field.offset != .zero,
+                       let onSelectWorker {
+                        Button {
+                            onSelectWorker(worker.id)
+                        } label: {
+                            workerPortrait(worker, height: height * 0.62)
+                                .frame(width: width * 0.36, height: height * 0.64)
+                                .background(.black.opacity(0.15), in: RoundedRectangle(cornerRadius: 4))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .stroke(
+                                            worker.id == selectedWorkerId ? .yellow : .clear,
+                                            lineWidth: 2
+                                        )
+                                }
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(!canManage)
+                        .help("\(worker.unitType.map(GameLabels.name) ?? "Arbeiter") auswählen")
+                        .accessibilityLabel("\(worker.unitType.map(GameLabels.name) ?? "Arbeiter") auswählen")
+                        .accessibilityIdentifier("colony-field-worker-\(worker.id)")
+                        .position(x: geometry.size.width / 2 + field.offset.x * width,
+                                  y: geometry.size.height / 2 + field.offset.y * height - height * 0.08)
+                        .zIndex(1)
+                    }
                 }
             }
             .aspectRatio(2, contentMode: .fit)
@@ -147,6 +180,23 @@ struct ColonyTerrainView: View {
                 .help(output.label)
                 .accessibilityLabel(output.label)
                 .accessibilityIdentifier("colony-production-\(field.id)-\(output.goodsType)")
+            }
+        }
+    }
+
+    private func workerPortrait(_ worker: FreeColGame.Unit, height: CGFloat) -> some View {
+        Group {
+            if let image = TileImageCache.shared.unitImage(
+                forUnitType: worker.unitType, role: worker.role
+            ) {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: height)
+            } else {
+                Image(systemName: "person.fill")
+                    .font(.caption)
+                    .frame(height: height)
             }
         }
     }

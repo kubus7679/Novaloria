@@ -22,6 +22,7 @@ let package = Package(
             exclude: ["Resources/freecol_background.jpg"],
             resources: [
                 .copy("Resources/terrain"),
+                .copy("Resources/rivers"),
                 .copy("Resources/units"),
                 .copy("Resources/settlements"),
                 .copy("Resources/order-buttons"),

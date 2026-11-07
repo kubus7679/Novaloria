@@ -1217,6 +1217,49 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertTrue(byGoods["model.goods.lumber"]?.explanation.contains("model.goods.lumber") == true)
     }
 
+    func testColonyGrowthEstimateCombinesFoodSourcesAndConsumption() throws {
+        let specification = Specification(parsed: try XMLDecoder.decode("""
+        <freecol-specification>
+          <goods-type id="model.goods.food" is-food="true"/>
+          <goods-type id="model.goods.grain" is-food="true" storable="false"/>
+          <goods-type id="model.goods.fish" is-food="true" storable="false"/>
+          <goods-type id="model.goods.hammers"/>
+        </freecol-specification>
+        """))
+        let flows = [
+            ColonyGoodsFlow(id: "model.goods.grain", label: "Getreide", produced: 19,
+                            consumed: 1, explanation: ""),
+            ColonyGoodsFlow(id: "model.goods.fish", label: "Fische", produced: 0,
+                            consumed: 0, explanation: ""),
+            ColonyGoodsFlow(id: "model.goods.food", label: "Nahrung", produced: 0,
+                            consumed: 14, explanation: ""),
+            ColonyGoodsFlow(id: "model.goods.hammers", label: "Hämmer", produced: 200,
+                            consumed: 0, explanation: "")
+        ]
+
+        XCTAssertEqual(
+            ColonyProductionCalculator.estimatedGrowthTurns(
+                foodStock: 16, specification: specification, flows: flows
+            ),
+            47,
+            "Growth should use combined grain/fish production minus all food consumption"
+        )
+        XCTAssertEqual(
+            ColonyProductionCalculator.estimatedGrowthTurns(
+                foodStock: 196, specification: specification, flows: flows
+            ),
+            1
+        )
+
+        let noSurplus = [
+            ColonyGoodsFlow(id: "model.goods.grain", label: "Getreide", produced: 14,
+                            consumed: 14, explanation: "")
+        ]
+        XCTAssertNil(ColonyProductionCalculator.estimatedGrowthTurns(
+            foodStock: 16, specification: specification, flows: noSurplus
+        ))
+    }
+
     // MARK: Phase 54 - inbound decision handling
 
     @MainActor

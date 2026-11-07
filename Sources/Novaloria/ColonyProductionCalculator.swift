@@ -13,6 +13,8 @@ struct ColonyGoodsFlow: Identifiable {
 /// It applies the production modifiers available in the live model and game
 /// specification, then limits building recipes by available inputs.
 enum ColonyProductionCalculator {
+    private static let foodPerColonistForGrowth = 200
+
     private struct AppliedModifier {
         var value: ProductionModifierInfo
         var source: String
@@ -218,6 +220,25 @@ enum ColonyProductionCalculator {
                                    produced: produced, consumed: consumed,
                                    explanation: tooltip)
         }.sorted { $0.label < $1.label }
+    }
+
+    /// Estimates the next population growth using FreeCol's food threshold and
+    /// the combined production/consumption of all food goods.
+    static func estimatedGrowthTurns(foodStock: Int,
+                                     specification: Specification,
+                                     flows: [ColonyGoodsFlow]) -> Int? {
+        let netFood = flows.reduce(into: 0) { total, flow in
+            guard specification.goodsTypes[flow.id]?.isFood == true else { return }
+            total += flow.produced - flow.consumed
+        }
+
+        if foodStock + netFood >= foodPerColonistForGrowth {
+            return 1
+        }
+        guard netFood > 0 else { return nil }
+
+        // Match FreeCol's Colony.getNewColonistTurns() turn estimate.
+        return (foodPerColonistForGrowth - foodStock) / netFood + 1
     }
 
     private static func tileModifiers(tile: Tile,

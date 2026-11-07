@@ -164,6 +164,46 @@ extension GameState {
         return "Name: \(displayName) · Typ: \(type)"
     }
 
+    /// Local cargo carriers currently at or inside the selected colony.
+    var selectedColonyCarriers: [FreeColGame.Unit] {
+        guard canManageSelectedColony,
+              let game = cachedGame,
+              let localPlayerId = resolveLocalPlayerId() else {
+            return []
+        }
+        return selectedColonyUnits.filter { unit in
+            guard unit.owner == localPlayerId else { return false }
+            if let type = unit.unitType,
+               game.specification?.unitTypes[type] != nil {
+                return game.specification?.hasAbility(
+                    "model.ability.carryGoods", unitType: type
+                ) == true
+            }
+            return isLikelyCarrier(unit, in: game)
+        }.sorted {
+            let lhsName = $0.name?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let rhsName = $1.name?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let lhs = lhsName.flatMap { $0.isEmpty ? nil : $0 }
+                ?? $0.unitType.map(unitDisplayName) ?? "Frachter"
+            let rhs = rhsName.flatMap { $0.isEmpty ? nil : $0 }
+                ?? $1.unitType.map(unitDisplayName) ?? "Frachter"
+            let comparison = lhs.localizedStandardCompare(rhs)
+            return comparison == .orderedSame ? $0.id < $1.id : comparison == .orderedAscending
+        }
+    }
+
+    /// Picker options for carriers belonging to the selected colony.
+    var selectedColonyCarrierCandidates: [(id: String, label: String)] {
+        selectedColonyCarriers.map { carrier in
+            let type = carrier.unitType.map(unitDisplayName) ?? "Frachter"
+            let name = carrier.name?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return (
+                id: carrier.id,
+                label: name.flatMap { $0.isEmpty ? nil : $0 }.map { "\($0) · \(type)" } ?? type
+            )
+        }
+    }
+
     /// First item of the selected colony build queue.
     var selectedColonyBuildTarget: (id: String, label: String)? {
         guard let first = selectedColony?.buildQueue.first else { return nil }
@@ -182,6 +222,36 @@ extension GameState {
                     required: $0.value,
                     stored: colony.goods[$0.key] ?? 0) }
             .sorted { $0.label < $1.label }
+    }
+
+    /// Estimated gold required to buy the remaining goods for the current
+    /// build target, following FreeCol's building-price calculation.
+    var selectedColonyBuildPaymentCost: Int? {
+        guard let colony = selectedColony,
+              let target = selectedColonyBuildTarget,
+              let player = localPlayer,
+              let specification = cachedGame?.specification else { return nil }
+        let requirements = requiredGoods(for: target.id)
+        guard !requirements.isEmpty else { return nil }
+
+        var total = 0
+        for (goodsId, requiredAmount) in requirements {
+            let missing = max(0, requiredAmount - colony.goods[goodsId, default: 0])
+            guard missing > 0 else { continue }
+            guard let goodsInfo = specification.goodsTypes[goodsId] else { return nil }
+
+            if goodsInfo.isStorable {
+                guard let entry = player.market?.entry(for: goodsId) else { return nil }
+                let unitPrice = MarketPricing.prices(
+                    for: entry,
+                    specification: specification
+                ).costToBuy
+                total += (unitPrice * missing * 110) / 100
+            } else {
+                total += goodsInfo.price * missing
+            }
+        }
+        return total
     }
 
     /// Estimated per-turn output of the construction goods from present buildings.
@@ -376,6 +446,23 @@ extension GameState {
         return colonyProductionSummary(colony)
     }
 
+    var selectedColonyEstimatedGrowthTurns: Int? {
+        guard let colony = selectedColony,
+              let specification = cachedGame?.specification else { return nil }
+        return ColonyProductionCalculator.estimatedGrowthTurns(
+            foodStock: colony.goods["model.goods.food"] ?? 0,
+            specification: specification,
+            flows: colonyProductionSummary(colony)
+        )
+    }
+
+    var selectedColonyFoodGoodsIds: Set<String> {
+        guard let specification = cachedGame?.specification else {
+            return ["model.goods.food", "model.goods.grain", "model.goods.fish"]
+        }
+        return Set(specification.goodsTypes.values.filter(\.isFood).map(\.id))
+    }
+
     private func centerTileType(of colony: Colony) -> String? {
         guard let tileId = colony.tileId else { return nil }
         return cachedGame?.tiles[tileId]?.type
@@ -445,27 +532,10 @@ extension GameState {
     }
 
     var selectedColonyCarrierId: String? {
-        guard canManageSelectedColony,
-              let game = cachedGame,
-              let localPlayerId = resolveLocalPlayerId() else {
-            return nil
+        let carriers = selectedColonyCarriers
+        if let selectedUnit, carriers.contains(where: { $0.id == selectedUnit.id }) {
+            return selectedUnit.id
         }
-        func canCarryGoods(_ unit: FreeColGame.Unit) -> Bool {
-            guard unit.owner == localPlayerId else { return false }
-            if let type = unit.unitType,
-               game.specification?.unitTypes[type] != nil {
-                return game.specification?.hasAbility(
-                    "model.ability.carryGoods", unitType: type
-                ) == true
-            }
-            return isLikelyCarrier(unit, in: game)
-        }
-        if let unit = selectedUnit,
-           canCarryGoods(unit) {
-            return unit.id
-        }
-        return selectedColonyUnits.first(where: {
-            canCarryGoods($0)
-        })?.id
+        return carriers.first?.id
     }
 }

@@ -21,6 +21,40 @@ final class TileImageCache {
         return loadImage(named: "\(name)_overlay", folder: "terrain")
     }
 
+    /// FreeCol's river sprites are keyed by four base-three connection digits.
+    /// The style digits are ordered NE, SE, SW, NW, least-significant first.
+    func riverImage(forStyle style: String?) -> NSImage? {
+        guard let style, style.count == 4 else { return nil }
+        var imageIndex = 0
+        var placeValue = 1
+        for character in style {
+            guard let digit = character.wholeNumberValue, (0...2).contains(digit) else { return nil }
+            imageIndex += digit * placeValue
+            placeValue *= 3
+        }
+        return loadImage(named: "river\(imageIndex)", folder: "rivers")
+    }
+
+    func improvementImage(forType improvementType: String?) -> NSImage? {
+        guard let improvementType else { return nil }
+        switch improvementType {
+        case "model.improvement.plow":
+            return loadImage(named: "plowed", folder: "terrain")
+        default:
+            let name = improvementType.components(separatedBy: ".").last ?? improvementType
+            return loadImage(named: name, folder: "terrain")
+        }
+    }
+
+    func improvementBonusImage(forType improvementType: String?) -> NSImage? {
+        switch improvementType {
+        case "model.improvement.fishBonusLand", "model.improvement.fishBonusRiver":
+            return resourceImage(for: "model.resource.fish")
+        default:
+            return nil
+        }
+    }
+
     /// The original client's high-seas marker is a cloud layer above the terrain and units.
     func highSeasExitImage(for tile: Tile) -> NSImage? {
         guard tile.type != nil, tile.moveToEurope else { return nil }
