@@ -1,0 +1,43 @@
+name: Build and test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: macOS build and tests
+    runs-on: macos-14
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Show Swift version
+        run: swift --version
+
+      - name: Run tests
+        run: swift test
+
+      - name: Build app bundle
+        run: bash Tools/build-app.sh
+
+      - name: Package app bundle
+        run: |
+          bin_dir="$(swift build --show-bin-path)"
+          mkdir -p dist
+          ditto -c -k --sequesterRsrc --keepParent \
+            "$bin_dir/Novaloria.app" \
+            dist/Novaloria-macOS.zip
+
+      - name: Upload app package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Novaloria-macOS
+          path: dist/Novaloria-macOS.zip
+          if-no-files-found: error
+          retention-days: 14
