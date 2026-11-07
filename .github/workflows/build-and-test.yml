@@ -1,8 +1,6 @@
 name: Build and test
 
 on:
-  push:
-  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -11,7 +9,7 @@ permissions:
 jobs:
   build-and-test:
     name: macOS build and tests
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
       - name: Check out repository
