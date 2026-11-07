@@ -528,6 +528,63 @@ final class MapInteractionTests: XCTestCase {
     }
 
     @MainActor
+    func testTeachingBuildingIsAssignableAndOnlyQualifiedTeachersAreListed() throws {
+        let xml = InteractionRepairTests.gameXML
+            .replacingOccurrences(
+                of: "<unit-type id=\"model.unit.freeColonist\" extends=\"colonist\"/>",
+                with: """
+                <unit-type id="model.unit.freeColonist" extends="colonist" skill="0"/>
+                <unit-type id="model.unit.expertFarmer" extends="colonist" skill="1"/>
+                """
+            )
+            .replacingOccurrences(
+                of: "<building-type id=\"model.building.carpenterHouse\">",
+                with: """
+                <building-type id="model.building.schoolhouse" workplaces="1"
+                               minimum-skill="1" maximum-skill="1">
+                  <ability id="model.ability.teach" value="true"/>
+                </building-type>
+                <building-type id="model.building.carpenterHouse">
+                """
+            )
+            .replacingOccurrences(
+                of: "<colonyTile id=\"field-west\" workTile=\"tile-1-2\"/>",
+                with: """
+                <colonyTile id="field-west" workTile="tile-1-2">
+                  <unit id="potential-teacher" unitType="model.unit.expertFarmer"
+                        owner="player-1" location="field-west" movesLeft="0"/>
+                  <unit id="unqualified-teacher" unitType="model.unit.freeColonist"
+                        owner="player-1" location="field-west" movesLeft="0"/>
+                </colonyTile>
+                """
+            )
+            .replacingOccurrences(
+                of: "</colony>",
+                with: """
+                <building id="schoolhouse-1" buildingType="model.building.schoolhouse"/>
+                </colony>
+                """
+            )
+
+        let game = Game()
+        try game.load(from: XMLDecoder.decode(xml))
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+        state.selectUnit("potential-teacher", onTile: "tile-2-2")
+
+        XCTAssertTrue(state.selectedColonyWorkLocationCandidates.contains {
+            $0.id == "schoolhouse-1" && $0.label == "Schule"
+        })
+        XCTAssertTrue(state.selectedColonyTeacherCandidates.contains {
+            $0.id == "potential-teacher"
+        })
+        XCTAssertFalse(state.selectedColonyTeacherCandidates.contains {
+            $0.id == "unqualified-teacher"
+        })
+    }
+
+    @MainActor
     func testEveryEuropeAndColonySectionFitsSmallPanel() throws {
         let state = try makeState()
         try state.game?.applyUpdate(XMLDecoder.decode("""
@@ -696,6 +753,35 @@ final class MapInteractionTests: XCTestCase {
         XCTAssertEqual(shortcuts.first(where: { $0.description == "Fernkampf" })?.fullDisplay, "⇧t")
         XCTAssertFalse(shortcuts.contains(where: { $0.description == "Bewegen" }),
                        "Das Einheitenpanel darf kein nicht registriertes Bewegungskürzel anzeigen")
+    }
+
+    @MainActor
+    func testUnresolvableUnitLocationShowsSpecificMoveError() throws {
+        let state = try makeState()
+        let game = try XCTUnwrap(state.game)
+        try game.applyPartial(XMLDecoder.decode("""
+        <partial id="unit-1" location="unknown-location" movesLeft="3" state="ACTIVE"/>
+        """))
+        state.selectUnit("unit-1", onTile: "tile-2-2")
+
+        state.moveSelectedUnitTo(destinationTileId: "tile-3-2")
+
+        XCTAssertEqual(state.errorMessage,
+                       "Diese Einheit befindet sich nicht auf einer gültigen Kartenposition.")
+    }
+
+    @MainActor
+    func testActiveUnitAtResolvableColonyLocationCanMove() throws {
+        let state = try makeState()
+        let game = try XCTUnwrap(state.game)
+        try game.applyPartial(XMLDecoder.decode("""
+        <partial id="unit-1" location="colony-1" movesLeft="1" state="ACTIVE"/>
+        """))
+        state.selectUnit("unit-1", onTile: "tile-2-2")
+
+        XCTAssertEqual(state.selectedUnitTileId, "tile-2-2")
+        XCTAssertTrue(state.canMoveSelectedUnitTo(destinationTileId: "tile-3-2"))
+        XCTAssertNil(state.selectedUnitMoveDisabledReason)
     }
 
     @MainActor

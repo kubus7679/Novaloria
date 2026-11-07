@@ -36,9 +36,16 @@ extension GameState {
                 selectedColonyUnits.filter { $0.location == location.id }
             } ?? []
             let type = game.specification?.tileTypes[tile.type ?? ""]
+            let cachedOutputs = location?.productionOutputs ?? [:]
+            let specificationOutputs = type?.workerOutputs ?? [:]
             let outputs = location?.productionOutputs
                 ?? (id == tileId ? type?.centerOutputs : type?.workerOutputs) ?? [:]
-            let workOptions = id == tileId ? [] : outputs
+            // The full worker recipe in the active specification is the
+            // authority for selectable jobs; the colony-tile production is
+            // only the current production cache.
+            let availableOutputs = specificationOutputs.isEmpty
+                ? cachedOutputs : specificationOutputs
+            let workOptions = id == tileId ? [] : availableOutputs
                 .filter { $0.value > 0 }
                 .map { ColonyTerrainProduction(goodsType: $0.key, baseAmount: $0.value) }
                 .sorted { $0.goodsType < $1.goodsType }
@@ -100,7 +107,17 @@ extension GameState {
 
     /// Human-readable building name for a `model.building.*` id.
     func buildingDisplayName(_ typeId: String) -> String {
-        GameLabels.name(typeId, fallback: cachedGame?.specification?.buildingTypes[typeId]?.displayName)
+        if typeId.hasPrefix("model.unit.") {
+            return unitDisplayName(typeId)
+        }
+        return GameLabels.name(typeId, fallback: cachedGame?.specification?.buildingTypes[typeId]?.displayName)
+    }
+
+    private func requiredGoods(for buildableId: String) -> [String: Int] {
+        guard let specification = cachedGame?.specification else { return [:] }
+        return specification.buildingTypes[buildableId]?.requiredGoods
+            ?? specification.unitTypes[buildableId]?.requiredGoods
+            ?? [:]
     }
 
     /// Human-readable goods name for a `model.goods.*` id.
@@ -111,12 +128,19 @@ extension GameState {
     /// Goods type used for construction progress (FreeCol "building materials").
     nonisolated static let buildingMaterialsGoodsId = "model.goods.hammers"
 
+    /// Whether goods of this type can be stored in a warehouse and
+    /// transported as cargo. Non-storable goods (bells, crosses, hammers)
+    /// are production pools and must not show up as freight.
+    func isStorableGoodsType(_ typeId: String) -> Bool {
+        cachedGame?.specification?.goodsTypes[typeId]?.isStorable ?? true
+    }
+
     /// Stored goods of the selected colony.
     var selectedColonyStoredGoods: [(id: String, label: String, amount: Int)] {
         guard let colony = selectedColony else { return [] }
         return colony.goods
+            .filter { $0.value > 0 && isStorableGoodsType($0.key) }
             .map { (id: $0.key, label: goodsDisplayName($0.key), amount: $0.value) }
-            .filter { $0.amount > 0 }
             .sorted { $0.label < $1.label }
     }
 
@@ -125,9 +149,19 @@ extension GameState {
         guard let carrierId = selectedColonyCarrierId,
               let carrier = cachedGame?.units[carrierId] else { return [] }
         return carrier.goods
+            .filter { $0.value > 0 && isStorableGoodsType($0.key) }
             .map { (id: $0.key, label: goodsDisplayName($0.key), amount: $0.value) }
-            .filter { $0.amount > 0 }
             .sorted { $0.label < $1.label }
+    }
+
+    /// Name and type of the transporter currently used by the selected colony.
+    var selectedColonyCarrierDescription: String? {
+        guard let carrierId = selectedColonyCarrierId,
+              let carrier = cachedGame?.units[carrierId] else { return nil }
+        let name = carrier.name?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let displayName = name.flatMap { $0.isEmpty ? nil : $0 } ?? "Unbenannt"
+        let type = carrier.unitType.map(unitDisplayName) ?? "Unbekannter Typ"
+        return "Name: \(displayName) · Typ: \(type)"
     }
 
     /// First item of the selected colony build queue.
@@ -139,11 +173,10 @@ extension GameState {
     /// Required vs. stored goods for the current build target.
     var selectedColonyBuildRequirements: [(id: String, label: String, required: Int, stored: Int)] {
         guard let colony = selectedColony,
-              let target = selectedColonyBuildTarget,
-              let info = cachedGame?.specification?.buildingTypes[target.id] else {
+              let target = selectedColonyBuildTarget else {
             return []
         }
-        return info.requiredGoods
+        return requiredGoods(for: target.id)
             .map { (id: $0.key,
                     label: goodsDisplayName($0.key),
                     required: $0.value,
@@ -153,30 +186,23 @@ extension GameState {
 
     /// Estimated per-turn output of the construction goods from present buildings.
     var selectedColonyEstimatedBuildPerTurn: Int {
-        guard let colony = selectedColony,
-              let specification = cachedGame?.specification else {
-            return 0
-        }
-        return Self.estimatedBuildPerTurn(colony: colony,
-                                          specification: specification,
-                                          centerTileType: centerTileType(of: colony),
-                                          workers: colonyWorkerUnits(colony),
-                                          workTileTypes: workTileTypes(for: colony))
+        selectedColonyEstimatedProduction
+            .first { $0.id == Self.buildingMaterialsGoodsId }?.produced ?? 0
     }
 
     /// Estimated turns until the current build target completes (nil if unknown).
     var selectedColonyEstimatedBuildTurns: Int? {
         guard let target = selectedColonyBuildTarget,
               let colony = selectedColony,
-              let specification = cachedGame?.specification else {
-            return nil
-        }
-        return Self.estimatedBuildTurns(colony: colony,
-                                        buildableId: target.id,
-                                        specification: specification,
-                                        centerTileType: centerTileType(of: colony),
-                                        workers: colonyWorkerUnits(colony),
-                                        workTileTypes: workTileTypes(for: colony))
+              let specification = cachedGame?.specification,
+              let required = (specification.buildingTypes[target.id]?.requiredGoods
+                  ?? specification.unitTypes[target.id]?.requiredGoods)?[Self.buildingMaterialsGoodsId]
+        else { return nil }
+        let remaining = required - colony.goods[Self.buildingMaterialsGoodsId, default: 0]
+        guard remaining > 0 else { return 0 }
+        let perTurn = selectedColonyEstimatedBuildPerTurn
+        guard perTurn > 0 else { return nil }
+        return (remaining + perTurn - 1) / perTurn
     }
 
     /// Estimate base construction output from currently assigned workers.
@@ -302,25 +328,26 @@ extension GameState {
         max(colony.unitCount, colonyWorkerUnits(colony).count)
     }
 
-    /// Base outputs from assigned workers and the colony center, with labels.
-    func colonyProductionSummary(_ colony: Colony) -> [(id: String, label: String, amount: Int)] {
-        guard let specification = cachedGame?.specification else { return [] }
-        return Self.estimatedProduction(colony: colony,
-                                        specification: specification,
-                                        centerTileType: centerTileType(of: colony),
-                                        workers: colonyWorkerUnits(colony),
-                                        workTileTypes: workTileTypes(for: colony))
-            .map { (id: $0.id, label: goodsDisplayName($0.id), amount: $0.amount) }
-            .sorted { $0.label < $1.label }
+    /// Final per-turn production and consumption based on active assignments.
+    func colonyProductionSummary(_ colony: Colony) -> [ColonyGoodsFlow] {
+        guard let game = cachedGame, let specification = game.specification else { return [] }
+        let player = colony.owner.flatMap { game.players[$0] }
+        return ColonyProductionCalculator.calculate(
+            colony: colony,
+            specification: specification,
+            tiles: game.tiles,
+            workers: colonyWorkerUnits(colony),
+            player: player,
+            goodsLabel: goodsDisplayName
+        )
     }
 
     /// Required vs. stored construction goods for a colony's current build target.
     func colonyBuildRequirements(_ colony: Colony) -> (target: String, items: [(id: String, label: String, required: Int, stored: Int)])? {
-        guard let first = colony.buildQueue.first,
-              let info = cachedGame?.specification?.buildingTypes[first] else {
+        guard let first = colony.buildQueue.first else {
             return nil
         }
-        let items = info.requiredGoods
+        let items = requiredGoods(for: first)
             .map { (id: $0.key,
                     label: goodsDisplayName($0.key),
                     required: $0.value,
@@ -343,19 +370,10 @@ extension GameState {
         }
     }
 
-    /// Estimated base output from selected-colony assignments, with labels.
-    var selectedColonyEstimatedProduction: [(id: String, label: String, amount: Int)] {
-        guard let colony = selectedColony,
-              let specification = cachedGame?.specification else {
-            return []
-        }
-        return Self.estimatedProduction(colony: colony,
-                                        specification: specification,
-                                        centerTileType: centerTileType(of: colony),
-                                        workers: colonyWorkerUnits(colony),
-                                        workTileTypes: workTileTypes(for: colony))
-            .map { (id: $0.id, label: goodsDisplayName($0.id), amount: $0.amount) }
-            .sorted { $0.label < $1.label }
+    /// Final output and consumption from the selected colony's current jobs.
+    var selectedColonyEstimatedProduction: [ColonyGoodsFlow] {
+        guard let colony = selectedColony else { return [] }
+        return colonyProductionSummary(colony)
     }
 
     private func centerTileType(of colony: Colony) -> String? {
@@ -380,12 +398,14 @@ extension GameState {
                                                 centerTileType: String? = nil,
                                                 workers: [FreeColGame.Unit] = [],
                                                 workTileTypes: [String: String] = [:]) -> Int? {
-        guard let info = specification.buildingTypes[buildableId],
-              !info.requiredGoods.isEmpty else {
+        let requiredGoods = specification.buildingTypes[buildableId]?.requiredGoods
+            ?? specification.unitTypes[buildableId]?.requiredGoods
+            ?? [:]
+        guard !requiredGoods.isEmpty else {
             return nil
         }
         let material = buildingMaterialsGoodsId
-        guard let required = info.requiredGoods[material] else { return nil }
+        guard let required = requiredGoods[material] else { return nil }
         let remaining = required - (colony.goods[material] ?? 0)
         guard remaining > 0 else { return 0 }
         let perTurn = estimatedBuildPerTurn(colony: colony,
@@ -430,13 +450,22 @@ extension GameState {
               let localPlayerId = resolveLocalPlayerId() else {
             return nil
         }
+        func canCarryGoods(_ unit: FreeColGame.Unit) -> Bool {
+            guard unit.owner == localPlayerId else { return false }
+            if let type = unit.unitType,
+               game.specification?.unitTypes[type] != nil {
+                return game.specification?.hasAbility(
+                    "model.ability.carryGoods", unitType: type
+                ) == true
+            }
+            return isLikelyCarrier(unit, in: game)
+        }
         if let unit = selectedUnit,
-           unit.owner == localPlayerId,
-           isLikelyCarrier(unit, in: game) {
+           canCarryGoods(unit) {
             return unit.id
         }
         return selectedColonyUnits.first(where: {
-            $0.owner == localPlayerId && isLikelyCarrier($0, in: game)
+            canCarryGoods($0)
         })?.id
     }
 }

@@ -228,7 +228,12 @@ struct GameCommands: Commands {
 
     private var colopediaMenu: some View {
         Group {
-            Button("Colopädie öffnen…") { state.showColopediaPanel = true }
+            ForEach(ColopediaCategory.allCases, id: \.self) { category in
+                Button(category.title) {
+                    state.requestedColopediaCategory = category
+                    state.showColopediaPanel = true
+                }
+            }
         }
     }
 

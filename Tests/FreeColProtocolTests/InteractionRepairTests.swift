@@ -731,6 +731,22 @@ final class InteractionRepairTests: XCTestCase {
     }
 
     @MainActor
+    func testUnitOnSameColonyTileIsNotShownAsShipCargoUntilEmbarked() throws {
+        let state = try makeState()
+        state.selectUnit("ship", onTile: "tile-2-2")
+
+        XCTAssertFalse(state.selectedUnitCargoUnits.contains { $0.id == "wagon" },
+                       "A wagon on the ship's colony tile is not aboard the ship")
+
+        try XCTUnwrap(state.game).applyPartial(XMLDecoder.decode(
+            #"<partial id="wagon" location="ship"/>"#
+        ))
+
+        XCTAssertTrue(state.selectedUnitCargoUnits.contains { $0.id == "wagon" },
+                      "The wagon should appear as cargo once its location is the ship")
+    }
+
+    @MainActor
     func testEmbarkFromAdjacentCoastalTileSendsDirection() async throws {
         let server = MockServer()
         let state = GameState()
@@ -1553,6 +1569,58 @@ final class InteractionRepairTests: XCTestCase {
     }
 
     @MainActor
+    func testMixedForestChoicesUseSpecificationOutputsInsteadOfCurrentProductionCache() throws {
+        let xml = Self.gameXML
+            .replacingOccurrences(
+                of: #"<goods-type id="model.goods.grain"/><goods-type id="model.goods.hammers"/>"#,
+                with: #"<goods-type id="model.goods.grain"/><goods-type id="model.goods.hammers"/><goods-type id="model.goods.cotton"/><goods-type id="model.goods.furs"/><goods-type id="model.goods.lumber"/>"#
+            )
+            .replacingOccurrences(
+                of: #"</tile-type>"#,
+                with: #"</tile-type><tile-type id="model.tile.mixedForest"><production unattended="true"><output goods-type="model.goods.grain" value="2"/><output goods-type="model.goods.furs" value="3"/></production><production><output goods-type="model.goods.grain" value="3"/></production><production><output goods-type="model.goods.cotton" value="1"/></production><production><output goods-type="model.goods.furs" value="3"/></production><production><output goods-type="model.goods.lumber" value="6"/></production></tile-type>"#
+            )
+            .replacingOccurrences(
+                of: #"<tile id="tile-1-2" x="1" y="2" type="model.tile.plains" owner="player-1"/>"#,
+                with: #"<tile id="tile-1-2" x="1" y="2" type="model.tile.mixedForest" owner="player-1"/>"#
+            )
+            .replacingOccurrences(
+                of: #"<tile id="tile-3-2" x="3" y="2" type="model.tile.plains" owner="player-1"/>"#,
+                with: #"<tile id="tile-3-2" x="3" y="2" type="model.tile.mixedForest" owner="player-1"/>"#
+            )
+            .replacingOccurrences(
+                of: #"<colonyTile id="field-east" workTile="tile-3-2">"#,
+                with: #"<colonyTile id="field-east" workTile="tile-3-2"><production><output goods-type="model.goods.cotton" value="1"/><output goods-type="model.goods.furs" value="3"/><output goods-type="model.goods.grain" value="3"/></production>"#
+            )
+            .replacingOccurrences(
+                of: #"<colonyTile id="field-west" workTile="tile-1-2"/>"#,
+                with: #"<colonyTile id="field-west" workTile="tile-1-2"><production><output goods-type="model.goods.cotton" value="1"/><output goods-type="model.goods.furs" value="3"/><output goods-type="model.goods.grain" value="3"/></production></colonyTile>"#
+            )
+        let game = Game()
+        try game.load(from: XMLDecoder.decode(xml))
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+        state.selectUnit("field-worker", onTile: "tile-2-2")
+
+        let west = try XCTUnwrap(state.selectedColonyTerrain.first { $0.id == "tile-1-2" })
+        let serverOutputs = try XCTUnwrap(game.specification?.tileTypes["model.tile.mixedForest"]?.workerOutputs)
+        XCTAssertEqual(serverOutputs["model.goods.grain"], 3)
+        XCTAssertEqual(serverOutputs["model.goods.cotton"], 1)
+        XCTAssertEqual(serverOutputs["model.goods.furs"], 3)
+        XCTAssertEqual(serverOutputs["model.goods.lumber"], 6)
+        let observedBaseAmounts = Dictionary(uniqueKeysWithValues: west.workOptions.compactMap { option in
+            option.baseAmount.map { (option.goodsType, $0) }
+        })
+        XCTAssertEqual(west.workOptions.map(\.goodsType), serverOutputs.keys.sorted())
+        XCTAssertEqual(observedBaseAmounts, serverOutputs)
+        XCTAssertEqual(west.workOptions.map(\.goodsType), [
+            "model.goods.cotton", "model.goods.furs", "model.goods.grain", "model.goods.lumber",
+        ])
+        XCTAssertEqual(west.workOptions.first { $0.goodsType == "model.goods.lumber" }?.baseAmount, 6)
+        XCTAssertTrue(state.selectedColonyWorkTypeCandidates.contains { $0.id == "model.goods.lumber" })
+    }
+
+    @MainActor
     func testMissionaryEquipmentRequiresPersonAndSuitableLocation() throws {
         let state = try makeState()
         state.selectUnit("ship", onTile: "tile-2-2")
@@ -1728,14 +1796,28 @@ final class InteractionRepairTests: XCTestCase {
 
     @MainActor
     func testRemoteColonyActionsUseQuestionsApplyRepliesAndSurfaceErrors() async throws {
+        let gameXML = Self.gameXML
+            .replacingOccurrences(
+                of: #"<goods-type id="model.goods.grain"/><goods-type id="model.goods.hammers"/>"#,
+                with: #"<goods-type id="model.goods.grain"/><goods-type id="model.goods.hammers"/><goods-type id="model.goods.tobacco"/>"#
+            )
+            .replacingOccurrences(
+                of: #"<production><output goods-type="model.goods.grain" value="3"/></production>"#,
+                with: #"<production><output goods-type="model.goods.grain" value="3"/><output goods-type="model.goods.tobacco" value="2"/></production>"#
+            )
+            .replacingOccurrences(
+                of: #"<tile id="tile-1-2" x="1" y="2" type="model.tile.plains" owner="player-1"/>"#,
+                with: #"<tile id="tile-1-2" x="1" y="2" type="model.tile.plains" owner="player-1" owningSettlement="colony-1"/>"#
+            )
         let server = MockServer()
         let state = GameState()
         let serverTask = Task {
-            try await server.doHandshake(gameResponse: Self.gameXML.replacingOccurrences(of: "\n", with: " "))
+            try await server.doHandshake(gameResponse: gameXML.replacingOccurrences(of: "\n", with: " "))
             let responses = [
                 #"<partial id="colony-1" name="Neu-Boston"/>"#,
-                #"<update><unit id="field-worker" owner="player-1" unitType="model.unit.freeColonist" location="field-west" workType="model.goods.grain" movesLeft="0"/></update>"#,
-                #"<update><unit id="field-worker" owner="player-1" unitType="model.unit.freeColonist" location="building-1" movesLeft="0"/><unit id="building-worker" owner="player-1" unitType="model.unit.freeColonist" location="field-west" movesLeft="0"/></update>"#,
+                #"<update><unit id="building-worker" owner="player-1" unitType="model.unit.freeColonist" location="field-west" workType="model.goods.grain" movesLeft="0"/></update>"#,
+                #"<update><unit id="building-worker" owner="player-1" unitType="model.unit.freeColonist" location="field-west" workType="model.goods.tobacco" movesLeft="0"/></update>"#,
+                #"<update><unit id="building-worker" owner="player-1" unitType="model.unit.freeColonist" location="field-east" workType="model.goods.grain" movesLeft="0"/><unit id="field-worker" owner="player-1" unitType="model.unit.freeColonist" location="field-west" workType="model.goods.grain" movesLeft="0"/></update>"#,
                 #"<error message="Test: Umbenennen abgelehnt"/>"#,
             ]
             var requests: [ParsedMessage] = []
@@ -1758,32 +1840,32 @@ final class InteractionRepairTests: XCTestCase {
         try await waitUntil { state.phase == .login }
         state.login(userName: "Alice", nationId: "model.nation.dutch")
         try await waitUntil { state.phase == .inGame && state.game != nil }
-        state.selectUnit("field-worker", onTile: "tile-2-2")
+        state.selectUnit("building-worker", onTile: "tile-2-2")
         state.openColonyPanel()
         state.renameSelectedColony(to: "Neu-Boston")
         try await waitUntil { state.selectedColony?.name == "Neu-Boston" }
+        let west = try XCTUnwrap(state.selectedColonyTerrain.first { $0.id == "tile-1-2" })
+        XCTAssertEqual(west.workOptions.map(\.goodsType), ["model.goods.grain", "model.goods.tobacco"])
+        state.assignSelectedColonyWorker(to: "field-west", workTypeId: "model.goods.tobacco")
+        try await waitUntil { state.game?.units["building-worker"]?.workType == "model.goods.tobacco" }
+        XCTAssertEqual(state.game?.units["building-worker"]?.location, "field-west")
+        XCTAssertTrue(state.showColonyPanel)
+        state.selectUnit("field-worker", onTile: "tile-2-2")
         state.assignSelectedColonyWorker(to: "field-west", workTypeId: "model.goods.grain")
         try await waitUntil { state.game?.units["field-worker"]?.location == "field-west" }
-        XCTAssertEqual(state.selectedColonyWorkerUnitId, "field-worker")
-        XCTAssertTrue(state.showColonyPanel)
-        state.selectUnit("building-worker", onTile: "tile-2-2")
-        state.assignSelectedColonyWorker(to: "field-west")
-        try await waitUntil { state.game?.units["building-worker"]?.location == "field-west" }
         state.renameSelectedColony(to: "Abgelehnt")
         try await waitUntil { state.errorMessage?.contains("abgelehnt") == true }
         XCTAssertEqual(state.selectedColony?.name, "Neu-Boston")
         let requests = try await serverTask.value
-        XCTAssertEqual(requests.map(\.tag), ["rename", "rearrangeColony", "rearrangeColony", "rename"])
+        XCTAssertEqual(requests.map(\.tag), ["rename", "work", "changeWorkType", "rearrangeColony", "rename"])
         XCTAssertEqual(requests[0].attributes, ["nameable": "colony-1", "name": "Neu-Boston"])
-        XCTAssertEqual(requests[1].attributes["xLength"], "1")
-        XCTAssertEqual(requests[1].attributes["x0unit"], "field-worker")
-        XCTAssertEqual(requests[1].attributes["x0loc"], "field-west")
-        XCTAssertEqual(requests[1].attributes["x0work"], "model.goods.grain")
-        XCTAssertEqual(requests[2].attributes["xLength"], "2")
-        XCTAssertEqual(requests[2].attributes["x0work"], "model.goods.hammers")
-        XCTAssertEqual(requests[2].attributes["x1work"], "model.goods.grain")
-        XCTAssertEqual(requests[2].attributes["x1role"], "model.role.default")
-        XCTAssertEqual(requests[2].attributes["x1count"], "0")
+        XCTAssertEqual(requests[1].attributes, ["unit": "building-worker", "workLocation": "field-west"])
+        XCTAssertEqual(requests[2].attributes, ["unit": "building-worker", "workType": "model.goods.tobacco"])
+        XCTAssertEqual(requests[3].attributes["xLength"], "2")
+        XCTAssertEqual(requests[3].attributes["x0work"], "model.goods.tobacco")
+        XCTAssertEqual(requests[3].attributes["x1work"], "model.goods.grain")
+        XCTAssertEqual(requests[3].attributes["x1role"], "model.role.default")
+        XCTAssertEqual(requests[3].attributes["x1count"], "0")
         await server.stop()
     }
 
@@ -1946,6 +2028,61 @@ final class InteractionRepairTests: XCTestCase {
         state.rightClickMapTile("tile-3-2")
         XCTAssertNil(state.movingUnitId)
         XCTAssertNotNil(state.errorMessage)
+    }
+
+    @MainActor
+    func testNonStorableGoodsAreExcludedFromStorageAndCargo() throws {
+        let game = Game()
+        try game.load(from: XMLDecoder.decode("""
+        <game id="storage" clientUserName="Alice" currentPlayer="player-1">
+          <freecol-specification>
+            <goods-type id="model.goods.grain"/>
+            <goods-type id="model.goods.bells" storable="false"/>
+            <goods-type id="model.goods.crosses" storable="false"/>
+            <goods-type id="model.goods.hammers" storable="false"/>
+            <unit-type id="model.unit.caravel"><ability id="model.ability.navalUnit"/><ability id="model.ability.carryGoods"/></unit-type>
+          </freecol-specification>
+          <player id="player-1" username="Alice" nationId="model.nation.dutch"/>
+          <map id="map-1" width="2" height="1">
+            <tile id="tile-0" x="0" y="0" type="model.tile.plains" owner="player-1"/>
+            <tile id="tile-1" x="1" y="0" type="model.tile.plains"/>
+          </map>
+          <colony id="colony-1" name="Boston" owner="player-1" tile="tile-0">
+            <goodsContainer><storedGoods>
+              <goods type="model.goods.grain" amount="25"/>
+              <goods type="model.goods.bells" amount="12"/>
+              <goods type="model.goods.crosses" amount="7"/>
+              <goods type="model.goods.hammers" amount="4"/>
+            </storedGoods></goodsContainer>
+          </colony>
+          <unit id="carrier" owner="player-1" unitType="model.unit.caravel" location="tile-0">
+            <goodsContainer><storedGoods>
+              <goods type="model.goods.grain" amount="10"/>
+              <goods type="model.goods.bells" amount="3"/>
+            </storedGoods></goodsContainer>
+          </unit>
+        </game>
+        """))
+
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+        state.selectUnit("carrier", onTile: "tile-0")
+
+        XCTAssertEqual(state.colonyGoodsCandidates.map(\.id), ["model.goods.grain"])
+        XCTAssertEqual(state.tradeRouteGoodsTypes.map(\.id), ["model.goods.grain"])
+        XCTAssertEqual(state.selectedColonyStoredGoods.map(\.id), ["model.goods.grain"])
+        XCTAssertEqual(state.selectedColonyCarrierGoods.map(\.id), ["model.goods.grain"])
+    }
+
+    @MainActor
+    func testWagonTrainIsRecognizedAsColonyGoodsCarrier() throws {
+        let state = try makeState()
+        state.selectUnit("wagon", onTile: "tile-2-2")
+        state.openColonyPanel()
+
+        XCTAssertEqual(state.selectedColonyCarrierId, "wagon")
+        XCTAssertEqual(state.selectedColonyCarrierDescription?.contains("Wagenzug"), true)
     }
 
     @MainActor

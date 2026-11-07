@@ -8,8 +8,9 @@ struct ColopediaView: View {
     @State private var selectedEntryId: String?
     @State private var categoryFilter: ColopediaCategory?
 
-    init(selectedEntryId: String? = nil) {
+    init(selectedEntryId: String? = nil, categoryFilter: ColopediaCategory? = nil) {
         _selectedEntryId = State(initialValue: selectedEntryId)
+        _categoryFilter = State(initialValue: categoryFilter)
     }
 
     private var entries: [ColopediaEntry] {
@@ -104,7 +105,9 @@ struct ColopediaView: View {
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear {
             if selectedEntryId == nil {
-                selectedEntryId = entries.first?.id
+                selectedEntryId = entries.first {
+                    categoryFilter == nil || $0.category == categoryFilter
+                }?.id
             } else {
                 categoryFilter = selectedEntry?.category
             }

@@ -21,6 +21,7 @@ struct ColonyPanelView: View {
     let onSetGoodsLevel: (ColonyExportData) -> Void
     let exportData: [ColonyExportData]
     let workLocationCandidates: [(id: String, label: String)]
+    let teacherCandidates: [FreeColGame.Unit]
     let workTypeCandidates: [(id: String, label: String)]
     let goodsCandidates: [(id: String, label: String)]
     let workImprovementCandidates: [(id: String, label: String)]
@@ -30,6 +31,7 @@ struct ColonyPanelView: View {
     let onPutOutsideColony: () -> Void
     let canPutOutsideColony: Bool
     let selectedCarrierId: String?
+    let selectedCarrierDescription: String?
     let onLoadGoods: (String, Int) -> Void
     let onUnloadGoods: (String, Int) -> Void
     let maximumLoadAmount: (String) -> Int
@@ -44,7 +46,7 @@ struct ColonyPanelView: View {
     let buildRequirements: [(id: String, label: String, required: Int, stored: Int)]
     let buildETATurns: Int?
     let estimatedBuildPerTurn: Int
-    let estimatedProduction: [(id: String, label: String, amount: Int)]
+    let estimatedProduction: [ColonyGoodsFlow]
 
     @State private var workTypeId: String = "model.goods.grain"
     @State private var workImprovementTypeId: String = ""
@@ -59,7 +61,6 @@ struct ColonyPanelView: View {
     @State private var showWarehouse: Bool = false
     @State private var showAllGoods: Bool = false
     @State private var pendingWorkField: ColonyTerrainField?
-    @State private var showFieldProductionChooser: Bool = false
     @State private var section: ColonySection = .overview
 
     enum ColonySection: String, CaseIterable {
@@ -89,6 +90,7 @@ struct ColonyPanelView: View {
         onSetGoodsLevel: @escaping (ColonyExportData) -> Void,
         exportData: [ColonyExportData] = [],
         workLocationCandidates: [(id: String, label: String)] = [],
+        teacherCandidates: [FreeColGame.Unit] = [],
         workTypeCandidates: [(id: String, label: String)] = [],
         goodsCandidates: [(id: String, label: String)]? = nil,
         workImprovementCandidates: [(id: String, label: String)] = [],
@@ -98,6 +100,7 @@ struct ColonyPanelView: View {
         onPutOutsideColony: @escaping () -> Void,
         canPutOutsideColony: Bool,
         selectedCarrierId: String?,
+        selectedCarrierDescription: String? = nil,
         onLoadGoods: @escaping (String, Int) -> Void,
         onUnloadGoods: @escaping (String, Int) -> Void,
         maximumLoadAmount: @escaping (String) -> Int = { _ in 0 },
@@ -112,7 +115,7 @@ struct ColonyPanelView: View {
         buildRequirements: [(id: String, label: String, required: Int, stored: Int)] = [],
         buildETATurns: Int? = nil,
         estimatedBuildPerTurn: Int = 0,
-        estimatedProduction: [(id: String, label: String, amount: Int)] = [],
+        estimatedProduction: [ColonyGoodsFlow] = [],
         section: ColonySection = .overview
     ) {
         self.colony = colony
@@ -134,6 +137,7 @@ struct ColonyPanelView: View {
         self.onSetGoodsLevel = onSetGoodsLevel
         self.exportData = exportData
         self.workLocationCandidates = workLocationCandidates
+        self.teacherCandidates = teacherCandidates
         self.workTypeCandidates = workTypeCandidates
         self.goodsCandidates = goodsCandidates ?? workTypeCandidates
         self.workImprovementCandidates = workImprovementCandidates
@@ -143,6 +147,7 @@ struct ColonyPanelView: View {
         self.onPutOutsideColony = onPutOutsideColony
         self.canPutOutsideColony = canPutOutsideColony
         self.selectedCarrierId = selectedCarrierId
+        self.selectedCarrierDescription = selectedCarrierDescription
         self.onLoadGoods = onLoadGoods
         self.onUnloadGoods = onUnloadGoods
         self.maximumLoadAmount = maximumLoadAmount
@@ -284,6 +289,12 @@ struct ColonyPanelView: View {
 
                         if let selectedCarrierId {
                             panelCard("Fracht", systemImage: "shippingbox.fill") {
+                                if let selectedCarrierDescription {
+                                    Text(selectedCarrierDescription)
+                                        .font(.callout)
+                                        .foregroundStyle(.secondary)
+                                }
+
                                 if carrierGoods.isEmpty {
                                     Text("Der Transporter ist leer.")
                                         .font(.callout)
@@ -397,7 +408,12 @@ struct ColonyPanelView: View {
                                     }
                                 }
 
-                                let otherWorkers = units.filter { $0.id != selectedWorker.id }
+                                let otherWorkers = teacherCandidates.filter { $0.id != selectedWorker.id }
+                                let studentIsWorking = colony.buildings.contains {
+                                    $0.id == selectedWorker.location
+                                } || colony.workTiles.contains {
+                                    $0.id == selectedWorker.location
+                                }
                                 if !otherWorkers.isEmpty {
                                     HStack(spacing: 8) {
                                         Picker("Lehrer", selection: $teacherId) {
@@ -409,7 +425,12 @@ struct ColonyPanelView: View {
                                         .disabled(!canManage)
                                         Button("Zuweisen") { onAssignTeacher(teacherId) }
                                             .buttonStyle(.bordered)
-                                            .disabled(!canManage || teacherId.isEmpty)
+                                            .disabled(!canManage || teacherId.isEmpty || !studentIsWorking)
+                                    }
+                                    if !studentIsWorking {
+                                        Text("Der Schüler muss zuerst in einem Gebäude oder auf einem Feld arbeiten.")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
                                     }
                                 }
                                 if selectedWorker.teacher != nil {
@@ -460,23 +481,6 @@ struct ColonyPanelView: View {
         } message: {
             Text("Die Kolonie wird unwiderruflich entfernt.")
         }
-        .confirmationDialog(
-            "Produktion für dieses Feld",
-            isPresented: $showFieldProductionChooser,
-            titleVisibility: .visible
-        ) {
-            if let field = pendingWorkField, let locationId = field.workLocationId {
-                ForEach(field.workOptions) { option in
-                    Button(option.label) {
-                        onWorkAtLocation(locationId, option.goodsType)
-                        pendingWorkField = nil
-                    }
-                }
-            }
-            Button("Abbrechen", role: .cancel) { pendingWorkField = nil }
-        } message: {
-            Text("Wählen Sie aus, welche Ware der Arbeiter auf diesem Feld erzeugen soll.")
-        }
         .sheet(isPresented: $showWarehouse) {
             WarehouseSheet(exportData: exportData, onApply: onSetGoodsLevel)
         }
@@ -523,6 +527,13 @@ struct ColonyPanelView: View {
                     onSelectField: selectWorkField,
                     showsHeader: false
                 )
+                .sheet(item: $pendingWorkField) { field in
+                    ColonyFieldProductionChooser(field: field) { goodsType in
+                        guard let locationId = field.workLocationId else { return }
+                        onWorkAtLocation(locationId, goodsType)
+                        pendingWorkField = nil
+                    }
+                }
             }
         }
     }
@@ -585,7 +596,7 @@ struct ColonyPanelView: View {
             buildTargetLabel == nil ? "Produktion" : "Aktueller Bauauftrag",
             systemImage: "hammer"
         ) {
-            Text("Basiswerte ohne Boni oder Warenverbrauch.")
+            Text("Vorhersage mit aktiven Aufträgen, Boni und Vorräten.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             if let target = buildTargetLabel {
@@ -610,7 +621,7 @@ struct ColonyPanelView: View {
                     }
                 }
                 HStack {
-                    Text("Bauhämmer pro Runde (Basis)")
+                    Text("Bauhämmer pro Runde")
                     Spacer(minLength: 4)
                     Text(estimatedBuildPerTurn > 0 ? "\(estimatedBuildPerTurn)" : "—")
                         .monospacedDigit()
@@ -629,21 +640,64 @@ struct ColonyPanelView: View {
 
             if !estimatedProduction.isEmpty {
                 if buildTargetLabel != nil { Divider() }
-                Text("Produktion pro Runde (Basis)")
+                Text("Nahrungsquellen pro Runde")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                ForEach(foodProduction, id: \.id) { source in
+                    HStack {
+                        Text(source.label)
+                            .font(.callout)
+                        Spacer(minLength: 4)
+                        Text("+\(source.amount)")
+                            .font(.callout.monospacedDigit())
+                            .foregroundStyle(source.amount > 0 ? .green : .secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(source.label): \(source.amount) pro Runde")
+                    .accessibilityIdentifier("colony-food-source-\(source.id)")
+                }
+                Divider()
+                Text("Produktion und Verbrauch pro Runde")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Text("Ware")
+                    Spacer(minLength: 4)
+                    Text("Produktion")
+                        .frame(width: 66, alignment: .trailing)
+                    Text("Verbrauch")
+                        .frame(width: 66, alignment: .trailing)
+                }
+                .font(.caption2.bold())
+                .foregroundStyle(.secondary)
                 ForEach(estimatedProduction, id: \.id) { item in
                     HStack {
                         Text(item.label)
                             .font(.callout)
                             .lineLimit(1)
                         Spacer(minLength: 4)
-                        Text(item.amount >= 0 ? "+\(item.amount)" : "\(item.amount)")
+                        Text("+\(item.produced)")
                             .font(.callout.monospacedDigit())
-                            .foregroundStyle(item.amount >= 0 ? .green : .red)
+                            .foregroundStyle(.green)
+                            .frame(width: 66, alignment: .trailing)
+                        Text("\(item.consumed)")
+                            .font(.callout.monospacedDigit())
+                            .foregroundStyle(.orange)
+                            .frame(width: 66, alignment: .trailing)
                     }
+                    .help(item.explanation)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(item.label), Produktion \(item.produced), Verbrauch \(item.consumed)")
                 }
             }
+        }
+    }
+
+    private var foodProduction: [(id: String, label: String, amount: Int)] {
+        ["model.goods.grain", "model.goods.fish"].map { goods in
+            (id: goods,
+             label: GameLabels.name(goods),
+             amount: estimatedProduction.first(where: { $0.id == goods })?.produced ?? 0)
         }
     }
 
@@ -808,9 +862,11 @@ struct ColonyPanelView: View {
         guard let locationId = field.workLocationId else { return }
         if field.workOptions.count > 1 {
             pendingWorkField = field
-            showFieldProductionChooser = true
         } else {
-            onWorkAtLocation(locationId, field.workOptions.first?.goodsType)
+            // Let `work` assign a sole-output field directly. Passing its
+            // inferred type would unnecessarily switch to `rearrangeColony`;
+            // an explicit type is only needed after a multi-output choice.
+            onWorkAtLocation(locationId, nil)
         }
     }
 
@@ -877,6 +933,69 @@ struct ColonyPanelView: View {
             return "Arbeitsplatz: \(candidate.label)"
         }
         return "Arbeitsplatz nicht verfügbar"
+    }
+}
+
+private struct ColonyFieldProductionChooser: View {
+    let field: ColonyTerrainField
+    let onSelect: (String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Produktion für dieses Feld")
+                .font(.title2.bold())
+            Text("\(field.tile.type.map(GameLabels.name) ?? "Gelände"): Wählen Sie aus, welche Ware der Arbeiter erzeugen soll.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+
+            ScrollView {
+                VStack(spacing: 8) {
+                    ForEach(field.workOptions) { option in
+                        Button {
+                            onSelect(option.goodsType)
+                            dismiss()
+                        } label: {
+                            HStack(spacing: 10) {
+                                if let image = TileImageCache.shared.goodsImage(for: option.goodsType) {
+                                    Image(nsImage: image)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 30, height: 30)
+                                } else {
+                                    Image(systemName: "shippingbox.fill")
+                                        .frame(width: 30, height: 30)
+                                }
+                                Text(GameLabels.name(option.goodsType))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                if let amount = option.baseAmount {
+                                    Text("Basis \(amount)")
+                                        .monospacedDigit()
+                                        .foregroundStyle(.secondary)
+                                }
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .contentShape(Rectangle())
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier("colony-production-choice-\(field.id)-\(option.goodsType)")
+                    }
+                }
+            }
+            .frame(minHeight: 100, idealHeight: 240, maxHeight: 420)
+
+            HStack {
+                Spacer()
+                Button("Abbrechen") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+            }
+        }
+        .padding(20)
+        .frame(minWidth: 420, idealWidth: 480, maxWidth: 560)
     }
 }
 

@@ -677,6 +677,7 @@ final class GameState {
     var showChatPanel: Bool = false
     var showPreferencesPanel: Bool = false
     var showColopediaPanel: Bool = false
+    var requestedColopediaCategory: ColopediaCategory?
     var showIndependencePanel: Bool = false
     var showFindSettlementPanel: Bool = false
     var showTradeRoutesPanel: Bool = false
@@ -1286,7 +1287,7 @@ final class GameState {
               let loc = unit.location,
               unit.movesLeft > 0,
               unit.state == .active,
-              unit.unitType?.localizedCaseInsensitiveContains("colonist") == true else {
+              unitCanFoundColony(unit, in: game) else {
             return false
         }
         guard game.colonies.first(where: { $0.value.tileId == loc }) == nil,
@@ -1295,6 +1296,18 @@ final class GameState {
             return false
         }
         return true
+    }
+
+    private func unitCanFoundColony(_ unit: FreeColGame.Unit, in game: Game) -> Bool {
+        guard let unitType = unit.unitType else { return false }
+        if game.specification?.unitTypes[unitType] != nil {
+            return game.specification?.hasAbility(
+                "model.ability.foundColony", unitType: unitType
+            ) == true
+        }
+        // Older/partial game snapshots may omit the specification entirely.
+        // Keep the previous best-effort behavior for those snapshots only.
+        return unitType.localizedCaseInsensitiveContains("colonist")
     }
 
     var canJoinSelectedColony: Bool {
@@ -1465,12 +1478,13 @@ final class GameState {
               isLikelyCarrier(carrier, in: game) else {
             return []
         }
-        let carrierTileId = resolveUnitTileId(carrier, in: game)
         return game.units.values
             .filter {
                 $0.id != carrier.id
                 && $0.owner == carrier.owner
-                && ($0.location == carrier.id || (carrierTileId != nil && $0.location == carrierTileId))
+                // Sharing a tile (notably a colony tile) does not mean a unit
+                // is aboard. The carrier's ID is the authoritative cargo location.
+                && $0.location == carrier.id
             }
             .sorted { $0.id < $1.id }
     }
@@ -1561,15 +1575,20 @@ final class GameState {
            let type = building.buildingType {
             return specification.buildingTypes[type]?.productionOutputs ?? [:]
         } else if let location = colony.workTiles.first(where: { $0.id == location }),
-                   let tileId = location.tileId, let type = cachedGame?.tiles[tileId]?.type {
-            return location.productionOutputs ?? specification.tileTypes[type]?.workerOutputs ?? [:]
+                    let tileId = location.tileId, let tileType = cachedGame?.tiles[tileId]?.type {
+            let specificationOutputs = specification.tileTypes[tileType]?.workerOutputs ?? [:]
+            return specificationOutputs.isEmpty
+                ? (location.productionOutputs ?? [:]) : specificationOutputs
         }
         return [:]
     }
 
+    /// Storable goods types, i.e. goods that can be kept in a warehouse and
+    /// transported as cargo. Bells, crosses and hammers are not storable.
     var colonyGoodsCandidates: [(id: String, label: String)] {
         guard let specification = cachedGame?.specification else { return [] }
         return specification.goodsTypes.values
+            .filter(\.isStorable)
             .map { (id: $0.id, label: goodsDisplayName($0.id)) }
             .sorted { $0.label < $1.label }
     }
@@ -1577,10 +1596,26 @@ final class GameState {
     /// Work locations a colony worker can be assigned to (tiles + buildings).
     var selectedColonyWorkLocationCandidates: [(id: String, label: String)] {
         guard let colony = selectedColony else { return [] }
+        let workerId = selectedColonyWorkerUnitId
+        let worker = workerId.flatMap { cachedGame?.units[$0] }
+        let specification = cachedGame?.specification
         var candidates: [(id: String, label: String)] = []
         for building in colony.buildings {
-            let id = building.buildingType ?? building.id
-            candidates.append((id: building.id, label: buildingDisplayName(id)))
+            guard let buildingType = building.buildingType,
+                  let worker,
+                  let unitType = worker.unitType,
+                  let specification,
+                  specification.buildingWorkplaces(for: buildingType)
+                    > selectedColonyUnits.filter({ $0.location == building.id && $0.id != worker.id }).count,
+                  (specification.buildingOutputs(for: buildingType, unattended: false)
+                    .contains(where: { $0.value > 0 })
+                    || specification.buildingHasAbility(
+                        "model.ability.teach", buildingTypeId: buildingType
+                    )),
+                  specification.canUnitTypeWorkInBuilding(unitType, buildingTypeId: buildingType) else {
+                continue
+            }
+            candidates.append((id: building.id, label: buildingDisplayName(buildingType)))
         }
         for tile in colony.workTiles {
             guard colonyWorkLocationUnavailableReason(tile.id) == nil else { continue }
@@ -1590,6 +1625,24 @@ final class GameState {
             candidates.append((id: tile.id, label: label))
         }
         return candidates.sorted { $0.label < $1.label }
+    }
+
+    /// Colony units that can serve as teachers according to the built
+    /// education buildings' skill limits. The server uses the same rule when
+    /// validating an `assignTeacher` request.
+    var selectedColonyTeacherCandidates: [FreeColGame.Unit] {
+        guard let colony = selectedColony,
+              let specification = cachedGame?.specification else { return [] }
+        let teachingBuildings = colony.buildings.compactMap(\.buildingType).filter {
+            specification.buildingHasAbility("model.ability.teach", buildingTypeId: $0)
+        }
+        guard !teachingBuildings.isEmpty else { return [] }
+        return selectedColonyUnits.filter { unit in
+            guard let unitType = unit.unitType else { return false }
+            return teachingBuildings.contains {
+                specification.canUnitTypeWorkInBuilding(unitType, buildingTypeId: $0)
+            }
+        }
     }
 
     /// Building types the colony can start building now (spec-known, not yet
@@ -1612,9 +1665,17 @@ final class GameState {
                                                         specification: Specification,
                                                         population: Int) -> [(id: String, label: String)] {
         let built = Set(colony.buildings.compactMap { $0.buildingType })
-        return specification.buildingTypes.values
+        var superseded = Set<String>()
+        for buildingId in built {
+            var predecessor = specification.buildingTypes[buildingId]?.upgradesFrom
+            while let predecessorId = predecessor, superseded.insert(predecessorId).inserted {
+                predecessor = specification.buildingTypes[predecessorId]?.upgradesFrom
+            }
+        }
+        let buildings = specification.buildingTypes.values
             .filter { info in
-                guard !built.contains(info.id), info.requiredPopulation <= population else {
+                guard !built.contains(info.id), !superseded.contains(info.id),
+                      info.requiredPopulation <= population else {
                     return false
                 }
                 if let upgradesFrom = info.upgradesFrom {
@@ -1628,7 +1689,31 @@ final class GameState {
                 let label = cost > 0 ? "\(name) – \(cost)" : name
                 return (id: info.id, label: label)
             }
-            .sorted { $0.label < $1.label }
+
+        // A colony can build certain units when one of its buildings grants
+        // model.ability.build for that unit type (e.g. a carpenter's house
+        // enables wagon trains). Include inherited building abilities too.
+        var buildableUnitTypeIds = Set<String>()
+        for buildingId in built {
+            var current: String? = buildingId
+            var visited = Set<String>()
+            while let id = current, visited.insert(id).inserted,
+                  let building = specification.buildingTypes[id] {
+                buildableUnitTypeIds.formUnion(building.buildableUnitTypes)
+                current = building.extendsId
+            }
+        }
+        let units = specification.unitTypes.values
+            .filter { info in
+                buildableUnitTypeIds.contains(info.id) && !info.requiredGoods.isEmpty
+            }
+            .map { info -> (id: String, label: String) in
+                let cost = info.requiredGoods[buildingMaterialsGoodsId] ?? 0
+                let name = GameLabels.name(info.id, fallback: info.displayName)
+                return (id: info.id, label: cost > 0 ? "\(name) – \(cost)" : name)
+            }
+
+        return (buildings + units).sorted { $0.label < $1.label }
     }
 
     /// Buildings present in the selected colony with display names.
@@ -2182,8 +2267,14 @@ final class GameState {
             statusMessage = "Monarch – \(monarchActionDescription(action)) (\(result))"
             return
         }
-        // Announcement-only actions need no answer.
-        if action == "no_action" || action == "displeasure" {
+        // Only these actions create a MonarchSession on the server and require
+        // an accept/reject response. Other actions (including ADD_TO_REF) are
+        // announcements; answering them produces "Bogus monarch action".
+        let responseRequiredActions: Set<String> = [
+            "raise_tax_act", "raise_tax_war",
+            "monarch_mercenaries", "hessian_mercenaries",
+        ]
+        guard responseRequiredActions.contains(action.lowercased()) else {
             statusMessage = "Monarch – \(monarchActionDescription(action))"
             return
         }
@@ -3882,9 +3973,20 @@ final class GameState {
         guard canIssueMovementOrders(for: unit, in: game) else {
             return "Für diese Einheit sind derzeit keine Bewegungsbefehle möglich."
         }
-        guard let unitLocation = unit.location,
-              game.tiles[unitLocation] != nil
-                || game.units[unitLocation].map({ isCarrierUnit($0) && $0.owner == unit.owner }) == true,
+        guard let unitLocation = unit.location else {
+            return "Diese Einheit befindet sich nicht auf einer gültigen Kartenposition."
+        }
+        let isColonyLocation = game.colonies[unitLocation] != nil
+            || game.colonies.values.contains { colony in
+                colony.buildings.contains { $0.id == unitLocation }
+                    || colony.workTiles.contains { $0.id == unitLocation }
+            }
+        let isOwnedCarrierLocation = game.units[unitLocation].map {
+            isCarrierUnit($0) && $0.owner == unit.owner
+        } == true
+        // Colony/work-location IDs resolve to the colony tile. Carrier IDs
+        // also resolve to a tile and remain eligible for disembark checks.
+        guard game.tiles[unitLocation] != nil || isColonyLocation || isOwnedCarrierLocation,
               let location = resolveUnitTileId(unit, in: game), game.tiles[location] != nil else {
             return "Diese Einheit befindet sich nicht auf einer gültigen Kartenposition."
         }
@@ -3977,12 +4079,28 @@ final class GameState {
     }
 
     func moveSelectedUnitTo(destinationTileId: String) {
-        guard canMoveSelectedUnitTo(destinationTileId: destinationTileId),
-              let unit = selectedUnit,
-              let game = cachedGame else {
-            errorMessage = selectedUnit?.movesLeft == 0
-                ? "Diese Einheit hat keine Bewegungspunkte mehr. Bitte bis zum nächsten Zug warten."
-                : "Ziel kann nicht erreicht werden."
+        guard canChooseMoveDestination else {
+            errorMessage = selectedUnitMoveDisabledReason ?? "Diese Einheit kann gerade nicht bewegt werden."
+            return
+        }
+        guard let unit = selectedUnit, let game = cachedGame else {
+            errorMessage = "Wähle zuerst eine eigene Einheit aus."
+            return
+        }
+        guard let sourceTileId = selectedUnitTileId else {
+            errorMessage = "Diese Einheit befindet sich nicht auf einer gültigen Kartenposition."
+            return
+        }
+        guard game.tiles[destinationTileId] != nil else {
+            errorMessage = "Das ausgewählte Zielfeld ist nicht verfügbar."
+            return
+        }
+        guard sourceTileId != destinationTileId else {
+            errorMessage = "Das Zielfeld ist bereits der Standort dieser Einheit."
+            return
+        }
+        guard canMoveSelectedUnitTo(destinationTileId: destinationTileId) else {
+            errorMessage = "Ziel kann nicht erreicht werden."
             return
         }
         guard nextStepTowardDestination(for: unit, destinationTileId: destinationTileId, in: game) != nil else {
@@ -5024,9 +5142,16 @@ final class GameState {
               let teacher = game.units[trimmed],
               let localPlayerId = resolveLocalPlayerId(),
               teacher.owner == localPlayerId,
-              selectedColonyUnits.contains(where: { $0.id == trimmed }),
+              selectedColonyTeacherCandidates.contains(where: { $0.id == trimmed }),
               studentId != trimmed else {
             errorMessage = "Lehrer kann nicht zugewiesen werden."
+            return
+        }
+        guard let student = game.units[studentId],
+              let colony = selectedColony,
+              colony.buildings.contains(where: { $0.id == student.location })
+                || colony.workTiles.contains(where: { $0.id == student.location }) else {
+            errorMessage = "Der Schüler muss zuerst in einem Gebäude oder auf einem Feld arbeiten."
             return
         }
         errorMessage = nil
@@ -5225,9 +5350,6 @@ final class GameState {
                         "claimant": colony.id, "tile": tileId, "price": "0",
                     ], children: []), queueIfDisconnected: false)
                 }
-                let msg = arrangements.count > 1 || selectedWorkType != nil
-                    ? Self.rearrangeColonyMessage(colonyId: colony.id, arrangements: arrangements)
-                    : ParsedMessage(tag: "work", attributes: ["unit": unitId, "workLocation": trimmed], children: [])
                 if server != nil {
                     for arrangement in arrangements {
                         game.setUnitWorkLocation(unitId: arrangement.unit,
@@ -5238,7 +5360,30 @@ final class GameState {
                     }
                     gameUpdateID += 1
                 }
-                try await sendCoreGameplayAction(msg, queueIfDisconnected: false)
+
+                if arrangements.count == 1, let selectedWorkType {
+                    // FreeCol 1.2's RearrangeColonyMessage reader fails to
+                    // consume its closing tag inside a <question>. Use the
+                    // regular work and changeWorkType requests for a simple
+                    // move with an explicit production choice.
+                    try await sendCoreGameplayAction(ParsedMessage(
+                        tag: "work",
+                        attributes: ["unit": unitId, "workLocation": trimmed],
+                        children: []
+                    ), queueIfDisconnected: false)
+                    try await sendCoreGameplayAction(ParsedMessage(
+                        tag: "changeWorkType",
+                        attributes: ["unit": unitId, "workType": selectedWorkType],
+                        children: []
+                    ), queueIfDisconnected: false)
+                } else {
+                    let msg = arrangements.count > 1
+                        ? Self.rearrangeColonyMessage(colonyId: colony.id, arrangements: arrangements)
+                        : ParsedMessage(tag: "work", attributes: [
+                            "unit": unitId, "workLocation": trimmed,
+                        ], children: [])
+                    try await sendCoreGameplayAction(msg, queueIfDisconnected: false)
+                }
             } catch {
                 errorMessage = ServerErrorMessage.description(for: error)
             }
@@ -7105,7 +7250,13 @@ final class GameState {
               game.tiles[destinationTileId] != nil else {
             return nil
         }
-        return game.nextPathStep(from: sourceTileId, to: destinationTileId) { _, next in
+        return game.nextPathStep(
+            from: sourceTileId,
+            to: destinationTileId,
+            stepCost: { current, next in
+                game.hasRoadConnection(from: current, to: next) ? 1 : 3
+            }
+        ) { _, next in
             guard let tile = game.tiles[next], tile.type != nil, let owner = unit.owner,
                   !hasHostileUnit(onTile: next, in: game, friendlyOwner: owner),
                   !game.colonies.values.contains(where: { $0.tileId == next && $0.owner != owner }) else { return false }

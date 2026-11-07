@@ -53,6 +53,7 @@ extension GameState {
     var tradeRouteGoodsTypes: [(id: String, label: String)] {
         guard let specification = cachedGame?.specification else { return [] }
         return specification.goodsTypes.values
+            .filter(\.isStorable)
             .map { (id: $0.id, label: goodsDisplayName($0.id)) }
             .sorted { $0.label < $1.label }
     }

@@ -34,6 +34,42 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(parsed.children[0].tag, "game")
     }
 
+    func testPathfindingPrefersCompletedRoadsOverShorterOffRoadRoute() throws {
+        let game = Game()
+        let roadStyles: [String: String] = [
+            "tile-0-0": "00010000",
+            "tile-0-1": "00100001",
+            "tile-1-1": "00100010",
+            "tile-2-1": "00100010",
+            "tile-3-1": "00000011",
+            "tile-3-0": "00010000",
+        ]
+        let tileXML = (0..<4).flatMap { y in
+            (0..<4).map { x in
+                let id = "tile-\(x)-\(y)"
+                let improvement = roadStyles[id].map { style in
+                    "<tileItemContainer><tileImprovement id=\"road-\(x)-\(y)\" type=\"model.improvement.road\" turns=\"0\" style=\"\(style)\"/></tileItemContainer>"
+                } ?? ""
+                return "<tile id=\"\(id)\" x=\"\(x)\" y=\"\(y)\" type=\"model.tile.plains\">\(improvement)</tile>"
+            }
+        }.joined(separator: "\n")
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1">
+          <map id="map-1" width="4" height="4">
+            \(tileXML)
+          </map>
+        </game>
+        """)
+        try game.load(from: parsed)
+
+        let step = game.nextPathStep(
+            from: "tile-0-0",
+            to: "tile-3-0",
+            stepCost: { game.hasRoadConnection(from: $0, to: $1) ? 1 : 3 }
+        ) { _, _ in true }
+        XCTAssertEqual(step, "tile-0-1")
+    }
+
     func testLineFramerPreservesUTF8AcrossChunksAndFrames() throws {
         let bytes = Array(Data("<chat name=\"café\"/>\n<endTurn/>\n".utf8))
         let splitIndex = try XCTUnwrap(bytes.firstIndex(of: 0xC3)).advanced(by: 1)
@@ -412,6 +448,21 @@ final class FreeColProtocolTests: XCTestCase {
     }
 
     @MainActor
+    func testMonarchAddToREFIsAnnouncementNotDecision() {
+        let state = GameState()
+        state.phase = .inGame
+
+        state.applySessionMessage(ParsedMessage(
+            tag: "monarchAction",
+            attributes: ["action": "add_to_ref"],
+            children: []
+        ))
+
+        XCTAssertNil(state.pendingServerDecision)
+        XCTAssertEqual(state.statusMessage, "Monarch – Add to ref")
+    }
+
+    @MainActor
     func testNamePromptsAndClose() async throws {
         let state = GameState()
         state.phase = .inGame
@@ -701,8 +752,15 @@ final class FreeColProtocolTests: XCTestCase {
             <building id="building-1" buildingType="model.building.townHall"/>
           </colony>
           <freecol-specification id="spec">
+            <building-type id="model.building.carpenterHouse" workplaces="2"
+                           minimum-skill="0" maximum-skill="1">
+              <production><output goods-type="model.goods.hammers" value="3"/></production>
+            </building-type>
             <building-type id="model.building.lumberMill" required-population="3" upkeep="10"
+                           extends="model.building.carpenterHouse"
                            upgrades-from="model.building.carpenterHouse"/>
+            <unit-type id="model.unit.worker" skill="1"/>
+            <unit-type id="model.unit.expert" skill="2"/>
           </freecol-specification>
         </game>
         """)
@@ -719,6 +777,16 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(lumberMill?.upkeep, 10)
         XCTAssertEqual(lumberMill?.upgradesFrom, "model.building.carpenterHouse")
         XCTAssertEqual(lumberMill?.displayName, "LumberMill")
+        XCTAssertEqual(game.specification?.buildingWorkplaces(for: "model.building.lumberMill"), 2)
+        XCTAssertTrue(game.specification?.canUnitTypeWorkInBuilding(
+            "model.unit.worker", buildingTypeId: "model.building.lumberMill"
+        ) ?? false)
+        XCTAssertFalse(game.specification?.canUnitTypeWorkInBuilding(
+            "model.unit.expert", buildingTypeId: "model.building.lumberMill"
+        ) ?? true)
+        XCTAssertEqual(game.specification?.buildingOutputs(
+            for: "model.building.lumberMill", unattended: false
+        )["model.goods.hammers"], 3)
     }
 
     func testDiplomacyClauseSerialization() {
@@ -935,6 +1003,59 @@ final class FreeColProtocolTests: XCTestCase {
         // Upgrade hidden without its predecessor.
         XCTAssertFalse(ids2.contains("model.building.lumberMill"))
         XCTAssertTrue(ids2.contains("model.building.carpenterHouse"))
+
+        let withMill = try Colony(
+            id: "colony-3",
+            attributes: ["name": "Plymouth", "unitCount": "5"],
+            children: [ParsedMessage(tag: "building",
+                                     attributes: ["id": "b2", "buildingType": "model.building.lumberMill"],
+                                     children: [])],
+            game: Game()
+        )
+        let ids3 = Set(GameState.buildableBuildingCandidates(colony: withMill,
+                                                             specification: specification,
+                                                             population: 5).map(\.id))
+        // Do not offer a downgrade to the smaller predecessor of an existing building.
+        XCTAssertFalse(ids3.contains("model.building.carpenterHouse"))
+    }
+
+    func testBuildableCandidatesIncludeUnitsEnabledByColonyBuildings() throws {
+        let specification = Specification(parsed: try XMLDecoder.decode("""
+        <freecol-specification id="spec">
+          <unit-type id="model.unit.wagonTrain">
+            <required-goods id="model.goods.hammers" value="40"/>
+          </unit-type>
+          <building-type id="model.building.carpenterHouse">
+            <ability id="model.ability.build" value="true">
+              <scope type="model.unit.wagonTrain"/>
+            </ability>
+          </building-type>
+        </freecol-specification>
+        """))
+        let colony = try Colony(
+            id: "colony-wagon",
+            attributes: ["name": "Boston", "unitCount": "1"],
+            children: [ParsedMessage(tag: "building",
+                                     attributes: ["id": "carpenter",
+                                                  "buildingType": "model.building.carpenterHouse"],
+                                     children: [])],
+            game: Game()
+        )
+
+        let candidates = GameState.buildableBuildingCandidates(colony: colony,
+                                                               specification: specification,
+                                                               population: 1)
+        let wagon = try XCTUnwrap(candidates.first { $0.id == "model.unit.wagonTrain" })
+        XCTAssertTrue(wagon.label.contains("40"))
+
+        let noCarpenter = try Colony(id: "colony-no-carpenter",
+                                     attributes: ["name": "Salem", "unitCount": "1"],
+                                     children: [],
+                                     game: Game())
+        XCTAssertFalse(GameState.buildableBuildingCandidates(colony: noCarpenter,
+                                                             specification: specification,
+                                                             population: 1)
+            .contains { $0.id == "model.unit.wagonTrain" })
     }
 
     func testColonyProductionEstimateUsesAssignedAndUnattendedProduction() throws {
@@ -1025,6 +1146,75 @@ final class FreeColProtocolTests: XCTestCase {
         )
         XCTAssertFalse(withoutInputs.contains { $0.id == "model.goods.hammers" },
                        "A staffed building with unavailable inputs should not show output")
+    }
+
+    func testColonyGoodsFlowIncludesBonusesConsumptionAndTooltipBreakdown() throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1">
+          <player id="player-1" username="Alice"/>
+          <map id="map-1" width="1" height="1">
+            <tile id="tile-0-0" x="0" y="0" type="model.tile.plains"/>
+          </map>
+          <colony id="colony-1" name="Boston" owner="player-1" tile="tile-0-0"
+                  unitCount="1" productionBonus="2">
+            <building id="building-1" buildingType="model.building.carpenterHouse">
+              <unit id="worker-1" unitType="model.unit.masterCarpenter" owner="player-1"
+                    location="building-1" workType="model.goods.hammers"/>
+            </building>
+            <goodsContainer><storedGoods>
+              <goods type="model.goods.lumber" amount="5"/>
+              <goods type="model.goods.food" amount="20"/>
+            </storedGoods></goodsContainer>
+          </colony>
+          <freecol-specification id="spec">
+            <tile-type id="model.tile.plains">
+              <production unattended="true"><output goods-type="model.goods.grain" value="2"/></production>
+            </tile-type>
+            <unit-type id="model.unit.colonist">
+              <consumes id="model.goods.food" value="2"/>
+            </unit-type>
+            <unit-type id="model.unit.masterCarpenter" extends="model.unit.colonist"
+                       expert-production="model.goods.hammers">
+              <modifier id="model.goods.hammers" index="30" type="additive" value="3"/>
+            </unit-type>
+            <building-type id="model.building.carpenterHouse">
+              <production>
+                <input goods-type="model.goods.lumber" value="3"/>
+                <output goods-type="model.goods.hammers" value="3"/>
+              </production>
+            </building-type>
+          </freecol-specification>
+        </game>
+        """)
+        try game.load(from: parsed)
+
+        let colony = try XCTUnwrap(game.colonies["colony-1"])
+        let specification = try XCTUnwrap(game.specification)
+        let player = try XCTUnwrap(game.players["player-1"])
+        XCTAssertEqual(colony.tileId, "tile-0-0")
+        XCTAssertEqual(colony.productionBonus, 2)
+        XCTAssertEqual(game.tiles["tile-0-0"]?.type, "model.tile.plains")
+        XCTAssertEqual(specification.tileTypes["model.tile.plains"]?.centerOutputs["model.goods.grain"], 2)
+        let flow = ColonyProductionCalculator.calculate(
+            colony: colony,
+            specification: specification,
+            tiles: game.tiles,
+            workers: Array(game.units.values),
+            player: player,
+            goodsLabel: { $0 }
+        )
+        let byGoods = Dictionary(uniqueKeysWithValues: flow.map { ($0.id, $0) })
+
+        XCTAssertEqual(byGoods["model.goods.grain"]?.produced, 4,
+                       "The center should include the colony production bonus")
+        XCTAssertEqual(byGoods["model.goods.hammers"]?.produced, 8,
+                       "The final output should include the master carpenter and colony bonuses")
+        XCTAssertEqual(byGoods["model.goods.lumber"]?.consumed, 3)
+        XCTAssertEqual(byGoods["model.goods.food"]?.consumed, 2)
+        XCTAssertTrue(byGoods["model.goods.hammers"]?.explanation.contains("Grundwert: 3") == true)
+        XCTAssertTrue(byGoods["model.goods.hammers"]?.explanation.contains("Koloniebonus") == true)
+        XCTAssertTrue(byGoods["model.goods.lumber"]?.explanation.contains("model.goods.lumber") == true)
     }
 
     // MARK: Phase 54 - inbound decision handling
@@ -1768,6 +1958,37 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertFalse(state.canEndTurn)
         state.endTurn()
         XCTAssertEqual(state.errorMessage, "Du bist gerade nicht am Zug.")
+    }
+
+    @MainActor
+    func testExpertColonistCanFoundColonyThroughInheritedAbility() throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1" clientUserName="Alice" currentPlayer="player-1">
+          <freecol-specification>
+            <unit-types>
+              <unit-type id="model.unit.freeColonist">
+                <ability id="model.ability.foundColony" value="true"/>
+              </unit-type>
+              <unit-type id="model.unit.masterGunsmith" extends="model.unit.freeColonist"/>
+            </unit-types>
+          </freecol-specification>
+          <player id="player-1" username="Alice"/>
+          <map id="map-1" width="1" height="1">
+            <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+          </map>
+          <unit id="unit-founder" owner="player-1" unitType="model.unit.masterGunsmith"
+                location="tile-0" movesLeft="1" state="ACTIVE"/>
+        </game>
+        """)
+        try game.load(from: parsed)
+
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+        state.selectUnit("unit-founder", onTile: "tile-0")
+
+        XCTAssertTrue(state.canBuildSelectedColony)
     }
 
     @MainActor

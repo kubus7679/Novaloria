@@ -560,7 +560,7 @@ struct ReportPanelView: View {
                 empty("Keine Kolonien.")
             } else {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Basiserträge aus Arbeitsplätzen und Koloniezentrum; ohne Boni oder Warenverbrauch.")
+                    Text("Vorhersage aus aktiven Aufträgen, Boni und aktuellem Vorrat.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     ForEach(colonies) { colony in
@@ -625,9 +625,11 @@ struct ReportPanelView: View {
                             if production.isEmpty {
                                 empty("Keine geschätzte Produktion.")
                             } else {
-                                table(headers: ["Ware", "Basis/Runde"],
-                                      widths: [180, 80],
-                                      rows: production.map { [$0.label, "\($0.amount)"] })
+                                table(headers: ["Ware", "Produktion", "Verbrauch"],
+                                      widths: [180, 80, 80],
+                                      rows: production.map {
+                                          [$0.label, "+\($0.produced)", "−\($0.consumed)"]
+                                      })
                             }
                         }
                     }

@@ -1,6 +1,45 @@
 import Foundation
 import FreeColProtocol
 
+/// A production modifier parsed from the FreeCol specification.
+public struct ProductionModifierInfo: Sendable {
+    public enum Kind: String, Sendable {
+        case additive
+        case multiplicative
+        case percentage
+    }
+
+    public var goodsType: String
+    public var kind: Kind
+    public var value: Double
+    public var index: Int
+    public var isDelete: Bool
+    public var scopeTypes: [String]
+    public var scopeAbilities: [String]
+    public var negatedScopeTypes: [String]
+    public var negatedScopeAbilities: [String]
+
+    public init(goodsType: String,
+                kind: Kind,
+                value: Double,
+                index: Int,
+                isDelete: Bool = false,
+                scopeTypes: [String] = [],
+                scopeAbilities: [String] = [],
+                negatedScopeTypes: [String] = [],
+                negatedScopeAbilities: [String] = []) {
+        self.goodsType = goodsType
+        self.kind = kind
+        self.value = value
+        self.index = index
+        self.isDelete = isDelete
+        self.scopeTypes = scopeTypes
+        self.scopeAbilities = scopeAbilities
+        self.negatedScopeTypes = negatedScopeTypes
+        self.negatedScopeAbilities = negatedScopeAbilities
+    }
+}
+
 /// Parsed subset of a `<unit-type>` definition from the server specification.
 public struct UnitTypeInfo: @unchecked Sendable {
     public var id: String
@@ -22,6 +61,11 @@ public struct UnitTypeInfo: @unchecked Sendable {
     public var price: Int?
     /// Skill level (`skill`), inherited through `extends`; Java trains units with skill > 0 in Europe.
     public var skill: Int?
+    public var expertProduction: String?
+    /// Goods required to construct this unit in a colony.
+    public var requiredGoods: [String: Int]
+    public var productionModifiers: [ProductionModifierInfo]
+    public var consumes: [String: Int]
 
     public init(id: String,
                 lineOfSight: Int,
@@ -34,8 +78,12 @@ public struct UnitTypeInfo: @unchecked Sendable {
                 spaceTaken: Int? = nil,
                 extendsId: String? = nil,
                 abilities: [String: Bool] = [:],
-                price: Int? = nil,
-                skill: Int? = nil) {
+                 price: Int? = nil,
+                 skill: Int? = nil,
+                 expertProduction: String? = nil,
+                 requiredGoods: [String: Int] = [:],
+                 productionModifiers: [ProductionModifierInfo] = [],
+                consumes: [String: Int] = [:]) {
         self.id = id
         self.lineOfSight = lineOfSight
         self.isNaval = isNaval
@@ -49,6 +97,10 @@ public struct UnitTypeInfo: @unchecked Sendable {
         self.abilities = abilities
         self.price = price
         self.skill = skill
+        self.expertProduction = expertProduction
+        self.requiredGoods = requiredGoods
+        self.productionModifiers = productionModifiers
+        self.consumes = consumes
     }
 
     /// FreeCol reserves at least one slot beyond a unit's own cargo capacity
@@ -120,17 +172,20 @@ public struct ImprovementTypeInfo: @unchecked Sendable {
     public var isNatural: Bool
     /// Number of role equipment units expended when the improvement completes.
     public var expendedAmount: Int
+    public var productionModifiers: [ProductionModifierInfo]
 
     public init(id: String,
                 requiredRole: String?,
                 addWorkTurns: Int,
                 isNatural: Bool,
-                expendedAmount: Int = 0) {
+                expendedAmount: Int = 0,
+                productionModifiers: [ProductionModifierInfo] = []) {
         self.id = id
         self.requiredRole = requiredRole
         self.addWorkTurns = addWorkTurns
         self.isNatural = isNatural
         self.expendedAmount = expendedAmount
+        self.productionModifiers = productionModifiers
     }
 
     public var displayName: String {
@@ -146,15 +201,18 @@ public struct RoleTypeInfo: @unchecked Sendable {
     public var requiredGoods: [String: Int]
     /// Required unit abilities and their expected values.
     public var requiredAbilities: [String: Bool]
+    public var productionModifiers: [ProductionModifierInfo]
 
     public init(id: String,
                 maximumCount: Int = 1,
                 requiredGoods: [String: Int] = [:],
-                requiredAbilities: [String: Bool] = [:]) {
+                requiredAbilities: [String: Bool] = [:],
+                productionModifiers: [ProductionModifierInfo] = []) {
         self.id = id
         self.maximumCount = maximumCount
         self.requiredGoods = requiredGoods
         self.requiredAbilities = requiredAbilities
+        self.productionModifiers = productionModifiers
     }
 }
 
@@ -163,10 +221,19 @@ public struct BuildingTypeInfo: @unchecked Sendable {
     public var id: String
     public var upkeep: Int
     public var requiredPopulation: Int
+    /// Number of worker slots; nil means use the FreeCol default/inherited value.
+    public var workplaces: Int?
+    /// Skill bounds for units allowed to work here; nil means inherited/default.
+    public var minimumSkill: Int?
+    public var maximumSkill: Int?
     public var upgradesFrom: String?
     public var extendsId: String?
     /// Goods required to construct this building, keyed by goods type id.
     public var requiredGoods: [String: Int]
+    /// Unit types this building grants the colony the ability to construct.
+    public var buildableUnitTypes: Set<String>
+    /// Abilities declared by this building type (inherited through `extends`).
+    public var abilities: [String: Bool]
     /// Effective outputs: attended blocks when present, otherwise unattended.
     public var productionOutputs: [String: Int]
     /// Effective inputs: attended blocks when present, otherwise unattended.
@@ -177,31 +244,50 @@ public struct BuildingTypeInfo: @unchecked Sendable {
     /// Unattended production blocks, which may run with no assigned worker.
     public var unattendedProductionOutputs: [String: Int]
     public var unattendedProductionInputs: [String: Int]
+    public var competenceFactor: Double
+    public var rebelFactor: Double
+    public var productionModifiers: [ProductionModifierInfo]
 
     public init(id: String,
                 upkeep: Int,
                 requiredPopulation: Int,
+                workplaces: Int? = nil,
+                minimumSkill: Int? = nil,
+                maximumSkill: Int? = nil,
                 upgradesFrom: String?,
                 extendsId: String?,
                 requiredGoods: [String: Int] = [:],
+                buildableUnitTypes: Set<String> = [],
+                abilities: [String: Bool] = [:],
                 productionOutputs: [String: Int] = [:],
                 productionInputs: [String: Int] = [:],
                 attendedProductionOutputs: [String: Int] = [:],
                 attendedProductionInputs: [String: Int] = [:],
                 unattendedProductionOutputs: [String: Int] = [:],
-                unattendedProductionInputs: [String: Int] = [:]) {
+                unattendedProductionInputs: [String: Int] = [:],
+                competenceFactor: Double = 1,
+                rebelFactor: Double = 1,
+                productionModifiers: [ProductionModifierInfo] = []) {
         self.id = id
         self.upkeep = upkeep
         self.requiredPopulation = requiredPopulation
+        self.workplaces = workplaces
+        self.minimumSkill = minimumSkill
+        self.maximumSkill = maximumSkill
         self.upgradesFrom = upgradesFrom
         self.extendsId = extendsId
         self.requiredGoods = requiredGoods
+        self.buildableUnitTypes = buildableUnitTypes
+        self.abilities = abilities
         self.productionOutputs = productionOutputs
         self.productionInputs = productionInputs
         self.attendedProductionOutputs = attendedProductionOutputs
         self.attendedProductionInputs = attendedProductionInputs
         self.unattendedProductionOutputs = unattendedProductionOutputs
         self.unattendedProductionInputs = unattendedProductionInputs
+        self.competenceFactor = competenceFactor
+        self.rebelFactor = rebelFactor
+        self.productionModifiers = productionModifiers
     }
 
     /// Display name derived from the id (`model.building.townHall` → `townHall`).
@@ -222,6 +308,7 @@ public struct TileTypeInfo: @unchecked Sendable {
     public var centerOutputs: [String: Int]
     public var centerInputs: [String: Int]
     public var workerOutputs: [String: Int]
+    public var productionModifiers: [ProductionModifierInfo]
 
     public init(id: String,
                 isWater: Bool = false,
@@ -229,7 +316,8 @@ public struct TileTypeInfo: @unchecked Sendable {
                 canMoveToEurope: Bool = false,
                 centerOutputs: [String: Int] = [:],
                 centerInputs: [String: Int] = [:],
-                workerOutputs: [String: Int] = [:]) {
+                workerOutputs: [String: Int] = [:],
+                productionModifiers: [ProductionModifierInfo] = []) {
         self.id = id
         self.isWater = isWater
         self.canSettle = canSettle
@@ -237,6 +325,18 @@ public struct TileTypeInfo: @unchecked Sendable {
         self.centerOutputs = centerOutputs
         self.centerInputs = centerInputs
         self.workerOutputs = workerOutputs
+        self.productionModifiers = productionModifiers
+    }
+}
+
+/// Production bonuses attached to natural tile resources.
+public struct ResourceTypeInfo: Sendable {
+    public var id: String
+    public var productionModifiers: [ProductionModifierInfo]
+
+    public init(id: String, productionModifiers: [ProductionModifierInfo]) {
+        self.id = id
+        self.productionModifiers = productionModifiers
     }
 }
 
@@ -257,6 +357,9 @@ public final class Specification: @unchecked Sendable {
     public private(set) var improvementTypes: [String: ImprovementTypeInfo] = [:]
     /// Unit equipment roles keyed by id (`model.role.*`).
     public private(set) var roleTypes: [String: RoleTypeInfo] = [:]
+    public private(set) var resourceTypes: [String: ResourceTypeInfo] = [:]
+    public private(set) var foundingFatherModifiers: [String: [ProductionModifierInfo]] = [:]
+    public private(set) var nationTypeModifiers: [String: [ProductionModifierInfo]] = [:]
 
     public init(parsed: ParsedMessage) {
         id = parsed.attributes["id"]
@@ -268,6 +371,8 @@ public final class Specification: @unchecked Sendable {
         collectTileTypes(from: parsed)
         collectImprovementTypes(from: parsed)
         collectRoleTypes(from: parsed)
+        collectResourceTypes(from: parsed)
+        collectFeatureProductionModifiers(from: parsed)
         resolveUnitTypeTraits()
     }
 
@@ -307,9 +412,21 @@ public final class Specification: @unchecked Sendable {
         for child in node.children {
             if child.tag == "unit-type", let unitId = child.attributes["id"] {
                 var abilities: [String: Bool] = [:]
+                var requiredGoods: [String: Int] = [:]
                 for grandchild in child.children where grandchild.tag == "ability" {
                     if let abilityId = grandchild.attributes["id"] {
                         abilities[abilityId] = grandchild.attributes.bool("value", default: true)
+                    }
+                }
+                for requirement in child.children where requirement.tag == "required-goods" {
+                    if let goodsId = requirement.attributes["id"] {
+                        requiredGoods[goodsId] = requirement.attributes.int("value")
+                    }
+                }
+                var consumes: [String: Int] = [:]
+                for consumption in child.children where consumption.tag == "consumes" {
+                    if let goodsType = consumption.attributes["id"] {
+                        consumes[goodsType] = consumption.attributes.int("value")
                     }
                 }
                 unitTypes[unitId] = UnitTypeInfo(
@@ -325,7 +442,11 @@ public final class Specification: @unchecked Sendable {
                     extendsId: child.attributes["extends"],
                     abilities: abilities,
                     price: child.attributes["price"].flatMap { Int($0) },
-                    skill: child.attributes["skill"].flatMap { Int($0) }
+                    skill: child.attributes["skill"].flatMap { Int($0) },
+                    expertProduction: child.attributes["expert-production"],
+                    requiredGoods: requiredGoods,
+                    productionModifiers: Self.productionModifiers(in: child.children),
+                    consumes: consumes
                 )
             }
             collectUnitTypes(from: child)
@@ -389,6 +510,125 @@ public final class Specification: @unchecked Sendable {
         return effectiveAbility(unitTypeId: parent, abilityId: abilityId, visited: visited)
     }
 
+    public func productionModifiers(forUnitType unitTypeId: String) -> [ProductionModifierInfo] {
+        guard let info = unitTypes[unitTypeId] else { return [] }
+        return mergeProductionModifiers(
+            inherited: info.extendsId.map { productionModifiers(forUnitType: $0) } ?? [],
+            declared: info.productionModifiers
+        )
+    }
+
+    public func unitTypeHierarchy(for unitTypeId: String) -> Set<String> {
+        var result: Set<String> = [unitTypeId]
+        var current = unitTypes[unitTypeId]?.extendsId
+        while let parent = current, result.insert(parent).inserted {
+            current = unitTypes[parent]?.extendsId
+        }
+        return result
+    }
+
+    public func expertProduction(forUnitType unitTypeId: String?) -> String? {
+        guard let unitTypeId, let info = unitTypes[unitTypeId] else { return nil }
+        return info.expertProduction ?? info.extendsId.flatMap { expertProduction(forUnitType: $0) }
+    }
+
+    public func consumes(forUnitType unitTypeId: String) -> [String: Int] {
+        guard let info = unitTypes[unitTypeId] else { return [:] }
+        var result = info.extendsId.map { consumes(forUnitType: $0) } ?? [:]
+        for (goods, amount) in info.consumes { result[goods] = amount }
+        return result
+    }
+
+    public func effectiveAbilities(forUnitType unitTypeId: String) -> Set<String> {
+        guard let info = unitTypes[unitTypeId] else { return [] }
+        var result = info.extendsId.map { effectiveAbilities(forUnitType: $0) } ?? []
+        for (ability, enabled) in info.abilities {
+            if enabled { result.insert(ability) } else { result.remove(ability) }
+        }
+        return result
+    }
+
+    public func productionModifiers(forBuildingType buildingTypeId: String) -> [ProductionModifierInfo] {
+        guard let info = buildingTypes[buildingTypeId] else { return [] }
+        return mergeProductionModifiers(
+            inherited: info.extendsId.map { productionModifiers(forBuildingType: $0) } ?? [],
+            declared: info.productionModifiers
+        )
+    }
+
+    public func buildingTypeHierarchy(for buildingTypeId: String) -> Set<String> {
+        var result: Set<String> = [buildingTypeId]
+        var current = buildingTypes[buildingTypeId]?.extendsId
+        while let parent = current, result.insert(parent).inserted {
+            current = buildingTypes[parent]?.extendsId
+        }
+        return result
+    }
+
+    /// Whether a building type has an ability, including inherited abilities.
+    public func buildingHasAbility(_ abilityId: String,
+                                   buildingTypeId: String,
+                                   visited: Set<String> = []) -> Bool {
+        guard !visited.contains(buildingTypeId),
+              let info = buildingTypes[buildingTypeId] else { return false }
+        if let value = info.abilities[abilityId] { return value }
+        guard let parent = info.extendsId else { return false }
+        var visited = visited
+        visited.insert(buildingTypeId)
+        return buildingHasAbility(abilityId, buildingTypeId: parent, visited: visited)
+    }
+
+    /// Maximum number of units which may work in this building type.
+    public func buildingWorkplaces(for buildingTypeId: String) -> Int {
+        var current: String? = buildingTypeId
+        var visited = Set<String>()
+        while let id = current, visited.insert(id).inserted,
+              let info = buildingTypes[id] {
+            if let workplaces = info.workplaces { return workplaces }
+            current = info.extendsId
+        }
+        return 3
+    }
+
+    /// Whether a unit type meets this building's inherited skill bounds.
+    public func canUnitTypeWorkInBuilding(_ unitTypeId: String,
+                                          buildingTypeId: String) -> Bool {
+        guard let skill = unitTypes[unitTypeId]?.skill else { return false }
+        var minimumSkill: Int?
+        var maximumSkill: Int?
+        var current: String? = buildingTypeId
+        var visited = Set<String>()
+        while let id = current, visited.insert(id).inserted,
+              let info = buildingTypes[id] {
+            if minimumSkill == nil { minimumSkill = info.minimumSkill }
+            if maximumSkill == nil { maximumSkill = info.maximumSkill }
+            current = info.extendsId
+        }
+        return skill >= (minimumSkill ?? Int.min)
+            && skill <= (maximumSkill ?? Int.max)
+    }
+
+    public func buildingOutputs(for buildingTypeId: String, unattended: Bool) -> [String: Int] {
+        guard let info = buildingTypes[buildingTypeId] else { return [:] }
+        let own = unattended ? info.unattendedProductionOutputs : info.attendedProductionOutputs
+        if !own.isEmpty { return own }
+        guard let parent = info.extendsId else { return [:] }
+        return buildingOutputs(for: parent, unattended: unattended)
+    }
+
+    public func buildingInputs(for buildingTypeId: String, unattended: Bool) -> [String: Int] {
+        guard let info = buildingTypes[buildingTypeId] else { return [:] }
+        let own = unattended ? info.unattendedProductionInputs : info.attendedProductionInputs
+        if !own.isEmpty { return own }
+        guard let parent = info.extendsId else { return [:] }
+        return buildingInputs(for: parent, unattended: unattended)
+    }
+
+    public func unitTypeHasAbility(_ abilityId: String, unitTypeId: String?) -> Bool {
+        guard let unitTypeId else { return false }
+        return effectiveAbility(unitTypeId: unitTypeId, abilityId: abilityId) ?? false
+    }
+
     /// First explicit `line-of-sight` up the `extends` chain.
     private func inheritedLineOfSight(unitTypeId: String,
                                       visited: Set<String> = []) -> Int? {
@@ -438,7 +678,8 @@ public final class Specification: @unchecked Sendable {
                                              },
                                              centerOutputs: outputs,
                                              centerInputs: inputs,
-                                             workerOutputs: workerOutputs)
+                                             workerOutputs: workerOutputs,
+                                             productionModifiers: Self.productionModifiers(in: child.children))
             collectTileTypes(from: child)
         }
     }
@@ -475,7 +716,8 @@ public final class Specification: @unchecked Sendable {
                     requiredRole: child.attributes["required-role"],
                     addWorkTurns: child.attributes.int("add-work-turns"),
                     isNatural: child.attributes.bool("natural", default: false),
-                    expendedAmount: child.attributes.int("expended-amount")
+                    expendedAmount: child.attributes.int("expended-amount"),
+                    productionModifiers: Self.productionModifiers(in: child.children)
                 )
             }
             collectImprovementTypes(from: child)
@@ -505,7 +747,8 @@ public final class Specification: @unchecked Sendable {
                     id: roleId,
                     maximumCount: max(1, child.attributes.int("maximum-count", default: 1)),
                     requiredGoods: requiredGoods,
-                    requiredAbilities: requiredAbilities
+                    requiredAbilities: requiredAbilities,
+                    productionModifiers: Self.productionModifiers(in: child.children)
                 )
             }
             collectRoleTypes(from: child)
@@ -516,12 +759,25 @@ public final class Specification: @unchecked Sendable {
         for child in node.children {
             if child.tag == "building-type", let buildingId = child.attributes["id"] {
                 var requiredGoods: [String: Int] = [:]
+                var buildableUnitTypes = Set<String>()
+                var abilities: [String: Bool] = [:]
                 var attendedOutputs: [String: Int] = [:]
                 var attendedInputs: [String: Int] = [:]
                 var unattendedOutputs: [String: Int] = [:]
                 var unattendedInputs: [String: Int] = [:]
                 for grandchild in child.children {
                     switch grandchild.tag {
+                    case "ability":
+                        guard let abilityId = grandchild.attributes["id"] else { continue }
+                        let enabled = grandchild.attributes.bool("value", default: true)
+                        abilities[abilityId] = enabled
+                        if abilityId == "model.ability.build", enabled {
+                            for scope in grandchild.children where scope.tag == "scope" {
+                                if let unitType = scope.attributes["type"] {
+                                    buildableUnitTypes.insert(unitType)
+                                }
+                            }
+                        }
                     case "required-goods":
                         if let goodsId = grandchild.attributes["id"] {
                             requiredGoods[goodsId] = grandchild.attributes.int("value")
@@ -559,18 +815,100 @@ public final class Specification: @unchecked Sendable {
                     id: buildingId,
                     upkeep: child.attributes.int("upkeep"),
                     requiredPopulation: child.attributes.int("required-population"),
+                    workplaces: child.attributes["workplaces"].flatMap { Int($0) },
+                    minimumSkill: child.attributes["minimum-skill"].flatMap { Int($0) },
+                    maximumSkill: child.attributes["maximum-skill"].flatMap { Int($0) },
                     upgradesFrom: child.attributes["upgrades-from"],
                     extendsId: child.attributes["extends"],
                     requiredGoods: requiredGoods,
+                    buildableUnitTypes: buildableUnitTypes,
+                    abilities: abilities,
                     productionOutputs: outputs,
                     productionInputs: inputs,
                     attendedProductionOutputs: attendedOutputs,
                     attendedProductionInputs: attendedInputs,
                     unattendedProductionOutputs: unattendedOutputs,
-                    unattendedProductionInputs: unattendedInputs
+                    unattendedProductionInputs: unattendedInputs,
+                    competenceFactor: Double(child.attributes["competence-factor"] ?? "1") ?? 1,
+                    rebelFactor: Double(child.attributes["rebel-factor"] ?? "1") ?? 1,
+                    productionModifiers: Self.productionModifiers(in: child.children)
                 )
             }
             collectBuildingTypes(from: child)
         }
+    }
+
+    private func collectResourceTypes(from node: ParsedMessage) {
+        for child in node.children {
+            if child.tag == "resource-type", let id = child.attributes["id"] {
+                resourceTypes[id] = ResourceTypeInfo(
+                    id: id,
+                    productionModifiers: Self.productionModifiers(in: child.children)
+                )
+            }
+            collectResourceTypes(from: child)
+        }
+    }
+
+    private func collectFeatureProductionModifiers(from node: ParsedMessage) {
+        for child in node.children {
+            guard let id = child.attributes["id"] else {
+                collectFeatureProductionModifiers(from: child)
+                continue
+            }
+            switch child.tag {
+            case "founding-father":
+                foundingFatherModifiers[id] = Self.productionModifiers(in: child.children)
+            case "european-nation-type":
+                nationTypeModifiers[id] = Self.productionModifiers(in: child.children)
+            default:
+                break
+            }
+            collectFeatureProductionModifiers(from: child)
+        }
+    }
+
+    private static func productionModifiers(in children: [ParsedMessage]) -> [ProductionModifierInfo] {
+        children.compactMap { child in
+            guard child.tag == "modifier",
+                  let goodsType = child.attributes["id"],
+                  goodsType.hasPrefix("model.goods.") else { return nil }
+            let isDelete = child.attributes.bool("delete", default: false)
+            guard let value = Double(child.attributes["value"] ?? (isDelete ? "0" : "")) else {
+                return nil
+            }
+            let kind = ProductionModifierInfo.Kind(
+                rawValue: child.attributes["type"]?.lowercased() ?? "additive"
+            ) ?? .additive
+            let scopes = child.children.filter { $0.tag == "scope" }
+            return ProductionModifierInfo(
+                goodsType: goodsType,
+                kind: kind,
+                value: value,
+                index: child.attributes.int("index", default: 100),
+                isDelete: isDelete,
+                scopeTypes: scopes.filter { !$0.attributes.bool("match-negated") }
+                    .compactMap { $0.attributes["type"] },
+                scopeAbilities: scopes.filter { !$0.attributes.bool("match-negated") }
+                    .compactMap { $0.attributes["ability-id"] },
+                negatedScopeTypes: scopes.filter { $0.attributes.bool("match-negated") }
+                    .compactMap { $0.attributes["type"] },
+                negatedScopeAbilities: scopes.filter { $0.attributes.bool("match-negated") }
+                    .compactMap { $0.attributes["ability-id"] }
+            )
+        }
+    }
+
+    private func mergeProductionModifiers(inherited: [ProductionModifierInfo],
+                                          declared: [ProductionModifierInfo]) -> [ProductionModifierInfo] {
+        var result = inherited
+        for modifier in declared {
+            if modifier.isDelete {
+                result.removeAll { $0.goodsType == modifier.goodsType }
+            } else {
+                result.append(modifier)
+            }
+        }
+        return result
     }
 }

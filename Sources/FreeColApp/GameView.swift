@@ -165,8 +165,10 @@ struct GameView: View {
                             }
                         } label: {
                             Text(selectedColony.name ?? "Kolonie")
-                                .font(.title.bold())
+                                .font(.title2.bold())
                                 .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                                .truncationMode(.tail)
                         }
                         .fixedSize(horizontal: false, vertical: true)
                         .disabled(state.coloniesForNavigation.isEmpty)
@@ -241,6 +243,7 @@ struct GameView: View {
                         },
                         exportData: state.selectedColonyExportData,
                         workLocationCandidates: state.selectedColonyWorkLocationCandidates,
+                        teacherCandidates: state.selectedColonyTeacherCandidates,
                         workTypeCandidates: state.selectedColonyWorkTypeCandidates,
                         goodsCandidates: state.colonyGoodsCandidates,
                         workImprovementCandidates: state.selectedColonyWorkImprovementCandidates,
@@ -256,6 +259,7 @@ struct GameView: View {
                         },
                         canPutOutsideColony: state.canPutSelectedColonyWorkerOutside,
                         selectedCarrierId: state.selectedColonyCarrierId,
+                        selectedCarrierDescription: state.selectedColonyCarrierDescription,
                         onLoadGoods: { typeId, amount in
                             state.loadGoodsForSelectedColony(typeId: typeId, amount: amount)
                         },
@@ -329,7 +333,7 @@ struct GameView: View {
             get: { state.showColopediaPanel },
             set: { state.showColopediaPanel = $0 }
         )) {
-            ColopediaView()
+            ColopediaView(categoryFilter: state.requestedColopediaCategory)
         }
         .sheet(isPresented: Binding(
             get: { state.showStatusPanel },

@@ -38,7 +38,7 @@ struct EventMessagesOverlay: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(state.modelMessageText(message))
-                    .font(.caption)
+                    .font(.headline)
                     .foregroundColor(.white)
                     .multilineTextAlignment(.leading)
             }

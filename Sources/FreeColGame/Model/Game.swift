@@ -33,6 +33,55 @@ public final class Game: @unchecked Sendable {
         let y: Int
     }
 
+    private struct PathFrontierEntry {
+        let tileId: String
+        let cost: Int
+        let order: Int
+    }
+
+    private struct PathFrontier {
+        private var entries: [PathFrontierEntry] = []
+
+        mutating func push(_ entry: PathFrontierEntry) {
+            entries.append(entry)
+            var index = entries.count - 1
+            while index > 0 {
+                let parent = (index - 1) / 2
+                guard precedes(entries[index], entries[parent]) else { break }
+                entries.swapAt(index, parent)
+                index = parent
+            }
+        }
+
+        mutating func pop() -> PathFrontierEntry? {
+            guard !entries.isEmpty else { return nil }
+            if entries.count == 1 { return entries.removeLast() }
+
+            let first = entries[0]
+            entries[0] = entries.removeLast()
+            var index = 0
+            while true {
+                let left = index * 2 + 1
+                let right = left + 1
+                var earliest = index
+                if left < entries.count && precedes(entries[left], entries[earliest]) {
+                    earliest = left
+                }
+                if right < entries.count && precedes(entries[right], entries[earliest]) {
+                    earliest = right
+                }
+                guard earliest != index else { break }
+                entries.swapAt(index, earliest)
+                index = earliest
+            }
+            return first
+        }
+
+        private func precedes(_ lhs: PathFrontierEntry, _ rhs: PathFrontierEntry) -> Bool {
+            lhs.cost == rhs.cost ? lhs.order < rhs.order : lhs.cost < rhs.cost
+        }
+    }
+
     public init() {}
 
     /// Clear all server-derived state so the game can be reused for a new session.
@@ -568,6 +617,7 @@ public final class Game: @unchecked Sendable {
     public func nextPathStep(
         from startTileId: String,
         to destinationTileId: String,
+        stepCost: (String, String) -> Int = { _, _ in 1 },
         canTraverse: (String, String) -> Bool
     ) -> String? {
         guard startTileId != destinationTileId,
@@ -576,30 +626,34 @@ public final class Game: @unchecked Sendable {
             return nil
         }
 
-        var queue: [String] = [startTileId]
-        var head = 0
+        var frontier = PathFrontier()
+        frontier.push(PathFrontierEntry(tileId: startTileId, cost: 0, order: 0))
+        var nextOrder = 1
+        var distance: [String: Int] = [startTileId: 0]
         var cameFrom: [String: String] = [:]
-        var visited: Set<String> = [startTileId]
 
-        while head < queue.count {
-            let current = queue[head]
-            head += 1
+        while let entry = frontier.pop() {
+            let current = entry.tileId
+            guard distance[current] == entry.cost else { continue }
 
             if current == destinationTileId {
                 break
             }
 
-            for neighbor in neighboringTileIds(from: current) where !visited.contains(neighbor) {
+            for neighbor in neighboringTileIds(from: current) {
                 guard canTraverse(current, neighbor) else {
                     continue
                 }
-                visited.insert(neighbor)
+                let candidateCost = entry.cost + max(1, stepCost(current, neighbor))
+                guard candidateCost < distance[neighbor, default: Int.max] else { continue }
+                distance[neighbor] = candidateCost
                 cameFrom[neighbor] = current
-                queue.append(neighbor)
+                frontier.push(PathFrontierEntry(tileId: neighbor, cost: candidateCost, order: nextOrder))
+                nextOrder += 1
             }
         }
 
-        guard visited.contains(destinationTileId) else {
+        guard distance[destinationTileId] != nil else {
             return nil
         }
 
@@ -608,6 +662,30 @@ public final class Game: @unchecked Sendable {
             step = previous
         }
         return step
+    }
+
+    /// True when two adjacent tiles have a completed road connection between them.
+    public func hasRoadConnection(from sourceTileId: String, to destinationTileId: String) -> Bool {
+        guard let source = tiles[sourceTileId], let destination = tiles[destinationTileId],
+              let direction = neighborDeltas(forY: source.y).firstIndex(where: { dx, dy in
+                  source.x + dx == destination.x && source.y + dy == destination.y
+              }),
+              let sourceRoad = source.improvements.first(where: {
+                  $0.type == "model.improvement.road" && $0.turns == 0
+              }),
+              let destinationRoad = destination.improvements.first(where: {
+                  $0.type == "model.improvement.road" && $0.turns == 0
+              }),
+              let sourceStyle = sourceRoad.style.map(Array.init),
+              let destinationStyle = destinationRoad.style.map(Array.init) else {
+            return false
+        }
+
+        let reverseDirection = (direction + 4) % 8
+        return sourceStyle.indices.contains(direction)
+            && destinationStyle.indices.contains(reverseDirection)
+            && sourceStyle[direction] != "0"
+            && destinationStyle[reverseDirection] != "0"
     }
 
     /// True when the server has revealed this tile to the player (Java parity:
@@ -901,13 +979,15 @@ public final class Game: @unchecked Sendable {
         }
         let index = tileIndex()
 
-        let deltas: [(Int, Int)] = tile.y.isMultiple(of: 2)
-            ? [(0, -2), (0, -1), (1, 0), (0, 1), (0, 2), (-1, 1), (-1, 0), (-1, -1)]
-            : [(0, -2), (1, -1), (1, 0), (1, 1), (0, 2), (0, 1), (-1, 0), (0, -1)]
-
-        return deltas.compactMap { dx, dy in
+        return neighborDeltas(forY: tile.y).compactMap { dx, dy in
             index[TileCoord(x: tile.x + dx, y: tile.y + dy)]
         }
+    }
+
+    private func neighborDeltas(forY y: Int) -> [(Int, Int)] {
+        y.isMultiple(of: 2)
+            ? [(0, -2), (0, -1), (1, 0), (0, 1), (0, 2), (-1, 1), (-1, 0), (-1, -1)]
+            : [(0, -2), (1, -1), (1, 0), (1, 1), (0, 2), (0, 1), (-1, 0), (0, -1)]
     }
 
     private func resolvedTileId(for unit: Unit, visited: inout Set<String>) -> String? {
