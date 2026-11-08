@@ -191,7 +191,6 @@ struct Novaloria: App {
         NSApplication.shared.orderFrontStandardAboutPanel(options: [
             .applicationName: "Novaloria",
             .applicationVersion: AppVersion.version,
-            .version: AppVersion.gitHash,
             .credits: NSAttributedString(
                 string: "Inoffizieller Open-Source-macOS-Client für FreeCol.\nhttps://github.com/kubus7679/Novaloria",
                 attributes: [.font: NSFont.systemFont(ofSize: 11)]

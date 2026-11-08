@@ -1,8 +1,5 @@
-/// Version information for the NovaloriaClient app.
-/// Update `version` on releases; `build` is the git commit count.
+/// Version information for the Novaloria app.
 enum AppVersion {
-    static let version = "0.1.0"
-    static let build = "15"
-    static let gitHash = "15edcfd"
-    static let displayString = "\(version) (\(gitHash))"
+    static let version = "0.0.1"
+    static let displayString = version
 }

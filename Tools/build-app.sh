@@ -4,11 +4,19 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 APP_NAME="Novaloria"
 PRODUCT_NAME="Novaloria"
+BUILD_CONFIGURATION="${BUILD_CONFIGURATION:-debug}"
+APP_VERSION="$(sed -n 's/^[[:space:]]*static let version = "\([^"]*\)".*/\1/p' \
+    "$PROJECT_DIR/Sources/Novaloria/AppVersion.swift")"
+
+if [[ -z "$APP_VERSION" ]]; then
+    echo "Could not read app version from AppVersion.swift" >&2
+    exit 1
+fi
 
 echo "Building $APP_NAME..."
-swift build --package-path "$PROJECT_DIR" --product "$PRODUCT_NAME"
+swift build --package-path "$PROJECT_DIR" --configuration "$BUILD_CONFIGURATION" --product "$PRODUCT_NAME"
 
-BIN_DIR="$(swift build --package-path "$PROJECT_DIR" --show-bin-path)"
+BIN_DIR="$(swift build --package-path "$PROJECT_DIR" --configuration "$BUILD_CONFIGURATION" --show-bin-path)"
 SOURCE_BIN="$BIN_DIR/$PRODUCT_NAME"
 
 APP_BUNDLE="$BIN_DIR/$APP_NAME.app"
@@ -49,7 +57,7 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<EOF
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
+    <string>$APP_VERSION</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>NSHighResolutionCapable</key>

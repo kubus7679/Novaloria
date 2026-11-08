@@ -1,0 +1,92 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing pushed release tag (for example v0.0.1)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish macOS release
+    runs-on: [self-hosted, macOS, ARM64]
+
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+
+      - name: Validate tag and release notes
+        id: release-metadata
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          version="$(sed -n 's/^[[:space:]]*static let version = "\([^"]*\)".*/\1/p' Sources/Novaloria/AppVersion.swift)"
+          expected_tag="v${version}"
+
+          if [[ -z "$version" || "$RELEASE_TAG" != "$expected_tag" ]]; then
+            echo "Expected release tag '$expected_tag', got '$RELEASE_TAG'." >&2
+            exit 1
+          fi
+
+          if ! git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"; then
+            echo "Tag '$RELEASE_TAG' must already exist on GitHub." >&2
+            exit 1
+          fi
+
+          tag_commit="$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")"
+          if [[ "$tag_commit" != "$(git rev-parse HEAD)" ]]; then
+            echo "Checked-out commit does not match tag '$RELEASE_TAG'." >&2
+            exit 1
+          fi
+
+          notes_path="Docs/releases/${version}.md"
+          if [[ ! -f "$notes_path" ]]; then
+            echo "Release notes not found: $notes_path" >&2
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "notes_path=$notes_path" >> "$GITHUB_OUTPUT"
+          echo "dmg_path=dist/Novaloria-${RELEASE_TAG}-macOS-arm64.dmg" >> "$GITHUB_OUTPUT"
+
+      - name: Show Swift version
+        run: swift --version
+
+      - name: Run tests
+        run: swift test
+
+      - name: Build release app bundle
+        env:
+          BUILD_CONFIGURATION: release
+        run: bash Tools/build-app.sh
+
+      - name: Create DMG
+        env:
+          DMG_PATH: ${{ steps.release-metadata.outputs.dmg_path }}
+        run: |
+          bin_dir="$(swift build --configuration release --show-bin-path)"
+          mkdir -p dist/dmg-root
+          ditto "$bin_dir/Novaloria.app" dist/dmg-root/Novaloria.app
+          ln -s /Applications dist/dmg-root/Applications
+          hdiutil create \
+            -volname "Novaloria" \
+            -srcfolder dist/dmg-root \
+            -ov \
+            -format UDZO \
+            "$DMG_PATH"
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          name: Novaloria v${{ steps.release-metadata.outputs.version }}
+          body_path: ${{ steps.release-metadata.outputs.notes_path }}
+          files: ${{ steps.release-metadata.outputs.dmg_path }}
