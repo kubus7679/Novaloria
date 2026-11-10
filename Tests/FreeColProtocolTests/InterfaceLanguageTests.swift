@@ -63,6 +63,21 @@ final class InterfaceLanguageTests: XCTestCase {
         }
     }
 
+    func testColonyEfficiencyLabelsFollowSelectedLanguage() {
+        let previousLanguage = LocalizationSettings.shared.language
+        defer { LocalizationSettings.shared.language = previousLanguage }
+
+        for (language, nextBonus, populationBand) in [
+            (InterfaceLanguage.english, "Next bonus", "At 3–5 colonists"),
+            (.spanish, "Siguiente bonificación", "Con 3–5 colonos"),
+            (.german, "Nächster Bonus", "Bei 3–5 Kolonisten"),
+        ] {
+            LocalizationSettings.shared.language = language
+            XCTAssertEqual(L10n.text("Nächster Bonus", table: "ColonyPanelView"), nextBonus)
+            XCTAssertEqual(L10n.text("Bei \(3)–\(5) Kolonisten", table: "ColonyPanelView"), populationBand)
+        }
+    }
+
     func testCargoMaximumLabelsFollowSelectedLanguage() {
         let previousLanguage = LocalizationSettings.shared.language
         defer { LocalizationSettings.shared.language = previousLanguage }
@@ -76,6 +91,54 @@ final class InterfaceLanguageTests: XCTestCase {
             LocalizationSettings.shared.language = language
             XCTAssertEqual(L10n.text("Max laden: \(amount)", table: "ColonyPanelView"), load)
             XCTAssertEqual(L10n.text("Max entladen: \(amount)", table: "ColonyPanelView"), unload)
+        }
+
+        func testColonyEducationActionsAndRemainingTimeFollowSelectedLanguage() {
+            let previousLanguage = LocalizationSettings.shared.language
+            defer { LocalizationSettings.shared.language = previousLanguage }
+
+            for (language, assignment, hint) in [
+                (InterfaceLanguage.english, "Assign teacher", "Right-click for education actions"),
+                (.spanish, "Asignar profesor", "Haz clic derecho para opciones de formación"),
+                (.german, "Lehrer zuweisen", "Rechtsklick für Ausbildungsaktionen"),
+            ] {
+                LocalizationSettings.shared.language = language
+                XCTAssertEqual(L10n.text("Lehrer zuweisen", table: "ColonyPanelView"), assignment)
+                XCTAssertEqual(L10n.text("Rechtsklick für Ausbildungsaktionen", table: "ColonyPanelView"), hint)
+            }
+        }
+
+        func testWarehouseCapacityLabelFollowsSelectedLanguage() {
+            let previousLanguage = LocalizationSettings.shared.language
+            defer { LocalizationSettings.shared.language = previousLanguage }
+
+            for (language, expected) in [
+                (InterfaceLanguage.english, "Maximum warehouse capacity per good"),
+                (.spanish, "Capacidad máxima del almacén por mercancía"),
+                (.german, "Maximale Lagerkapazität je Ware"),
+            ] {
+                LocalizationSettings.shared.language = language
+                XCTAssertEqual(L10n.text("Maximale Lagerkapazität je Ware", table: "ColonyPanelView"), expected)
+            }
+        }
+    }
+
+    func testColonyProductionExplanationsFollowSelectedLanguage() {
+        let previousLanguage = LocalizationSettings.shared.language
+        defer { LocalizationSettings.shared.language = previousLanguage }
+        let amount = 2
+        let produced = 3
+        let consumed = 1
+        let goods = "tools"
+        for (language, result, balance, administration) in [
+            (InterfaceLanguage.english, "Result: 2 tools per turn", "Balance: 3 − 1 = 2", "Administration"),
+            (.spanish, "Resultado: 2 tools por turno", "Balance: 3 − 1 = 2", "Administración"),
+            (.german, "Ergebnis: 2 tools pro Runde", "Bilanz: 3 − 1 = 2", "Verwaltung"),
+        ] {
+            LocalizationSettings.shared.language = language
+            XCTAssertEqual(L10n.text("Ergebnis: \(amount) \(goods) pro Runde", table: "ColonyProductionCalculator"), result)
+            XCTAssertEqual(L10n.text("Bilanz: \(produced) − \(consumed) = \(produced - consumed)", table: "ColonyProductionCalculator"), balance)
+            XCTAssertEqual(L10n.text("Verwaltung", table: "ColonyPanelView"), administration)
         }
     }
 

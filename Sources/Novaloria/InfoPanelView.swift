@@ -5,6 +5,8 @@ import FreeColGame
 struct InfoPanelView: View {
     @Environment(GameState.self) private var state
     @State private var showUnitDetails = false
+    @State private var showLandPurchaseSheet = false
+    @State private var landPurchaseTileId: String?
 
     var body: some View {
         Group {
@@ -21,6 +23,17 @@ struct InfoPanelView: View {
         .background(Color.black.opacity(0.7))
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .shadow(radius: 3)
+        .sheet(isPresented: $showLandPurchaseSheet) {
+            if let landPurchaseTileId,
+               let tile = state.game?.tiles[landPurchaseTileId] {
+                NativeLandPurchaseSheet(
+                    tile: tile,
+                    availableGold: state.localPlayer?.gold ?? 0
+                ) { offer in
+                    state.claimLand(price: offer, tileId: landPurchaseTileId)
+                }
+            }
+        }
     }
 
     private var selectedTile: FreeColGame.Tile? {
@@ -87,6 +100,14 @@ struct InfoPanelView: View {
                 .menuStyle(.borderlessButton)
                 .fixedSize()
                 .disabled(!state.isLocalPlayersTurn)
+            }
+            if let landTile = state.nativeLandTileForSelectedUnit {
+                Button(L10n.text("Land kaufen…", table: "InfoPanelView")) {
+                    landPurchaseTileId = landTile.id
+                    showLandPurchaseSheet = true
+                }
+                .font(.caption)
+                .disabled(!state.canClaimSelectedNativeLand)
             }
             Spacer(minLength: 0)
         }

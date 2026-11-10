@@ -94,11 +94,16 @@ struct EuropePanelView: View {
         }
         .frame(
             minWidth: 600, maxWidth: 1000,
-            minHeight: 400, idealHeight: 480, maxHeight: 760
+            minHeight: 560, idealHeight: 760, maxHeight: 900
         )
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear { syncCarrierSelection() }
         .onChange(of: state.europeCarrierUnits.map(\.id)) { _, _ in syncCarrierSelection() }
+        .onChange(of: selectedGoodsType) { _, goodsType in
+            if !goodsType.isEmpty {
+                state.recordMarketSnapshot()
+            }
+        }
     }
 
     // MARK: - Recruit
@@ -158,9 +163,18 @@ struct EuropePanelView: View {
 
     private var marketHistorySection: some View {
         GroupBox(L10n.text("Preisverlauf", table: "EuropePanelView")) {
-            let buySeries = state.marketBuyPriceHistory[selectedGoodsType] ?? []
-            let saleSeries = state.marketPriceHistory[selectedGoodsType] ?? []
-            if selectedGoodsType.isEmpty || (buySeries.isEmpty && saleSeries.isEmpty) {
+            let recordedBuySeries = state.marketBuyPriceHistory[selectedGoodsType] ?? []
+            let recordedSaleSeries = state.marketPriceHistory[selectedGoodsType] ?? []
+            let prices = state.marketPrices(for: selectedGoodsType)
+            let currentTurn = state.game?.turn.number ?? 0
+            let hasRecordedHistory = !recordedBuySeries.isEmpty || !recordedSaleSeries.isEmpty
+            let buySeries = hasRecordedHistory
+                ? recordedBuySeries
+                : (selectedGoodsType.isEmpty ? [] : [(turn: currentTurn, price: prices.costToBuy)])
+            let saleSeries = hasRecordedHistory
+                ? recordedSaleSeries
+                : (selectedGoodsType.isEmpty ? [] : [(turn: currentTurn, price: prices.paidForSale)])
+            if selectedGoodsType.isEmpty {
                 Text(L10n.text("Wähle eine Ware und handle, um den Preisverlauf zu sehen.", table: "EuropePanelView"))
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -610,27 +624,26 @@ private struct PriceSparkline: View {
     var body: some View {
         GeometryReader { geo in
             let allValues = buyValues + saleValues
+            let allTurns = buyTurns + saleTurns
             let minValue = allValues.min() ?? 0
             let maxValue = allValues.max() ?? 1
             let span = max(1, maxValue - minValue)
-            
-            let buyPoints = buyValues.enumerated().map { index, value in
-                let x = geo.size.width * CGFloat(index) / CGFloat(buyValues.count - 1)
-                let y = geo.size.height * (1 - CGFloat(buyValues[index] - minValue) / CGFloat(span))
-                return CGPoint(x: x, y: y)
-            }
-            let salePoints = saleValues.enumerated().map { index, value in
-                let x = geo.size.width * CGFloat(index) / CGFloat(saleValues.count - 1)
-                let y = geo.size.height * (1 - CGFloat(saleValues[index] - minValue) / CGFloat(span))
-                return CGPoint(x: x, y: y)
-            }
+            let firstTurn = allTurns.min() ?? 0
+            let lastTurn = allTurns.max() ?? firstTurn
+            let turnSpan = max(1, lastTurn - firstTurn)
+            let labeledTurns = Array(Set((0..<5).map {
+                firstTurn + (lastTurn - firstTurn) * $0 / 4
+            })).sorted()
 
-            // Turn positions for axis labels
-            let buyTurnPositions = buyTurns.enumerated().map { index, turn in
-                geo.size.width * CGFloat(index) / CGFloat(buyTurns.count - 1)
+            let buyPoints = zip(buyTurns, buyValues).map { turn, value in
+                let x = geo.size.width * CGFloat(turn - firstTurn) / CGFloat(turnSpan)
+                let y = geo.size.height * (1 - CGFloat(value - minValue) / CGFloat(span))
+                return CGPoint(x: x, y: y)
             }
-            let saleTurnPositions = saleTurns.enumerated().map { index, turn in
-                geo.size.width * CGFloat(index) / CGFloat(saleTurns.count - 1)
+            let salePoints = zip(saleTurns, saleValues).map { turn, value in
+                let x = geo.size.width * CGFloat(turn - firstTurn) / CGFloat(turnSpan)
+                let y = geo.size.height * (1 - CGFloat(value - minValue) / CGFloat(span))
+                return CGPoint(x: x, y: y)
             }
 
             ZStack {
@@ -675,30 +688,27 @@ private struct PriceSparkline: View {
                     }
                     .stroke(Color.yellow, lineWidth: 1.5)
                 }
-                
-                // Turn labels on X axis
-                if buyPoints.count > 1 && buyTurns.count > 1 {
-                    ForEach(0..<buyTurns.count, id: \.self) { i in
-                        if i % max(1, buyTurns.count / 4) == 0 {
-                            let turn = buyTurns[i]
-                            let x = buyPoints[i].x
-                            Text("T\(turn)")
-                                .font(.system(size: 7))
-                                .foregroundColor(.gray)
-                                .position(x: x, y: geo.size.height + 12)
-                        }
-                    }
+
+                if buyPoints.count == 1, let point = buyPoints.first {
+                    Circle()
+                        .fill(Color.orange)
+                        .frame(width: 4, height: 4)
+                        .position(point)
                 }
-                if salePoints.count > 1 && saleTurns.count > 1 {
-                    ForEach(0..<saleTurns.count, id: \.self) { i in
-                        if i % max(1, saleTurns.count / 4) == 0 {
-                            let turn = saleTurns[i]
-                            let x = salePoints[i].x
-                            Text("T\(turn)")
-                                .font(.system(size: 7))
-                                .foregroundColor(.gray)
-                                .position(x: x, y: geo.size.height + 12)
-                        }
+                if salePoints.count == 1, let point = salePoints.first {
+                    Circle()
+                        .fill(Color.yellow)
+                        .frame(width: 4, height: 4)
+                        .position(point)
+                }
+
+                if lastTurn > firstTurn {
+                    ForEach(labeledTurns, id: \.self) { turn in
+                        let x = geo.size.width * CGFloat(turn - firstTurn) / CGFloat(turnSpan)
+                        Text("T\(turn)")
+                            .font(.system(size: 7))
+                            .foregroundColor(.gray)
+                            .position(x: x, y: geo.size.height + 12)
                     }
                 }
             }

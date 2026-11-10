@@ -1,5 +1,11 @@
 import FreeColGame
 
+struct ColonyEducationProgress: Identifiable {
+    let id: String
+    let studentUnitTypeId: String
+    let remainingTurns: Int
+}
+
 /// Display data for one built colony building and its worker slots.
 struct ColonyBuildingWorkplace: Identifiable {
     let id: String
@@ -10,5 +16,7 @@ struct ColonyBuildingWorkplace: Identifiable {
     /// The single active (or suggested) goods output for this work location.
     let goodsTypeId: String?
     let productionPerTurn: Int
+    let productionExplanation: String
     let isTeachingBuilding: Bool
+    let educationProgress: [ColonyEducationProgress]
 }

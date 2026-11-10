@@ -1290,6 +1290,7 @@ final class GameState {
     var marketBuyPriceHistory: [String: [(turn: Int, price: Int)]] = [:]
     /// Price trend indicators per goods type (up/down/stable).
     var marketPriceTrends: [String: PriceTrend] = [:]
+    private let marketPriceHistoryTurnLimit = 50
 
     enum PriceTrend: String, Sendable {
         case up = "↑"
@@ -1307,17 +1308,19 @@ final class GameState {
             let prices = MarketPricing.prices(for: entry, specification: game.specification)
             var buySeries = marketBuyPriceHistory[goodsType] ?? []
             var saleSeries = marketPriceHistory[goodsType] ?? []
-            guard buySeries.last?.price != prices.costToBuy || saleSeries.last?.price != prices.paidForSale else {
-                continue
+            if buySeries.last?.turn == currentTurn {
+                guard buySeries.last?.price != prices.costToBuy || saleSeries.last?.price != prices.paidForSale else {
+                    continue
+                }
+                buySeries[buySeries.count - 1] = (turn: currentTurn, price: prices.costToBuy)
+                saleSeries[saleSeries.count - 1] = (turn: currentTurn, price: prices.paidForSale)
+            } else {
+                buySeries.append((turn: currentTurn, price: prices.costToBuy))
+                saleSeries.append((turn: currentTurn, price: prices.paidForSale))
             }
-            buySeries.append((turn: currentTurn, price: prices.costToBuy))
-            saleSeries.append((turn: currentTurn, price: prices.paidForSale))
-            if buySeries.count > 60 {
-                buySeries.removeFirst(buySeries.count - 60)
-            }
-            if saleSeries.count > 60 {
-                saleSeries.removeFirst(saleSeries.count - 60)
-            }
+            let oldestTurn = currentTurn - marketPriceHistoryTurnLimit + 1
+            buySeries.removeAll { $0.turn < oldestTurn }
+            saleSeries.removeAll { $0.turn < oldestTurn }
             marketBuyPriceHistory[goodsType] = buySeries
             marketPriceHistory[goodsType] = saleSeries
             updatePriceTrend(for: goodsType, buySeries: buySeries, saleSeries: saleSeries)
@@ -1738,8 +1741,10 @@ final class GameState {
     /// shown by the colony work-location panel.
     var selectedColonyBuildingWorkplaces: [ColonyBuildingWorkplace] {
         guard let colony = selectedColony,
-              let specification = cachedGame?.specification else { return [] }
+              let game = cachedGame,
+              let specification = game.specification else { return [] }
 
+        let production = colonyProductionSummary(colony)
         return colony.buildings.map { building in
             let typeId = building.buildingType ?? building.id
             let workers = selectedColonyUnits.filter { $0.location == building.id }
@@ -1756,12 +1761,20 @@ final class GameState {
                 }.first?.key
             }
 
-            let assignedGoods = Dictionary(grouping: workers.compactMap { worker in
-                worker.workType.flatMap { attendedOutputs[$0] == nil ? nil : $0 }
-            }, by: { $0 }).mapValues(\.count)
-            let activeGoods = assignedGoods.sorted {
-                $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value
-            }.first?.key
+            var assignedGoods: [String: Int] = [:]
+            for worker in workers {
+                guard let workType = worker.workType,
+                      attendedOutputs[workType] != nil else { continue }
+                assignedGoods[workType, default: 0] += 1
+            }
+            var activeGoods: String?
+            var activeGoodsCount = 0
+            for (goods, count) in assignedGoods where
+                count > activeGoodsCount
+                    || (count == activeGoodsCount && goods < (activeGoods ?? goods)) {
+                activeGoods = goods
+                activeGoodsCount = count
+            }
 
             let goodsTypeId: String?
             if workers.isEmpty {
@@ -1773,21 +1786,7 @@ final class GameState {
                     ?? mostProductiveGoods(in: attendedOutputs)
             }
 
-            let productionPerTurn: Int
-            if let goodsTypeId, workers.isEmpty {
-                productionPerTurn = unattendedOutputs[goodsTypeId] ?? 0
-            } else if let goodsTypeId {
-                let unitOutput = attendedOutputs[goodsTypeId] ?? 0
-                productionPerTurn = workers.reduce(into: 0) { total, worker in
-                    let workerGoods = worker.workType
-                        ?? (attendedOutputs.count == 1 ? goodsTypeId : nil)
-                    if workerGoods == goodsTypeId {
-                        total += unitOutput
-                    }
-                }
-            } else {
-                productionPerTurn = 0
-            }
+            let output = production.first { $0.id == goodsTypeId }?.production(at: building.id)
 
             return ColonyBuildingWorkplace(
                 id: building.id,
@@ -1796,29 +1795,43 @@ final class GameState {
                 workers: workers,
                 capacity: specification.buildingWorkplaces(for: typeId),
                 goodsTypeId: goodsTypeId,
-                productionPerTurn: productionPerTurn,
+                productionPerTurn: output?.amount ?? 0,
+                productionExplanation: output?.explanation
+                    ?? L10n.text("Keine aktive Produktion", table: "ColonyPanelView"),
                 isTeachingBuilding: specification.buildingHasAbility(
                     "model.ability.teach", buildingTypeId: typeId
+                ),
+                educationProgress: colonyEducationProgress(
+                    for: workers, game: game, specification: specification
                 )
             )
         }.sorted { $0.label < $1.label }
     }
 
-    /// Colony units that can serve as teachers according to the built
-    /// education buildings' skill limits. The server uses the same rule when
-    /// validating an `assignTeacher` request.
+    /// Available teachers must be working in a built education building;
+    /// FreeCol only advances training for teachers in those buildings.
     var selectedColonyTeacherCandidates: [FreeColGame.Unit] {
         guard let colony = selectedColony,
               let specification = cachedGame?.specification else { return [] }
-        let teachingBuildings = colony.buildings.compactMap(\.buildingType).filter {
-            specification.buildingHasAbility("model.ability.teach", buildingTypeId: $0)
-        }
+        let teachingBuildings = Dictionary(
+            colony.buildings.compactMap { building -> (String, String)? in
+                guard let type = building.buildingType,
+                      specification.buildingHasAbility("model.ability.teach", buildingTypeId: type)
+                else { return nil }
+                return (building.id, type)
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
         guard !teachingBuildings.isEmpty else { return [] }
+        let studentId = selectedColonyWorkerUnitId
         return selectedColonyUnits.filter { unit in
-            guard let unitType = unit.unitType else { return false }
-            return teachingBuildings.contains {
-                specification.canUnitTypeWorkInBuilding(unitType, buildingTypeId: $0)
+            guard let unitType = unit.unitType,
+                  let location = unit.location,
+                  let buildingType = teachingBuildings[location],
+                  unit.student == nil || unit.student == studentId else {
+                return false
             }
+            return specification.canUnitTypeWorkInBuilding(unitType, buildingTypeId: buildingType)
         }
     }
 
@@ -1831,16 +1844,19 @@ final class GameState {
             return []
         }
         let population = colonyPopulation(colony)
+        let playerAbilities = colony.owner.flatMap { cachedGame?.players[$0]?.abilities } ?? [:]
         return Self.buildableBuildingCandidates(colony: colony,
                                                 specification: specification,
-                                                population: population)
+                                                population: population,
+                                                playerAbilities: playerAbilities)
     }
 
     /// Building types a colony may start building: spec-known, not yet built,
     /// population requirement met, and — for upgrades — predecessor present.
     nonisolated static func buildableBuildingCandidates(colony: Colony,
                                                         specification: Specification,
-                                                        population: Int) -> [(id: String, label: String)] {
+                                                        population: Int,
+                                                        playerAbilities: [String: Bool] = [:]) -> [(id: String, label: String)] {
         let built = Set(colony.buildings.compactMap { $0.buildingType })
         var superseded = Set<String>()
         for buildingId in built {
@@ -1853,6 +1869,11 @@ final class GameState {
             .filter { info in
                 guard !built.contains(info.id), !superseded.contains(info.id),
                       info.requiredPopulation <= population else {
+                    return false
+                }
+                guard info.requiredAbilities.allSatisfy({ ability, requiredValue in
+                    (playerAbilities[ability] ?? false) == requiredValue
+                }) else {
                     return false
                 }
                 if let upgradesFrom = info.upgradesFrom {
@@ -3023,11 +3044,9 @@ final class GameState {
     }
 
     func closeNativeTrade() {
-        if let session = pendingNativeTrade {
-            sendNativeTrade(session.toMessage(action: "CLOSE", item: nil))
-        } else {
-            return
-        }
+        guard let session = pendingNativeTrade else { return }
+        sendNativeTrade(session.toMessage(action: "CLOSE", item: nil))
+        clearPendingDecision()
     }
 
     private func sendNativeTradeAction(_ action: String, item: NativeTradeItem) {
@@ -3949,38 +3968,95 @@ final class GameState {
         }
     }
 
-    func claimLand(price: String, tileId: String) {
+    func claimLand(price: String, tileId: String, claimantId requestedClaimantId: String? = nil) {
         guard phase == .inGame else { return }
         let trimmedPrice = price.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedTile = tileId.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedPrice.isEmpty else {
-            errorMessage = L10n.text("Bitte einen Preis angeben.", table: "GameState")
+        let claimantId: String
+        if let requestedClaimantId {
+            guard selectedColony?.id == requestedClaimantId,
+                  canClaimNativeLandFromSelectedColony(tileId: trimmedTile) else {
+                errorMessage = L10n.text("Die ausgewählte Kolonie kann dieses Ureinwohner-Feld nicht beanspruchen.", table: "GameState")
+                return
+            }
+            claimantId = requestedClaimantId
+        } else {
+            guard canClaimSelectedNativeLand,
+                  let unit = selectedUnit,
+                  nativeLandTileForSelectedUnit?.id == trimmedTile else {
+                errorMessage = L10n.text("Eine eigene Einheit muss auf einem zum Verkauf stehenden Ureinwohner-Feld stehen.", table: "GameState")
+                return
+            }
+            claimantId = unit.id
+        }
+        guard let offer = Int(trimmedPrice), offer > 0 else {
+            errorMessage = L10n.text("Bitte ein gültiges Angebot in Goldstücken angeben.", table: "GameState")
             return
         }
-        guard !trimmedTile.isEmpty else {
-            errorMessage = L10n.text("Bitte eine Kachel angeben.", table: "GameState")
-            return
-        }
-        guard let claimant = resolveLocalPlayerId() else {
-            errorMessage = L10n.text("Lokaler Spieler konnte nicht bestimmt werden.", table: "GameState")
+        guard let playerId = resolveLocalPlayerId(),
+              let player = cachedGame?.players[playerId],
+              offer <= player.gold else {
+            errorMessage = L10n.text("Das Angebot übersteigt dein verfügbares Gold.", table: "GameState")
             return
         }
 
         errorMessage = nil
-
-
         Task {
             do {
                 let msg = ParsedMessage(
                     tag: "claimLand",
-                    attributes: ["price": trimmedPrice, "claimant": claimant, "tile": trimmedTile],
+                    attributes: ["price": "\(offer)", "claimant": claimantId, "tile": trimmedTile],
                     children: []
                 )
-                try await client?.send(message: msg)
+                try await sendCoreGameplayAction(msg)
+                statusMessage = L10n.text("Land gekauft.", table: "GameState")
             } catch {
                 errorMessage = ServerErrorMessage.description(for: error)
             }
         }
+    }
+
+    /// Native-owned, unoccupied land under the selected unit that can be offered for.
+    var nativeLandTileForSelectedUnit: FreeColGame.Tile? {
+        guard let game = cachedGame,
+              let playerId = resolveLocalPlayerId(),
+              let unit = selectedUnit,
+              unit.owner == playerId,
+              let tileId = game.resolvedTileId(for: unit),
+              let tile = game.tiles[tileId],
+              tile.settlement == nil,
+              let ownerId = tile.owner,
+              ownerId != playerId,
+              game.players[ownerId]?.playerType == .indian else { return nil }
+        return tile
+    }
+
+    var canClaimSelectedNativeLand: Bool {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let playerId = resolveLocalPlayerId(),
+              let player = cachedGame?.players[playerId],
+              player.playerType == .european,
+              player.gold > 0 else { return false }
+        return nativeLandTileForSelectedUnit != nil
+    }
+
+    func canClaimNativeLandFromSelectedColony(tileId: String) -> Bool {
+        guard canManageSelectedColony,
+              let game = cachedGame,
+              let colony = selectedColony,
+              let colonyTileId = colony.tileId,
+              let playerId = resolveLocalPlayerId(),
+              let player = game.players[playerId],
+              player.playerType == .european,
+              player.gold > 0,
+              let tile = game.tiles[tileId],
+              game.neighborTileIds(of: colonyTileId).contains(tileId),
+              tile.settlement == nil,
+              let ownerId = tile.owner,
+              ownerId != playerId,
+              game.players[ownerId]?.playerType == .indian else { return false }
+        return true
     }
 
     /// Set while the end-turn confirmation dialog lists units without orders.

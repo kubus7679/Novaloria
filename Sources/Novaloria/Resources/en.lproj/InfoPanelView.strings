@@ -34,3 +34,11 @@
 "Verbleibende Werkzeuge" = "Tools remaining";
 "Warten auf Gegner…" = "Waiting for opponents…";
 "Ziel löschen" = "Clear destination";
+"Abbrechen" = "Cancel";
+"Angebot in Goldstücken" = "Offer in gold";
+"Der Server prüft den Mindestpreis. Ein zu niedriges Angebot wird abgelehnt." = "The server checks the minimum price. An offer that is too low will be rejected.";
+"Feld: %lld, %lld" = "Tile: %lld, %lld";
+"Kaufen" = "Buy";
+"Land kaufen…" = "Buy land…";
+"Ureinwohnerland kaufen?" = "Buy native land?";
+"Verfügbares Gold: %lld" = "Available gold: %lld";

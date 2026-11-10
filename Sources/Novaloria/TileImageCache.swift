@@ -90,8 +90,36 @@ final class TileImageCache {
 
     func unitImage(forUnitType unitType: String?, role: String? = nil) -> NSImage? {
         guard let unitType else { return nil }
-        if role == "model.role.pioneer",
-           let roleImage = loadImage(named: "pioneer", folder: "units") {
+        if unitType == "model.unit.treasureTrain",
+           let treasureTrainImage = loadImage(named: "model.unit.treasureTrain", folder: "colopedia") {
+            return treasureTrainImage
+        }
+        let roleSpecificImageName: String?
+        switch (unitType, role ?? "") {
+        case ("model.unit.hardyPioneer", "model.role.pioneer"):
+            roleSpecificImageName = "hardyPioneer.pioneer"
+        case ("model.unit.seasonedScout", "model.role.scout"):
+            roleSpecificImageName = "seasonedScout.scout"
+        case ("model.unit.veteranSoldier", "model.role.dragoon"):
+            roleSpecificImageName = "veteranSoldier.dragoon"
+        case ("model.unit.colonialRegular", "model.role.dragoon"):
+            roleSpecificImageName = "colonialRegular.dragoon"
+        default:
+            roleSpecificImageName = nil
+        }
+        if let roleSpecificImageName,
+           let roleImage = loadImage(named: roleSpecificImageName, folder: "units") {
+            return roleImage
+        }
+        let roleImageName: String?
+        switch role {
+        case "model.role.pioneer": roleImageName = "pioneer"
+        case "model.role.scout": roleImageName = "scout"
+        case "model.role.soldier": roleImageName = "soldier"
+        case "model.role.dragoon": roleImageName = "dragoon"
+        default: roleImageName = nil
+        }
+        if let roleImageName, let roleImage = loadImage(named: roleImageName, folder: "units") {
             return roleImage
         }
         // "model.unit.freeColonist" → "freeColonist"

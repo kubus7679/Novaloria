@@ -438,3 +438,8 @@
 "gegnerische Nation" = "nación enemiga";
 "Überfahrt: %@ (%lld %@)" = "Travesía: %@ (%lld %@)";
 "Überlebende einer verlorenen Kolonie schließen sich Eurer Expedition an." = "Los supervivientes de una colonia perdida se unen a tu expedición.";
+"Eine eigene Einheit muss auf einem zum Verkauf stehenden Ureinwohner-Feld stehen." = "Una unidad propia debe estar en una casilla indígena en venta.";
+"Bitte ein gültiges Angebot in Goldstücken angeben." = "Introduce una oferta válida en oro.";
+"Das Angebot übersteigt dein verfügbares Gold." = "La oferta supera el oro disponible.";
+"Land gekauft." = "Terreno comprado.";
+"Die ausgewählte Kolonie kann dieses Ureinwohner-Feld nicht beanspruchen." = "La colonia seleccionada no puede reclamar esta casilla indígena.";

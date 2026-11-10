@@ -2451,6 +2451,32 @@ final class InteractionRepairTests: XCTestCase {
     }
 
     @MainActor
+    func testColonyPanelMarksNativeLandAsPurchasable() throws {
+        let gameXML = Self.gameXML
+            .replacingOccurrences(
+                of: #"<player id="player-1" username="Alice" nationId="model.nation.dutch"><europe id="europe-1"/></player>"#,
+                with: #"<player id="player-1" username="Alice" nationId="model.nation.dutch" gold="500"><europe id="europe-1"/></player>"#
+            )
+            .replacingOccurrences(
+                of: #"<player id="player-2" username="Bob"/>"#,
+                with: #"<player id="player-2" username="Bob" playerType="indian"/>"#
+            )
+            .replacingOccurrences(
+                of: #"<tile id="tile-3-2" x="3" y="2" type="model.tile.plains" owner="player-1"/>"#,
+                with: #"<tile id="tile-3-2" x="3" y="2" type="model.tile.plains" owner="player-2"/>"#
+            )
+        let game = Game()
+        try game.load(from: XMLDecoder.decode(gameXML))
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+        state.openColonyPanel(colonyId: "colony-1")
+
+        XCTAssertTrue(state.canClaimNativeLandFromSelectedColony(tileId: "tile-3-2"))
+        XCTAssertTrue(state.selectedColonyTerrain.first { $0.tile.id == "tile-3-2" }?.canBuyLand == true)
+    }
+
+    @MainActor
     private func makeState() throws -> GameState {
         let game = Game()
         try game.load(from: XMLDecoder.decode(Self.gameXML))

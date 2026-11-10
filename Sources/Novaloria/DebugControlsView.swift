@@ -362,7 +362,10 @@ struct DebugControlsView: View {
                     }
                     .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity)
-                    .disabled(state.selectedTileId == nil || claimLandPrice.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(state.selectedTileId == nil
+                              || state.nativeLandTileForSelectedUnit?.id != state.selectedTileId
+                              || !state.canClaimSelectedNativeLand
+                              || claimLandPrice.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
             .padding()

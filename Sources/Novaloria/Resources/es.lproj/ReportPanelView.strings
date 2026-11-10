@@ -1,6 +1,7 @@
 "%@ (%lld)" = "%@ (%lld)";
 "%@ → %@" = "%@ → %@";
 "%lld" = "%lld";
+"%lld Runden" = "%lld turnos";
 "Aktueller Spieler" = "Jugador actual";
 "Anfordern" = "Solicitar";
 "Angeboten" = "Ofrecido";
@@ -108,3 +109,9 @@
 "Zustand" = "Estado";
 "leer" = "vacío";
 "runde" = "turno";
+"Bis zum nächsten Gründervater" = "Hasta el próximo Padre Fundador";
+"Fortschritt zum nächsten Gründervater" = "Progreso hacia el próximo Padre Fundador";
+"Fortschritt" = "Progreso";
+"Glocken pro Runde" = "Campanas por turno";
+"Keine Glockenproduktion" = "Sin producción de campanas";
+"Schwelle erreicht" = "Umbral alcanzado";

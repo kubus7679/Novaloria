@@ -7,13 +7,36 @@ struct ColonyGoodsFlow: Identifiable {
     var produced: Int
     var consumed: Int
     var explanation: String
+    var sources: [ColonyProductionSource] = []
+
+    var net: Int { produced - consumed }
+
+    func production(at locationId: String) -> (amount: Int, explanation: String)? {
+        let contributions = sources.filter { $0.locationId == locationId }
+        guard !contributions.isEmpty else { return nil }
+        return (
+            contributions.reduce(0) { $0 + $1.amount },
+            (contributions.map(\.explanation) + [ColonyProductionCalculator.projectionNotice])
+                .joined(separator: "\n")
+        )
+    }
+}
+
+struct ColonyProductionSource {
+    let locationId: String
+    let amount: Int
+    let explanation: String
 }
 
 /// Client-side projection of FreeCol's work-location production pipeline.
 /// It applies the production modifiers available in the live model and game
 /// specification, then limits building recipes by available inputs.
 enum ColonyProductionCalculator {
-    private static let foodPerColonistForGrowth = 200
+    static let foodPerColonistForGrowth = 200
+
+    static var projectionNotice: String {
+        L10n.text("Clientseitige Vorhersage aus den bekannten Aufträgen, Boni und Vorräten. Der Server berechnet das endgültige Rundenergebnis.", table: "ColonyProductionCalculator")
+    }
 
     private struct AppliedModifier {
         var value: ProductionModifierInfo
@@ -23,6 +46,7 @@ enum ColonyProductionCalculator {
     }
 
     private struct BuildingPlan {
+        var locationId: String
         var name: String
         var inputs: [String: Int]
         var inputDetails: [String: [String]]
@@ -39,13 +63,16 @@ enum ColonyProductionCalculator {
         var production: [String: Int] = [:]
         var consumption: [String: Int] = [:]
         var details: [String: [String]] = [:]
+        var sources: [String: [ColonyProductionSource]] = [:]
         var available = colony.goods
 
-        func addProduction(_ goods: String, amount: Int, explanation: String) {
-            guard amount > 0 else { return }
+        func addProduction(_ goods: String, amount: Int, locationId: String, explanation: String) {
             production[goods, default: 0] += amount
             available[goods, default: 0] += amount
             details[goods, default: []].append(explanation)
+            sources[goods, default: []].append(
+                ColonyProductionSource(locationId: locationId, amount: amount, explanation: explanation)
+            )
         }
 
         func addConsumption(_ goods: String, amount: Int, explanation: String) {
@@ -78,6 +105,7 @@ enum ColonyProductionCalculator {
                                    tileTypeId: tileTypeId, contextType: nil,
                                    modifiers: modifiers, specification: specification)
                 addProduction(goods, amount: result.amount,
+                              locationId: colony.workTiles.first(where: { $0.tileId == centerTileId })?.id ?? centerTileId,
                               explanation: L10n.text("Koloniezentrum: \(result.explanation)", table: "ColonyProductionCalculator"))
             }
         }
@@ -107,6 +135,7 @@ enum ColonyProductionCalculator {
                                    tileTypeId: tileTypeId, contextType: nil,
                                    modifiers: modifiers, specification: specification)
                 addProduction(goods, amount: result.amount,
+                              locationId: location.id,
                               explanation: L10n.text("Feldarbeit (\(workerName(worker, specification: specification))): \(result.explanation)", table: "ColonyProductionCalculator"))
             }
         }
@@ -123,7 +152,7 @@ enum ColonyProductionCalculator {
             let unattendedOutputs = specification.buildingOutputs(for: buildingTypeId, unattended: true)
             let unattendedInputs = specification.buildingInputs(for: buildingTypeId, unattended: true)
             let assigned = workers.filter { $0.location == building.id }
-            var plan = BuildingPlan(name: GameLabels.name(buildingTypeId),
+            var plan = BuildingPlan(locationId: building.id, name: GameLabels.name(buildingTypeId),
                                     inputs: [:], inputDetails: [:],
                                     outputs: [:], outputDetails: [:])
 
@@ -176,7 +205,8 @@ enum ColonyProductionCalculator {
                 return min(partial, Double(available[pair.key, default: 0]) / Double(pair.value))
             }
             let boundedRatio = max(0, min(1, ratio))
-            for (goods, amount) in plan.inputs {
+            var inputExplanations: [String] = []
+            for (goods, amount) in plan.inputs.sorted(by: { $0.key < $1.key }) {
                 let actual = Int(floor(Double(amount) * boundedRatio))
                 let stock = available[goods, default: 0]
                 if actual > 0 {
@@ -186,12 +216,12 @@ enum ColonyProductionCalculator {
                 let stockLimit = boundedRatio < 1
                     ? " (" + L10n.text("durch Vorrat begrenzt", table: "ColonyProductionCalculator") + ")"
                     : ""
-                details[goods, default: []].append(
-                    L10n.text(
-                        "\(plan.name): Bedarf \(plan.inputDetails[goods, default: []].joined(separator: " + ")) = \(amount) \(goodsLabel(goods)); Vorrat \(stock), Verbrauch \(actual)\(stockLimit)",
-                        table: "ColonyProductionCalculator"
-                    )
+                let explanation = L10n.text(
+                    "\(plan.name): Bedarf \(plan.inputDetails[goods, default: []].joined(separator: " + ")) = \(amount) \(goodsLabel(goods)); Vorrat \(stock), Verbrauch \(actual)\(stockLimit)",
+                    table: "ColonyProductionCalculator"
                 )
+                details[goods, default: []].append(explanation)
+                inputExplanations.append(explanation)
             }
             for (goods, amount) in plan.outputs {
                 let actual = Int(floor(Double(amount) * boundedRatio))
@@ -199,12 +229,12 @@ enum ColonyProductionCalculator {
                 let inputLimit = boundedRatio < 1
                     ? "; \(L10n.text("wegen fehlender Inputs", table: "ColonyProductionCalculator")) \(Int((boundedRatio * 100).rounded())) %"
                     : ""
-                let explanation = L10n.text("\(plan.name): \(breakdown)\(inputLimit)", table: "ColonyProductionCalculator")
-                if actual > 0 {
-                    addProduction(goods, amount: actual, explanation: explanation)
-                } else if amount > 0 {
-                    details[goods, default: []].append(explanation)
-                }
+                let explanation = (
+                    [L10n.text("\(plan.name): \(breakdown)\(inputLimit)", table: "ColonyProductionCalculator")]
+                    + inputExplanations
+                    + [L10n.text("Ergebnis: \(actual) \(goodsLabel(goods)) pro Runde", table: "ColonyProductionCalculator")]
+                ).joined(separator: "\n")
+                addProduction(goods, amount: actual, locationId: plan.locationId, explanation: explanation)
             }
         }
 
@@ -223,13 +253,15 @@ enum ColonyProductionCalculator {
             let produced = production[goods, default: 0]
             let consumed = consumption[goods, default: 0]
             let lines = details[goods, default: []]
-        let tooltip = ([L10n.text("Produktion: +\(produced) \(goodsLabel(goods))", table: "ColonyProductionCalculator")]
+            let tooltip = ([L10n.text("Produktion: +\(produced) \(goodsLabel(goods))", table: "ColonyProductionCalculator")]
                 + lines
-                + [L10n.text("Verbrauch: −\(consumed) \(goodsLabel(goods))", table: "ColonyProductionCalculator")])
+                + [L10n.text("Verbrauch: −\(consumed) \(goodsLabel(goods))", table: "ColonyProductionCalculator"),
+                   L10n.text("Bilanz: \(produced) − \(consumed) = \(produced - consumed)", table: "ColonyProductionCalculator"),
+                   projectionNotice])
                 .joined(separator: "\n")
             return ColonyGoodsFlow(id: goods, label: goodsLabel(goods),
                                    produced: produced, consumed: consumed,
-                                   explanation: tooltip)
+                                   explanation: tooltip, sources: sources[goods, default: []])
         }.sorted { $0.label < $1.label }
     }
 
@@ -404,7 +436,16 @@ enum ColonyProductionCalculator {
                 case .percentage: value += value * effectiveValue / 100
                 }
                 if value != oldValue {
-                    lines.append(L10n.text("\(applied.source): \(format(oldValue)) → \(format(value))", table: "ColonyProductionCalculator"))
+                    let operation: String
+                    switch modifier.kind {
+                    case .additive:
+                        operation = effectiveValue >= 0 ? "+ \(format(effectiveValue))" : "− \(format(-effectiveValue))"
+                    case .multiplicative:
+                        operation = "× \(format(effectiveValue))"
+                    case .percentage:
+                        operation = (effectiveValue >= 0 ? "+ " : "− ") + "\(format(abs(effectiveValue))) %"
+                    }
+                    lines.append(L10n.text("\(applied.source): \(format(oldValue)) \(operation) = \(format(value))", table: "ColonyProductionCalculator"))
                 }
             }
             if let quantity = group.compactMap(\.resourceQuantity).first, quantity >= 0 {
@@ -461,6 +502,7 @@ enum ColonyProductionCalculator {
     }
 
     private static func format(_ value: Double) -> String {
-        value.rounded() == value ? "\(Int(value))" : String(format: "%.1f", value)
+        value.formatted(.number.precision(.fractionLength(0...8))
+            .locale(LocalizationSettings.shared.language.locale))
     }
 }

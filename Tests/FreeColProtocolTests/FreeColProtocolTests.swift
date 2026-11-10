@@ -564,6 +564,28 @@ final class FreeColProtocolTests: XCTestCase {
     }
 
     @MainActor
+    func testNativeTradeCloseDismissesPromptWithoutServerConfirmation() {
+        let state = GameState()
+        state.phase = .inGame
+        let session = ParsedMessage(
+            tag: "nativeTrade",
+            attributes: ["unit": "unit-1", "settlement": "settlement-1"],
+            children: []
+        )
+        state.applySessionMessage(ParsedMessage(
+            tag: "nativeTrade",
+            attributes: ["action": "ACK_OPEN"],
+            children: [session]
+        ))
+
+        XCTAssertNotNil(state.pendingNativeTrade)
+        state.closeNativeTrade()
+
+        XCTAssertNil(state.pendingServerDecision)
+        XCTAssertNotNil(state.errorMessage)
+    }
+
+    @MainActor
     func testDiplomacyPromptParsing() async throws {
         let state = GameState()
         state.phase = .inGame
@@ -1019,6 +1041,42 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertFalse(ids3.contains("model.building.carpenterHouse"))
     }
 
+    func testBuildableBuildingCandidatesRespectRequiredAbilities() throws {
+        let specification = Specification(parsed: try XMLDecoder.decode("""
+        <freecol-specification id="spec">
+          <building-type id="model.building.furTradingPost"/>
+          <building-type id="model.building.furFactory"
+                         upgrades-from="model.building.furTradingPost"
+                         required-population="6">
+            <required-ability id="model.ability.buildFactory"/>
+          </building-type>
+        </freecol-specification>
+        """))
+        let colony = try Colony(
+            id: "colony-furs",
+            attributes: ["name": "Boston", "unitCount": "6"],
+            children: [ParsedMessage(tag: "building",
+                                     attributes: ["id": "post", "buildingType": "model.building.furTradingPost"],
+                                     children: [])],
+            game: Game()
+        )
+
+        let withoutAdamSmith = GameState.buildableBuildingCandidates(
+            colony: colony,
+            specification: specification,
+            population: 6
+        )
+        XCTAssertFalse(withoutAdamSmith.contains { $0.id == "model.building.furFactory" })
+
+        let withAdamSmith = GameState.buildableBuildingCandidates(
+            colony: colony,
+            specification: specification,
+            population: 6,
+            playerAbilities: ["model.ability.buildFactory": true]
+        )
+        XCTAssertTrue(withAdamSmith.contains { $0.id == "model.building.furFactory" })
+    }
+
     func testBuildableCandidatesIncludeUnitsEnabledByColonyBuildings() throws {
         let specification = Specification(parsed: try XMLDecoder.decode("""
         <freecol-specification id="spec">
@@ -1215,6 +1273,61 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertTrue(byGoods["model.goods.hammers"]?.explanation.contains("Grundwert: 3") == true)
         XCTAssertTrue(byGoods["model.goods.hammers"]?.explanation.contains("Koloniebonus") == true)
         XCTAssertTrue(byGoods["model.goods.lumber"]?.explanation.contains("model.goods.lumber") == true)
+
+        let hammers = try XCTUnwrap(byGoods["model.goods.hammers"])
+        let workplace = try XCTUnwrap(hammers.production(at: "building-1"))
+        XCTAssertEqual(workplace.amount, 8)
+        XCTAssertTrue(workplace.explanation.contains("Grundwert: 3"))
+        XCTAssertTrue(workplace.explanation.contains("Vorrat 5, Verbrauch 3"))
+        XCTAssertTrue(workplace.explanation.contains("Ergebnis: 8"))
+        XCTAssertTrue(workplace.explanation.contains(ColonyProductionCalculator.projectionNotice))
+        XCTAssertNil(hammers.production(at: "another-building"))
+        XCTAssertEqual(hammers.net, 8)
+
+        for (stock, expected, limit) in [(1, 2, "33 %"), (0, 0, "0 %")] {
+            var limitedColony = colony
+            limitedColony.goods["model.goods.lumber"] = stock
+            let limited = ColonyProductionCalculator.calculate(
+                colony: limitedColony, specification: specification, tiles: game.tiles,
+                workers: Array(game.units.values), player: player, goodsLabel: { $0 }
+            )
+            let output = try XCTUnwrap(limited.first { $0.id == "model.goods.hammers" })
+            let source = try XCTUnwrap(output.production(at: "building-1"))
+            XCTAssertEqual(output.produced, expected)
+            XCTAssertEqual(source.amount, expected, "The building must use the same input-limited amount as the total")
+            XCTAssertTrue(source.explanation.contains(limit))
+            XCTAssertTrue(source.explanation.contains("Vorrat \(stock), Verbrauch \(stock)"))
+            XCTAssertTrue(source.explanation.contains("Ergebnis: \(expected)"))
+        }
+    }
+
+    func testColonyTooltipShowsPercentageCalculationAndRounding() throws {
+        let previousLanguage = LocalizationSettings.shared.language
+        defer { LocalizationSettings.shared.language = previousLanguage }
+        LocalizationSettings.shared.language = .german
+        let game = Game()
+        try game.load(from: XMLDecoder.decode("""
+        <game id="game-1">
+          <colony id="colony-1">
+            <building id="building-1" buildingType="model.building.townHall"/>
+          </colony>
+          <freecol-specification>
+            <building-type id="model.building.townHall">
+              <modifier id="model.goods.bells" type="percentage" value="25" index="30"/>
+              <production unattended="true"><output goods-type="model.goods.bells" value="3"/></production>
+            </building-type>
+          </freecol-specification>
+        </game>
+        """))
+        let flows = ColonyProductionCalculator.calculate(
+            colony: try XCTUnwrap(game.colonies["colony-1"]),
+            specification: try XCTUnwrap(game.specification), tiles: [:],
+            workers: [], player: nil, goodsLabel: { $0 }
+        )
+        let source = try XCTUnwrap(flows.first?.production(at: "building-1"))
+        XCTAssertEqual(source.amount, 3)
+        XCTAssertTrue(source.explanation.contains("3 + 25 % = 3,75"))
+        XCTAssertTrue(source.explanation.contains("Abgerundet: 3"))
     }
 
     func testColonyGrowthEstimateCombinesFoodSourcesAndConsumption() throws {
@@ -2516,6 +2629,67 @@ final class FreeColProtocolTests: XCTestCase {
                        "Adam Smith")
     }
 
+    @MainActor
+    func testFoundingFatherReportEstimatesLibertyProgressAndTurns() throws {
+        let game = Game()
+        try game.load(from: XMLDecoder.decode("""
+        <game id="game-1" clientUserName="Alice">
+          <player id="player-1" username="Alice" liberty="50">
+            <foundingFathers xLength="1" x0="model.foundingFather.adamSmith"/>
+          </player>
+          <colony id="colony-1" owner="player-1">
+            <building id="hall-1" buildingType="model.building.townHall"/>
+          </colony>
+          <unit id="bell-worker" owner="player-1" unitType="model.unit.freeColonist"
+                location="hall-1" workType="model.goods.bells"/>
+          <freecol-specification difficulty-level="model.difficulty.easy">
+            <options><optionGroup id="difficultyLevels">
+              <optionGroup id="model.difficulty.veryEasy">
+                <optionGroup id="model.difficulty.other">
+                  <integerOption id="model.option.foundingFatherFactor" value="24"/>
+                </optionGroup>
+              </optionGroup>
+              <optionGroup id="model.difficulty.easy">
+                <optionGroup id="model.difficulty.other">
+                  <integerOption id="model.option.foundingFatherFactor" value="32"/>
+                </optionGroup>
+              </optionGroup>
+            </optionGroup>
+            </options>
+            <goods-type id="model.goods.bells" storable="false">
+              <modifier id="model.modifier.liberty" type="multiplicative" value="1"/>
+            </goods-type>
+            <building-type id="model.building.townHall">
+              <production><output goods-type="model.goods.bells" value="12"/></production>
+            </building-type>
+            <founding-father id="model.foundingFather.adamSmith"/>
+            <founding-father id="model.foundingFather.benjaminFranklin"/>
+          </freecol-specification>
+        </game>
+        """))
+
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+
+        let spec = try XCTUnwrap(game.specification)
+        XCTAssertEqual(spec.libertyGoodsTypes, ["model.goods.bells"])
+        XCTAssertEqual(spec.foundingFatherIds.count, 2)
+        XCTAssertEqual(spec.foundingFatherFactor, 32)
+
+        let progress = try XCTUnwrap(state.localFoundingFatherProgress)
+        XCTAssertEqual(progress.liberty, 50)
+        XCTAssertEqual(progress.requiredLiberty, 129)
+        XCTAssertEqual(progress.libertyPerTurn, 12)
+        XCTAssertEqual(progress.turnsRemaining, 7)
+        XCTAssertEqual(progress.fractionComplete, 50.0 / 129.0, accuracy: 0.0001)
+
+        XCTAssertEqual(FoundingFatherProgress.requiredLiberty(fatherCount: 0, factor: 24), 24)
+        XCTAssertEqual(FoundingFatherProgress.requiredLiberty(fatherCount: 2, factor: 24), 145)
+        XCTAssertNil(FoundingFatherProgress(liberty: 2, requiredLiberty: 24, libertyPerTurn: 0).turnsRemaining)
+        XCTAssertEqual(FoundingFatherProgress(liberty: 24, requiredLiberty: 24, libertyPerTurn: 1).turnsRemaining, 0)
+    }
+
     // MARK: Phase 58 - diplomacy and native depth
 
     func testIndianSettlementAndTensionParsing() throws {
@@ -2726,8 +2900,21 @@ final class FreeColProtocolTests: XCTestCase {
         </update>
         """))
         state.recordMarketSnapshot()
-        XCTAssertEqual(state.marketPriceHistory["model.goods.sugar"]?.map { $0.price }, [2, 1])
-        XCTAssertEqual(state.marketBuyPriceHistory["model.goods.sugar"]?.map { $0.price }, [4, 3])
+        XCTAssertEqual(state.marketPriceHistory["model.goods.sugar"]?.map { $0.price }, [1])
+        XCTAssertEqual(state.marketBuyPriceHistory["model.goods.sugar"]?.map { $0.price }, [3])
+
+        for turn in 2...51 {
+            game.turn = Turn(turn)
+            state.recordMarketSnapshot()
+        }
+        let saleHistory = try XCTUnwrap(state.marketPriceHistory["model.goods.sugar"])
+        let buyHistory = try XCTUnwrap(state.marketBuyPriceHistory["model.goods.sugar"])
+        XCTAssertEqual(saleHistory.count, 50)
+        XCTAssertEqual(saleHistory.first?.turn, 2)
+        XCTAssertEqual(saleHistory.last?.turn, 51)
+        XCTAssertEqual(buyHistory.count, 50)
+        XCTAssertEqual(buyHistory.first?.turn, 2)
+        XCTAssertEqual(buyHistory.last?.turn, 51)
     }
 
     // MARK: Phase 60 - model depth

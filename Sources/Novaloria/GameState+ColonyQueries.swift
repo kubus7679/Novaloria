@@ -2,7 +2,52 @@ import NovaloriaClient
 import FreeColGame
 import Foundation
 
+struct FoundingFatherProgress {
+    let liberty: Int
+    let requiredLiberty: Int
+    let libertyPerTurn: Int
+
+    var turnsRemaining: Int? {
+        let remaining = max(0, requiredLiberty - liberty)
+        guard remaining > 0 else { return 0 }
+        guard libertyPerTurn > 0 else { return nil }
+        return (remaining + libertyPerTurn - 1) / libertyPerTurn
+    }
+
+    var fractionComplete: Double {
+        guard requiredLiberty > 0 else { return 1 }
+        return min(1, max(0, Double(liberty) / Double(requiredLiberty)))
+    }
+
+    static func requiredLiberty(fatherCount: Int, factor: Int) -> Int {
+        let factor = max(1, factor)
+        return fatherCount == 0 ? factor : 2 * (fatherCount + 1) * factor + 1
+    }
+}
+
 extension GameState {
+    func colonyEducationProgress(
+        for workers: [FreeColGame.Unit],
+        game: FreeColGame.Game,
+        specification: FreeColGame.Specification
+    ) -> [ColonyEducationProgress] {
+        workers.compactMap { teacher in
+            guard let studentId = teacher.student,
+                  let student = game.units[studentId],
+                  let teacherType = teacher.unitType,
+                  let studentType = student.unitType,
+                  let neededTurns = specification.neededEducationTurns(
+                    teacherUnitTypeId: teacherType,
+                    studentUnitTypeId: studentType
+                  ) else { return nil }
+            return ColonyEducationProgress(
+                id: teacher.id,
+                studentUnitTypeId: studentType,
+                remainingTurns: max(1, neededTurns - teacher.turnsOfTraining)
+            )
+        }
+    }
+
     func canUnitWorkInColony(_ unit: FreeColGame.Unit) -> Bool {
         guard let type = unit.unitType else { return false }
         if let person = cachedGame?.specification?.effectiveAbility(
@@ -20,6 +65,7 @@ extension GameState {
         guard let game = cachedGame, let colony = selectedColony,
               let tileId = colony.tileId, let center = game.tiles[tileId] else { return [] }
         let origin = MapGeometry.origin(x: center.x, y: center.y, tileW: 1, tileH: 1)
+        let flows = colonyProductionSummary(colony)
         return ([tileId] + game.neighborTileIds(of: tileId)).compactMap { id in
             guard let tile = game.tiles[id] else { return nil }
             let point = MapGeometry.origin(x: tile.x, y: tile.y, tileW: 1, tileH: 1)
@@ -64,10 +110,19 @@ extension GameState {
                     production.append(ColonyTerrainProduction(goodsType: goods, baseAmount: amount))
                 }
             }
+            production = production.map { output in
+                let estimate = flows.first { $0.id == output.goodsType }?
+                    .production(at: location?.id ?? tile.id)
+                return ColonyTerrainProduction(
+                    goodsType: output.goodsType, baseAmount: output.baseAmount,
+                    estimatedAmount: estimate?.amount, explanation: estimate?.explanation
+                )
+            }
             return ColonyTerrainField(
                 tile: tile, offset: CGPoint(x: point.x - origin.x, y: point.y - origin.y),
                 workLocationId: location?.id,
                 workers: workers, unavailableReason: reason,
+                canBuyLand: canClaimNativeLandFromSelectedColony(tileId: id),
                 production: production.sorted { $0.goodsType < $1.goodsType },
                 workOptions: workOptions
             )
@@ -142,6 +197,28 @@ extension GameState {
             .filter { $0.value > 0 && isStorableGoodsType($0.key) }
             .map { (id: $0.key, label: goodsDisplayName($0.key), amount: $0.value) }
             .sorted { $0.label < $1.label }
+    }
+
+    /// Warehouse capacity for the selected colony, including inherited
+    /// storage modifiers from its built buildings.
+    var selectedColonyWarehouseCapacity: Int? {
+        guard let colony = selectedColony,
+              let specification = cachedGame?.specification else { return nil }
+        var capacity = 0
+        for building in colony.buildings {
+            let typeId = building.buildingType ?? building.id
+            guard let buildingCapacity = specification.warehouseStorageCapacity(forBuildingType: typeId) else {
+                return nil
+            }
+            capacity += buildingCapacity
+        }
+        // FreeCol automatically gives every colony a depot. Some server
+        // snapshots omit automatic buildings, so preserve the depot's base
+        // capacity even when it is absent from the serialized building list.
+        let depotCapacity = specification.warehouseStorageCapacity(
+            forBuildingType: "model.building.depot"
+        ) ?? 0
+        return max(capacity, depotCapacity)
     }
 
     /// Goods aboard the transporter currently used by the selected colony.
@@ -262,17 +339,34 @@ extension GameState {
 
     /// Estimated turns until the current build target completes (nil if unknown).
     var selectedColonyEstimatedBuildTurns: Int? {
-        guard let target = selectedColonyBuildTarget,
-              let colony = selectedColony,
+        selectedColony.flatMap { colonyEstimatedBuildTurns($0) }
+    }
+
+    func colonyEstimatedBuildTurns(_ colony: Colony) -> Int? {
+        guard let target = colony.buildQueue.first,
               let specification = cachedGame?.specification,
-              let required = (specification.buildingTypes[target.id]?.requiredGoods
-                  ?? specification.unitTypes[target.id]?.requiredGoods)?[Self.buildingMaterialsGoodsId]
-        else { return nil }
-        let remaining = required - colony.goods[Self.buildingMaterialsGoodsId, default: 0]
-        guard remaining > 0 else { return 0 }
-        let perTurn = selectedColonyEstimatedBuildPerTurn
-        guard perTurn > 0 else { return nil }
-        return (remaining + perTurn - 1) / perTurn
+              let requirements = specification.buildingTypes[target]?.requiredGoods
+                  ?? specification.unitTypes[target]?.requiredGoods,
+              !requirements.isEmpty else { return nil }
+        let production = colonyProductionSummary(colony)
+        var turns = 0
+        for (goods, required) in requirements {
+            let remaining = required - colony.goods[goods, default: 0]
+            guard remaining > 0 else { continue }
+            guard let perTurn = production.first(where: { $0.id == goods })?.net,
+                  perTurn > 0 else { return nil }
+            turns = max(turns, (remaining + perTurn - 1) / perTurn)
+        }
+        return turns
+    }
+
+    func colonyMapBuildLabel(_ colony: Colony) -> String? {
+        guard let owner = colony.owner, owner == localPlayerId else { return nil }
+        guard let target = colony.buildQueue.first else {
+            return L10n.text("Keine Bauliste festgelegt.", table: "ColonyPanelView")
+        }
+        let turns = colonyEstimatedBuildTurns(colony).map(String.init) ?? "?"
+        return "\(buildingDisplayName(target)) \(turns)"
     }
 
     /// Estimate base construction output from currently assigned workers.
@@ -379,14 +473,14 @@ extension GameState {
             .sorted { ($0.name ?? "") < ($1.name ?? "") }
     }
 
-    /// Workers (units) assigned to a colony, either inside it or on a work location.
+    /// Known units of the colony's owner, inside it or on a work location.
     func colonyWorkerUnits(_ colony: Colony) -> [FreeColGame.Unit] {
         guard let game = cachedGame,
-              let localPlayerId = resolveLocalPlayerId() else { return [] }
+              let ownerId = colony.owner else { return [] }
         let workLocationIds = Set(colony.buildings.map(\.id) + colony.workTiles.map(\.id))
         return game.units.values
             .filter { unit in
-                guard unit.owner == localPlayerId else { return false }
+                guard unit.owner == ownerId else { return false }
                 if unit.location == colony.id { return true }
                 if let location = unit.location, workLocationIds.contains(location) { return true }
                 return false
@@ -409,6 +503,75 @@ extension GameState {
             workers: colonyWorkerUnits(colony),
             player: player,
             goodsLabel: goodsDisplayName
+        )
+    }
+
+    /// Colony government efficiency at the current liberty stock, including
+    /// the next production-bonus threshold and population outlook.
+    func colonyEfficiencyProgress(_ colony: Colony) -> ColonyEfficiencyProgress? {
+        guard let game = cachedGame,
+              let specification = game.specification else { return nil }
+
+        let player = colony.owner.flatMap { game.players[$0] }
+        let configuredRules = specification.colonyGovernmentRules
+        let rules = ColonyGovernmentRules(
+            badGovernmentLimit: Int(game.optionValues["model.option.badGovernmentLimit"] ?? "")
+                ?? configuredRules.badGovernmentLimit,
+            veryBadGovernmentLimit: Int(game.optionValues["model.option.veryBadGovernmentLimit"] ?? "")
+                ?? configuredRules.veryBadGovernmentLimit,
+            goodGovernmentLimit: Int(game.optionValues["model.option.goodGovernmentLimit"] ?? "")
+                ?? configuredRules.goodGovernmentLimit,
+            veryGoodGovernmentLimit: Int(game.optionValues["model.option.veryGoodGovernmentLimit"] ?? "")
+                ?? configuredRules.veryGoodGovernmentLimit
+        )
+        let modifiers = specification.colonyLibertyModifiers(
+            nationTypeId: player?.nationType,
+            foundingFathers: player?.foundingFathers ?? []
+        )
+        let libertyGoods = specification.libertyGoodsTypes
+        let bellsPerTurn = colonyProductionSummary(colony).reduce(0) { total, flow in
+            total + (libertyGoods.contains(flow.id) ? flow.net : 0)
+        }
+
+        return ColonyEfficiencyProgress.calculate(
+            population: colonyPopulation(colony),
+            liberty: colony.liberty,
+            currentProductionBonus: colony.productionBonus,
+            bellsPerTurn: bellsPerTurn,
+            rules: rules,
+            modifiers: modifiers
+        )
+    }
+
+    /// Client-side estimate of progress toward the next founding father.
+    /// The server remains authoritative; production uses current colony work assignments.
+    var localFoundingFatherProgress: FoundingFatherProgress? {
+        guard let game = cachedGame,
+              let player = localPlayer,
+              player.playerType == .european,
+              let specification = game.specification,
+              !specification.foundingFatherIds.isEmpty,
+              player.foundingFathers.count < specification.foundingFatherIds.count else { return nil }
+
+        // Prefer an options update, then the active option serialized in the
+        // server specification. 24 is the classic rules fallback.
+        let factor = Int(game.optionValues["model.option.foundingFatherFactor"] ?? "")
+            ?? specification.foundingFatherFactor
+            ?? 24
+        let required = FoundingFatherProgress.requiredLiberty(
+            fatherCount: player.foundingFathers.count,
+            factor: factor
+        )
+        let libertyGoods = specification.libertyGoodsTypes
+        let production = localColonies.reduce(0) { total, colony in
+            total + colonyProductionSummary(colony).reduce(0) { subtotal, flow in
+                subtotal + (libertyGoods.contains(flow.id) ? flow.produced : 0)
+            }
+        }
+        return FoundingFatherProgress(
+            liberty: player.liberty,
+            requiredLiberty: required,
+            libertyPerTurn: production
         )
     }
 

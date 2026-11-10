@@ -35,3 +35,11 @@
 "Verbleibende Werkzeuge" = "Herramientas restantes";
 "Warten auf Gegner…" = "Esperando a los oponentes…";
 "Ziel löschen" = "Borrar destino";
+"Abbrechen" = "Cancelar";
+"Angebot in Goldstücken" = "Oferta en oro";
+"Der Server prüft den Mindestpreis. Ein zu niedriges Angebot wird abgelehnt." = "El servidor comprobará el precio mínimo. Rechazará una oferta demasiado baja.";
+"Feld: %lld, %lld" = "Casilla: %lld, %lld";
+"Kaufen" = "Comprar";
+"Land kaufen…" = "Comprar tierra…";
+"Ureinwohnerland kaufen?" = "¿Comprar tierra indígena?";
+"Verfügbares Gold: %lld" = "Oro disponible: %lld";

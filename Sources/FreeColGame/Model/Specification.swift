@@ -40,6 +40,44 @@ public struct ProductionModifierInfo: Sendable {
     }
 }
 
+/// A player modifier that changes the colony's Sons of Liberty percentage.
+public struct ColonyLibertyModifier: Sendable {
+    public var kind: ProductionModifierInfo.Kind
+    public var value: Double
+    public var index: Int
+
+    public init(kind: ProductionModifierInfo.Kind, value: Double, index: Int) {
+        self.kind = kind
+        self.value = value
+        self.index = index
+    }
+}
+
+/// Active difficulty thresholds used to calculate colony government efficiency.
+public struct ColonyGovernmentRules: Sendable {
+    public var badGovernmentLimit: Int
+    public var veryBadGovernmentLimit: Int
+    public var goodGovernmentLimit: Int
+    public var veryGoodGovernmentLimit: Int
+
+    public init(badGovernmentLimit: Int,
+                veryBadGovernmentLimit: Int,
+                goodGovernmentLimit: Int,
+                veryGoodGovernmentLimit: Int) {
+        self.badGovernmentLimit = badGovernmentLimit
+        self.veryBadGovernmentLimit = veryBadGovernmentLimit
+        self.goodGovernmentLimit = goodGovernmentLimit
+        self.veryGoodGovernmentLimit = veryGoodGovernmentLimit
+    }
+
+    public static let classic = ColonyGovernmentRules(
+        badGovernmentLimit: 8,
+        veryBadGovernmentLimit: 12,
+        goodGovernmentLimit: 50,
+        veryGoodGovernmentLimit: 100
+    )
+}
+
 /// Parsed subset of a `<unit-type>` definition from the server specification.
 public struct UnitTypeInfo: @unchecked Sendable {
     public var id: String
@@ -61,6 +99,8 @@ public struct UnitTypeInfo: @unchecked Sendable {
     public var price: Int?
     /// Skill level (`skill`), inherited through `extends`; Java trains units with skill > 0 in Europe.
     public var skill: Int?
+    /// Unit type this unit can teach, from `skill-taught`.
+    public var skillTaught: String?
     public var expertProduction: String?
     /// Goods required to construct this unit in a colony.
     public var requiredGoods: [String: Int]
@@ -80,6 +120,7 @@ public struct UnitTypeInfo: @unchecked Sendable {
                 abilities: [String: Bool] = [:],
                  price: Int? = nil,
                  skill: Int? = nil,
+                 skillTaught: String? = nil,
                  expertProduction: String? = nil,
                  requiredGoods: [String: Int] = [:],
                  productionModifiers: [ProductionModifierInfo] = [],
@@ -97,6 +138,7 @@ public struct UnitTypeInfo: @unchecked Sendable {
         self.abilities = abilities
         self.price = price
         self.skill = skill
+        self.skillTaught = skillTaught
         self.expertProduction = expertProduction
         self.requiredGoods = requiredGoods
         self.productionModifiers = productionModifiers
@@ -121,6 +163,8 @@ public struct GoodsTypeInfo: @unchecked Sendable {
     public var id: String
     public var name: String?
     public var isFood: Bool
+    /// Whether this goods type contributes to the player's liberty total.
+    public var isLiberty: Bool
     public var isBuildingMaterial: Bool
     public var isTradeGoods: Bool
     /// Whether goods of this type can be stored/traded (`storable`, default true).
@@ -141,6 +185,7 @@ public struct GoodsTypeInfo: @unchecked Sendable {
     public init(id: String,
                 name: String?,
                 isFood: Bool,
+                isLiberty: Bool = false,
                 isBuildingMaterial: Bool,
                 isTradeGoods: Bool,
                 isStorable: Bool = true,
@@ -153,6 +198,7 @@ public struct GoodsTypeInfo: @unchecked Sendable {
         self.id = id
         self.name = name
         self.isFood = isFood
+        self.isLiberty = isLiberty
         self.isBuildingMaterial = isBuildingMaterial
         self.isTradeGoods = isTradeGoods
         self.isStorable = isStorable
@@ -229,6 +275,8 @@ public struct BuildingTypeInfo: @unchecked Sendable {
     public var id: String
     public var upkeep: Int
     public var requiredPopulation: Int
+    /// Additive storage capacity contributed by this building type.
+    public var warehouseStorageBonus: Int
     /// Number of worker slots; nil means use the FreeCol default/inherited value.
     public var workplaces: Int?
     /// Skill bounds for units allowed to work here; nil means inherited/default.
@@ -238,6 +286,8 @@ public struct BuildingTypeInfo: @unchecked Sendable {
     public var extendsId: String?
     /// Goods required to construct this building, keyed by goods type id.
     public var requiredGoods: [String: Int]
+    /// Abilities required to construct this building, keyed by ability id.
+    public var requiredAbilities: [String: Bool]
     /// Unit types this building grants the colony the ability to construct.
     public var buildableUnitTypes: Set<String>
     /// Abilities declared by this building type (inherited through `extends`).
@@ -259,12 +309,14 @@ public struct BuildingTypeInfo: @unchecked Sendable {
     public init(id: String,
                 upkeep: Int,
                 requiredPopulation: Int,
+                warehouseStorageBonus: Int = 0,
                 workplaces: Int? = nil,
                 minimumSkill: Int? = nil,
                 maximumSkill: Int? = nil,
                 upgradesFrom: String?,
                 extendsId: String?,
                 requiredGoods: [String: Int] = [:],
+                requiredAbilities: [String: Bool] = [:],
                 buildableUnitTypes: Set<String> = [],
                 abilities: [String: Bool] = [:],
                 productionOutputs: [String: Int] = [:],
@@ -279,12 +331,14 @@ public struct BuildingTypeInfo: @unchecked Sendable {
         self.id = id
         self.upkeep = upkeep
         self.requiredPopulation = requiredPopulation
+        self.warehouseStorageBonus = warehouseStorageBonus
         self.workplaces = workplaces
         self.minimumSkill = minimumSkill
         self.maximumSkill = maximumSkill
         self.upgradesFrom = upgradesFrom
         self.extendsId = extendsId
         self.requiredGoods = requiredGoods
+        self.requiredAbilities = requiredAbilities
         self.buildableUnitTypes = buildableUnitTypes
         self.abilities = abilities
         self.productionOutputs = productionOutputs
@@ -368,12 +422,52 @@ public final class Specification: @unchecked Sendable {
     public private(set) var resourceTypes: [String: ResourceTypeInfo] = [:]
     public private(set) var foundingFatherModifiers: [String: [ProductionModifierInfo]] = [:]
     public private(set) var nationTypeModifiers: [String: [ProductionModifierInfo]] = [:]
+    public private(set) var foundingFatherIds: Set<String> = []
+    /// Liberty cost factor selected by the server's active game options.
+    public private(set) var foundingFatherFactor: Int?
+    /// Active difficulty's government-efficiency thresholds.
+    public private(set) var colonyGovernmentRules: ColonyGovernmentRules = .classic
+    private var foundingFatherLibertyModifiers: [String: [ColonyLibertyModifier]] = [:]
+    private var nationTypeLibertyModifiers: [String: [ColonyLibertyModifier]] = [:]
+    private var nationTypeParents: [String: String] = [:]
+    private var educationChanges: [String: [EducationChange]] = [:]
+
+    private struct EducationChange {
+        let to: String
+        let turns: Int
+    }
 
     public init(parsed: ParsedMessage) {
         id = parsed.attributes["id"]
         difficultyLevel = parsed.attributes["difficulty-level"]
         version = parsed.attributes["version"]
+        if let difficultyLevel,
+           let activeDifficulty = Self.optionGroup(withId: difficultyLevel, in: parsed) {
+            foundingFatherFactor = Self.integerOption(
+                "model.option.foundingFatherFactor",
+                in: activeDifficulty
+            ) ?? Self.integerOption("model.option.foundingFatherFactor", in: parsed)
+        } else {
+            foundingFatherFactor = Self.integerOption(
+                "model.option.foundingFatherFactor",
+                in: parsed
+            )
+        }
+        let governmentOptions = (difficultyLevel.flatMap {
+            Self.optionGroup(withId: $0, in: parsed)
+        }) ?? parsed
+        colonyGovernmentRules = ColonyGovernmentRules(
+            badGovernmentLimit: Self.integerOption("model.option.badGovernmentLimit", in: governmentOptions)
+                ?? ColonyGovernmentRules.classic.badGovernmentLimit,
+            veryBadGovernmentLimit: Self.integerOption("model.option.veryBadGovernmentLimit", in: governmentOptions)
+                ?? ColonyGovernmentRules.classic.veryBadGovernmentLimit,
+            goodGovernmentLimit: Self.integerOption("model.option.goodGovernmentLimit", in: governmentOptions)
+                ?? ColonyGovernmentRules.classic.goodGovernmentLimit,
+            veryGoodGovernmentLimit: Self.integerOption("model.option.veryGoodGovernmentLimit", in: governmentOptions)
+                ?? ColonyGovernmentRules.classic.veryGoodGovernmentLimit
+        )
         collectUnitTypes(from: parsed)
+        collectEducationChanges(from: parsed)
         collectGoodsTypes(from: parsed)
         collectBuildingTypes(from: parsed)
         collectTileTypes(from: parsed)
@@ -382,6 +476,26 @@ public final class Specification: @unchecked Sendable {
         collectResourceTypes(from: parsed)
         collectFeatureProductionModifiers(from: parsed)
         resolveUnitTypeTraits()
+    }
+
+    /// Goods that contribute to the liberty/founding-father total.
+    public var libertyGoodsTypes: Set<String> {
+        Set(goodsTypes.values.filter(\.isLiberty).map(\.id))
+    }
+
+    /// Liberty-percentage modifiers granted to a European player by their nation and fathers.
+    public func colonyLibertyModifiers(nationTypeId: String?, foundingFathers: [String]) -> [ColonyLibertyModifier] {
+        var modifiers: [ColonyLibertyModifier] = []
+        var visited: Set<String> = []
+        var currentNation = nationTypeId
+        while let nation = currentNation, visited.insert(nation).inserted {
+            modifiers += nationTypeLibertyModifiers[nation] ?? []
+            currentNation = nationTypeParents[nation]
+        }
+        for father in foundingFathers {
+            modifiers += foundingFatherLibertyModifiers[father] ?? []
+        }
+        return modifiers.sorted { $0.index < $1.index }
     }
 
     /// Line of sight for a unit type, falling back to the type-name heuristic.
@@ -459,6 +573,7 @@ public final class Specification: @unchecked Sendable {
                     abilities: abilities,
                     price: child.attributes["price"].flatMap { Int($0) },
                     skill: child.attributes["skill"].flatMap { Int($0) },
+                    skillTaught: child.attributes["skill-taught"],
                     expertProduction: child.attributes["expert-production"],
                     requiredGoods: requiredGoods,
                     productionModifiers: Self.productionModifiers(in: child.children),
@@ -493,6 +608,9 @@ public final class Specification: @unchecked Sendable {
             if info.skill == nil {
                 info.skill = inheritedUnitTypeValue(unitTypeId: unitId, value: \.skill)
             }
+            if info.skillTaught == nil {
+                info.skillTaught = unitId
+            }
             if info.lineOfSight < 0 {
                 info.lineOfSight = inheritedLineOfSight(unitTypeId: unitId)
                     ?? Self.fallbackLineOfSight(forUnitType: unitId)
@@ -501,9 +619,67 @@ public final class Specification: @unchecked Sendable {
         }
     }
 
-    private func inheritedUnitTypeValue(unitTypeId: String,
-                                        value: (UnitTypeInfo) -> Int?,
-                                        visited: Set<String> = []) -> Int? {
+    /// Base turns for the next education step a teacher can impart to a student.
+    public func neededEducationTurns(teacherUnitTypeId: String,
+                                     studentUnitTypeId: String) -> Int? {
+        guard let taughtType = unitTypes[teacherUnitTypeId]?.skillTaught,
+              let taughtSkill = unitTypes[taughtType]?.skill,
+              let studentSkill = unitTypes[studentUnitTypeId]?.skill,
+              studentSkill < taughtSkill else {
+            return nil
+        }
+        return nextEducationChange(
+            from: studentUnitTypeId,
+            taughtType: taughtType,
+            taughtSkill: taughtSkill,
+            visited: []
+        )?.turns
+    }
+
+    private func nextEducationChange(from unitTypeId: String,
+                                     taughtType: String,
+                                     taughtSkill: Int,
+                                     visited: Set<String>) -> EducationChange? {
+        guard !visited.contains(unitTypeId) else { return nil }
+        let changes = educationChanges[unitTypeId] ?? []
+        if let direct = changes.first(where: { $0.to == taughtType }) {
+            return direct
+        }
+        var visited = visited
+        visited.insert(unitTypeId)
+        for change in changes where
+            (unitTypes[change.to]?.skill ?? Int.max) < taughtSkill {
+            if nextEducationChange(
+                from: change.to,
+                taughtType: taughtType,
+                taughtSkill: taughtSkill,
+                visited: visited
+            ) != nil {
+                return change
+            }
+        }
+        return nil
+    }
+
+    private func collectEducationChanges(from node: ParsedMessage) {
+        for child in node.children {
+            if child.tag == "unit-change-type",
+               child.attributes["id"] == "model.unitChange.education" {
+                for change in child.children where change.tag == "unit-type-change" {
+                    guard let from = change.attributes["from"],
+                          let to = change.attributes["to"],
+                          let turns = change.attributes["turns"].flatMap(Int.init),
+                          turns > 0 else { continue }
+                    educationChanges[from, default: []].append(EducationChange(to: to, turns: turns))
+                }
+            }
+            collectEducationChanges(from: child)
+        }
+    }
+
+    private func inheritedUnitTypeValue<Value>(unitTypeId: String,
+                                               value: (UnitTypeInfo) -> Value?,
+                                               visited: Set<String> = []) -> Value? {
         guard !visited.contains(unitTypeId), let info = unitTypes[unitTypeId] else { return nil }
         if let result = value(info) { return result }
         guard let parent = info.extendsId else { return nil }
@@ -579,6 +755,32 @@ public final class Specification: @unchecked Sendable {
             current = buildingTypes[parent]?.extendsId
         }
         return result
+    }
+
+    /// Storage capacity contributed by a building, including inherited modifiers.
+    public func warehouseStorageCapacity(forBuildingType buildingTypeId: String) -> Int? {
+        warehouseStorageCapacity(forBuildingType: buildingTypeId, visited: [])
+    }
+
+    private func warehouseStorageCapacity(
+        forBuildingType buildingTypeId: String,
+        visited: Set<String>
+    ) -> Int? {
+        guard !visited.contains(buildingTypeId),
+              let info = buildingTypes[buildingTypeId] else { return nil }
+        var visited = visited
+        visited.insert(buildingTypeId)
+        let inheritedCapacity: Int
+        if let parent = info.extendsId {
+            guard let capacity = warehouseStorageCapacity(
+                forBuildingType: parent,
+                visited: visited
+            ) else { return nil }
+            inheritedCapacity = capacity
+        } else {
+            inheritedCapacity = 0
+        }
+        return inheritedCapacity + info.warehouseStorageBonus
     }
 
     /// Whether a building type has an ability, including inherited abilities.
@@ -709,6 +911,9 @@ public final class Specification: @unchecked Sendable {
                     name: child.attributes["name"],
                     isFood: child.attributes.bool("is-food",
                                                   default: child.attributes.bool("food", default: false)),
+                    isLiberty: child.children.contains {
+                        $0.tag == "modifier" && $0.attributes["id"] == "model.modifier.liberty"
+                    },
                     isBuildingMaterial: child.attributes.bool("buildingMaterial", default: false),
                     isTradeGoods: child.attributes.bool("trade-goods",
                                                         default: child.attributes.bool("tradeGoods", default: false)),
@@ -723,6 +928,28 @@ public final class Specification: @unchecked Sendable {
             }
             collectGoodsTypes(from: child)
         }
+    }
+
+    private static func integerOption(_ optionId: String, in node: ParsedMessage) -> Int? {
+        if node.attributes["id"] == optionId,
+           let value = node.attributes["value"],
+           let parsed = Int(value) {
+            return parsed
+        }
+        for child in node.children {
+            if let value = integerOption(optionId, in: child) { return value }
+        }
+        return nil
+    }
+
+    private static func optionGroup(withId optionId: String, in node: ParsedMessage) -> ParsedMessage? {
+        if node.tag == "optionGroup", node.attributes["id"] == optionId {
+            return node
+        }
+        for child in node.children {
+            if let group = optionGroup(withId: optionId, in: child) { return group }
+        }
+        return nil
     }
 
     private func collectImprovementTypes(from node: ParsedMessage) {
@@ -782,8 +1009,10 @@ public final class Specification: @unchecked Sendable {
         for child in node.children {
             if child.tag == "building-type", let buildingId = child.attributes["id"] {
                 var requiredGoods: [String: Int] = [:]
+                var warehouseStorageBonus = 0
                 var buildableUnitTypes = Set<String>()
                 var abilities: [String: Bool] = [:]
+                var requiredAbilities: [String: Bool] = [:]
                 var attendedOutputs: [String: Int] = [:]
                 var attendedInputs: [String: Int] = [:]
                 var unattendedOutputs: [String: Int] = [:]
@@ -804,6 +1033,17 @@ public final class Specification: @unchecked Sendable {
                     case "required-goods":
                         if let goodsId = grandchild.attributes["id"] {
                             requiredGoods[goodsId] = grandchild.attributes.int("value")
+                        }
+                    case "required-ability":
+                        if let abilityId = grandchild.attributes["id"] {
+                            requiredAbilities[abilityId] = grandchild.attributes.bool("value", default: true)
+                        }
+                    case "modifier":
+                        guard grandchild.attributes["id"] == "model.modifier.warehouseStorage",
+                              grandchild.attributes["type"] == "additive" else { continue }
+                        if let rawValue = grandchild.attributes["value"],
+                           let value = Double(rawValue), value.isFinite {
+                            warehouseStorageBonus += Int(value.rounded(.towardZero))
                         }
                     case "production":
                         let unattended = grandchild.attributes.bool("unattended", default: false)
@@ -838,12 +1078,14 @@ public final class Specification: @unchecked Sendable {
                     id: buildingId,
                     upkeep: child.attributes.int("upkeep"),
                     requiredPopulation: child.attributes.int("required-population"),
+                    warehouseStorageBonus: warehouseStorageBonus,
                     workplaces: child.attributes["workplaces"].flatMap { Int($0) },
                     minimumSkill: child.attributes["minimum-skill"].flatMap { Int($0) },
                     maximumSkill: child.attributes["maximum-skill"].flatMap { Int($0) },
                     upgradesFrom: child.attributes["upgrades-from"],
                     extendsId: child.attributes["extends"],
                     requiredGoods: requiredGoods,
+                    requiredAbilities: requiredAbilities,
                     buildableUnitTypes: buildableUnitTypes,
                     abilities: abilities,
                     productionOutputs: outputs,
@@ -881,9 +1123,13 @@ public final class Specification: @unchecked Sendable {
             }
             switch child.tag {
             case "founding-father":
+                foundingFatherIds.insert(id)
                 foundingFatherModifiers[id] = Self.productionModifiers(in: child.children)
+                foundingFatherLibertyModifiers[id] = Self.colonyLibertyModifiers(in: child.children)
             case "european-nation-type":
                 nationTypeModifiers[id] = Self.productionModifiers(in: child.children)
+                nationTypeLibertyModifiers[id] = Self.colonyLibertyModifiers(in: child.children)
+                nationTypeParents[id] = child.attributes["extends"]
             default:
                 break
             }
@@ -918,6 +1164,22 @@ public final class Specification: @unchecked Sendable {
                     .compactMap { $0.attributes["type"] },
                 negatedScopeAbilities: scopes.filter { $0.attributes.bool("match-negated") }
                     .compactMap { $0.attributes["ability-id"] }
+            )
+        }
+    }
+
+    private static func colonyLibertyModifiers(in children: [ParsedMessage]) -> [ColonyLibertyModifier] {
+        children.compactMap { child in
+            guard child.tag == "modifier",
+                  child.attributes["id"] == "model.modifier.SoL",
+                  let value = Double(child.attributes["value"] ?? "") else { return nil }
+            let kind = ProductionModifierInfo.Kind(
+                rawValue: child.attributes["type"]?.lowercased() ?? "additive"
+            ) ?? .additive
+            return ColonyLibertyModifier(
+                kind: kind,
+                value: value,
+                index: child.attributes.int("index", default: 100)
             )
         }
     }

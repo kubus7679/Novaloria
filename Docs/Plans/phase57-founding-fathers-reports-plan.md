@@ -55,5 +55,6 @@ Daten, fehlende Java-Reports, Event-Log und Server-Abfragen.
 
 - Die `modelMessage`-Texte sind i18n-Keys; ohne Message-Bundle wird der Key
   (bzw. `display`) angezeigt, kein lokalisierter Satz.
-- Der Continental-Congress-Fortschritt (Glocken/Liberty) wird nicht als
-  Prozentbalken dargestellt; es werden die bekannten Väter gelistet.
+- Fortschritt und Runden bis zum nächsten Gründervater werden aus der aktuellen
+  Glockenproduktion geschätzt. Änderungen an Arbeitsaufträgen, Ereignisse und
+  serverseitige Produktionskorrekturen können die Prognose verändern.

@@ -278,6 +278,7 @@ struct GameView: View {
                         currentBuildQueue: state.selectedColonyBuildQueue,
                         buildingLabel: { state.buildingDisplayName($0) },
                         storedGoods: state.selectedColonyStoredGoods,
+                        warehouseCapacity: state.selectedColonyWarehouseCapacity,
                         carrierGoods: state.selectedColonyCarrierGoods,
                         buildTargetLabel: state.selectedColonyBuildTarget?.label,
                         buildRequirements: state.selectedColonyBuildRequirements,
@@ -285,14 +286,19 @@ struct GameView: View {
                         buildETATurns: state.selectedColonyEstimatedBuildTurns,
                         estimatedBuildPerTurn: state.selectedColonyEstimatedBuildPerTurn,
                         estimatedProduction: state.selectedColonyEstimatedProduction,
+                        efficiencyProgress: state.colonyEfficiencyProgress(selectedColony),
                         growthETATurns: state.selectedColonyEstimatedGrowthTurns,
-                        foodGoodsIds: state.selectedColonyFoodGoodsIds
+                        foodGoodsIds: state.selectedColonyFoodGoodsIds,
+                        availableGold: state.localPlayer?.gold ?? 0,
+                        onClaimLand: { tileId, price in
+                            state.claimLand(price: price, tileId: tileId, claimantId: selectedColony.id)
+                        }
                     )
                     .id(selectedColony.id)
                 }
                 .frame(
-                    minWidth: 640, idealWidth: 820, maxWidth: 1100,
-                    minHeight: 400, idealHeight: 640, maxHeight: 760)
+                    minWidth: 1000, idealWidth: 1280, maxWidth: 1600,
+                    minHeight: 640, idealHeight: 800, maxHeight: 1000)
             }
         }
         .sheet(

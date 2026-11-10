@@ -1,0 +1,93 @@
+[
+  {
+    "id": "colopedia.concepts.taxes",
+    "category": "concepts",
+    "title": "Taxes",
+    "summary": "",
+    "text": "Early in the game, the Monarch does not levy any taxes on your income. Over time, however, the Monarch will be sure to increase sales taxes for a number of reasons that you may find more or less convincing. Every time the Monarch proposes to increase taxes, you may refuse. In that case, a particular type of goods will be boycotted, which means that you will no longer be able to buy or sell that type of goods in Europe, and up to one hundred items of that type of goods will be destroyed by enraged colonists in one of your colonies.\n\nBoycotts can be lifted by paying your tax arrears (a costly business), or by the election of Jacob Fugger to the Continental Congress.",
+    "facts": [],
+    "related": [
+      "model.foundingFather.jacobFugger"
+    ],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.efficiency",
+    "category": "concepts",
+    "title": "Efficiency",
+    "summary": "",
+    "text": "The efficiency of your colonies depends on their support for the idea of independence. If 50 percent of the colonists favour the rebel cause, the colony is granted a +1 production bonus. As soon as 100 percent of the colonists become rebels, the production bonus increases to +2.\n\nOn the other hand, if the number of royalists exceeds the bad government limit, the colony incurs a production penalty of -1. Should the number of royalists exceed the very bad government limit, the production penalty is increased to -2. These two limits depend on the difficulty level and can be checked in the difficulty level report.\n\nIn order to increase the efficiency of a colony, you need to reduce its population, or produce more liberty bells.",
+    "facts": [],
+    "related": [
+      "model.goods.bells"
+    ],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.education",
+    "category": "concepts",
+    "title": "Education",
+    "summary": "",
+    "text": "The most efficient way to educate your colonists is to build a schoolhouse and assign an expert unit as a teacher. The teacher will then turn a free colonist into an expert of the same type. Teachers are also able to upgrade petty criminals to indentured servants, and indentured servants to free colonists.\n\nSome skills can also be learned from the natives, by sending a free colonist or indentured servant to live in a native settlement for a turn. And some skills can also be learned by experience, by putting a free colonist to work a colony tile. Free colonists working in the fields and forests surrounding your colonies accumulate up to 200 points of experience, which amounts to a four percent chance of being upgraded.",
+    "facts": [],
+    "related": [
+      "model.building.schoolhouse",
+      "model.unit.freeColonist",
+      "model.unit.pettyCriminal",
+      "model.unit.indenturedServant"
+    ],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.fortification",
+    "category": "concepts",
+    "title": "Fortification",
+    "summary": "",
+    "text": "Units can fortify themselves on a tile (by building temporary trenches and barriers) to increase their ability to defend. To fully fortify takes one turn. Fortification also prevents units from being ambushed, and fortified artillery are no longer considered to be \"in the open\" although attacking will damage the fortifications. Fortification only provides a defensive combat bonus in the absence of other favourable defensive features, thus no bonus is available when fortifying on mountains or in a colony with a fort or fortress.",
+    "facts": [],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.independence",
+    "category": "concepts",
+    "title": "Independence",
+    "summary": "",
+    "text": "You start the game as an explorer with a handful of units at your disposal. The Monarch expects you to establish a colony in the New World and to bring treasures and exotic goods to your Home Port. You, however, have different plans: you wish to establish an independent nation.\n\nIn order to declare independence, you need to convince at least 50% of the population of your colonies. You can do this by producing liberty bells, which also increase the efficiency of your colonies.\n\nAs you can imagine, the Monarch will not just let you go. After declaring independence, you will have to fight and destroy the Royal Expeditionary Force (REF). If the REF ever controls all your coastal colonies, or at least 90% of your population, your bid for independence will fail.",
+    "facts": [],
+    "related": [
+      "model.goods.bells",
+      "colopedia.concepts.efficiency",
+      "colopedia.concepts.ref"
+    ],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.ref",
+    "category": "concepts",
+    "title": "Royal Expeditionary Force",
+    "summary": "",
+    "text": "The Monarch knows better than to trust a bunch of rag-tag conquistadors and religious malcontents unwilling to pay taxes and to bow to the fair demands of the Crown. For this reason, the Monarch keeps a special Royal Expeditionary Force (REF) ready to quell any attempts to declare independence and to secede from the home country.\n\nThe Royal Expeditionary Force is partially balanced by the Intervention Force, which will be dispatched by a foreign power sympathetic to your cause, provided you can produce a sufficient number of liberty bells. From time to time, further units will be added to both the Royal Expeditionary Force and the Intervention Force.",
+    "facts": [],
+    "related": [
+      "colopedia.concepts.independence",
+      "colopedia.concepts.interventionForce",
+      "model.goods.bells"
+    ],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.interventionForce",
+    "category": "concepts",
+    "title": "Intervention Force",
+    "summary": "",
+    "text": "Any attempt of your colonies to declare independence will inevitably weaken your home country. This is in the interest of your home country's enemies. For this reason, one of them will dispatch an Intervention Force to support you against the Royal Expeditionary Force in the War of Independence, provided you can produce a sufficient number of liberty bells.\n\nOver the course of the game, both the Intervention Force and the Royal Expeditionary Force will be reinforced with further units.",
+    "facts": [],
+    "related": [
+      "colopedia.concepts.independence",
+      "colopedia.concepts.ref",
+      "model.goods.bells"
+    ],
+    "icon": null
+  }
+]

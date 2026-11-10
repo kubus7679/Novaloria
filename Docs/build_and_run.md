@@ -168,17 +168,33 @@ als `lobby-background.jpg`; die FreeCol-Lizenz liegt den App-Ressourcen bei.
 - Abgelehnte Serveraktionen werden einheitlich auf Deutsch erklärt. Unbekannte
   Fehler behalten die technische Meldung. Bei Zeitüberschreitungen zuerst den
   Spielstand prüfen, bevor eine möglicherweise bereits ausgeführte Aktion wiederholt wird.
-- **Kolonie:** Übersicht, Arbeiter/Felder, Gebäude/Bau und Lager/Fracht sind
-  getrennte Bereiche. Aktionen und Serverupdates behalten die geöffnete Kolonie bei.
+- **Kolonie:** Gelände und Versorgung, Gebäude mit Arbeiterplätzen, Bauauftrag und
+  ausgewählter Arbeiter stehen gemeinsam in einem großen Fenster. Freie Einwohner,
+  Hafen/Fracht und Lagerbilanz bleiben darunter erreichbar, ohne Bereichsreiter.
+  Bei kleinen Fenstern scrollt die gemeinsame Ansicht; lange Gebäude- und Warenlisten
+  scrollen innerhalb ihres Bereichs. Aktionen und Serverupdates behalten die geöffnete Kolonie bei.
   **Vorherige** und **Nächste** blättern alphabetisch durch die eigenen Kolonien
   (mit Umlauf); das Dropdown im Kolonienamen öffnet direkt eine bestimmte Kolonie.
-  Unter **Arbeiter und Felder** einen Arbeiter auswählen und
-  ein Feld der Geländeübersicht anklicken; belegte Felder tauschen die Arbeiter.
-  Warensymbole zeigen die Produktion der besetzten Felder und des Zentrums;
-  die angegebenen Mengen sind Basiswerte ohne Arbeiter- und Geländeboni.
+  Ein Arbeiterporträt auswählen und ein Feld oder einen freien Gebäudeplatz anklicken.
+  Alternativ Arbeiter auf ein Feld oder Gebäude ziehen; belegte Felder tauschen die Arbeiter.
+  Warensymbole zeigen die Produktionsvorhersage der besetzten Felder und des Zentrums
+  einschließlich bekannter Boni; unbesetzte Felder zeigen die möglichen Basiswerte.
+  **Tooltips** erklären Grundwerte, Arbeiter-/Gelände-/Kolonieboni, verfügbare Rohstoffe,
+  Rundung, Verbrauch und Bilanz. Die Gebäude- und Feldwerte verwenden dieselbe Berechnung
+  wie die Produktionsübersicht. Vorhersagen sind als clientseitige Schätzungen
+  gekennzeichnet; das endgültige Rundenergebnis berechnet der Server.
+  Fremde Kolonien zeigen nur bekannte Daten und bleiben schreibgeschützt.
+  Der Koloniebonus ist ein additiver Wert, kein Prozentwert.
+  Weitere Tooltips erläutern Nahrung/Wachstum, Baumaterialien, Bauzeit und Frachtgrenzen.
+  Das Kolonieland ist vergrößert; der Bauauftrag steht direkt unter Nahrung und Wachstum.
+  Die Lehrerauswahl befindet sich im Rechtsklickmenü des ausgewählten Kolonisten;
+  dessen verbleibende Ausbildungszeit wird im Arbeiter-Inspector angezeigt.
+  Im Lager wird die maximale Kapazität je Warenart aus den gebauten Lagergebäuden angezeigt.
   Das Zentrum arbeitet automatisch, Wasser benötigt ein Dock. Fremdes Land wird
   nicht automatisch gekauft oder gestohlen. Gebäude bleiben über die Arbeitsplatz-
-  auswahl erreichbar. Der Name lässt sich unter **Übersicht** per Schaltfläche
+  auswahl erreichbar. **Bauliste…** und **Produktionsdetails…** öffnen Detail-Popover,
+  **Export- und Importregeln…** die Lagereinstellungen.
+  Der Name lässt sich unter **Verwaltung** per Schaltfläche
   oder Eingabetaste ändern; abgelehnte
   Serveraktionen werden im Dialog angezeigt.
   **Verwaltung** enthält das bestätigungspflichtige Verlassen der Kolonie.
@@ -195,6 +211,14 @@ als `lobby-background.jpg`; die FreeCol-Lizenz liegt den App-Ressourcen bei.
 - Die Kamera behält beim Vergrößern/Verkleinern des Fensters ihren Mittelpunkt,
   soweit die Kartengrenzen es erlauben. **Ansicht → Auswahl zentrieren** führt
   zur ausgewählten Einheit bzw. zum Feld zurück.
+- Siedlungsbeschriftungen zeigen Bevölkerung und Namen auf einem transparenten
+  Schild in der Nationsfarbe. Eigene Kolonien zeigen darunter das aktuelle
+  Bauvorhaben und die geschätzten Restzüge aus Vorräten und Nettoproduktion aller
+  benötigten Waren; `?` bedeutet, dass die Fertigstellung nicht abschätzbar ist.
+  Fremde Bauvorhaben bleiben verborgen. Beschriftungen beachten Sichtbarkeit
+  und vermeiden Überlappungen; sie lassen sich im Ansichtsmenü ausblenden.
+  Grenzen bilden abgerundete, zusammenhängende Außenkonturen pro Nation,
+  ohne Trennlinien zwischen eigenen Nachbarfeldern.
 - Das Spielfenster benötigt mindestens 900 × 620 Punkte. Bewegung setzt wie
   bisher den eigenen Zug und eine aktive Einheit mit Bewegungspunkten voraus;
   transportierte Einheiten müssen zuerst ausgeschifft werden.
@@ -203,8 +227,9 @@ als `lobby-background.jpg`; die FreeCol-Lizenz liegt den App-Ressourcen bei.
 
 ### UI-Ressourcen
 
-Terrain-Basis, Wald-/Höhen-Overlays, Küstenvarianten, deutsche Objektnamen sowie
-Colopädie-Texte und -Grafiken werden aus dem lokalen FreeCol-Checkout importiert:
+Terrain-Basis, Wald-/Höhen-Overlays, Küstenvarianten, rollenspezifische
+Einheitengrafiken, deutsche Objektnamen sowie Colopädie-Texte und -Grafiken werden
+aus dem lokalen FreeCol-Checkout importiert:
 
 ```bash
 python3 Tools/import-ui-resources.py ../freecol
@@ -213,6 +238,8 @@ python3 Tools/import-ui-resources.py ../freecol
 Diese Ressourcen stammen von den FreeCol-Mitwirkenden
 ([FreeCol](https://www.freecol.org), GPL v2). Die Lizenz wird als
 `Sources/Novaloria/Resources/FreeCol-COPYING` mitgeliefert.
+Der Zähe Pionier nutzt mit Werkzeugen seine Pioniergrafik, ohne Werkzeuge die
+Zivilgrafik.
 Die Küsten verwenden die stilkodierten Edge-/Corner-Texturen des Originals;
 die neuere animierte Java-Übergangsdarstellung wird nicht nachgebildet.
 Straßen, Flüsse und Pflugspuren werden als vereinfachte Kartenoverlays gezeichnet.

@@ -62,6 +62,76 @@ final class MapInteractionTests: XCTestCase {
         XCTAssertTrue(try XCTUnwrap(game.tiles["tile-3-2"]).resources.isEmpty)
     }
 
+    func testTreasureTrainUsesItsDedicatedGraphic() throws {
+        let cache = TileImageCache.shared
+        let image = try XCTUnwrap(cache.unitImage(forUnitType: "model.unit.treasureTrain"))
+        let treasureTrainImage = try XCTUnwrap(
+            cache.loadImage(named: "model.unit.treasureTrain", folder: "colopedia")
+        )
+        XCTAssertTrue(image === treasureTrainImage)
+    }
+
+    func testEquippedUnitRolesUseTheirRoleGraphics() throws {
+        let cache = TileImageCache.shared
+        for (role, imageName) in [
+            ("scout", "scout"),
+            ("soldier", "soldier"),
+            ("dragoon", "dragoon"),
+            ("pioneer", "pioneer"),
+        ] {
+            let image = try XCTUnwrap(cache.unitImage(
+                forUnitType: "model.unit.freeColonist", role: "model.role.\(role)"
+            ))
+            let roleImage = try XCTUnwrap(cache.loadImage(named: imageName, folder: "units"))
+            XCTAssertTrue(image === roleImage, "Expected \(role) role to use \(imageName).png")
+        }
+
+        let defaultImage = try XCTUnwrap(cache.unitImage(
+            forUnitType: "model.unit.freeColonist", role: "model.role.default"
+        ))
+        let freeColonistImage = try XCTUnwrap(cache.loadImage(named: "freeColonist", folder: "units"))
+        XCTAssertTrue(defaultImage === freeColonistImage)
+    }
+
+    func testHardyPioneerUsesEquippedGraphicUntilToolsRunOut() throws {
+        let cache = TileImageCache.shared
+        let equippedImage = try XCTUnwrap(cache.loadImage(named: "hardyPioneer.pioneer", folder: "units"))
+        let civilianImage = try XCTUnwrap(cache.loadImage(named: "hardyPioneer", folder: "units"))
+        XCTAssertNotEqual(try XCTUnwrap(equippedImage.tiffRepresentation),
+                          try XCTUnwrap(civilianImage.tiffRepresentation))
+
+        var pioneer = try FreeColGame.Unit(
+            id: "hardy-pioneer",
+            attributes: ["unitType": "model.unit.hardyPioneer", "role": "model.role.pioneer", "roleCount": "5"],
+            children: [], game: Game()
+        )
+        for count in stride(from: 5, through: 1, by: -1) {
+            pioneer.applyPartial(attributes: ["roleCount": "\(count)"])
+            XCTAssertTrue(cache.unitImage(forUnitType: pioneer.unitType, role: pioneer.role) === equippedImage,
+                          "Expected the equipped graphic with \(count) tool sets remaining")
+        }
+
+        pioneer.applyPartial(attributes: ["role": "model.role.default", "roleCount": "0"])
+        XCTAssertTrue(cache.unitImage(forUnitType: pioneer.unitType, role: pioneer.role) === civilianImage)
+        XCTAssertTrue(cache.unitImage(forUnitType: pioneer.unitType) === civilianImage)
+
+        pioneer.applyPartial(attributes: ["role": "model.role.pioneer", "roleCount": "1"])
+        XCTAssertTrue(cache.unitImage(forUnitType: pioneer.unitType, role: pioneer.role) === equippedImage)
+    }
+
+    func testSpecialMountedUnitTypesUseTheirSpecificRoleGraphics() throws {
+        let cache = TileImageCache.shared
+        for (unitType, role, imageName) in [
+            ("model.unit.seasonedScout", "model.role.scout", "seasonedScout.scout"),
+            ("model.unit.veteranSoldier", "model.role.dragoon", "veteranSoldier.dragoon"),
+            ("model.unit.colonialRegular", "model.role.dragoon", "colonialRegular.dragoon"),
+        ] {
+            let image = try XCTUnwrap(cache.unitImage(forUnitType: unitType, role: role))
+            let roleImage = try XCTUnwrap(cache.loadImage(named: imageName, folder: "units"))
+            XCTAssertTrue(image === roleImage, "Expected \(unitType) with \(role) to use \(imageName).png")
+        }
+    }
+
     func testOriginalTileImprovementGraphicsCoverRiverStylesAndPlowing() throws {
         let cache = TileImageCache.shared
         for styleNumber in 0..<81 {
@@ -494,6 +564,11 @@ final class MapInteractionTests: XCTestCase {
         let father = try XCTUnwrap(entries.first { $0.id == "model.foundingFather.adamSmith" })
         XCTAssertEqual(father.title, "Adam Smith")
         XCTAssertFalse(father.text.isEmpty)
+        let concept = try XCTUnwrap(entries.first { $0.id == "colopedia.concepts.taxes" })
+        XCTAssertEqual(concept.category, .concepts)
+        XCTAssertEqual(concept.title, "Steuern")
+        XCTAssertTrue(concept.text.contains("Boykotte können aufgehoben werden"))
+        XCTAssertEqual(entries.filter { $0.category == .concepts }.count, 7)
         XCTAssertFalse(ColopediaCatalog.search(entries, query: "Lagerhaus").isEmpty)
         XCTAssertTrue(ColopediaCatalog.search(entries, query: "nichtvorhanden123").isEmpty)
         for entry in entries {
@@ -544,8 +619,75 @@ final class MapInteractionTests: XCTestCase {
             workTypeCandidates: state.selectedColonyWorkTypeCandidates, goodsCandidates: state.colonyGoodsCandidates,
             onAbandonColony: {}, canAbandonColony: false, onSetBuildQueue: { _ in },
             onPutOutsideColony: {}, canPutOutsideColony: false, selectedCarrierId: nil,
-            onLoadGoods: { _, _ in }, onUnloadGoods: { _, _ in }, section: .workers
+            onLoadGoods: { _, _ in }, onUnloadGoods: { _, _ in }
         ), name: "colony-workers-interactive", width: 760, height: 600)
+    }
+
+    @MainActor
+    func testColonyWarehouseCapacityUsesBuiltBuildingModifiersAndInheritance() throws {
+        let xml = InteractionRepairTests.gameXML
+            .replacingOccurrences(
+                of: "<building-type id=\"model.building.carpenterHouse\">",
+                with: """
+                <building-type id="model.building.depot">
+                  <modifier id="model.modifier.warehouseStorage" type="additive" value="100.0"/>
+                </building-type>
+                <building-type id="model.building.warehouse" extends="model.building.depot">
+                  <modifier id="model.modifier.warehouseStorage" type="additive" value="100.0"/>
+                </building-type>
+                <building-type id="model.building.warehouseExpansion" extends="model.building.warehouse">
+                  <modifier id="model.modifier.warehouseStorage" type="additive" value="100.0"/>
+                </building-type>
+                <building-type id="model.building.carpenterHouse">
+                """
+            )
+            .replacingOccurrences(
+                of: "<colonyTile id=\"field-east\"",
+                with: """
+                <building id="warehouse-1" buildingType="model.building.warehouse"/>
+                <colonyTile id="field-east"
+                """
+            )
+
+        let game = Game()
+        try game.load(from: XMLDecoder.decode(xml))
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+        state.openColonyPanel(colonyId: "colony-1")
+
+        XCTAssertEqual(
+            game.specification?.warehouseStorageCapacity(forBuildingType: "model.building.warehouseExpansion"),
+            300
+        )
+        XCTAssertEqual(state.selectedColonyWarehouseCapacity, 200)
+
+        try game.applyUpdate(XMLDecoder.decode("""
+        <update><colony id="colony-1" name="Boston"/></update>
+        """))
+        state.gameUpdateID += 1
+        XCTAssertEqual(state.selectedColonyWarehouseCapacity, 200)
+    }
+
+    @MainActor
+    func testColonyWarehouseCapacityIncludesDefaultDepotWhenBuildingIsOmitted() throws {
+        let xml = InteractionRepairTests.gameXML.replacingOccurrences(
+            of: "<building-type id=\"model.building.carpenterHouse\">",
+            with: """
+            <building-type id="model.building.depot">
+              <modifier id="model.modifier.warehouseStorage" type="additive" value="100.0"/>
+            </building-type>
+            <building-type id="model.building.carpenterHouse">
+            """
+        )
+        let game = Game()
+        try game.load(from: XMLDecoder.decode(xml))
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+        state.openColonyPanel(colonyId: "colony-1")
+
+        XCTAssertEqual(state.selectedColonyWarehouseCapacity, 100)
     }
 
     @MainActor
@@ -565,20 +707,21 @@ final class MapInteractionTests: XCTestCase {
         XCTAssertEqual(workplace.productionPerTurn, 3)
 
         let colony = try XCTUnwrap(state.selectedColony)
-        try checkPanel(ColonyPanelView(
+        var dropActions: [String] = []
+        let panel = ColonyPanelView(
             colony: colony,
             ownerName: "Alice",
             units: state.selectedColonyUnits.filter { state.canUnitWorkInColony($0) },
             canManage: true,
             selectedWorkerUnitId: state.selectedColonyWorkerUnitId,
             terrainFields: state.selectedColonyTerrain,
-            onSelectWorker: { state.selectUnit($0, onTile: colony.tileId) },
+            onSelectWorker: { dropActions.append("select:\($0)") },
             onChangeWorkType: { _ in },
             onChangeWorkImprovementType: { _ in },
             onClearSpeciality: {},
             onAssignTeacher: { _ in },
             onClearTeacher: {},
-            onWorkAtLocation: { _, _ in },
+            onWorkAtLocation: { location, _ in dropActions.append("work:\(location)") },
             onRenameColony: { _ in },
             onPayForBuilding: {},
             onSetGoodsLevel: { _ in },
@@ -591,13 +734,192 @@ final class MapInteractionTests: XCTestCase {
             canPutOutsideColony: false,
             selectedCarrierId: nil,
             onLoadGoods: { _, _ in },
-            onUnloadGoods: { _, _ in },
-            section: .workers
-        ), name: "colony-worker-and-workplace-layout", width: 900, height: 720)
+            onUnloadGoods: { _, _ in }
+        )
+        XCTAssertTrue(panel.dropWorker("field-worker", in: workplace))
+        XCTAssertEqual(dropActions, ["select:field-worker", "work:building-1"],
+                       "A dropped worker must become selected before the existing assignment action runs")
+        XCTAssertFalse(panel.dropWorker("unknown-unit", in: workplace))
+        XCTAssertFalse(panel.dropWorker("building-worker", in: workplace))
+        XCTAssertEqual(dropActions.count, 2)
+        if let center = state.selectedColonyTerrain.first(where: { $0.offset == .zero }) {
+            XCTAssertFalse(panel.dropWorkerOnField("field-worker", center))
+            XCTAssertEqual(dropActions.count, 2, "The automatic center is not a drop target")
+        } else {
+            XCTFail("The terrain fixture must include the colony center")
+        }
+        for field in state.selectedColonyTerrain {
+            for output in field.production {
+                if let source = state.selectedColonyEstimatedProduction.first(where: { $0.id == output.goodsType })?
+                    .production(at: field.workLocationId ?? field.tile.id) {
+                    XCTAssertEqual(output.estimatedAmount, source.amount)
+                    XCTAssertEqual(output.explanation, source.explanation)
+                }
+            }
+        }
+        try checkPanel(panel, name: "colony-worker-and-workplace-layout", width: 1200, height: 760)
     }
 
     @MainActor
-    func testTeachingBuildingIsAssignableAndOnlyQualifiedTeachersAreListed() throws {
+    func testUnifiedColonyShowsLiveProductionForMultipleBuildings() throws {
+        let tiles = (0..<5).flatMap { x in
+            (0..<5).map { y in
+                "<tile id=\"tile-\(x)-\(y)\" x=\"\(x)\" y=\"\(y)\" type=\"model.tile.plains\"/>"
+            }
+        }.joined()
+        let mapGame = Game()
+        try mapGame.load(from: XMLDecoder.decode("""
+        <game><map id="map-1" width="5" height="5">\(tiles)</map></game>
+        """))
+        let neighbors = mapGame.neighborTileIds(of: "tile-2-2")
+        XCTAssertGreaterThanOrEqual(neighbors.count, 2)
+        let fields = neighbors.prefix(2).enumerated().map { index, tileId in
+            """
+            <colonyTile id="field-\(index)" workTile="\(tileId)">
+              <unit id="farmer-\(index)" owner="player-1" unitType="model.unit.freeColonist" location="field-\(index)" workType="model.goods.grain"/>
+            </colonyTile>
+            """
+        }.joined()
+        let colonyXML = """
+          <colony id="colony-1" name="Wolfsburg" owner="player-1" tile="tile-2-2"
+                  unitCount="7" productionBonus="1" sonsOfLiberty="60">
+            \(fields)
+            <building id="carpenter" buildingType="model.building.carpenterHouse">
+              <unit id="carpenter-worker" owner="player-1" unitType="model.unit.freeColonist" location="carpenter" workType="model.goods.hammers"/>
+            </building>
+            <building id="smith" buildingType="model.building.blacksmithHouse">
+              <unit id="smith-worker" owner="player-1" unitType="model.unit.freeColonist" location="smith" workType="model.goods.tools"/>
+            </building>
+            <building id="hall" buildingType="model.building.townHall">
+              <unit id="hall-worker" owner="player-1" unitType="model.unit.freeColonist" location="hall" workType="model.goods.bells"/>
+            </building>
+            <building id="church" buildingType="model.building.church">
+              <unit id="church-worker" owner="player-1" unitType="model.unit.freeColonist" location="church" workType="model.goods.crosses"/>
+            </building>
+            <building id="school" buildingType="model.building.schoolhouse"/>
+            <building id="weaver" buildingType="model.building.weaverHouse"/>
+            <unit id="idle-worker" owner="player-1" unitType="model.unit.freeColonist" location="colony-1"/>
+            <buildQueueItem id="model.building.printingPress"/>
+            <goodsContainer><storedGoods>
+              <goods type="model.goods.food" amount="76"/>
+              <goods type="model.goods.lumber" amount="25"/>
+              <goods type="model.goods.ore" amount="158"/>
+              <goods type="model.goods.tools" amount="134"/>
+              <goods type="model.goods.hammers" amount="18"/>
+            </storedGoods></goodsContainer>
+          </colony>
+        """
+        let game = Game()
+        try game.load(from: XMLDecoder.decode("""
+        <game id="game-1">
+          <player id="player-1" username="Alice"/>
+          <player id="player-2" username="Observer"/>
+          <map id="map-1" width="5" height="5">\(tiles)</map>
+          \(colonyXML)
+          <freecol-specification id="spec">
+            <goods-type id="model.goods.food" is-food="true"/>
+            <goods-type id="model.goods.grain" is-food="true" storable="false"/>
+            <goods-type id="model.goods.hammers" storable="false"/>
+            <goods-type id="model.goods.tools"/><goods-type id="model.goods.lumber"/>
+            <goods-type id="model.goods.ore"/><goods-type id="model.goods.cloth"/>
+            <goods-type id="model.goods.cotton"/>
+            <unit-type id="model.unit.freeColonist">
+              <ability id="model.ability.person" value="true"/>
+              <consumes id="model.goods.food" value="2"/>
+            </unit-type>
+            <tile-type id="model.tile.plains">
+              <production unattended="true"><output goods-type="model.goods.grain" value="4"/></production>
+              <production><output goods-type="model.goods.grain" value="8"/></production>
+            </tile-type>
+            <building-type id="model.building.carpenterHouse" workplaces="3">
+              <production><input goods-type="model.goods.lumber" value="3"/><output goods-type="model.goods.hammers" value="3"/></production>
+            </building-type>
+            <building-type id="model.building.blacksmithHouse" workplaces="3">
+              <production><input goods-type="model.goods.ore" value="3"/><output goods-type="model.goods.tools" value="3"/></production>
+            </building-type>
+            <building-type id="model.building.townHall" workplaces="3">
+              <production><output goods-type="model.goods.bells" value="3"/></production>
+            </building-type>
+            <building-type id="model.building.church" workplaces="3">
+              <production><output goods-type="model.goods.crosses" value="3"/></production>
+            </building-type>
+            <building-type id="model.building.schoolhouse" workplaces="1"><ability id="model.ability.teach" value="true"/></building-type>
+            <building-type id="model.building.weaverHouse" workplaces="3">
+              <production><input goods-type="model.goods.cotton" value="3"/><output goods-type="model.goods.cloth" value="3"/></production>
+            </building-type>
+            <building-type id="model.building.printingPress">
+              <required-goods id="model.goods.hammers" value="120"/>
+              <required-goods id="model.goods.tools" value="50"/>
+            </building-type>
+          </freecol-specification>
+        </game>
+        """))
+        let state = GameState()
+        state.phase = .inGame
+        state.localPlayerName = "Alice"
+        game.currentPlayerId = "player-1"
+        state.installGame(game)
+        state.selectUnit("carpenter-worker", onTile: "tile-2-2")
+        XCTAssertEqual(state.localPlayerId, "player-1")
+        let colony = try XCTUnwrap(state.selectedColony)
+        let efficiencyProgress = try XCTUnwrap(state.colonyEfficiencyProgress(colony))
+        XCTAssertEqual(efficiencyProgress.currentProductionBonus, colony.productionBonus)
+        let workplaces = state.selectedColonyBuildingWorkplaces
+        XCTAssertEqual(workplaces.count, 6)
+        XCTAssertEqual(workplaces.first { $0.id == "carpenter" }?.productionPerTurn, 4)
+        XCTAssertTrue(workplaces.first { $0.id == "carpenter" }?.productionExplanation.contains("3 + 1 = 4") == true)
+        XCTAssertEqual(state.selectedColonyEstimatedGrowthTurns, 14)
+        XCTAssertEqual(state.selectedColonyEstimatedBuildTurns, 26)
+        XCTAssertEqual(state.selectedColonyTerrain.flatMap(\.production).filter {
+            $0.goodsType == "model.goods.grain"
+        }.compactMap(\.estimatedAmount).sorted(), [5, 9, 9])
+        state.localPlayerName = "Observer"
+        XCTAssertEqual(state.localPlayerId, "player-2")
+        XCTAssertFalse(state.canManageSelectedColony)
+        XCTAssertEqual(state.selectedColonyBuildingWorkplaces.first { $0.id == "carpenter" }?.productionPerTurn, 4,
+                       "Spy results must use known workers of the colony's owner, not the observer")
+        XCTAssertEqual(state.colonyPopulation(colony), 7)
+        state.localPlayerName = "Alice"
+        let panel = ColonyPanelView(
+            colony: colony, ownerName: "Alice", units: state.selectedColonyUnits,
+            canManage: true, selectedWorkerUnitId: state.selectedColonyWorkerUnitId,
+            population: state.colonyPopulation(colony), terrainFields: state.selectedColonyTerrain,
+            onChangeWorkType: { _ in }, onChangeWorkImprovementType: { _ in },
+            onClearSpeciality: {}, onAssignTeacher: { _ in }, onClearTeacher: {},
+            onWorkAtLocation: { _, _ in }, onRenameColony: { _ in },
+            onPayForBuilding: {}, onSetGoodsLevel: { _ in },
+            workLocationCandidates: state.selectedColonyWorkLocationCandidates,
+            buildingWorkplaces: workplaces, workTypeCandidates: state.selectedColonyWorkTypeCandidates,
+            goodsCandidates: state.colonyGoodsCandidates,
+            onAbandonColony: {}, canAbandonColony: false, onSetBuildQueue: { _ in },
+            onPutOutsideColony: {}, canPutOutsideColony: false, selectedCarrierId: nil,
+            onLoadGoods: { _, _ in }, onUnloadGoods: { _, _ in },
+            currentBuildQueue: state.selectedColonyBuildQueue,
+            storedGoods: state.selectedColonyStoredGoods,
+            buildTargetLabel: state.selectedColonyBuildTarget?.label,
+            buildRequirements: state.selectedColonyBuildRequirements,
+            buildETATurns: state.selectedColonyEstimatedBuildTurns,
+            estimatedBuildPerTurn: state.selectedColonyEstimatedBuildPerTurn,
+            estimatedProduction: state.selectedColonyEstimatedProduction,
+            efficiencyProgress: efficiencyProgress,
+            growthETATurns: state.selectedColonyEstimatedGrowthTurns,
+            foodGoodsIds: state.selectedColonyFoodGoodsIds
+        )
+        try checkPanel(panel, name: "colony-six-buildings", width: 1200, height: 760)
+        let depletedColony = colonyXML.replacingOccurrences(
+            of: "<goods type=\"model.goods.lumber\" amount=\"25\"/>",
+            with: "<goods type=\"model.goods.lumber\" amount=\"0\"/>"
+        )
+        try game.applyUpdate(XMLDecoder.decode("<update>\(depletedColony)</update>"))
+        state.gameUpdateID += 1
+        let blocked = try XCTUnwrap(state.selectedColonyBuildingWorkplaces.first { $0.id == "carpenter" })
+        XCTAssertEqual(blocked.productionPerTurn, 0)
+        XCTAssertTrue(blocked.productionExplanation.contains("Vorrat 0"))
+        XCTAssertTrue(blocked.productionExplanation.contains("Ergebnis: 0"))
+    }
+
+    @MainActor
+    func testTeachingBuildingIsAssignableAndOnlyAvailableTeachersWorkingThereAreListed() throws {
         let xml = InteractionRepairTests.gameXML
             .replacingOccurrences(
                 of: "<unit-type id=\"model.unit.freeColonist\" extends=\"colonist\"/>",
@@ -609,11 +931,23 @@ final class MapInteractionTests: XCTestCase {
             .replacingOccurrences(
                 of: "<building-type id=\"model.building.carpenterHouse\">",
                 with: """
-                <building-type id="model.building.schoolhouse" workplaces="1"
+                <building-type id="model.building.schoolhouse" workplaces="5"
                                minimum-skill="1" maximum-skill="1">
                   <ability id="model.ability.teach" value="true"/>
                 </building-type>
                 <building-type id="model.building.carpenterHouse">
+                """
+            )
+            .replacingOccurrences(
+                of: "</freecol-specification>",
+                with: """
+                <unit-change-types>
+                  <unit-change-type id="model.unitChange.education">
+                    <unit-type-change from="model.unit.freeColonist"
+                                      to="model.unit.expertFarmer" turns="4"/>
+                  </unit-change-type>
+                </unit-change-types>
+                </freecol-specification>
                 """
             )
             .replacingOccurrences(
@@ -630,7 +964,17 @@ final class MapInteractionTests: XCTestCase {
             .replacingOccurrences(
                 of: "</colony>",
                 with: """
-                <building id="schoolhouse-1" buildingType="model.building.schoolhouse"/>
+                <building id="schoolhouse-1" buildingType="model.building.schoolhouse">
+                  <unit id="school-teacher" unitType="model.unit.expertFarmer"
+                        owner="player-1" location="schoolhouse-1" student="school-student"
+                        turnsOfTraining="2"/>
+                  <unit id="school-student" unitType="model.unit.freeColonist"
+                        owner="player-1" location="schoolhouse-1" teacher="school-teacher"/>
+                  <unit id="busy-school-teacher" unitType="model.unit.expertFarmer"
+                        owner="player-1" location="schoolhouse-1" student="another-student"/>
+                  <unit id="free-school-teacher" unitType="model.unit.expertFarmer"
+                        owner="player-1" location="schoolhouse-1"/>
+                </building>
                 </colony>
                 """
             )
@@ -645,16 +989,60 @@ final class MapInteractionTests: XCTestCase {
         XCTAssertTrue(state.selectedColonyWorkLocationCandidates.contains {
             $0.id == "schoolhouse-1" && $0.label == "Schule"
         })
-        XCTAssertTrue(state.selectedColonyTeacherCandidates.contains {
+        XCTAssertEqual(state.selectedColonyTeacherCandidates.map(\.id), ["free-school-teacher"])
+        let workplace = try XCTUnwrap(state.selectedColonyBuildingWorkplaces.first {
+            $0.id == "schoolhouse-1"
+        })
+        XCTAssertEqual(workplace.educationProgress.count, 1)
+        XCTAssertEqual(workplace.educationProgress.first?.studentUnitTypeId, "model.unit.freeColonist")
+        XCTAssertEqual(workplace.educationProgress.first?.remainingTurns, 2)
+        XCTAssertFalse(state.selectedColonyTeacherCandidates.contains {
             $0.id == "potential-teacher"
         })
         XCTAssertFalse(state.selectedColonyTeacherCandidates.contains {
             $0.id == "unqualified-teacher"
         })
+        XCTAssertFalse(state.selectedColonyTeacherCandidates.contains {
+            $0.id == "busy-school-teacher"
+        })
+
+        state.selectUnit("school-student", onTile: "tile-2-2")
+        let colony = try XCTUnwrap(state.selectedColony)
+        try checkPanel(ColonyPanelView(
+            colony: colony,
+            ownerName: "Alice",
+            units: state.selectedColonyUnits,
+            canManage: true,
+            selectedWorkerUnitId: "school-student",
+            population: state.colonyPopulation(colony),
+            terrainFields: state.selectedColonyTerrain,
+            onSelectWorker: { state.selectUnit($0, onTile: colony.tileId) },
+            onChangeWorkType: { _ in },
+            onChangeWorkImprovementType: { _ in },
+            onClearSpeciality: {},
+            onAssignTeacher: { _ in },
+            onClearTeacher: {},
+            onWorkAtLocation: { _, _ in },
+            onRenameColony: { _ in },
+            onPayForBuilding: {},
+            onSetGoodsLevel: { _ in },
+            workLocationCandidates: state.selectedColonyWorkLocationCandidates,
+            buildingWorkplaces: state.selectedColonyBuildingWorkplaces,
+            teacherCandidates: state.selectedColonyTeacherCandidates,
+            workTypeCandidates: state.selectedColonyWorkTypeCandidates,
+            onAbandonColony: {},
+            canAbandonColony: false,
+            onSetBuildQueue: { _ in },
+            onPutOutsideColony: {},
+            canPutOutsideColony: false,
+            selectedCarrierId: nil,
+            onLoadGoods: { _, _ in },
+            onUnloadGoods: { _, _ in }
+        ), name: "colony-education-context-menu", width: 1200, height: 760)
     }
 
     @MainActor
-    func testEveryEuropeAndColonySectionFitsSmallPanel() throws {
+    func testEuropeSectionsAndUnifiedColonyFitAvailableSpace() throws {
         let state = try makeState()
         try state.game?.applyUpdate(XMLDecoder.decode("""
         <update>
@@ -688,15 +1076,19 @@ final class MapInteractionTests: XCTestCase {
             try checkPanel(EuropePanelView(section: section).environment(state),
                            name: "europe-\(section)-600", width: 600, height: 480)
         }
-        for section in ColonyPanelView.ColonySection.allCases {
+        for size in [CGSize(width: 1200, height: 760), CGSize(width: 1000, height: 680),
+                     CGSize(width: 640, height: 480)] {
             let panel = ColonyPanelView(
                 colony: colony, ownerName: "Alice", units: state.selectedColonyUnits,
                 canManage: true, selectedWorkerUnitId: "unit-1",
                 population: state.colonyPopulation(colony),
+                terrainFields: state.selectedColonyTerrain,
                 onChangeWorkType: { _ in }, onChangeWorkImprovementType: { _ in },
                 onClearSpeciality: {}, onAssignTeacher: { _ in }, onClearTeacher: {},
                 onWorkAtLocation: { _, _ in }, onRenameColony: { _ in }, onPayForBuilding: {},
                 onSetGoodsLevel: { _ in },
+                workLocationCandidates: state.selectedColonyWorkLocationCandidates,
+                buildingWorkplaces: state.selectedColonyBuildingWorkplaces,
                 workTypeCandidates: [("model.goods.food", "Nahrung"), ("model.goods.tools", "Werkzeuge")],
                 onAbandonColony: {}, canAbandonColony: false,
                 onSetBuildQueue: { _ in }, onPutOutsideColony: {}, canPutOutsideColony: false,
@@ -704,12 +1096,16 @@ final class MapInteractionTests: XCTestCase {
                 carrierCandidates: [("carrier-1", "Wagenzug"), ("carrier-2", "Schiff")],
                 onSelectCarrier: { _ in },
                 onLoadGoods: { _, _ in }, onUnloadGoods: { _, _ in },
+                maximumLoadAmount: { _ in 100 }, maximumUnloadAmount: { _ in 100 },
                 buildableCandidates: [("model.building.warehouse", "Lagerhaus")],
                 currentBuildQueue: ["model.building.warehouse", "model.building.carpenterHouse"],
                 buildingLabel: { GameLabels.name($0) },
                 storedGoods: [("model.goods.food", "Nahrung", 100), ("model.goods.tools", "Werkzeuge", 20)],
                 carrierGoods: [("model.goods.food", "Nahrung", 100), ("model.goods.tools", "Werkzeuge", 40)],
                 buildTargetLabel: "Lagerhaus",
+                buildRequirements: [("model.goods.hammers", "Hämmer", 100, 50),
+                                    ("model.goods.tools", "Werkzeuge", 50, 20)],
+                buildETATurns: 5, estimatedBuildPerTurn: 10,
                 estimatedProduction: [
                     ColonyGoodsFlow(
                         id: "model.goods.grain", label: "Getreide",
@@ -720,11 +1116,12 @@ final class MapInteractionTests: XCTestCase {
                         produced: 4, consumed: 1, explanation: ""
                     )
                 ],
-                growthETATurns: 3,
-                section: section
+                growthETATurns: 3
             )
-            try checkPanel(panel, name: "colony-\(section)", width: 760, height: 480)
-            try checkPanel(panel, name: "colony-\(section)-640", width: 640, height: 480)
+            XCTAssertTrue(panel.growthExplanation.contains("200"))
+            XCTAssertTrue(panel.buildExplanation.contains("50"))
+            XCTAssertTrue(panel.buildExplanation.contains("10"))
+            try checkPanel(panel, name: "colony-unified-\(Int(size.width))", width: size.width, height: size.height)
         }
         state.selectedUnitId = nil
         state.selectedTileId = "tile-2-2"
@@ -1033,9 +1430,9 @@ final class MapInteractionTests: XCTestCase {
         let host = NSHostingView(rootView: EuropePanelView().environment(state))
         host.frame = CGRect(x: 0, y: 0, width: 600, height: 400)
         host.layoutSubtreeIfNeeded()
-        XCTAssertLessThanOrEqual(host.fittingSize.height, 760)
+        XCTAssertLessThanOrEqual(host.fittingSize.height, 900)
         XCTAssertLessThanOrEqual(host.fittingSize.width, 1000)
-        XCTAssertGreaterThanOrEqual(host.fittingSize.height, 400)
+        XCTAssertGreaterThanOrEqual(host.fittingSize.height, 560)
     }
 
     @MainActor

@@ -160,6 +160,16 @@ def main():
         value = resources[key]
         return resolve(value[9:]) if value.startswith("resource:") else value
 
+    unit_role_images = {
+        "image.unit.model.unit.hardyPioneer.pioneer": "hardyPioneer.pioneer.png",
+        "image.unit.model.unit.seasonedScout.scout": "seasonedScout.scout.png",
+        "image.unit.model.unit.veteranSoldier.dragoon": "veteranSoldier.dragoon.png",
+        "image.unit.model.unit.colonialRegular.dragoon": "colonialRegular.dragoon.png",
+    }
+    units = target / "units"
+    for key, filename in unit_role_images.items():
+        shutil.copyfile(source / "data/default" / resolve(key), units / filename)
+
     for key in resources:
         match = re.fullmatch(r"image\.tile\.model\.tile\.(\w+)\.center", key)
         overlay = re.fullmatch(r"image\.tile(?:forest|overlay)\.model\.tile\.(\w+)", key)

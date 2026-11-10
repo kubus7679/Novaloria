@@ -172,6 +172,7 @@ struct MapView: View {
         let colonyByTile: [String: Colony]
         let tileIndex: TileSpatialIndex
         let visibleTileIds: Set<String>
+        let territoryBorders: TerritoryBorders
     }
 
     private func renderData(for game: Game) -> RenderData? {
@@ -222,7 +223,8 @@ struct MapView: View {
             unitsByTile: unitsByTile,
             colonyByTile: colonyByTile,
             tileIndex: TileSpatialIndex(sortedTiles: tiles),
-            visibleTileIds: visibleTileIds
+            visibleTileIds: visibleTileIds,
+            territoryBorders: TerritoryBorders(tiles: tiles)
         )
     }
 
@@ -315,12 +317,6 @@ struct MapView: View {
                                 ctx.fill(path, with: .color(.black.opacity(0.2)))
                             }
 
-                            // --- Border / owner outline ---
-                            if state.showBorders,
-                               let ownerId = tile.owner,
-                               let ownerColor = data.playerColorById[ownerId] {
-                                ctx.stroke(path, with: .color(ownerColor), lineWidth: 2)
-                            }
                             if state.showMapGrid {
                                 ctx.stroke(path, with: .color(.black.opacity(0.25)), lineWidth: 0.5)
                             }
@@ -418,8 +414,18 @@ struct MapView: View {
                             ))
                         }
 
-                        // Labels follow all sprites, but are visibility-aware,
-                        // zoom-prioritized, and omitted when they would collide.
+                        if state.showBorders {
+                            for owner in data.territoryBorders.contoursByOwner.keys.sorted() {
+                                guard let color = data.playerColorById[owner] else { continue }
+                                ctx.stroke(data.territoryBorders.path(for: owner, tileW: tileW, tileH: tileH),
+                                           with: .color(color.opacity(0.85)),
+                                           style: StrokeStyle(lineWidth: max(1.5, 2 * state.mapZoomScale),
+                                                              lineCap: .round, lineJoin: .round))
+                            }
+                        }
+
+                        // Labels follow all sprites, prioritize the selection,
+                        // and respect visibility and collisions.
                         drawSettlementLabels(on: visibleTiles, data: data, context: &ctx)
 
                         if state.mapOverlay == .tradeRoutes {
@@ -668,7 +674,6 @@ struct MapView: View {
                   !state.showFogOfWar || data.visibleTileIds.contains(tile.id),
                   let colony = data.colonyByTile[tile.id] else { return nil }
             let isPriority = priorityTileIds.contains(tile.id)
-            guard state.mapZoomScale >= 1.25 || isPriority else { return nil }
             return (tile, colony, isPriority)
         }.sorted {
             if $0.2 != $1.2 { return $0.2 }
@@ -679,21 +684,44 @@ struct MapView: View {
         var occupiedRects: [CGRect] = []
         for (tile, colony, _) in candidates {
             let origin = tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
-            let title = L10n.text("\(colony.name ?? "?") · Bevölkerung: \(state.colonyPopulation(colony))", table: "MapView")
-            let label = Text(title)
-                .font(.system(size: max(7, min(12, tileW * 0.10)), weight: .semibold))
-                .foregroundColor(.white)
-            let resolved = context.resolve(label)
-            let measured = resolved.measure(in: CGSize(width: min(240, max(96, tileW * 2.4)), height: 24))
-            let rect = CGRect(x: origin.x - measured.width / 2 - 4,
+            let fontSize = max(9, min(22, tileW * 0.11))
+            let padding = max(3, fontSize * 0.3)
+            let gap = max(2, fontSize * 0.2)
+            let title = context.resolve(Text(colony.name ?? "?")
+                .font(.system(size: fontSize, weight: .bold)).foregroundColor(.black))
+            let population = context.resolve(Text("\(state.colonyPopulation(colony))")
+                .font(.system(size: fontSize, weight: .bold)).foregroundColor(.black))
+            let construction = state.colonyMapBuildLabel(colony).map {
+                context.resolve(Text($0).font(.system(size: fontSize * 0.85, weight: .semibold))
+                    .foregroundColor(.black))
+            }
+            let unconstrained = CGSize(width: CGFloat.infinity, height: CGFloat.infinity)
+            let titleSize = title.measure(in: unconstrained)
+            let populationSize = population.measure(in: unconstrained)
+            let constructionSize = construction?.measure(in: unconstrained) ?? .zero
+            let badgeWidth = max(populationSize.width, titleSize.height) + padding * 2
+            let nameWidth = max(titleSize.width, constructionSize.width) + padding * 2
+            let nameHeight = titleSize.height + padding * 2
+                + (construction == nil ? 0 : constructionSize.height + gap)
+            let rect = CGRect(x: origin.x - (badgeWidth + gap + nameWidth) / 2,
                               y: origin.y + tileH * 0.3,
-                              width: measured.width + 8, height: measured.height + 4)
+                              width: badgeWidth + gap + nameWidth, height: nameHeight)
             guard !occupiedRects.contains(where: { $0.insetBy(dx: -4, dy: -2).intersects(rect) }) else {
                 continue
             }
             occupiedRects.append(rect)
-            context.fill(Path(roundedRect: rect, cornerRadius: 3), with: .color(.black.opacity(0.8)))
-            context.draw(resolved, at: CGPoint(x: rect.midX, y: rect.midY))
+            let background = colony.owner.flatMap { data.playerColorById[$0] } ?? .gray
+            let badge = CGRect(x: rect.minX, y: rect.minY, width: badgeWidth,
+                               height: titleSize.height + padding * 2)
+            let nameRect = CGRect(x: badge.maxX + gap, y: rect.minY, width: nameWidth, height: nameHeight)
+            context.fill(Path(roundedRect: badge, cornerRadius: 3), with: .color(background.opacity(0.7)))
+            context.fill(Path(roundedRect: nameRect, cornerRadius: 3), with: .color(background.opacity(0.7)))
+            context.draw(population, at: CGPoint(x: badge.midX, y: badge.midY))
+            context.draw(title, at: CGPoint(x: nameRect.midX, y: nameRect.minY + padding + titleSize.height / 2))
+            if let construction {
+                context.draw(construction, at: CGPoint(x: nameRect.midX,
+                                                       y: nameRect.maxY - padding - constructionSize.height / 2))
+            }
         }
     }
 

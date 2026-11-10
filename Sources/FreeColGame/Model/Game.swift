@@ -201,7 +201,14 @@ public final class Game: @unchecked Sendable {
                 guard let regionId = child.attributes["id"] else { continue }
                 regions[regionId] = GameRegion(id: regionId, attributes: child.attributes)
             case "colony", "indianSettlement":
-                try loadSettlementTree(child)
+                if let colonyId = child.attributes["id"],
+                   var existing = colonies[colonyId],
+                   child.children.isEmpty {
+                    existing.applyPartial(attributes: child.attributes)
+                    colonies[colonyId] = existing
+                } else {
+                    try loadSettlementTree(child)
+                }
             case "building", "colonyTile":
                 if child.tag == "colonyTile", let id = child.attributes["id"],
                    let colonyId = colonies.values.first(where: { $0.workTiles.contains { $0.id == id } })?.id,

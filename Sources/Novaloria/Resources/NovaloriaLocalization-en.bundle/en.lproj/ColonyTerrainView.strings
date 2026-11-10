@@ -10,3 +10,6 @@
 "Unbekanntes Gelände" = "Unknown terrain";
 "Warensymbole zeigen die Produktion. Mengen sind Basiswerte ohne Arbeiter- und Geländeboni." = "Goods icons show production. Amounts are base values without worker or terrain bonuses.";
 "Zentrum" = "Center";
+"%@: etwa %lld pro Runde" = "%@: about %lld per turn";
+"Besetzte Felder zeigen die Produktionsvorhersage mit Boni; freie Felder zeigen Basiswerte. Details stehen im Tooltip." = "Occupied tiles show the production forecast including bonuses; empty tiles show base values. Hover for details.";
+"%@: Doppelklick auf das Schlosssymbol, um dieses Land zu kaufen." = "%@: Double-click the lock icon to buy this land.";

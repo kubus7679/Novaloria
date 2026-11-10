@@ -3,7 +3,7 @@ import FreeColGame
 import FreeColProtocol
 
 enum ColopediaCategory: String, Codable, CaseIterable {
-    case units, goods, terrain, buildings, improvements, fathers, nations, resources, roles
+    case units, goods, terrain, buildings, improvements, fathers, nations, resources, roles, concepts
 
     var title: String {
         switch self {
@@ -16,6 +16,7 @@ enum ColopediaCategory: String, Codable, CaseIterable {
         case .nations: return L10n.text("Nationen", table: "ColopediaCatalog")
         case .resources: return L10n.text("Bodenschätze und Ressourcen", table: "ColopediaCatalog")
         case .roles: return L10n.text("Ausrüstung und Rollen", table: "ColopediaCatalog")
+        case .concepts: return L10n.text("Konzepte", table: "ColopediaCatalog")
         }
     }
 
@@ -30,6 +31,7 @@ enum ColopediaCategory: String, Codable, CaseIterable {
         case .nations: return "flag.fill"
         case .resources: return "leaf.fill"
         case .roles: return "backpack.fill"
+        case .concepts: return "lightbulb.fill"
         }
     }
 }
@@ -42,14 +44,17 @@ private final class ColopediaResourceCache: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         if let cached = entriesByLanguage[language] { return cached }
-        var entries = Self.loadEntries(language: language) ?? []
+        var entries = (Self.loadEntries(language: language) ?? [])
+            + (Self.loadConceptEntries(language: language) ?? [])
         var identifiers = Set(entries.map(\.id))
         if language == "es" {
-            let english = Self.loadEntries(language: "en") ?? []
+            let english = (Self.loadEntries(language: "en") ?? [])
+                + (Self.loadConceptEntries(language: "en") ?? [])
             entries += english.filter { identifiers.insert($0.id).inserted }
         }
         if language != "de" {
-            let german = Self.loadEntries(language: "de") ?? []
+            let german = (Self.loadEntries(language: "de") ?? [])
+                + (Self.loadConceptEntries(language: "de") ?? [])
             entries += german.filter { identifiers.insert($0.id).inserted }
         }
         entriesByLanguage[language] = entries
@@ -69,6 +74,22 @@ private final class ColopediaResourceCache: @unchecked Sendable {
             return try JSONDecoder().decode([ColopediaEntry].self, from: Data(contentsOf: url))
         } catch {
             FreeColLogger.shared.error("Colopädie konnte nicht geladen werden (colopedia-\(language).json): \(error)")
+            return nil
+        }
+    }
+
+    private static func loadConceptEntries(language: String) -> [ColopediaEntry]? {
+        do {
+            guard let url = Bundle.module.url(
+                forResource: "colopedia-concepts-\(language)",
+                withExtension: "json",
+                subdirectory: "colopedia"
+            ) else {
+                throw CocoaError(.fileNoSuchFile)
+            }
+            return try JSONDecoder().decode([ColopediaEntry].self, from: Data(contentsOf: url))
+        } catch {
+            FreeColLogger.shared.error("Colopädie-Konzepte konnten nicht geladen werden (\(language)): \(error)")
             return nil
         }
     }

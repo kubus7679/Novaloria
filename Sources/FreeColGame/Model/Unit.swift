@@ -35,6 +35,7 @@ public struct Unit: GameObject, PartiallyUpdatable, Identifiable {
     public var currentStop: Int = 0
     public var student: String?
     public var teacher: String?
+    public var turnsOfTraining: Int = 0
     public var workImprovementType: String?
     /// Remaining work turns for a pioneer improvement or high-seas sail.
     public var workLeft: Int = 0
@@ -81,6 +82,7 @@ public struct Unit: GameObject, PartiallyUpdatable, Identifiable {
         currentStop = attributes.int("currentStop", default: currentStop)
         if let v = attributes["student"] { student = v }
         if let v = attributes["teacher"] { teacher = v }
+        turnsOfTraining = attributes.int("turnsOfTraining", default: turnsOfTraining)
         if let v = attributes["workImprovementType"] { workImprovementType = v }
         workLeft = attributes.int("workLeft", default: workLeft)
     }

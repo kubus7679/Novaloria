@@ -1,6 +1,7 @@
 "%@ (%lld)" = "%@ (%lld)";
 "%@ → %@" = "%@ → %@";
 "%lld" = "%lld";
+"%lld Runden" = "%lld turns";
 "Aktueller Spieler" = "Current player";
 "Anfordern" = "Request";
 "Angeboten" = "Offered";
@@ -108,3 +109,9 @@
 "Zustand" = "Status";
 "leer" = "empty";
 "runde" = "turn";
+"Bis zum nächsten Gründervater" = "Until the next founding father";
+"Fortschritt zum nächsten Gründervater" = "Progress toward the next founding father";
+"Fortschritt" = "Progress";
+"Glocken pro Runde" = "Bells per turn";
+"Keine Glockenproduktion" = "No bells produced";
+"Schwelle erreicht" = "Threshold reached";

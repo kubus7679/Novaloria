@@ -1,0 +1,91 @@
+[
+  {
+    "id": "colopedia.concepts.taxes",
+    "category": "concepts",
+    "title": "Steuern",
+    "summary": "",
+    "text": "Am Anfang des Spiels erhebt der Monarch keine Steuern auf Euer Einkommen. Im Laufe der Zeit wird der Monarch allerdings die Umsatzsteuer aufgrund einer Reihe von Gründen erhöhen, die Ihr mehr oder weniger überzeugend finden werdet. Jedes Mal, wenn der Monarch eine Steuererhöhung vorschlägt, könnt Ihr dies ablehnen. Für diesen Fall wird jedoch eine bestimmte Ware boykottiert werden. Dies bedeutet für Euch, dass Ihr diese Ware nicht länger in Europa kaufen oder verkaufen werden könnt. Zudem werden bis zu hundert Stück dieser Ware von erzürnten Kolonisten in einer Eurer Kolonien vernichtet werden.\n\nBoykotte können aufgehoben werden, indem Ihr Eure Steuerrückstände zahlt, was allerdings sehr kostspielig ist. Oder es wird Jacob Fugger in den Kontinentalkongress gewählt.",
+    "facts": [],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.efficiency",
+    "category": "concepts",
+    "title": "Effizienz",
+    "summary": "",
+    "text": "Die Effizienz Eurer Kolonien hängt von ihrer Unterstützung für die Idee der Unabhängigkeit ab. Sofern 50 Prozent der Kolonisten die Ziele der Rebellen unterstützen, erhält die Kolonie einen Produktionsbonus von +1. Sobald dieser Wert 100 Prozent beträgt, erhöht sich der Produktionsbonus auf +2.\n\nSofern andererseits die Zahl der königstreuen Kolonisten den Grenzwert für eine schlechte Regierung überschreitet, existiert ein Abzug von -1. Sobald die Zahl der königstreuen Kolonisten den Grenzwert für eine sehr schlechte Regierung überschreitet, erhöht sich der Abzug auf -2. Diese beiden Grenzwerte sind vom Schwierigkeitsgrad abhängig und können im Bericht zum Schwierigkeitsgrad eingesehen werden.\n\nUm die Effizienz einer Kolonie zu erhöhen, muss entweder deren Einwohnerzahl reduziert werden oder es müssen mehr Freiheitsglocken produziert werden.",
+    "facts": [],
+    "related": [
+      "model.goods.bells"
+    ],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.education",
+    "category": "concepts",
+    "title": "Bildung",
+    "summary": "",
+    "text": "Der effizienteste Weg zur Ausbildung Eurer Kolonisten ist der Bau einer Schule und die Zuteilung einer erfahrenen Einheit als Lehrer. Der Lehrer wird dann von einem freien Kolonisten zu einer erfahrenen Einheit gleichen Typs. Lehrer sind auch in der Lage, Kleinkriminelle in Schuldknechte und Schuldknechte in freie Kolonisten zu verwandeln.\n\nEinige Fähigkeiten können auch von den Ureinwohnern durch Entsendung eines freien Kolonisten oder Schuldknechten erlernt werden, um für einen Zug in einer Ureinwohnersiedlung zu leben. Und einige Fähigkeiten können auch durch Erfahrung durch Setzen eines freien Kolonisten erlernt werden. Freie Kolonisten, die in den umliegenden Feldern und Wäldern Eurer Kolonien arbeiten, sammeln bis zu 200 Punkte an Erfahrung, was einer vierprozentigen Chance der Beförderung entspricht.",
+    "facts": [],
+    "related": [
+      "model.building.schoolhouse",
+      "model.unit.freeColonist",
+      "model.unit.pettyCriminal",
+      "model.unit.indenturedServant"
+    ],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.fortification",
+    "category": "concepts",
+    "title": "Verschanzen",
+    "summary": "",
+    "text": "Einheiten können sich selbst auf einem Feld verschanzen (durch das Bauen von temporären Gräben und Barrieren), um ihre Verteidigungsfähigkeit zu verbessern. Zur vollständingen Verschanzung braucht es einen Zug. Verschanzung bewahrt Einheiten auch vor Überfällen und eine verschanzte Artillerie wird nicht mehr als „auf freiem Feld“ angesehen, wobei Angriffe die Befestigungen zerstören. Verschanzungen bieten nur einen Verteidigungskampfbonus in Abwesenheit anderer günstiger Verteidigungsfunktionen. Dadurch ist kein Bonus beim Verschanzen auf Bergen oder in einer Kolonie mit einem Fort oder einer Festung verfügbar.",
+    "facts": [],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.independence",
+    "category": "concepts",
+    "title": "Unabhängigkeit",
+    "summary": "",
+    "text": "Ihr startet das Spiel als Entdecker, der über ein geringe Anzahl von Einheiten verfügt. Der Monarch erwartet, dass Ihr eine Kolonie in der Neuen Welt gründet und Schätze wie auch exotische Waren zum Heimathafen schickt. Ihr habt allerdings andere Pläne und möchtet eine unabhängige Nation errichten.\n\nUm die Unabhängigkeit erklären zu können, müsst Ihr mindestens 50% der Bevölkerung Eurer Kolonien davon überzeugen. Dies kann geschehen, indem Ihr Freiheitsglocken produziert, die wiederum die Effizienz Eurer Kolonien erhöhen.\n\nWie Ihr Euch vielleicht vorstellen könnt, wird der Monarch dies nicht einfach zulassen. Nach der Unabhängigkeitserklärung werdet Ihr das Königliche Expeditionskorps (KEK) bekämpfen und besiegen müssen. Sofern das KEK alle Küstenkolonien kontrolliert oder mindestens 90% Eurer Bevölkerung, werdet Ihr die Unabhängigkeit nicht durchsetzen können.",
+    "facts": [],
+    "related": [
+      "model.goods.bells",
+      "colopedia.concepts.efficiency",
+      "colopedia.concepts.ref"
+    ],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.ref",
+    "category": "concepts",
+    "title": "Königliches Expeditionskorps",
+    "summary": "",
+    "text": "Der Monarch weiß es besser, als einem bunt gemischten Haufen von Konquistadoren und unzufriedenen Religiösen zu vertrauen, die unwillig sind, Steuern zu zahlen sowie sich den gerechten Forderungen der Krone zu beugen. Aus diesem Grunde unterhält der Monarch ein Königliches Expeditionskorps (KEK), das bereit ist, jegliche Versuche der Unabhängigkeit vom Mutterland niederzuschlagen.\n\nDas Königliche Expeditionskorps wird teilweise durch die Eingreiftruppe ergänzt, die von einer befreundeten ausländischen Macht entsandt wird, sofern Ihr eine ausreichenden Anzahl an Freiheitsglocken produzieren könnt. Von Zeit zu Zeit werden sowohl das Königliche Expeditionskorps wie auch die Eingreiftruppe um zusätzliche Einheiten verstärkt.",
+    "facts": [],
+    "related": [
+      "colopedia.concepts.independence",
+      "colopedia.concepts.interventionForce",
+      "model.goods.bells"
+    ],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.interventionForce",
+    "category": "concepts",
+    "title": "Eingreiftruppe",
+    "summary": "",
+    "text": "Jeder Versuch Eurer Kolonien, die Unabhängigkeit zu erklären, wird unweigerlich zur Schwächung des Mutterlandes führen. Dies liegt im Interesse der Feinde Eures Mutterlandes. Aus diesem Grund wird einer von ihnen eine Eingreiftruppe entsenden, um Euch im Kampf gegen das Königliche Expeditionskorps zu unterstützen. Voraussetzung ist, dass Ihr eine ausreichende Anzahl an Freiheitsglocken produzieren könnt.\n\nIm Verlauf des Spiels werden sowohl die Eingreiftruppe wie auch das Königliche Expeditionskorps um zusätzliche Einheiten verstärkt.",
+    "facts": [],
+    "related": [
+      "colopedia.concepts.independence",
+      "colopedia.concepts.ref",
+      "model.goods.bells"
+    ],
+    "icon": null
+  }
+]

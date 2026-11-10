@@ -438,3 +438,8 @@
 "gegnerische Nation" = "enemy nation";
 "Überfahrt: %@ (%lld %@)" = "Voyage: %@ (%lld %@)";
 "Überlebende einer verlorenen Kolonie schließen sich Eurer Expedition an." = "Survivors of a lost colony have joined your expedition.";
+"Eine eigene Einheit muss auf einem zum Verkauf stehenden Ureinwohner-Feld stehen." = "One of your units must be on native land that is for sale.";
+"Bitte ein gültiges Angebot in Goldstücken angeben." = "Enter a valid offer in gold.";
+"Das Angebot übersteigt dein verfügbares Gold." = "The offer exceeds your available gold.";
+"Land gekauft." = "Land purchased.";
+"Die ausgewählte Kolonie kann dieses Ureinwohner-Feld nicht beanspruchen." = "The selected colony cannot claim this native tile.";

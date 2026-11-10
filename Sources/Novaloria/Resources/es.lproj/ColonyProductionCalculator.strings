@@ -21,3 +21,7 @@
 "Verbrauch: −%lld %@" = "Consumo: −%lld %@";
 "durch Vorrat begrenzt" = "limitado por existencias";
 "wegen fehlender Inputs" = "limitado por falta de insumos";
+"Clientseitige Vorhersage aus den bekannten Aufträgen, Boni und Vorräten. Der Server berechnet das endgültige Rundenergebnis." = "Previsión del cliente basada en órdenes, bonificaciones y existencias conocidas. El servidor calcula el resultado final del turno.";
+"Ergebnis: %lld %@ pro Runde" = "Resultado: %lld %@ por turno";
+"Bilanz: %lld − %lld = %lld" = "Balance: %lld − %lld = %lld";
+"%@: %@ %@ = %@" = "%@: %@ %@ = %@";

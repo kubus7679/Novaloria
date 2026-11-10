@@ -530,6 +530,29 @@ struct ReportPanelView: View {
         let current = state.localPlayerCurrentFather
         return GroupBox {
             VStack(alignment: .leading, spacing: 8) {
+                if let progress = state.localFoundingFatherProgress {
+                    GroupBox {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ProgressView(value: progress.fractionComplete)
+                                .accessibilityLabel(L10n.text("Fortschritt zum nächsten Gründervater", table: "ReportPanelView"))
+                            row(L10n.text("Fortschritt", table: "ReportPanelView"),
+                                "\(Int((progress.fractionComplete * 100).rounded()))%")
+                            row(L10n.text("Freiheit", table: "ReportPanelView"),
+                                "\(progress.liberty) / \(progress.requiredLiberty)")
+                            row(L10n.text("Glocken pro Runde", table: "ReportPanelView"),
+                                "\(progress.libertyPerTurn)")
+                            let turns = progress.turnsRemaining.map { remaining in
+                                remaining == 0
+                                    ? L10n.text("Schwelle erreicht", table: "ReportPanelView")
+                                    : L10n.text("\(remaining) Runden", table: "ReportPanelView")
+                            } ?? L10n.text("Keine Glockenproduktion", table: "ReportPanelView")
+                            row(L10n.text("Bis zum nächsten Gründervater", table: "ReportPanelView"), turns)
+                        }
+                    } label: {
+                        Text(L10n.text("Fortschritt zum nächsten Gründervater", table: "ReportPanelView"))
+                            .font(.caption.bold())
+                    }
+                }
                 if let current {
                     row(L10n.text("In Arbeit", table: "ReportPanelView"), state.foundingFatherDisplayName(current))
                 }

@@ -10,3 +10,6 @@
 "Unbekanntes Gelände" = "Terreno desconocido";
 "Warensymbole zeigen die Produktion. Mengen sind Basiswerte ohne Arbeiter- und Geländeboni." = "Los iconos de mercancías muestran la producción. Las cantidades son valores base sin bonificaciones de trabajadores ni terreno.";
 "Zentrum" = "Centro";
+"%@: etwa %lld pro Runde" = "%@: unos %lld por turno";
+"Besetzte Felder zeigen die Produktionsvorhersage mit Boni; freie Felder zeigen Basiswerte. Details stehen im Tooltip." = "Las casillas ocupadas muestran la previsión con bonificaciones; las libres muestran valores base. Pasa el cursor para ver los detalles.";
+"%@: Doppelklick auf das Schlosssymbol, um dieses Land zu kaufen." = "%@: Haz doble clic en el candado para comprar este terreno.";

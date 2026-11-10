@@ -21,3 +21,7 @@
 "Verbrauch: −%lld %@" = "Consumption: −%lld %@";
 "durch Vorrat begrenzt" = "limited by stock";
 "wegen fehlender Inputs" = "limited due to missing inputs";
+"Clientseitige Vorhersage aus den bekannten Aufträgen, Boni und Vorräten. Der Server berechnet das endgültige Rundenergebnis." = "Client-side forecast based on known orders, bonuses and stock. The server calculates the final turn result.";
+"Ergebnis: %lld %@ pro Runde" = "Result: %lld %@ per turn";
+"Bilanz: %lld − %lld = %lld" = "Balance: %lld − %lld = %lld";
+"%@: %@ %@ = %@" = "%@: %@ %@ = %@";
