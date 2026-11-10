@@ -38,12 +38,12 @@ final class GameState {
 
         var description: String {
             switch self {
-            case .disconnected: return "Getrennt"
-            case .connecting: return "Verbindung wird hergestellt …"
-            case .reconnecting: return "Verbindung wird wiederhergestellt …"
-            case .login: return "Anmeldung"
-            case .lobby: return "Warteraum"
-            case .inGame: return "Im Spiel"
+            case .disconnected: return L10n.text("Getrennt", table: "GameState")
+            case .connecting: return L10n.text("Verbindung wird hergestellt …", table: "GameState")
+            case .reconnecting: return L10n.text("Verbindung wird wiederhergestellt …", table: "GameState")
+            case .login: return L10n.text("Anmeldung", table: "GameState")
+            case .lobby: return L10n.text("Warteraum", table: "GameState")
+            case .inGame: return L10n.text("Im Spiel", table: "GameState")
             }
         }
     }
@@ -57,6 +57,7 @@ final class GameState {
         case newLandName
         case newRegionName
         case nativeTrade
+        case nativeSkill
         case diplomacy
         case foundingFather
         case scoutReport
@@ -73,10 +74,10 @@ final class GameState {
 
         var title: String {
             switch self {
-            case .none: return "Keine"
-            case .resources: return "Ressourcen"
-            case .tradeRoutes: return "Handelsrouten"
-            case .paths: return "Wege"
+            case .none: return L10n.text("Keine", table: "GameState")
+            case .resources: return L10n.text("Ressourcen", table: "GameState")
+            case .tradeRoutes: return L10n.text("Handelsrouten", table: "GameState")
+            case .paths: return L10n.text("Wege", table: "GameState")
             }
         }
     }
@@ -87,12 +88,12 @@ final class GameState {
 
         var title: String {
             switch message.tag {
-            case "move": return "Einheit bewegen"
-            case "attack": return "Angreifen"
-            case "endTurn": return "Zug beenden"
-            case "abandonColony": return "Kolonie aufgeben"
-            case "buildColony": return "Kolonie gründen"
-            case "disbandUnit": return "Einheit auflösen"
+            case "move": return L10n.text("Einheit bewegen", table: "GameState")
+            case "attack": return L10n.text("Angreifen", table: "GameState")
+            case "endTurn": return L10n.text("Zug beenden", table: "GameState")
+            case "abandonColony": return L10n.text("Kolonie aufgeben", table: "GameState")
+            case "buildColony": return L10n.text("Kolonie gründen", table: "GameState")
+            case "disbandUnit": return L10n.text("Einheit auflösen", table: "GameState")
             default: return message.tag
             }
         }
@@ -157,6 +158,47 @@ final class GameState {
         let label: String
     }
 
+    struct RoleEquipmentOption: Identifiable {
+        var id: String { roleId }
+        let roleId: String
+        let count: Int
+        let isUpgrade: Bool
+        let isAvailable: Bool
+        let goodsNeeded: [(goodsType: String, amount: Int)]
+
+        var goodsDescription: String {
+            goodsNeeded
+                .map { "\($0.amount) \(GameLabels.name($0.goodsType))" }
+                .joined(separator: ", ")
+        }
+
+        var buttonTitle: String {
+            if roleId == "model.role.missionary" { return L10n.text("Als Missionar ausrüsten", table: "GameState") }
+            if roleId == "model.role.pioneer" {
+                let goods = goodsNeeded.first { $0.goodsType == "model.goods.tools" }?.amount
+                    ?? goodsNeeded.first?.amount
+                    ?? 0
+                return isUpgrade
+                    ? L10n.text("Pionier-Werkzeuge nachrüsten (+\(goods))", table: "GameState")
+                    : L10n.text("Als Pionier ausrüsten (\(goods) Werkzeuge)", table: "GameState")
+            }
+
+            let roleName = GameLabels.name(roleId)
+            guard !goodsDescription.isEmpty else {
+                return isUpgrade ? L10n.text("\(roleName) nachrüsten", table: "GameState") : L10n.text("Als \(roleName) ausrüsten", table: "GameState")
+            }
+            return isUpgrade
+                ? L10n.text("\(roleName) nachrüsten (+\(goodsDescription))", table: "GameState")
+                : L10n.text("Als \(roleName) ausrüsten (\(goodsDescription))", table: "GameState")
+        }
+
+        var helpText: String {
+            goodsDescription.isEmpty
+                ? L10n.text("Keine zusätzlichen Waren erforderlich.", table: "GameState")
+                : L10n.text("Benötigt: \(goodsDescription).", table: "GameState")
+        }
+    }
+
     /// A pending `incite` confirmation.
     struct InciteOption {
         let unit: String
@@ -176,29 +218,31 @@ final class GameState {
     var pendingDecisionTitle: String {
         switch pendingServerDecision?.type {
         case .fountainOfYouth:
-            return "Jungbrunnen"
+            return L10n.text("Jungbrunnen", table: "GameState")
         case .indianDemand:
-            return "Forderung der Ureinwohner"
+            return L10n.text("Forderung der Ureinwohner", table: "GameState")
         case .lootCargo:
-            return "Fracht erbeuten"
+            return L10n.text("Fracht erbeuten", table: "GameState")
         case .firstContact:
-            return "Erstkontakt"
+            return L10n.text("Erstkontakt", table: "GameState")
         case .monarchAction:
-            return "Monarch"
+            return L10n.text("Monarch", table: "GameState")
         case .newLandName:
-            return "Neues Land benennen"
+            return L10n.text("Neues Land benennen", table: "GameState")
         case .newRegionName:
-            return "Neue Region benennen"
+            return L10n.text("Neue Region benennen", table: "GameState")
         case .nativeTrade:
-            return "Handel mit Ureinwohnern"
+            return L10n.text("Handel mit Ureinwohnern", table: "GameState")
+        case .nativeSkill:
+            return L10n.text("Fähigkeit erlernen", table: "GameState")
         case .diplomacy:
-            return "Diplomatie"
+            return L10n.text("Diplomatie", table: "GameState")
         case .foundingFather:
-            return "Kontinentalkongress"
+            return L10n.text("Kontinentalkongress", table: "GameState")
         case .scoutReport:
-            return "Erkundungsbericht"
+            return L10n.text("Erkundungsbericht", table: "GameState")
         case .incite:
-            return "Aufstand anzetteln"
+            return L10n.text("Aufstand anzetteln", table: "GameState")
         case .none:
             return ""
         }
@@ -208,78 +252,89 @@ final class GameState {
         guard let decision = pendingServerDecision else { return "" }
         switch decision.type {
         case .fountainOfYouth:
-            return "Auswanderer zu platzieren: \(decision.migrantCount)"
+            return L10n.text("Auswanderer zu platzieren: \(decision.migrantCount)", table: "GameState")
         case .indianDemand:
             var parts: [String] = []
             if let type = decision.rawPayload["type"] {
-                let displayName = type == "gold" ? "Gold" : (type == "model.goods.tribute" ? "Tribut" : goodsDisplayName(type))
-                parts.append("Ware: \(displayName)")
+                let displayName = type == "gold"
+                    ? L10n.text("Gold", table: "GameState")
+                    : (type == "model.goods.tribute" ? L10n.text("Tribut", table: "GameState") : goodsDisplayName(type))
+                parts.append(L10n.text("Ware: \(displayName)", table: "GameState"))
             }
-            if let amount = decision.rawPayload["amount"] { parts.append("Menge: \(amount)") }
+            if let amount = decision.rawPayload["amount"] { parts.append(L10n.text("Menge: \(amount)", table: "GameState")) }
             if let colonyId = decision.rawPayload["colony"] {
-                parts.append("Kolonie: \(cachedGame?.colonies[colonyId]?.name ?? "Kolonie")")
+                parts.append(L10n.text("Kolonie: \(cachedGame?.colonies[colonyId]?.name ?? L10n.text("Kolonie", table: "GameState"))", table: "GameState"))
             }
             if let unitId = decision.rawPayload["unit"] {
-                parts.append("Einheit: \(cachedGame?.units[unitId].map(unitDisplayLabel) ?? "Einheit")")
+                parts.append(L10n.text("Einheit: \(cachedGame?.units[unitId].map(unitDisplayLabel) ?? L10n.text("Einheit", table: "GameState"))", table: "GameState"))
             }
-            return parts.isEmpty ? "Forderung der Ureinwohner prüfen." : parts.joined(separator: " · ")
+            return parts.isEmpty ? L10n.text("Forderung der Ureinwohner prüfen.", table: "GameState") : parts.joined(separator: " · ")
         case .lootCargo:
             var parts: [String] = []
-            if let winner = decision.rawPayload["winner"] { parts.append("Sieger: \(pendingObjectDisplayName(winner))") }
-            if let loser = decision.rawPayload["loser"] { parts.append("Verlierer: \(pendingObjectDisplayName(loser))") }
+            if let winner = decision.rawPayload["winner"] { parts.append(L10n.text("Sieger: \(pendingObjectDisplayName(winner))", table: "GameState")) }
+            if let loser = decision.rawPayload["loser"] { parts.append(L10n.text("Verlierer: \(pendingObjectDisplayName(loser))", table: "GameState")) }
             let goodsCount = decision.goodsChildren.count
-            if goodsCount > 0 { parts.append("Warenstapel: \(goodsCount)") }
-            return parts.isEmpty ? "Beute auswählen." : parts.joined(separator: " · ")
+            if goodsCount > 0 { parts.append(L10n.text("Warenstapel: \(goodsCount)", table: "GameState")) }
+            return parts.isEmpty ? L10n.text("Beute auswählen.", table: "GameState") : parts.joined(separator: " · ")
         case .firstContact:
             return firstContactMessage
         case .monarchAction:
             var parts: [String] = []
             if let action = decision.rawPayload["action"] { parts.append(monarchActionDescription(action)) }
-            if let tax = decision.rawPayload["tax"] { parts.append("Steuern: \(tax)") }
-            return parts.isEmpty ? "Der Monarch macht ein Angebot." : parts.joined(separator: " · ")
+            if let tax = decision.rawPayload["tax"] { parts.append(L10n.text("Steuern: \(tax)", table: "GameState")) }
+            return parts.isEmpty ? L10n.text("Der Monarch macht ein Angebot.", table: "GameState") : parts.joined(separator: " · ")
         case .newLandName:
             if let unitId = decision.rawPayload["unit"] {
-                return "Einheit: \(cachedGame?.units[unitId].map(unitDisplayLabel) ?? "Einheit")"
+                return L10n.text("Einheit: \(cachedGame?.units[unitId].map(unitDisplayLabel) ?? L10n.text("Einheit", table: "GameState"))", table: "GameState")
             }
-            return "Wähle einen Namen für das neue Land."
+            return L10n.text("Wähle einen Namen für das neue Land.", table: "GameState")
         case .newRegionName:
-            return "Wähle einen Namen für die neue Region."
+            return L10n.text("Wähle einen Namen für die neue Region.", table: "GameState")
         case .nativeTrade:
             let session = decision.nativeTradeSession
             let buy = session.settlementToUnit.filter { $0.priceIsValid }.count
             let sell = session.unitToSettlement.filter { $0.priceIsValid }.count
-            return "Kaufangebote: \(buy) · Verkaufsangebote: \(sell)"
+            return L10n.text("Kaufangebote: \(buy) · Verkaufsangebote: \(sell)", table: "GameState")
+        case .nativeSkill:
+            let skill = decision.rawPayload["skill"].map(GameLabels.name) ?? L10n.text("Fähigkeit", table: "GameState")
+            let unitId = decision.rawPayload["unit"]
+            let unitName = unitId.flatMap { cachedGame?.units[$0].map(unitDisplayLabel) } ?? L10n.text("Einheit", table: "GameState")
+            let settlementId = decision.rawPayload["settlement"]
+            let settlementName = settlementId.flatMap { cachedGame?.colonies[$0]?.name } ?? L10n.text("Siedlung", table: "GameState")
+            return L10n.text("\(unitName) kann \(skill) in \(settlementName) erlernen.", table: "GameState")
         case .diplomacy:
             guard let proposal = decision.diplomaticTradeProposal else {
-                return "Diplomatischen Vorschlag prüfen."
+                return L10n.text("Diplomatischen Vorschlag prüfen.", table: "GameState")
             }
-            let context = proposal.context?.uppercased() == "TRIBUTE" ? "Tribut" : "Diplomatie"
-            return "\(context): \(proposal.clauses.count) Klauseln"
+            let context = proposal.context?.uppercased() == "TRIBUTE"
+                ? L10n.text("Tribut", table: "GameState")
+                : L10n.text("Diplomatie", table: "GameState")
+            return L10n.text("\(context): \(proposal.clauses.count) Klauseln", table: "GameState")
         case .foundingFather:
             let options = pendingFoundingFathers
             return options.isEmpty
-                ? "Wähle einen Gründervater aus."
-                : "\(options.count) Gründerväter verfügbar."
+                ? L10n.text("Wähle einen Gründervater aus.", table: "GameState")
+                : L10n.text("\(options.count) Gründerväter verfügbar.", table: "GameState")
         case .scoutReport:
             return scoutReportText
         case .incite:
-            guard let incite = pendingIncite else { return "Aufstand anzetteln?" }
+            guard let incite = pendingIncite else { return L10n.text("Aufstand anzetteln?", table: "GameState") }
             let enemy = incite.enemyName
                 ?? cachedGame?.players[incite.enemy]?.name
                 ?? cachedGame?.players[incite.enemy]?.nationId.map(GameLabels.name)
-                ?? "gegnerische Nation"
-            return "Aufstand gegen \(enemy) anzetteln? Kosten: \(incite.gold) Gold."
+                ?? L10n.text("gegnerische Nation", table: "GameState")
+            return L10n.text("Aufstand gegen \(enemy) anzetteln? Kosten: \(incite.gold) Gold.", table: "GameState")
         }
     }
 
     private func pendingObjectDisplayName(_ identifier: String) -> String {
-        guard let game = cachedGame else { return "Einheit" }
+        guard let game = cachedGame else { return L10n.text("Einheit", table: "GameState") }
         if let player = game.players[identifier] {
-            return player.name ?? player.nationId.map(GameLabels.name) ?? "Spieler"
+            return player.name ?? player.nationId.map(GameLabels.name) ?? L10n.text("Spieler", table: "GameState")
         }
         if let unit = game.units[identifier] { return unitDisplayLabel(unit) }
-        if let colony = game.colonies[identifier] { return colony.name ?? "Kolonie" }
-        return "Einheit"
+        if let colony = game.colonies[identifier] { return colony.name ?? L10n.text("Kolonie", table: "GameState") }
+        return L10n.text("Einheit", table: "GameState")
     }
 
     /// User-facing German message for the monarchAction prompt.
@@ -292,32 +347,32 @@ final class GameState {
 
         if let template = decision.children.first(where: { $0.tag == "stringTemplate" }),
            let message = monarchActionTemplateText(template) {
-            return "\(message) Akzeptieren?"
+            return L10n.text("\(message) Akzeptieren?", table: "GameState")
         }
 
         switch action.uppercased() {
         case "RAISE_TAX_ACT":
-            if let tax { return "Der Monarch möchte die Steuern auf \(tax)% erhöhen. Akzeptieren?" }
-            return "Der Monarch fordert eine Steuererhöhung. Akzeptieren?"
+            if let tax { return L10n.text("Der Monarch möchte die Steuern auf \(tax)% erhöhen. Akzeptieren?", table: "GameState") }
+            return L10n.text("Der Monarch fordert eine Steuererhöhung. Akzeptieren?", table: "GameState")
         case "RAISE_TAX_WAR":
-            if let tax { return "Wegen des Kriegs fordert der Monarch eine Steuererhöhung auf \(tax)%. Bei Ablehnung droht ein Boykott. Akzeptieren?" }
-            return "Wegen des Kriegs fordert der Monarch eine Steuererhöhung. Bei Ablehnung droht ein Boykott. Akzeptieren?"
+            if let tax { return L10n.text("Wegen des Kriegs fordert der Monarch eine Steuererhöhung auf \(tax)%. Bei Ablehnung droht ein Boykott. Akzeptieren?", table: "GameState") }
+            return L10n.text("Wegen des Kriegs fordert der Monarch eine Steuererhöhung. Bei Ablehnung droht ein Boykott. Akzeptieren?", table: "GameState")
         case "LOWER_TAX_ACT":
-            if let tax { return "Der Monarch bietet an, die Steuern auf \(tax)% zu senken. Akzeptieren?" }
-            return "Der Monarch bietet eine Steuersenkung an. Akzeptieren?"
+            if let tax { return L10n.text("Der Monarch bietet an, die Steuern auf \(tax)% zu senken. Akzeptieren?", table: "GameState") }
+            return L10n.text("Der Monarch bietet eine Steuersenkung an. Akzeptieren?", table: "GameState")
         case "ADD_TO_ARMY":
-            if let gold { return "Der Monarch fordert \(gold) Gold für die Armee. Bezahlen?" }
-            return "Der Monarch fordert Gold für die Armee. Bezahlen?"
+            if let gold { return L10n.text("Der Monarch fordert \(gold) Gold für die Armee. Bezahlen?", table: "GameState") }
+            return L10n.text("Der Monarch fordert Gold für die Armee. Bezahlen?", table: "GameState")
         case "ADD_TO_NAVY":
-            if let gold { return "Der Monarch fordert \(gold) Gold für die Marine. Bezahlen?" }
-            return "Der Monarch fordert Gold für die Marine. Bezahlen?"
+            if let gold { return L10n.text("Der Monarch fordert \(gold) Gold für die Marine. Bezahlen?", table: "GameState") }
+            return L10n.text("Der Monarch fordert Gold für die Marine. Bezahlen?", table: "GameState")
         case "DECLARE_INDEPENDENCE":
-            return "Der Monarch bietet an, die Unabhängigkeit zu erklären. Akzeptieren?"
+            return L10n.text("Der Monarch bietet an, die Unabhängigkeit zu erklären. Akzeptieren?", table: "GameState")
         case "BELL":
-            if let bell { return "Der Monarch verkündet eine neue Freiheit: \(bell). Akzeptieren?" }
-            return "Der Monarch verkündet eine neue Freiheit. Akzeptieren?"
+            if let bell { return L10n.text("Der Monarch verkündet eine neue Freiheit: \(bell). Akzeptieren?", table: "GameState") }
+            return L10n.text("Der Monarch verkündet eine neue Freiheit. Akzeptieren?", table: "GameState")
         default:
-            return "Der Monarch hat eine Aktion: \(monarchActionDescription(action)). Akzeptieren?"
+            return L10n.text("Der Monarch hat eine Aktion: \(monarchActionDescription(action)). Akzeptieren?", table: "GameState")
         }
     }
 
@@ -364,11 +419,18 @@ final class GameState {
     /// User-facing German message for the firstContact prompt.
     var firstContactMessage: String {
         guard let decision = pendingServerDecision, decision.type == .firstContact else { return "" }
-        let other = contactPlayerName(decision.rawPayload["other"], fallback: "einem unbekannten Volk")
-        let playerName = contactPlayerName(decision.rawPayload["player"], fallback: localPlayerName ?? "Dein Spieler")
+        let other = contactPlayerName(decision.rawPayload["other"], fallback: L10n.text("einem unbekannten Volk", table: "GameState"))
+        let playerName = contactPlayerName(decision.rawPayload["player"], fallback: localPlayerName ?? L10n.text("Dein Spieler", table: "GameState"))
         let camps = decision.rawPayload["camps"].flatMap(Int.init)
-        let settlementInfo = camps.map { " Das Volk besitzt \($0) \($0 == 1 ? "Siedlung" : "Siedlungen")." } ?? ""
-        return "\(playerName) hat zum ersten Mal Kontakt mit \(other) aufgenommen.\(settlementInfo) Diplomatische Beziehungen herstellen?"
+        let settlementInfo: String
+        if let camps {
+            settlementInfo = camps == 1
+                ? L10n.text(" Das Volk besitzt \(camps) Siedlung.", table: "GameState")
+                : L10n.text(" Das Volk besitzt \(camps) Siedlungen.", table: "GameState")
+        } else {
+            settlementInfo = ""
+        }
+        return L10n.text("\(playerName) hat zum ersten Mal Kontakt mit \(other) aufgenommen.\(settlementInfo) Diplomatische Beziehungen herstellen?", table: "GameState")
     }
 
     private func contactPlayerName(_ id: String?, fallback: String) -> String {
@@ -390,22 +452,22 @@ final class GameState {
     /// User-facing German message for the indianDemand prompt.
     var indianDemandMessage: String {
         guard let decision = pendingServerDecision, decision.type == .indianDemand else { return "" }
-        let type = decision.rawPayload["type"] ?? "Gold"
+        let type = decision.rawPayload["type"] ?? "gold"
         let amount = decision.rawPayload["amount"] ?? "?"
         let colonyId = decision.rawPayload["colony"]
         let colony = colonyId.flatMap { cachedGame?.colonies[$0] }
-        let colonyName = colony?.name ?? "eine Kolonie"
+        let colonyName = colony?.name ?? L10n.text("eine Kolonie", table: "GameState")
         let unitId = decision.rawPayload["unit"]
         let unit = unitId.flatMap { cachedGame?.units[$0] }
-        let unitName = unit.map(unitDisplayLabel) ?? "eine Einheit"
+        let unitName = unit.map(unitDisplayLabel) ?? L10n.text("eine Einheit", table: "GameState")
 
         let typeDisplay: String
         switch type.lowercased() {
-        case "gold": typeDisplay = "Gold"
-        case "model.goods.tribute": typeDisplay = "Tribut"
+        case "gold": typeDisplay = L10n.text("Gold", table: "GameState")
+        case "model.goods.tribute": typeDisplay = L10n.text("Tribut", table: "GameState")
         default: typeDisplay = goodsDisplayName(type)
         }
-        return "Die Ureinwohner fordern \(amount) \(typeDisplay) als Tribut für \(unitName) in \(colonyName). Akzeptieren (Verlust: \(amount) \(typeDisplay)) oder ablehnen (Risiko: Angriff)?"
+        return L10n.text("Die Ureinwohner fordern \(amount) \(typeDisplay) als Tribut für \(unitName) in \(colonyName). Akzeptieren (Verlust: \(amount) \(typeDisplay)) oder ablehnen (Risiko: Angriff)?", table: "GameState")
     }
 
     /// Parsed session for a pending `nativeTrade` prompt.
@@ -442,15 +504,15 @@ final class GameState {
 
     private func monarchActionDescription(_ raw: String) -> String {
         switch raw.uppercased() {
-        case "RAISE_TAX_ACT": return "Steuern erhöhen"
-        case "RAISE_TAX_WAR": return "Steuern wegen des Kriegs erhöhen"
-        case "LOWER_TAX_ACT": return "Steuern senken"
-        case "ADD_TO_ARMY": return "Armee finanzieren"
-        case "ADD_TO_NAVY": return "Marine finanzieren"
-        case "DECLARE_INDEPENDENCE": return "Unabhängigkeit erklären"
-        case "BELL": return "Freiheitsbewusstsein"
-        case "NO_ACTION": return "Keine Aktion"
-        case "DISPLEASURE": return "Missfallen"
+        case "RAISE_TAX_ACT": return L10n.text("Steuern erhöhen", table: "GameState")
+        case "RAISE_TAX_WAR": return L10n.text("Steuern wegen des Kriegs erhöhen", table: "GameState")
+        case "LOWER_TAX_ACT": return L10n.text("Steuern senken", table: "GameState")
+        case "ADD_TO_ARMY": return L10n.text("Armee finanzieren", table: "GameState")
+        case "ADD_TO_NAVY": return L10n.text("Marine finanzieren", table: "GameState")
+        case "DECLARE_INDEPENDENCE": return L10n.text("Unabhängigkeit erklären", table: "GameState")
+        case "BELL": return L10n.text("Freiheitsbewusstsein", table: "GameState")
+        case "NO_ACTION": return L10n.text("Keine Aktion", table: "GameState")
+        case "DISPLEASURE": return L10n.text("Missfallen", table: "GameState")
         default: return prettyEnum(raw)
         }
     }
@@ -520,17 +582,17 @@ final class GameState {
         }
         let result = decision.rawPayload["result"] ?? ""
         switch result {
-        case "die": return "The chief had the scout killed."
-        case "expert": return "The scout learned from the chief and became an expert."
-        case "tales": return "The chief shared tales of the land."
-        case "nothing": return "The chief had nothing to offer."
+        case "die": return L10n.text("Der Häuptling ließ den Kundschafter töten.", table: "GameState")
+        case "expert": return L10n.text("Der Kundschafter lernte vom Häuptling und wurde zum erfahrenen Kundschafter.", table: "GameState")
+        case "tales": return L10n.text("Der Häuptling erzählte von diesem Land.", table: "GameState")
+        case "nothing": return L10n.text("Der Häuptling hatte nichts anzubieten.", table: "GameState")
         default:
             if let amount = Int(result), amount > 0 {
-                return "The chief gave beads worth \(amount) gold."
+                return L10n.text("Der Häuptling schenkte Perlen im Wert von \(amount) Gold.", table: "GameState")
             } else if result.isEmpty {
-                return "The scout spoke with the chief."
+                return L10n.text("Der Kundschafter sprach mit dem Häuptling.", table: "GameState")
             }
-            return "The chief's response: \(result)"
+            return L10n.text("Antwort des Häuptlings: \(result)", table: "GameState")
         }
     }
 
@@ -557,6 +619,8 @@ final class GameState {
     var nationSummaryReport: ParsedMessage?
 
     private(set) var client: NovaloriaClient?
+    private var nativeInteractionRequestID: UUID?
+    var isNativeInteractionInProgress: Bool { nativeInteractionRequestID != nil }
     // Expose vacant players after connection, before login
     var vacantPlayers: ParsedMessage?
     var serverState: ServerState?
@@ -613,13 +677,13 @@ final class GameState {
 
     func saveGame(to url: URL) {
         guard canSaveGame, let client, let game = cachedGame else {
-            errorMessage = "Speichern ist nur als Spieladministrator im eigenen Zug auf einem Java-Server möglich."
+            errorMessage = L10n.text("Speichern ist nur als Spieladministrator im eigenen Zug auf einem Java-Server möglich.", table: "GameState")
             return
         }
         let requestID = UUID()
         saveRequestID = requestID
         errorMessage = nil
-        statusMessage = "Spielstand wird vom Server angefordert…"
+        statusMessage = L10n.text("Spielstand wird vom Server angefordert…", table: "GameState")
         Task {
             defer {
                 if saveRequestID == requestID { saveRequestID = nil }
@@ -631,15 +695,15 @@ final class GameState {
                 guard saveRequestID == requestID, cachedGame === game else { return }
                 let data = try ServerSavegame.decode(reply)
                 try data.write(to: url, options: .atomic)
-                statusMessage = "Spiel gespeichert: \(url.lastPathComponent)"
+                statusMessage = L10n.text("Spiel gespeichert: \(url.lastPathComponent)", table: "GameState")
             } catch {
                 guard saveRequestID == requestID else { return }
                 FreeColLogger.shared.error("Saving game failed: \(error)")
-                errorMessage = "Spiel konnte nicht gespeichert werden: \(ServerErrorMessage.description(for: error))"
+                errorMessage = L10n.text("Spiel konnte nicht gespeichert werden: \(ServerErrorMessage.description(for: error))", table: "GameState")
                 if let protocolError = error as? FreeColProtocolError, case .timeout = protocolError {
-                    errorMessage = "Keine Speicherbestätigung vom Server erhalten. Es wurde keine Datei gespeichert. Der Java-Server benötigt die NovaloriaClient-Speichererweiterung."
+                    errorMessage = L10n.text("Keine Speicherbestätigung vom Server erhalten. Es wurde keine Datei gespeichert. Der Java-Server benötigt die NovaloriaClient-Speichererweiterung.", table: "GameState")
                 }
-                statusMessage = "Speichern fehlgeschlagen."
+                statusMessage = L10n.text("Speichern fehlgeschlagen.", table: "GameState")
             }
         }
     }
@@ -670,6 +734,8 @@ final class GameState {
     var showEuropePanel: Bool = false
     var showColonyPanel: Bool = false
     private var displayedColonyId: String?
+    var showNativeSettlementPanel: Bool = false
+    private var displayedNativeSettlementId: String?
     var showDebugPanel: Bool = false
     var showStatusPanel: Bool = false
     var showShortcutsHelp: Bool = false
@@ -724,10 +790,16 @@ final class GameState {
     func closeEuropePanel() { showEuropePanel = false }
     func openColonyPanel() {
         guard let colony = selectedColony else {
-            errorMessage = "Bitte eine Kolonie auf der Karte auswählen."
+            errorMessage = L10n.text("Bitte eine Kolonie auf der Karte auswählen.", table: "GameState")
+            return
+        }
+        if let game = cachedGame, isNativeSettlement(colony, in: game) {
+            openNativeSettlementPanel(settlementId: colony.id)
             return
         }
         displayedColonyId = colony.id
+        displayedNativeSettlementId = nil
+        showNativeSettlementPanel = false
         if !selectedColonyUnits.contains(where: { $0.id == selectedUnitId }) {
             selectedUnitId = nil
         }
@@ -739,13 +811,48 @@ final class GameState {
     func openColonyPanel(colonyId: String) {
         guard let colony = cachedGame?.colonies[colonyId],
               let tileId = colony.tileId, cachedGame?.tiles[tileId] != nil else {
-            errorMessage = "Die Kolonie ist auf der Karte nicht verfügbar."
+            errorMessage = L10n.text("Die Kolonie ist auf der Karte nicht verfügbar.", table: "GameState")
             return
         }
         displayedColonyId = colonyId
         selectedTileId = tileId
         openColonyPanel()
     }
+
+    var selectedNativeSettlement: Colony? {
+        guard showNativeSettlementPanel,
+              let settlementId = displayedNativeSettlementId else { return nil }
+        return cachedGame?.colonies[settlementId]
+    }
+
+    func openNativeSettlementPanel(settlementId: String) {
+        guard let game = cachedGame,
+              let settlement = game.colonies[settlementId],
+              isNativeSettlement(settlement, in: game),
+              let tileId = settlement.tileId,
+              game.tiles[tileId] != nil else {
+            errorMessage = L10n.text("Die Ureinwohner-Siedlung ist auf der Karte nicht verfügbar.", table: "GameState")
+            return
+        }
+        displayedNativeSettlementId = settlementId
+        displayedColonyId = nil
+        showColonyPanel = false
+        selectedTileId = tileId
+        closeTileActions()
+        isChoosingMoveDestination = false
+        showNativeSettlementPanel = true
+    }
+
+    func closeNativeSettlementPanel() {
+        showNativeSettlementPanel = false
+        displayedNativeSettlementId = nil
+    }
+
+    private func isNativeSettlement(_ settlement: Colony, in game: Game) -> Bool {
+        guard let ownerId = settlement.owner else { return false }
+        return game.players[ownerId]?.playerType == .indian
+    }
+
     func closeColonyPanel() {
         showColonyPanel = false
         displayedColonyId = nil
@@ -757,7 +864,7 @@ final class GameState {
     private func cycleColony(offset: Int) {
         let colonies = coloniesForNavigation
         guard !colonies.isEmpty else {
-            errorMessage = "Keine eigenen Kolonien verfügbar."
+            errorMessage = L10n.text("Keine eigenen Kolonien verfügbar.", table: "GameState")
             return
         }
         let currentIndex = colonies.firstIndex { $0.id == selectedColony?.id }
@@ -773,7 +880,7 @@ final class GameState {
     /// Attempt to build a colony using keyboard shortcut
     func attemptBuildColonyWithShortcut() {
         guard canBuildSelectedColony else {
-            errorMessage = "Kann hier keine Kolonie bauen. Benötige Kolonist auf geeignetem Gelände."
+            errorMessage = L10n.text("Kann hier keine Kolonie bauen. Benötige Kolonist auf geeignetem Gelände.", table: "GameState")
             return
         }
         buildColony(name: suggestedColonyName)
@@ -781,13 +888,13 @@ final class GameState {
     
     /// Attempt to build a road using keyboard shortcut
     func attemptBuildRoadWithShortcut() {
-        statusMessage = "Straßenbau ist noch nicht implementiert."
+        statusMessage = L10n.text("Straßenbau ist noch nicht implementiert.", table: "GameState")
     }
     
     /// Attempt to attack using keyboard shortcut
     func attemptAttackWithShortcut(ranged: Bool) {
         guard let tileId = selectedTileId else {
-            errorMessage = "Kein Ziel für Angriff ausgewählt."
+            errorMessage = L10n.text("Kein Ziel für Angriff ausgewählt.", table: "GameState")
             return
         }
         
@@ -796,14 +903,14 @@ final class GameState {
         } else if !ranged && canAttackSelectedUnitMelee(onTile: tileId) {
             requestAttack(onTile: tileId, ranged: false)
         } else {
-            errorMessage = ranged ? "Fernkampf nicht möglich." : "Nahkampf nicht möglich."
+            errorMessage = ranged ? L10n.text("Fernkampf nicht möglich.", table: "GameState") : L10n.text("Nahkampf nicht möglich.", table: "GameState")
         }
     }
     
     /// Embark selected unit on default carrier
     func embarkSelectedUnitOnDefaultCarrier() {
         guard let carrierId = defaultEmbarkCarrierId else {
-            errorMessage = "Kein Transportschiff zum Einsteigen verfügbar."
+            errorMessage = L10n.text("Kein Transportschiff zum Einsteigen verfügbar.", table: "GameState")
             return
         }
         embarkSelectedUnit(onCarrier: carrierId)
@@ -837,9 +944,9 @@ final class GameState {
     /// Prompt to save game
     func promptSaveGame() {
         if canSaveGame {
-            statusMessage = "Spiel speichern... (Noch nicht implementiert)"
+            statusMessage = L10n.text("Spiel speichern... (Noch nicht implementiert)", table: "GameState")
         } else {
-            errorMessage = "Spiel kann derzeit nicht gespeichert werden."
+            errorMessage = L10n.text("Spiel kann derzeit nicht gespeichert werden.", table: "GameState")
         }
     }
     
@@ -899,11 +1006,11 @@ final class GameState {
     var turnStatusDescription: String {
         let turnNumber = cachedGame?.turn.number ?? 0
         if isLocalPlayersTurn {
-            return "Dein Zug (Zug #\(turnNumber))"
+            return L10n.text("Dein Zug (Zug #\(turnNumber))", table: "GameState")
         } else if let name = currentPlayerName {
-            return "Warte auf \(name) (Zug #\(turnNumber))"
+            return L10n.text("Warte auf \(name) (Zug #\(turnNumber))", table: "GameState")
         } else {
-            return "Zug #\(turnNumber)"
+            return L10n.text("Zug #\(turnNumber)", table: "GameState")
         }
     }
 
@@ -986,7 +1093,7 @@ final class GameState {
 
         let colony = replacement("%colony%")
             ?? message.source.flatMap { cachedGame?.colonies[$0]?.name }
-            ?? "unbekannte Kolonie"
+            ?? L10n.text("unbekannte Kolonie", table: "GameState")
 
         let messageId = message.id.hasSuffix(".description")
             ? String(message.id.dropLast(".description".count))
@@ -995,19 +1102,19 @@ final class GameState {
         switch messageId {
         case "model.colony.famineFeared":
             let turns = replacement("%number%") ?? "?"
-            return "In \(colony) wird eine Hungersnot befürchtet. Die Nahrung reicht nur noch für \(turns) Züge."
+            return L10n.text("In \(colony) wird eine Hungersnot befürchtet. Die Nahrung reicht nur noch für \(turns) Züge.", table: "GameState")
         case "model.colony.starving":
-            return "\(colony) verhungert."
+            return L10n.text("\(colony) verhungert.", table: "GameState")
         case "model.colony.colonistStarved":
-            return "In \(colony) ist ein Kolonist verhungert!"
+            return L10n.text("In \(colony) ist ein Kolonist verhungert!", table: "GameState")
         case "model.colony.colonyStarved":
-            return "Der letzte Kolonist in \(colony) ist verhungert; die Kolonie ist verlassen."
+            return L10n.text("Der letzte Kolonist in \(colony) ist verhungert; die Kolonie ist verlassen.", table: "GameState")
         case "model.colony.newColonist":
-            return "Ein neuer Kolonist ist in \(colony) eingetroffen."
+            return L10n.text("Ein neuer Kolonist ist in \(colony) eingetroffen.", table: "GameState")
         case "model.unit.experience":
-            let oldUnit = replacement("%oldName%") ?? "Ein Kolonist"
-            let newUnit = replacement("%unit%") ?? "ein Experte"
-            return "Ein \(oldUnit) in \(colony) ist durch Erfahrung zum Experten (\(newUnit)) geworden."
+            let oldUnit = replacement("%oldName%") ?? L10n.text("Ein Kolonist", table: "GameState")
+            let newUnit = replacement("%unit%") ?? L10n.text("ein Experte", table: "GameState")
+            return L10n.text("Ein \(oldUnit) in \(colony) ist durch Erfahrung zum Experten (\(newUnit)) geworden.", table: "GameState")
         default:
             break
         }
@@ -1018,29 +1125,29 @@ final class GameState {
             let money = replacement("%money%") ?? "?"
             switch result {
             case "burialGround":
-                return "Eure Einheit hat eine heilige Begräbnisstätte betreten."
+                return L10n.text("Eure Einheit hat eine heilige Begräbnisstätte betreten.", table: "GameState")
             case "cibola":
-                let city = replacement("%city%") ?? "eine der Sieben Goldenen Städte"
-                return "Ihr habt \(city) entdeckt und einen Schatz im Wert von \(money) Gold gefunden."
+                let city = replacement("%city%") ?? L10n.text("eine der Sieben Goldenen Städte", table: "GameState")
+                return L10n.text("Ihr habt \(city) entdeckt und einen Schatz im Wert von \(money) Gold gefunden.", table: "GameState")
             case "colonist":
-                return "Überlebende einer verlorenen Kolonie schließen sich Eurer Expedition an."
+                return L10n.text("Überlebende einer verlorenen Kolonie schließen sich Eurer Expedition an.", table: "GameState")
             case "expeditionVanishes":
-                return "Eure Expedition ist spurlos verschwunden!"
+                return L10n.text("Eure Expedition ist spurlos verschwunden!", table: "GameState")
             case "fountainOfYouth", "fountainOfYouth.noEurope":
-                return "Ihr habt den Jungbrunnen entdeckt!"
+                return L10n.text("Ihr habt den Jungbrunnen entdeckt!", table: "GameState")
             case "learn":
-                let unit = replacement("%unit%") ?? "Eure Einheit"
-                let type = replacement("%type%") ?? "einen erfahrenen Beruf"
-                return "\(unit) hat Erfahrung gesammelt und ist jetzt \(type)."
+                let unit = replacement("%unit%") ?? L10n.text("Eure Einheit", table: "GameState")
+                let type = replacement("%type%") ?? L10n.text("einen erfahrenen Beruf", table: "GameState")
+                return L10n.text("\(unit) hat Erfahrung gesammelt und ist jetzt \(type).", table: "GameState")
             case "ruins", "ruins.mounds":
-                return "Ihr habt Ruinen mit Schätzen im Wert von \(money) Gold entdeckt."
+                return L10n.text("Ihr habt Ruinen mit Schätzen im Wert von \(money) Gold entdeckt.", table: "GameState")
             case "tribalChief", "tribalChief.mounds":
-                return "Ein Häuptling beschenkt Euch mit Schmuck im Wert von \(money) Gold."
+                return L10n.text("Ein Häuptling beschenkt Euch mit Schmuck im Wert von \(money) Gold.", table: "GameState")
             default:
                 if result.hasPrefix("nothing.") {
-                    return "Das Gerücht über eine verlorene Stadt war nichts als ein Gerücht."
+                    return L10n.text("Das Gerücht über eine verlorene Stadt war nichts als ein Gerücht.", table: "GameState")
                 }
-                return "Ein Gerücht über eine verlorene Stadt wurde erforscht."
+                return L10n.text("Ein Gerücht über eine verlorene Stadt wurde erforscht.", table: "GameState")
             }
         }
 
@@ -1082,35 +1189,35 @@ final class GameState {
         let type = message.messageType?.uppercased() ?? ""
         let category: String
         switch type {
-        case "BUILDING_COMPLETED": category = "Gebäude fertiggestellt"
-        case "COMBAT_RESULT": category = "Kampfergebnis"
-        case "DEMANDS": category = "Forderung der Ureinwohner"
-        case "DISASTERS": category = "Katastrophe"
-        case "FOREIGN_DIPLOMACY": category = "Diplomatie"
-        case "GIFT_GOODS": category = "Geschenk"
-        case "GOODS_MOVEMENT": category = "Warenbewegung"
-        case "GOVERNMENT_EFFICIENCY": category = "Regierungseffizienz"
-        case "LOST_CITY_RUMOUR": category = "Gerücht über eine verlorene Stadt"
-        case "MARKET_PRICES": category = "Marktpreis"
-        case "MISSING_GOODS": category = "Fehlende Waren"
-        case "SONS_OF_LIBERTY": category = "Söhne der Freiheit"
-        case "TUTORIAL": category = "Spielhinweis"
-        case "UNIT_ADDED": category = "Neue Einheit"
-        case "UNIT_ARRIVED": category = "Einheit angekommen"
-        case "UNIT_DEMOTED": category = "Einheit zurückgestuft"
-        case "UNIT_IMPROVED": category = "Einheit befördert"
-        case "UNIT_LOST": category = "Einheit verloren"
-        case "UNIT_REPAIRED": category = "Einheit repariert"
-        case "WAREHOUSE_CAPACITY": category = "Lagerbestand"
-        case "WARNING": category = "Warnung"
-        default: category = "Spielmeldung"
+        case "BUILDING_COMPLETED": category = L10n.text("Gebäude fertiggestellt", table: "GameState")
+        case "COMBAT_RESULT": category = L10n.text("Kampfergebnis", table: "GameState")
+        case "DEMANDS": category = L10n.text("Forderung der Ureinwohner", table: "GameState")
+        case "DISASTERS": category = L10n.text("Katastrophe", table: "GameState")
+        case "FOREIGN_DIPLOMACY": category = L10n.text("Diplomatie", table: "GameState")
+        case "GIFT_GOODS": category = L10n.text("Geschenk", table: "GameState")
+        case "GOODS_MOVEMENT": category = L10n.text("Warenbewegung", table: "GameState")
+        case "GOVERNMENT_EFFICIENCY": category = L10n.text("Regierungseffizienz", table: "GameState")
+        case "LOST_CITY_RUMOUR": category = L10n.text("Gerücht über eine verlorene Stadt", table: "GameState")
+        case "MARKET_PRICES": category = L10n.text("Marktpreis", table: "GameState")
+        case "MISSING_GOODS": category = L10n.text("Fehlende Waren", table: "GameState")
+        case "SONS_OF_LIBERTY": category = L10n.text("Söhne der Freiheit", table: "GameState")
+        case "TUTORIAL": category = L10n.text("Spielhinweis", table: "GameState")
+        case "UNIT_ADDED": category = L10n.text("Neue Einheit", table: "GameState")
+        case "UNIT_ARRIVED": category = L10n.text("Einheit angekommen", table: "GameState")
+        case "UNIT_DEMOTED": category = L10n.text("Einheit zurückgestuft", table: "GameState")
+        case "UNIT_IMPROVED": category = L10n.text("Einheit befördert", table: "GameState")
+        case "UNIT_LOST": category = L10n.text("Einheit verloren", table: "GameState")
+        case "UNIT_REPAIRED": category = L10n.text("Einheit repariert", table: "GameState")
+        case "WAREHOUSE_CAPACITY": category = L10n.text("Lagerbestand", table: "GameState")
+        case "WARNING": category = L10n.text("Warnung", table: "GameState")
+        default: category = L10n.text("Spielmeldung", table: "GameState")
         }
 
         let display = modelMessageObjectName(message.display)
         let source = message.display == message.source ? nil : modelMessageObjectName(message.source)
         let context = [display, source].compactMap { $0 }
         guard !context.isEmpty else { return category + "." }
-        return "\(category): \(context.joined(separator: " · "))."
+        return L10n.text("\(category): \(context.joined(separator: " · ")).", table: "GameState")
     }
 
     private func modelMessageObjectName(_ objectId: String?) -> String? {
@@ -1126,11 +1233,11 @@ final class GameState {
         if let colonRange = value.range(of: ":"), value[..<colonRange.lowerBound] == "unit" {
             let numericId = String(value[colonRange.upperBound...])
             if let unit = cachedGame?.units.values.first(where: { $0.id.hasSuffix(":" + numericId) }) {
-                return unit.name ?? unit.unitType.map(modelMessageReplacement) ?? "Einheit"
+                return unit.name ?? unit.unitType.map(modelMessageReplacement) ?? L10n.text("Einheit", table: "GameState")
             }
-            return "Einheit"
+            return L10n.text("Einheit", table: "GameState")
         }
-        if let colony = cachedGame?.colonies[value] { return colony.name ?? "Kolonie" }
+        if let colony = cachedGame?.colonies[value] { return colony.name ?? L10n.text("Kolonie", table: "GameState") }
         if value.hasPrefix("model.") { return GameLabels.name(value) }
         return nil
     }
@@ -1150,7 +1257,7 @@ final class GameState {
                 if let reply, let payload = reply.children.first {
                     highScoresReport = payload
                 }
-                statusMessage = "Bestenliste wird angefordert."
+                statusMessage = L10n.text("Bestenliste wird angefordert.", table: "GameState")
             } catch {
                 errorMessage = ServerErrorMessage.description(for: error)
             }
@@ -1170,7 +1277,7 @@ final class GameState {
                     // The reply wraps the summary; unwrap the inner <nationSummary>.
                     nationSummaryReport = payload.children.first { $0.tag == "nationSummary" } ?? payload
                 }
-                statusMessage = "Nationsübersicht wird angefordert."
+                statusMessage = L10n.text("Nationsübersicht wird angefordert.", table: "GameState")
             } catch {
                 errorMessage = ServerErrorMessage.description(for: error)
             }
@@ -1267,13 +1374,13 @@ final class GameState {
 
     /// A colony name that is not already in use, seeded into the build-colony field.
     var suggestedColonyName: String {
-        guard let game = cachedGame else { return "New Colony" }
+        guard let game = cachedGame else { return L10n.text("Neue Kolonie", table: "GameState") }
         let existing = Set(game.colonies.values.compactMap { $0.name?.lowercased() })
         let base = "New Amsterdam"
         if !existing.contains(base.lowercased()) { return base }
         var index = 2
         while existing.contains("\(base) \(index)".lowercased()) { index += 1 }
-        return "\(base) \(index)"
+        return L10n.text("\(base) \(index)", table: "GameState")
     }
 
     var canBuildSelectedColony: Bool {
@@ -1362,13 +1469,13 @@ final class GameState {
 
     var selectedUnitDisembarkHint: String? {
         guard selectedUnitCarrier != nil else { return nil }
-        if !isLocalPlayersTurn { return "Ausschiffen ist nur im eigenen Zug möglich." }
-        if selectedUnitCanDisembarkInPlace { return "Im Hafen kann die Einheit direkt von Bord gehen." }
-        if selectedUnitTileId == nil { return "Während der Überfahrt ist Ausschiffen nicht möglich." }
+        if !isLocalPlayersTurn { return L10n.text("Ausschiffen ist nur im eigenen Zug möglich.", table: "GameState") }
+        if selectedUnitCanDisembarkInPlace { return L10n.text("Im Hafen kann die Einheit direkt von Bord gehen.", table: "GameState") }
+        if selectedUnitTileId == nil { return L10n.text("Während der Überfahrt ist Ausschiffen nicht möglich.", table: "GameState") }
         if selectedUnit?.movesLeft == 0 {
-            return "Zum Anlanden fehlen Bewegungspunkte. Bitte bis zum nächsten Zug warten."
+            return L10n.text("Zum Anlanden fehlen Bewegungspunkte. Bitte bis zum nächsten Zug warten.", table: "GameState")
         }
-        return "Zum Anlanden ein benachbartes, freies Landfeld wählen; alternativ dort rechtsklicken."
+        return L10n.text("Zum Anlanden ein benachbartes, freies Landfeld wählen; alternativ dort rechtsklicken.", table: "GameState")
     }
 
     var canDisbandSelectedUnit: Bool {
@@ -1376,18 +1483,18 @@ final class GameState {
     }
 
     var selectedUnitDisbandDisabledReason: String? {
-        guard phase == .inGame else { return "Einheiten können nur im laufenden Spiel aufgelöst werden." }
-        guard isLocalPlayersTurn else { return "Einheiten können nur im eigenen Zug aufgelöst werden." }
+        guard phase == .inGame else { return L10n.text("Einheiten können nur im laufenden Spiel aufgelöst werden.", table: "GameState") }
+        guard isLocalPlayersTurn else { return L10n.text("Einheiten können nur im eigenen Zug aufgelöst werden.", table: "GameState") }
         guard movingUnitId == nil, !isSavingGame else {
-            return "Während einer laufenden Aktion oder des Speicherns nicht möglich."
+            return L10n.text("Während einer laufenden Aktion oder des Speicherns nicht möglich.", table: "GameState")
         }
         guard let game = cachedGame, let unit = selectedUnit,
               let localPlayerId = resolveLocalPlayerId(), unit.owner == localPlayerId else {
-            return "Wähle eine eigene Einheit aus."
+            return L10n.text("Wähle eine eigene Einheit aus.", table: "GameState")
         }
         // Avoid disbanding carriers that currently transport units.
         if game.units.values.contains(where: { $0.location == unit.id }) {
-            return "Transporter mit Passagieren können nicht aufgelöst werden."
+            return L10n.text("Transporter mit Passagieren können nicht aufgelöst werden.", table: "GameState")
         }
         return nil
     }
@@ -1620,8 +1727,8 @@ final class GameState {
         for tile in colony.workTiles {
             guard colonyWorkLocationUnavailableReason(tile.id) == nil else { continue }
             let label = tile.tileId.flatMap { cachedGame?.tiles[$0] }.map {
-                "\($0.type.map(GameLabels.name) ?? "Gelände") (\($0.x), \($0.y))"
-            } ?? "Koloniefeld"
+                "\($0.type.map(GameLabels.name) ?? L10n.text("Gelände", table: "GameState")) (\($0.x), \($0.y))"
+            } ?? L10n.text("Koloniefeld", table: "GameState")
             candidates.append((id: tile.id, label: label))
         }
         return candidates.sorted { $0.label < $1.label }
@@ -1780,7 +1887,7 @@ final class GameState {
             .map { info -> (id: String, label: String) in
                 let cost = info.requiredGoods[buildingMaterialsGoodsId] ?? 0
                 let name = GameLabels.name(info.id, fallback: info.displayName)
-                return (id: info.id, label: cost > 0 ? "\(name) – \(cost)" : name)
+                return (id: info.id, label: cost > 0 ? L10n.text("\(name) – \(cost)", table: "GameState") : name)
             }
 
         return (buildings + units).sorted { $0.label < $1.label }
@@ -1809,7 +1916,7 @@ final class GameState {
         localPlayerName = userName
         localNationId = nationId
         phase = .connecting
-        statusMessage = "Lokaler Server wird gestartet …"
+        statusMessage = L10n.text("Lokaler Server wird gestartet …", table: "GameState")
 
         let server = MockServer()
         self.server = server
@@ -1827,7 +1934,7 @@ final class GameState {
                     server: server, gameXML: makeGameXML())
 
                 try await client.connect()
-                statusMessage = "Verbunden, Anmeldung läuft …"
+                statusMessage = L10n.text("Verbunden, Anmeldung läuft …", table: "GameState")
                 let result = try await client.login(userName: userName, nationId: nationId)
                 cachedGame = await client.game
                 if let game = cachedGame, game.currentPlayerId == nil {
@@ -1897,7 +2004,10 @@ final class GameState {
     func createJavaGame(configuration: NewGameConfiguration, java: URL, port: Int,
                         name: String, seed: String) throws {
         guard phase == .disconnected || phase == .lobby else {
-            throw NewGameError.invalid("Eine neue Partie kann nur außerhalb eines laufenden Spiels erstellt werden.")
+            throw NewGameError.invalid(L10n.text(
+                "Eine neue Partie kann nur außerhalb eines laufenden Spiels erstellt werden.",
+                table: "GameState"
+            ))
         }
         let launch = try JavaServerLaunch.prepare(configuration: configuration, java: java, port: port,
                                                  name: name, seed: seed, root: try hostedGamesRoot())
@@ -1906,7 +2016,10 @@ final class GameState {
 
     func loadJavaSavegame(_ savegame: URL, installation: URL, java: URL, port: Int, name: String) throws {
         guard phase == .disconnected || phase == .lobby else {
-            throw NewGameError.invalid("Ein Spielstand kann nur außerhalb eines laufenden Spiels geladen werden.")
+            throw NewGameError.invalid(L10n.text(
+                "Ein Spielstand kann nur außerhalb eines laufenden Spiels geladen werden.",
+                table: "GameState"
+            ))
         }
         let launch = try JavaServerLaunch.prepareSavegame(savegame, installation: installation, java: java,
                                                          port: port, name: name, root: try hostedGamesRoot())
@@ -1950,12 +2063,12 @@ final class GameState {
             guard let self else { return }
             FreeColLogger.shared.error(message)
             self.disconnect()
-            self.errorMessage = message
+            self.errorMessage = ServerErrorMessage.technicalFailure(detail: message)
         }
         let startID = UUID()
         javaServerStartID = startID
         phase = .connecting
-        statusMessage = "Java-Server wird gestartet…"
+        statusMessage = L10n.text("Java-Server wird gestartet…", table: "GameState")
         javaServerStartTask = Task {
             do {
                 try await previousServer?.waitForShutdown()
@@ -1970,7 +2083,7 @@ final class GameState {
                 guard javaServerStartID == startID else { return }
                 FreeColLogger.shared.error("Java-Serverstart fehlgeschlagen: \(error)")
                 stopHostedServer()
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
                 phase = .disconnected
                 statusMessage = ""
             }
@@ -1994,7 +2107,7 @@ final class GameState {
         FreeColLogger.shared.info("Connecting to \(host):\(port)...")
         resetSessionState()
         phase = .connecting
-        statusMessage = "Verbindung zu \(host):\(port) wird hergestellt …"
+        statusMessage = L10n.text("Verbindung zu \(host):\(port) wird hergestellt …", table: "GameState")
         let client = NovaloriaClient(host: host, port: port)
         self.client = client
         let bridge = ClientBridge(gameState: self)
@@ -2017,7 +2130,7 @@ final class GameState {
                 self.serverState = serverState
                 
                 phase = .login
-                statusMessage = "Verbunden"
+                statusMessage = L10n.text("Verbunden", table: "GameState")
             } catch {
                 guard connectionAttemptID == attemptID else { return }
                 FreeColLogger.shared.error("Connection failed: \(error)")
@@ -2035,7 +2148,7 @@ final class GameState {
         errorMessage = nil
         localPlayerName = userName
         phase = .connecting
-        statusMessage = "Anmeldung läuft …"
+        statusMessage = L10n.text("Anmeldung läuft …", table: "GameState")
 
         Task {
             do {
@@ -2050,7 +2163,7 @@ final class GameState {
                 FreeColLogger.shared.error("Login failed: \(error)")
                 errorMessage = ServerErrorMessage.description(for: error)
                 phase = .login
-                statusMessage = "Anmeldung fehlgeschlagen"
+                statusMessage = L10n.text("Anmeldung fehlgeschlagen", table: "GameState")
             }
         }
     }
@@ -2121,7 +2234,7 @@ final class GameState {
             for child in parsed.children {
                 if isDecisionResponse(child) {
                     clearPendingDecision()
-                    statusMessage = "Entscheidung verarbeitet."
+                    statusMessage = L10n.text("Entscheidung verarbeitet.", table: "GameState")
                     continue
                 }
                 applySessionMessage(child)
@@ -2164,13 +2277,13 @@ final class GameState {
             applyCloseMessage(parsed)
         case "highScores":
             highScoresReport = parsed
-            statusMessage = "Bestenliste empfangen."
+            statusMessage = L10n.text("Bestenliste empfangen.", table: "GameState")
         case "nationSummary":
             nationSummaryReport = parsed
-            statusMessage = "Nationsübersicht empfangen."
+            statusMessage = L10n.text("Nationsübersicht empfangen.", table: "GameState")
         case "scoutSpeakToChief":
-            if isDecisionResponse(parsed) {
-                clearPendingDecision()
+            guard parsed.attributes["result"] != nil else {
+                applyActionResultLog(parsed)
                 return
             }
             clearPendingDecision()
@@ -2179,12 +2292,13 @@ final class GameState {
                 rawPayload: parsed.attributes,
                 children: parsed.children
             )
+            statusMessage = scoutReportText
         case "spySettlement":
             applySpySettlementMessage(parsed)
         case "incite":
             if isDecisionResponse(parsed) {
                 clearPendingDecision()
-                statusMessage = "Entscheidung verarbeitet."
+                statusMessage = L10n.text("Entscheidung verarbeitet.", table: "GameState")
                 return
             }
             clearPendingDecision()
@@ -2193,11 +2307,11 @@ final class GameState {
                 rawPayload: parsed.attributes,
                 children: parsed.children
             )
-            statusMessage = "Bestätigung für den Aufstand steht aus."
+            statusMessage = L10n.text("Bestätigung für den Aufstand steht aus.", table: "GameState")
         case "chooseFoundingFather":
             if isDecisionResponse(parsed) {
                 clearPendingDecision()
-                statusMessage = "Gründervater ausgewählt."
+                statusMessage = L10n.text("Gründervater ausgewählt.", table: "GameState")
                 return
             }
             clearPendingDecision()
@@ -2206,7 +2320,7 @@ final class GameState {
                 rawPayload: parsed.attributes,
                 children: parsed.children
             )
-            statusMessage = "Wähle einen Gründervater aus."
+            statusMessage = L10n.text("Wähle einen Gründervater aus.", table: "GameState")
         case "learnSkill", "askSkill":
             applyActionResultLog(parsed)
         case "setDead":
@@ -2236,7 +2350,7 @@ final class GameState {
         case "fountainOfYouth":
             if isDecisionResponse(parsed) {
                 clearPendingDecision()
-                statusMessage = "Entscheidung verarbeitet."
+                statusMessage = L10n.text("Entscheidung verarbeitet.", table: "GameState")
                 return
             }
             clearPendingDecision()
@@ -2245,11 +2359,11 @@ final class GameState {
                 rawPayload: parsed.attributes,
                 children: parsed.children
             )
-            statusMessage = "Jungbrunnen: Wähle Auswanderer aus."
+            statusMessage = L10n.text("Jungbrunnen: Wähle Auswanderer aus.", table: "GameState")
         case "indianDemand":
             if isDecisionResponse(parsed) {
                 clearPendingDecision()
-                statusMessage = "Entscheidung verarbeitet."
+                statusMessage = L10n.text("Entscheidung verarbeitet.", table: "GameState")
                 return
             }
             clearPendingDecision()
@@ -2258,11 +2372,11 @@ final class GameState {
                 rawPayload: parsed.attributes,
                 children: parsed.children
             )
-            statusMessage = "Forderung der Ureinwohner wartet auf Antwort."
+            statusMessage = L10n.text("Forderung der Ureinwohner wartet auf Antwort.", table: "GameState")
         case "lootCargo":
             if isDecisionResponse(parsed) {
                 clearPendingDecision()
-                statusMessage = "Entscheidung verarbeitet."
+                statusMessage = L10n.text("Entscheidung verarbeitet.", table: "GameState")
                 return
             }
             clearPendingDecision()
@@ -2271,10 +2385,10 @@ final class GameState {
                 rawPayload: parsed.attributes,
                 children: parsed.children
             )
-            statusMessage = "Entscheidung über die Beute steht aus."
+            statusMessage = L10n.text("Entscheidung über die Beute steht aus.", table: "GameState")
         case "logout":
             if parsed.attributes["player"] == resolveLocalPlayerId() {
-                statusMessage = "Deine Sitzung wurde beendet."
+                statusMessage = L10n.text("Deine Sitzung wurde beendet.", table: "GameState")
             }
             pendingServerDecision = nil
         default:
@@ -2290,7 +2404,7 @@ final class GameState {
         if incomingChatLog.count > 8 {
             incomingChatLog.removeFirst(incomingChatLog.count - 8)
         }
-        statusMessage = "Chat – \(senderName): \(message)"
+        statusMessage = L10n.text("Chat – \(senderName): \(message)", table: "GameState")
         errorMessage = nil
     }
 
@@ -2323,11 +2437,11 @@ final class GameState {
         let defender = parsed.attributes["defender"] ?? "unknown defender"
         switch success {
         case .some(true):
-            statusMessage = "Angriff erfolgreich: \(attacker) gegen \(defender)"
+            statusMessage = L10n.text("Angriff erfolgreich: \(attacker) gegen \(defender)", table: "GameState")
         case .some(false):
-            statusMessage = "Angriff fehlgeschlagen: \(attacker) gegen \(defender)"
+            statusMessage = L10n.text("Angriff fehlgeschlagen: \(attacker) gegen \(defender)", table: "GameState")
         case .none:
-            statusMessage = "Angriff: \(attacker) gegen \(defender)"
+            statusMessage = L10n.text("Angriff: \(attacker) gegen \(defender)", table: "GameState")
         }
         errorMessage = nil
     }
@@ -2336,7 +2450,7 @@ final class GameState {
         errorMessage = nil
         if let result = parsed.attributes["result"], !result.isEmpty {
             // Response echo: record it instead of opening a new prompt.
-            statusMessage = "Erstkontakt abgeschlossen: \(result)"
+            statusMessage = L10n.text("Erstkontakt abgeschlossen: \(result)", table: "GameState")
             return
         }
         clearPendingDecision()
@@ -2345,14 +2459,14 @@ final class GameState {
             rawPayload: parsed.attributes,
             children: parsed.children
         )
-        statusMessage = "Erstkontakt: Diplomatische Beziehungen herstellen oder ablehnen."
+        statusMessage = L10n.text("Erstkontakt: Diplomatische Beziehungen herstellen oder ablehnen.", table: "GameState")
     }
 
     private func applyMonarchActionMessage(_ parsed: ParsedMessage) {
         let action = parsed.attributes["action"] ?? ""
         // A result attribute means this is a response echo, not a new offer.
         if let result = parsed.attributes["result"], !result.isEmpty {
-            statusMessage = "Monarch – \(monarchActionDescription(action)) (\(result))"
+            statusMessage = L10n.text("Monarch – \(monarchActionDescription(action)) (\(result))", table: "GameState")
             return
         }
         // Only these actions create a MonarchSession on the server and require
@@ -2363,7 +2477,7 @@ final class GameState {
             "monarch_mercenaries", "hessian_mercenaries",
         ]
         guard responseRequiredActions.contains(action.lowercased()) else {
-            statusMessage = "Monarch – \(monarchActionDescription(action))"
+            statusMessage = L10n.text("Monarch – \(monarchActionDescription(action))", table: "GameState")
             return
         }
         clearPendingDecision()
@@ -2372,13 +2486,13 @@ final class GameState {
             rawPayload: parsed.attributes,
             children: parsed.children
         )
-        statusMessage = "Angebot des Monarchen wartet auf Antwort."
+        statusMessage = L10n.text("Angebot des Monarchen wartet auf Antwort.", table: "GameState")
     }
 
     private func applyNamePrompt(_ parsed: ParsedMessage, type: PendingServerDecisionType) {
         if parsed.attributes["result"] != nil {
             clearPendingDecision()
-            statusMessage = "Name übermittelt."
+            statusMessage = L10n.text("Name übermittelt.", table: "GameState")
             return
         }
         clearPendingDecision()
@@ -2387,16 +2501,16 @@ final class GameState {
             rawPayload: parsed.attributes,
             children: parsed.children
         )
-        statusMessage = type == .newLandName ? "Benenne das neue Land." : "Benenne die neue Region."
+        statusMessage = type == .newLandName ? L10n.text("Benenne das neue Land.", table: "GameState") : L10n.text("Benenne die neue Region.", table: "GameState")
     }
 
     private func applyCloseMessage(_ parsed: ParsedMessage) {
         let panel = parsed.attributes["panel"] ?? ""
         if matchesPendingPrompt(panel: panel) {
             clearPendingDecision()
-            statusMessage = "Der Server hat die Abfrage geschlossen."
+            statusMessage = L10n.text("Der Server hat die Abfrage geschlossen.", table: "GameState")
         } else {
-            statusMessage = "Der Server hat das Fenster geschlossen: \(panel)"
+            statusMessage = L10n.text("Der Server hat das Fenster geschlossen: \(panel)", table: "GameState")
         }
     }
 
@@ -2420,6 +2534,8 @@ final class GameState {
             return lower.contains("newregion")
         case .nativeTrade:
             return lower.contains("trade")
+        case .nativeSkill:
+            return lower.contains("skill")
         case .diplomacy:
             return lower.contains("diplomacy") || lower.contains("negotiation")
         case .foundingFather:
@@ -2453,9 +2569,9 @@ final class GameState {
         }
         guard let game = cachedGame else { return }
         if let colony = game.colonies[settlementId] {
-            statusMessage = "Erkundet: \(colony.name ?? settlementId)."
+            statusMessage = L10n.text("Erkundet: \(colony.name ?? settlementId).", table: "GameState")
         } else {
-            statusMessage = "Erkundungsbericht: \(settlementId)"
+            statusMessage = L10n.text("Erkundungsbericht: \(settlementId)", table: "GameState")
         }
         openColonyPanel(colonyId: settlementId)
     }
@@ -2467,9 +2583,9 @@ final class GameState {
             isDefeated = true
             isVictorious = false
             pendingServerDecision = nil
-            statusMessage = "Deine Nation wurde besiegt."
+            statusMessage = L10n.text("Deine Nation wurde besiegt.", table: "GameState")
         } else {
-            statusMessage = "Spieler ausgeschaltet: \(deadId)"
+            statusMessage = L10n.text("Spieler ausgeschaltet: \(deadId)", table: "GameState")
         }
     }
 
@@ -2482,7 +2598,7 @@ final class GameState {
         }
         if !options.isEmpty {
             cachedGame?.mergeOptions(options)
-            statusMessage = "Optionen aktualisiert (\(options.count))."
+            statusMessage = L10n.text("Optionen aktualisiert (\(options.count)).", table: "GameState")
         }
     }
 
@@ -2509,55 +2625,55 @@ final class GameState {
                 rawPayload: ["action": action],
                 children: [incoming.toInnerMessage()]
             )
-            statusMessage = "Handel mit Ureinwohnern geöffnet."
+            statusMessage = L10n.text("Handel mit Ureinwohnern geöffnet.", table: "GameState")
         case "ACK_BUY":
             mergeIntoPrompt()
-            statusMessage = tradeItemStatus("Gekauft", session: pendingNativeTrade)
+            statusMessage = tradeItemStatus(L10n.text("Gekauft", table: "GameState"), session: pendingNativeTrade)
         case "ACK_SELL":
             mergeIntoPrompt()
-            statusMessage = tradeItemStatus("Verkauft", session: pendingNativeTrade)
+            statusMessage = tradeItemStatus(L10n.text("Verkauft", table: "GameState"), session: pendingNativeTrade)
         case "ACK_GIFT":
             mergeIntoPrompt()
-            statusMessage = "Geschenk angenommen."
+            statusMessage = L10n.text("Geschenk angenommen.", table: "GameState")
         case "ACK_BUY_HAGGLE", "ACK_SELL_HAGGLE":
             mergeIntoPrompt()
             if let item = pendingNativeTrade?.item {
-                statusMessage = "Nachverhandlung: \(item.goodsType.map(goodsDisplayName) ?? "Ware") kostet jetzt \(item.price) Gold."
+                statusMessage = L10n.text("Nachverhandlung: \(item.goodsType.map(goodsDisplayName) ?? L10n.text("Ware", table: "GameState")) kostet jetzt \(item.price) Gold.", table: "GameState")
             } else {
-                statusMessage = "Gegenangebot erhalten."
+                statusMessage = L10n.text("Gegenangebot erhalten.", table: "GameState")
             }
         case "CLOSE":
             clearPendingDecision()
-            statusMessage = "Handel mit Ureinwohnern beendet."
+            statusMessage = L10n.text("Handel mit Ureinwohnern beendet.", table: "GameState")
         case "NAK_GOODS", "NAK_HAGGLE", "NAK_HOSTILE", "NAK_NOSALE", "NAK_INVALID":
-            statusMessage = "Handel mit Ureinwohnern abgelehnt: \(nativeTradeActionDescription(action))"
+            statusMessage = L10n.text("Handel mit Ureinwohnern abgelehnt: \(nativeTradeActionDescription(action))", table: "GameState")
         default:
             // Includes a stray server-side OPEN echo.
             mergeIntoPrompt()
-            statusMessage = "Handel mit Ureinwohnern: \(nativeTradeActionDescription(action))"
+            statusMessage = L10n.text("Handel mit Ureinwohnern: \(nativeTradeActionDescription(action))", table: "GameState")
         }
     }
 
     private func tradeItemStatus(_ verb: String, session: NativeTradeSession?) -> String {
-        guard let item = session?.item else { return "\(verb)." }
-        return "\(verb): \(item.goodsType.map(goodsDisplayName) ?? "Ware") ×\(item.amount) für \(item.price) Gold."
+        guard let item = session?.item else { return L10n.text("\(verb).", table: "GameState") }
+        return L10n.text("\(verb): \(item.goodsType.map(goodsDisplayName) ?? L10n.text("Ware", table: "GameState")) ×\(item.amount) für \(item.price) Gold.", table: "GameState")
     }
 
     private func nativeTradeActionDescription(_ action: String) -> String {
         switch action {
-        case "NAK_GOODS": return "Warenmenge nicht verfügbar"
-        case "NAK_HAGGLE": return "Gegenangebot abgelehnt"
-        case "NAK_HOSTILE": return "Siedlung ist feindselig"
-        case "NAK_NOSALE": return "Handel nicht möglich"
-        case "NAK_INVALID": return "Ungültiges Angebot"
-        case "OPEN": return "Handel geöffnet"
+        case "NAK_GOODS": return L10n.text("Warenmenge nicht verfügbar", table: "GameState")
+        case "NAK_HAGGLE": return L10n.text("Gegenangebot abgelehnt", table: "GameState")
+        case "NAK_HOSTILE": return L10n.text("Siedlung ist feindselig", table: "GameState")
+        case "NAK_NOSALE": return L10n.text("Handel nicht möglich", table: "GameState")
+        case "NAK_INVALID": return L10n.text("Ungültiges Angebot", table: "GameState")
+        case "OPEN": return L10n.text("Handel geöffnet", table: "GameState")
         default: return action
         }
     }
 
     private func applyDiplomacyMessage(_ parsed: ParsedMessage) {
         guard let tradeNode = parsed.children.first(where: { $0.tag == "diplomaticTrade" }) else {
-            statusMessage = "Diplomatische Nachricht ohne Vereinbarung."
+            statusMessage = L10n.text("Diplomatische Nachricht ohne Vereinbarung.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -2565,10 +2681,10 @@ final class GameState {
         switch proposal.status {
         case "ACCEPT_TRADE":
             clearPendingDecision()
-            statusMessage = "Diplomatie: Angebot angenommen."
+            statusMessage = L10n.text("Diplomatie: Angebot angenommen.", table: "GameState")
         case "REJECT_TRADE":
             clearPendingDecision()
-            statusMessage = "Diplomatie: Angebot abgelehnt."
+            statusMessage = L10n.text("Diplomatie: Angebot abgelehnt.", table: "GameState")
         default:
             clearPendingDecision()
             pendingServerDecision = PendingServerDecision(
@@ -2576,17 +2692,19 @@ final class GameState {
                 rawPayload: parsed.attributes,
                 children: [tradeNode]
             )
-            statusMessage = "Diplomatie: Angebot wartet auf eine Antwort."
+            statusMessage = L10n.text("Diplomatie: Angebot wartet auf eine Antwort.", table: "GameState")
         }
     }
 
     private func applyMissionaryMessage(_ parsed: ParsedMessage) {
         let unitId = parsed.attributes["unit"] ?? ""
-        let unit = cachedGame?.units[unitId].map(unitDisplayLabel) ?? "Einheit"
+        let unit = cachedGame?.units[unitId].map(unitDisplayLabel) ?? L10n.text("Einheit", table: "GameState")
         let direction = parsed.attributes["direction"] ?? "unknown"
         let denounce = (parsed.attributes["denounce"] ?? "false").lowercased() == "true"
         errorMessage = nil
-        statusMessage = "Missionarsaktion mit \(unit), Richtung \(direction), anprangern: \(denounce ? "ja" : "nein")."
+        statusMessage = denounce
+            ? L10n.text("Missionarsaktion mit \(unit), Richtung \(direction), anprangern: ja.", table: "GameState")
+            : L10n.text("Missionarsaktion mit \(unit), Richtung \(direction), anprangern: nein.", table: "GameState")
     }
 
     private func showMapAnimationCue(sourceTileId: String, targetTileId: String, style: MapAnimationCue.Style) {
@@ -2605,10 +2723,10 @@ final class GameState {
         clearPendingEndTurn()
         if let message = parsed.attributes["message"], !message.isEmpty {
             reconcileFromServerErrorMessage(message)
-            errorMessage = ServerRejectMapper.userFacingMessage(for: parsed)
+            errorMessage = ServerErrorMessage.rejection(for: parsed)
             return
         }
-        errorMessage = ServerRejectMapper.userFacingMessage(for: parsed)
+        errorMessage = ServerErrorMessage.rejection(for: parsed)
     }
 
     private func reconcileFromServerErrorMessage(_ message: String) {
@@ -2640,7 +2758,7 @@ final class GameState {
 
     private func applyReconnectRequest() {
         disconnect()
-        errorMessage = "Server hat eine Neuverbindung angefordert."
+        errorMessage = L10n.text("Server hat eine Neuverbindung angefordert.", table: "GameState")
     }
 
     func clearPendingDecision() {
@@ -2656,7 +2774,7 @@ final class GameState {
         guard let decision = pendingServerDecision else { return false }
         guard phase == .inGame else { return false }
         switch decision.type {
-        case .fountainOfYouth, .monarchAction, .nativeTrade, .foundingFather, .incite:
+        case .fountainOfYouth, .monarchAction, .nativeTrade, .nativeSkill, .foundingFather, .incite:
             // All are current-player messages on the Java side.
             return isLocalPlayersTurn
         case .indianDemand, .lootCargo, .firstContact, .newLandName, .newRegionName,
@@ -2724,7 +2842,7 @@ final class GameState {
     func submitNewLandName(_ name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            errorMessage = "Bitte einen Namen eingeben."
+            errorMessage = L10n.text("Bitte einen Namen eingeben.", table: "GameState")
             return
         }
         guard let decision = pendingServerDecision, decision.type == .newLandName else { return }
@@ -2739,7 +2857,7 @@ final class GameState {
     func submitNewRegionName(_ name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            errorMessage = "Bitte einen Namen eingeben."
+            errorMessage = L10n.text("Bitte einen Namen eingeben.", table: "GameState")
             return
         }
         guard let decision = pendingServerDecision, decision.type == .newRegionName else { return }
@@ -2787,7 +2905,7 @@ final class GameState {
 
     func declinePendingIncite() {
         clearPendingDecision()
-        statusMessage = "Aufstand abgelehnt."
+        statusMessage = L10n.text("Aufstand abgelehnt.", table: "GameState")
     }
 
     /// Continue playing after winning.
@@ -2824,28 +2942,34 @@ final class GameState {
     var nativeTradeTargetsForSelectedUnit: [NativeTradeTarget] {
         guard let game = cachedGame,
               let unit = selectedUnit,
-              let unitTileId = unit.location,
-              let unitTile = game.tiles[unitTileId] else { return [] }
+              let unitTileId = game.resolvedTileId(for: unit) else { return [] }
+        let neighboringTileIds = Set(game.neighborTileIds(of: unitTileId))
         return game.colonies.values.compactMap { colony in
             guard let ownerId = colony.owner,
                   let owner = game.players[ownerId],
                   owner.playerType == .indian,
                   let colonyTileId = colony.tileId,
-                  let colonyTile = game.tiles[colonyTileId] else { return nil }
-            let dx = abs(colonyTile.x - unitTile.x)
-            let dy = abs(colonyTile.y - unitTile.y)
-            guard dx <= 1, dy <= 1, !(dx == 0 && dy == 0) else { return nil }
+                  neighboringTileIds.contains(colonyTileId) else { return nil }
             return NativeTradeTarget(settlementId: colony.id, name: colony.name ?? colony.id)
-        }
+        }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
     var canOpenNativeTrade: Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,
+              let game = cachedGame,
               let unit = selectedUnit,
               let localPlayerId = resolveLocalPlayerId(),
+              game.players[localPlayerId]?.playerType == .european,
               unit.movesLeft > 0,
-              unit.owner == localPlayerId else { return false }
+              unit.owner == localPlayerId,
+              let specification = game.specification,
+              specification.hasAbility("model.ability.carryGoods", unitType: unit.unitType) else {
+            return false
+        }
+        let hasGoods = unit.goods.values.contains(where: { $0 > 0 })
+        let emptyTradersAllowed = game.optionValues["model.option.emptyTraders"]?.lowercased() == "true"
+        guard hasGoods || emptyTradersAllowed else { return false }
         return !nativeTradeTargetsForSelectedUnit.isEmpty
     }
 
@@ -2864,15 +2988,15 @@ final class GameState {
 
     func openNativeTradeWithSelectedUnit(settlementId: String) {
         guard canOpenNativeTrade, let unitId = selectedUnitId else {
-            errorMessage = "Kein Handel möglich."
+            errorMessage = L10n.text("Kein Handel möglich.", table: "GameState")
             return
         }
         guard !settlementId.isEmpty else {
-            errorMessage = "Siedlung erforderlich."
+            errorMessage = L10n.text("Siedlung erforderlich.", table: "GameState")
             return
         }
         guard nativeTradeTargetsForSelectedUnit.contains(where: { $0.settlementId == settlementId }) else {
-            errorMessage = "Keine angrenzende Siedlung der Ureinwohner."
+            errorMessage = L10n.text("Keine angrenzende Siedlung der Ureinwohner.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -2901,9 +3025,9 @@ final class GameState {
     func closeNativeTrade() {
         if let session = pendingNativeTrade {
             sendNativeTrade(session.toMessage(action: "CLOSE", item: nil))
+        } else {
+            return
         }
-        clearPendingDecision()
-            statusMessage = "Handel mit Ureinwohnern beendet."
     }
 
     private func sendNativeTradeAction(_ action: String, item: NativeTradeItem) {
@@ -2924,14 +3048,46 @@ final class GameState {
     }
 
     private func sendNativeTrade(_ message: ParsedMessage) {
-        guard let client else {
-            errorMessage = "Der Client ist nicht verbunden."
+        requestNativeInteraction(message)
+    }
+
+    /// FreeCol gameplay actions use a `<question>` request and return their
+    /// ChangeSet in the matching `<reply>`. Fire-and-forget loses both errors
+    /// and the server-confirmed state update.
+    private func requestNativeInteraction(
+        _ message: ParsedMessage,
+        onSuccess: ((ParsedMessage) -> Void)? = nil
+    ) {
+        guard !usesLocalServer else {
+            errorMessage = L10n.text("Interaktionen mit Ureinwohnern benötigen einen FreeCol-Java-Server.", table: "GameState")
             return
         }
+        guard let client else {
+            errorMessage = L10n.text("Der Client ist nicht verbunden.", table: "GameState")
+            return
+        }
+        guard nativeInteractionRequestID == nil else {
+            statusMessage = L10n.text("Bitte auf die Antwort der Siedlung warten.", table: "GameState")
+            return
+        }
+
+        let requestID = UUID()
+        nativeInteractionRequestID = requestID
+        errorMessage = nil
+        statusMessage = L10n.text("Siedlungsaktion wird verarbeitet …", table: "GameState")
         Task {
             do {
-                try await client.send(message: message)
+                let reply = try await client.ask(message: message)
+                guard nativeInteractionRequestID == requestID else { return }
+                nativeInteractionRequestID = nil
+                if let onSuccess {
+                    onSuccess(reply)
+                } else if statusMessage == L10n.text("Siedlungsaktion wird verarbeitet …", table: "GameState") {
+                    statusMessage = L10n.text("Siedlungsaktion vom Server bestätigt.", table: "GameState")
+                }
             } catch {
+                guard nativeInteractionRequestID == requestID else { return }
+                nativeInteractionRequestID = nil
                 errorMessage = ServerErrorMessage.description(for: error)
             }
         }
@@ -2952,7 +3108,7 @@ final class GameState {
               let proposal = decision.diplomaticTradeProposal else { return }
         guard phase == .inGame else { return }
         guard let client else {
-            errorMessage = "Der Client ist nicht verbunden."
+            errorMessage = L10n.text("Der Client ist nicht verbunden.", table: "GameState")
             return
         }
 
@@ -2965,7 +3121,7 @@ final class GameState {
         )
         guard let ourId = decision.rawPayload["ourId"], !ourId.isEmpty,
               let otherId = decision.rawPayload["otherId"], !otherId.isEmpty else {
-            errorMessage = "Diplomatie-Objekte fehlen."
+            errorMessage = L10n.text("Diplomatie-Objekte fehlen.", table: "GameState")
             return
         }
         let message = ParsedMessage(
@@ -2979,7 +3135,7 @@ final class GameState {
                 _ = try await client.ask(message: message)
                 if pendingServerDecision?.id == decision.id {
                     clearPendingDecision()
-                    statusMessage = accept ? "Diplomatie: Annahme gesendet." : "Diplomatie: Ablehnung gesendet."
+                    statusMessage = accept ? L10n.text("Diplomatie: Annahme gesendet.", table: "GameState") : L10n.text("Diplomatie: Ablehnung gesendet.", table: "GameState")
                 }
             } catch {
                 errorMessage = ServerErrorMessage.description(for: error)
@@ -2993,7 +3149,7 @@ final class GameState {
               let proposal = decision.diplomaticTradeProposal,
               phase == .inGame,
               let client else {
-            errorMessage = "Kein diplomatischer Vorschlag aktiv."
+            errorMessage = L10n.text("Kein diplomatischer Vorschlag aktiv.", table: "GameState")
             return
         }
         let ourId = decision.rawPayload["ourId"] ?? ""
@@ -3002,11 +3158,11 @@ final class GameState {
               let localPlayerId = resolveLocalPlayerId(),
               let sender = proposal.sender, let recipient = proposal.recipient,
               sender == localPlayerId || recipient == localPlayerId else {
-            errorMessage = "Diplomatie-Objekte fehlen."
+            errorMessage = L10n.text("Diplomatie-Objekte fehlen.", table: "GameState")
             return
         }
         guard drafts.allSatisfy({ pendingDiplomacyClauseKinds.contains($0.kind) }) else {
-            errorMessage = "Diese Vertragsklausel ist für die Tributverhandlung nicht verfügbar."
+            errorMessage = L10n.text("Diese Vertragsklausel ist für die Tributverhandlung nicht verfügbar.", table: "GameState")
             return
         }
 
@@ -3029,7 +3185,7 @@ final class GameState {
                 _ = try await client.ask(message: message)
                 if pendingServerDecision?.id == decision.id {
                     clearPendingDecision()
-                    statusMessage = "Gegenangebot gesendet."
+                    statusMessage = L10n.text("Gegenangebot gesendet.", table: "GameState")
                 }
             } catch {
                 errorMessage = ServerErrorMessage.description(for: error)
@@ -3140,7 +3296,7 @@ final class GameState {
         guard phase == .inGame, isLocalPlayersTurn else { return }
         guard slot >= 1 && slot <= 3 else { return }
         guard let client else {
-            errorMessage = "Der Client ist nicht verbunden."
+            errorMessage = L10n.text("Der Client ist nicht verbunden.", table: "GameState")
             return
         }
 
@@ -3160,10 +3316,10 @@ final class GameState {
                         rawPayload: ["migrants": "\(remaining)"],
                         children: []
                     )
-                    statusMessage = "Auswanderer platziert. Noch \(remaining) verfügbar."
+                    statusMessage = L10n.text("Auswanderer platziert. Noch \(remaining) verfügbar.", table: "GameState")
                 } else {
                     clearPendingDecision()
-                    statusMessage = "Auswanderer platziert."
+                    statusMessage = L10n.text("Auswanderer platziert.", table: "GameState")
                 }
             } catch {
                 errorMessage = ServerErrorMessage.description(for: error)
@@ -3173,7 +3329,7 @@ final class GameState {
 
     private func sendDecision(tag: String, attributes: [String: String], children: [ParsedMessage]) {
         guard let client else {
-            errorMessage = "Der Client ist nicht verbunden."
+            errorMessage = L10n.text("Der Client ist nicht verbunden.", table: "GameState")
             return
         }
         Task {
@@ -3182,7 +3338,7 @@ final class GameState {
                     message: ParsedMessage(tag: tag, attributes: attributes, children: children)
                 )
                 clearPendingDecision()
-                statusMessage = "Entscheidung gesendet."
+                statusMessage = L10n.text("Entscheidung gesendet.", table: "GameState")
             } catch {
                 errorMessage = ServerErrorMessage.description(for: error)
             }
@@ -3216,12 +3372,13 @@ final class GameState {
         if phase != .inGame {
             clearPendingEndTurn()
         }
-        statusMessage = state.isInGame ? "" : "Waiting for game start…"
+        statusMessage = state.isInGame ? "" : L10n.text("Warte auf den Spielstart …", table: "GameState")
     }
 
     private func resetSessionState() {
         movementAttempts.removeAll()
         europeTravelOrders.removeAll()
+        nativeInteractionRequestID = nil
         saveRequestID = nil
         movementTask?.cancel()
         movementTask = nil
@@ -3295,7 +3452,7 @@ final class GameState {
     func requestLaunch() {
         guard phase == .lobby else { return }
         guard isLocalPlayerAdmin else {
-            errorMessage = "Nur der Admin kann das Spiel starten."
+            errorMessage = L10n.text("Nur der Admin kann das Spiel starten.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -3315,11 +3472,11 @@ final class GameState {
         guard phase == .lobby else { return }
         let trimmedNationId = nationId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedNationId.isEmpty else {
-            errorMessage = "Bitte eine Nation auswählen."
+            errorMessage = L10n.text("Bitte eine Nation auswählen.", table: "GameState")
             return
         }
         guard let playerId = resolveLocalPlayerId() else {
-            errorMessage = "Lokaler Spieler konnte nicht bestimmt werden."
+            errorMessage = L10n.text("Lokaler Spieler konnte nicht bestimmt werden.", table: "GameState")
             return
         }
 
@@ -3354,11 +3511,11 @@ final class GameState {
         guard phase == .lobby else { return }
         let trimmedNationTypeId = nationTypeId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedNationTypeId.isEmpty else {
-            errorMessage = "Bitte einen Nationstyp angeben."
+            errorMessage = L10n.text("Bitte einen Nationstyp angeben.", table: "GameState")
             return
         }
         guard let playerId = resolveLocalPlayerId() else {
-            errorMessage = "Lokaler Spieler konnte nicht bestimmt werden."
+            errorMessage = L10n.text("Lokaler Spieler konnte nicht bestimmt werden.", table: "GameState")
             return
         }
 
@@ -3389,16 +3546,16 @@ final class GameState {
         guard phase == .lobby else { return }
         let trimmedColorValue = colorValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedColorValue.isEmpty else {
-            errorMessage = "Bitte einen Farbwert angeben."
+            errorMessage = L10n.text("Bitte einen Farbwert angeben.", table: "GameState")
             return
         }
         guard let playerId = resolveLocalPlayerId() else {
-            errorMessage = "Lokaler Spieler konnte nicht bestimmt werden."
+            errorMessage = L10n.text("Lokaler Spieler konnte nicht bestimmt werden.", table: "GameState")
             return
         }
         guard let player = cachedGame?.players[playerId],
               let nationId = player.nationId else {
-            errorMessage = "Nation des Spielers konnte nicht bestimmt werden."
+            errorMessage = L10n.text("Nation des Spielers konnte nicht bestimmt werden.", table: "GameState")
             return
         }
 
@@ -3443,11 +3600,11 @@ final class GameState {
         let trimmedOptionId = optionId.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedOptionValue = optionValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedOptionId.isEmpty else {
-            errorMessage = "Bitte eine Option-ID angeben."
+            errorMessage = L10n.text("Bitte eine Option-ID angeben.", table: "GameState")
             return
         }
         guard !trimmedOptionValue.isEmpty else {
-            errorMessage = "Bitte einen Optionswert angeben."
+            errorMessage = L10n.text("Bitte einen Optionswert angeben.", table: "GameState")
             return
         }
 
@@ -3478,11 +3635,11 @@ final class GameState {
         let trimmedOptionId = optionId.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedOptionValue = optionValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedOptionId.isEmpty else {
-            errorMessage = "Bitte eine Kartenoption-ID angeben."
+            errorMessage = L10n.text("Bitte eine Kartenoption-ID angeben.", table: "GameState")
             return
         }
         guard !trimmedOptionValue.isEmpty else {
-            errorMessage = "Bitte einen Map-Optionswert angeben."
+            errorMessage = L10n.text("Bitte einen Map-Optionswert angeben.", table: "GameState")
             return
         }
 
@@ -3512,7 +3669,7 @@ final class GameState {
         guard phase == .lobby || phase == .inGame else { return }
         let trimmedFoundingFatherId = foundingFatherId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedFoundingFatherId.isEmpty else {
-            errorMessage = "Bitte eine Gründervater-ID angeben."
+            errorMessage = L10n.text("Bitte eine Gründervater-ID angeben.", table: "GameState")
             return
         }
 
@@ -3600,7 +3757,7 @@ final class GameState {
         guard phase == .inGame else { return }
         let trimmedActionType = actionType.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedActionType.isEmpty else {
-            errorMessage = "Bitte einen Monarch-Action-Typ angeben."
+            errorMessage = L10n.text("Bitte einen Monarch-Action-Typ angeben.", table: "GameState")
             return
         }
 
@@ -3625,7 +3782,7 @@ final class GameState {
     func setLocalPlayerAI(_ enabled: Bool) {
         guard phase == .inGame else { return }
         guard let playerId = resolveLocalPlayerId() else {
-            errorMessage = "Lokaler Spieler konnte nicht bestimmt werden."
+            errorMessage = L10n.text("Lokaler Spieler konnte nicht bestimmt werden.", table: "GameState")
             return
         }
 
@@ -3651,7 +3808,7 @@ final class GameState {
         guard let playerId = resolveLocalPlayerId(),
               let player = cachedGame?.players[playerId],
               let nationId = player.nationId else {
-            errorMessage = "Lokaler Spieler konnte nicht bestimmt werden."
+            errorMessage = L10n.text("Lokaler Spieler konnte nicht bestimmt werden.", table: "GameState")
             return
         }
 
@@ -3680,15 +3837,15 @@ final class GameState {
         let trimmedStance = stance.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedTarget = targetPlayerId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedStance.isEmpty else {
-            errorMessage = "Bitte eine Stance angeben."
+            errorMessage = L10n.text("Bitte eine Stance angeben.", table: "GameState")
             return
         }
         guard !trimmedTarget.isEmpty else {
-            errorMessage = "Bitte eine Ziel-Spieler-ID angeben."
+            errorMessage = L10n.text("Bitte eine Ziel-Spieler-ID angeben.", table: "GameState")
             return
         }
         guard let sourcePlayerId = resolveLocalPlayerId() else {
-            errorMessage = "Lokaler Spieler konnte nicht bestimmt werden."
+            errorMessage = L10n.text("Lokaler Spieler konnte nicht bestimmt werden.", table: "GameState")
             return
         }
 
@@ -3714,11 +3871,11 @@ final class GameState {
         let trimmedCountry = countryName.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedNation = nationName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedCountry.isEmpty else {
-            errorMessage = "Bitte einen Landesnamen angeben."
+            errorMessage = L10n.text("Bitte einen Landesnamen angeben.", table: "GameState")
             return
         }
         guard !trimmedNation.isEmpty else {
-            errorMessage = "Bitte einen Nationsnamen angeben."
+            errorMessage = L10n.text("Bitte einen Nationsnamen angeben.", table: "GameState")
             return
         }
 
@@ -3744,11 +3901,11 @@ final class GameState {
         let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedPrivate = privateRecipientId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedMessage.isEmpty else {
-            errorMessage = "Bitte eine Chat-Nachricht angeben."
+            errorMessage = L10n.text("Bitte eine Chat-Nachricht angeben.", table: "GameState")
             return
         }
         guard let senderId = resolveLocalPlayerId() else {
-            errorMessage = "Lokaler Spieler konnte nicht bestimmt werden."
+            errorMessage = L10n.text("Lokaler Spieler konnte nicht bestimmt werden.", table: "GameState")
             return
         }
 
@@ -3775,7 +3932,7 @@ final class GameState {
     func setLocalPlayerDead() {
         guard phase == .inGame else { return }
         guard let playerId = resolveLocalPlayerId() else {
-            errorMessage = "Lokaler Spieler konnte nicht bestimmt werden."
+            errorMessage = L10n.text("Lokaler Spieler konnte nicht bestimmt werden.", table: "GameState")
             return
         }
 
@@ -3797,15 +3954,15 @@ final class GameState {
         let trimmedPrice = price.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedTile = tileId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedPrice.isEmpty else {
-            errorMessage = "Bitte einen Preis angeben."
+            errorMessage = L10n.text("Bitte einen Preis angeben.", table: "GameState")
             return
         }
         guard !trimmedTile.isEmpty else {
-            errorMessage = "Bitte eine Kachel angeben."
+            errorMessage = L10n.text("Bitte eine Kachel angeben.", table: "GameState")
             return
         }
         guard let claimant = resolveLocalPlayerId() else {
-            errorMessage = "Lokaler Spieler konnte nicht bestimmt werden."
+            errorMessage = L10n.text("Lokaler Spieler konnte nicht bestimmt werden.", table: "GameState")
             return
         }
 
@@ -3840,7 +3997,7 @@ final class GameState {
             ? canAttackSelectedUnitRanged(onTile: tileId)
             : canAttackSelectedUnitMelee(onTile: tileId)
         guard allowed else {
-            errorMessage = "Angriff nicht möglich."
+            errorMessage = L10n.text("Angriff nicht möglich.", table: "GameState")
             return
         }
         pendingAttackTileId = tileId
@@ -3876,7 +4033,7 @@ final class GameState {
         let attacker = unit.unitType.flatMap { $0.split(separator: ".").last.map(String.init) } ?? unit.id
         let target = defender?.unitType.flatMap { $0.split(separator: ".").last.map(String.init) } ?? tileId
         let kind = pendingAttackRanged ? "Ranged" : "Melee"
-        return "\(kind): \(attacker) → \(target)"
+        return L10n.text("\(kind): \(attacker) → \(target)", table: "GameState")
     }
 
     /// End the turn, prompting first when units still have orders left.
@@ -3932,7 +4089,7 @@ final class GameState {
         }
     }
 
-    /// Error carrying a German, user-facing message; `localizedDescription` returns it.
+    /// Error carrying a localized, user-facing message.
     struct UserFacingActionError: LocalizedError {
         let message: String
         var errorDescription: String? { message }
@@ -3950,15 +4107,15 @@ final class GameState {
 
     func endTurn() {
         guard phase == .inGame else {
-            errorMessage = "Diese Aktion ist nur im laufenden Spiel verfügbar."
+            errorMessage = L10n.text("Diese Aktion ist nur im laufenden Spiel verfügbar.", table: "GameState")
             return
         }
         guard !isEndingTurn else {
-            errorMessage = "Warte auf Serverantwort fuer Zugende."
+            errorMessage = L10n.text("Warte auf Serverantwort fuer Zugende.", table: "GameState")
             return
         }
         guard canEndTurn else {
-            errorMessage = "Du bist gerade nicht am Zug."
+            errorMessage = L10n.text("Du bist gerade nicht am Zug.", table: "GameState")
             return
         }
         guard let game = cachedGame else { return }
@@ -3981,7 +4138,7 @@ final class GameState {
                     try? await Task.sleep(nanoseconds: UInt64(safetyTimeout * 1_000_000_000))
                     guard token == self.endTurnToken, self.isEndingTurn else { return }
                     self.clearPendingEndTurn()
-                    self.statusMessage = "Zugende nicht bestätigt – bitte erneut versuchen."
+                    self.statusMessage = L10n.text("Zugende nicht bestätigt – bitte erneut versuchen.", table: "GameState")
                 }
                 let msg = ParsedMessage(tag: "endTurn", attributes: [:], children: [])
                 try await sendCoreGameplayAction(msg, timeout: Self.coreGameplayAskTimeout)
@@ -4000,7 +4157,7 @@ final class GameState {
 
     func selectMapTile(_ tileId: String, openColony: Bool = false) {
         guard let game = cachedGame, game.tiles[tileId] != nil else {
-            errorMessage = "Das Kartenfeld ist nicht verfügbar."
+            errorMessage = L10n.text("Das Kartenfeld ist nicht verfügbar.", table: "GameState")
             return
         }
 
@@ -4031,7 +4188,7 @@ final class GameState {
 
     func rightClickMapTile(_ tileId: String, showMenu: Bool = false) {
         guard cachedGame?.tiles[tileId] != nil else {
-            errorMessage = "Das Kartenfeld ist nicht verfügbar."
+            errorMessage = L10n.text("Das Kartenfeld ist nicht verfügbar.", table: "GameState")
             return
         }
         if selectedUnitId != nil, !showMenu {
@@ -4051,18 +4208,18 @@ final class GameState {
     /// A reason suitable for a disabled Move control, derived from the same
     /// guards that determine whether movement is currently available.
     var selectedUnitMoveDisabledReason: String? {
-        guard phase == .inGame else { return "Bewegen ist nur im laufenden Spiel möglich." }
-        guard isLocalPlayersTurn else { return "Bewegen ist nur im eigenen Zug möglich." }
-        guard movingUnitId == nil else { return "Eine andere Bewegung wird noch verarbeitet." }
+        guard phase == .inGame else { return L10n.text("Bewegen ist nur im laufenden Spiel möglich.", table: "GameState") }
+        guard isLocalPlayersTurn else { return L10n.text("Bewegen ist nur im eigenen Zug möglich.", table: "GameState") }
+        guard movingUnitId == nil else { return L10n.text("Eine andere Bewegung wird noch verarbeitet.", table: "GameState") }
         guard let game = cachedGame, let unit = selectedUnit,
-              let localPlayerId else { return "Wähle zuerst eine eigene Einheit aus." }
-        guard unit.owner == localPlayerId else { return "Du kannst nur eigene Einheiten bewegen." }
-        guard unit.movesLeft > 0 else { return "Diese Einheit hat keine Bewegungspunkte mehr." }
+              let localPlayerId else { return L10n.text("Wähle zuerst eine eigene Einheit aus.", table: "GameState") }
+        guard unit.owner == localPlayerId else { return L10n.text("Du kannst nur eigene Einheiten bewegen.", table: "GameState") }
+        guard unit.movesLeft > 0 else { return L10n.text("Diese Einheit hat keine Bewegungspunkte mehr.", table: "GameState") }
         guard canIssueMovementOrders(for: unit, in: game) else {
-            return "Für diese Einheit sind derzeit keine Bewegungsbefehle möglich."
+            return L10n.text("Für diese Einheit sind derzeit keine Bewegungsbefehle möglich.", table: "GameState")
         }
         guard let unitLocation = unit.location else {
-            return "Diese Einheit befindet sich nicht auf einer gültigen Kartenposition."
+            return L10n.text("Diese Einheit befindet sich nicht auf einer gültigen Kartenposition.", table: "GameState")
         }
         let isColonyLocation = game.colonies[unitLocation] != nil
             || game.colonies.values.contains { colony in
@@ -4076,7 +4233,7 @@ final class GameState {
         // also resolve to a tile and remain eligible for disembark checks.
         guard game.tiles[unitLocation] != nil || isColonyLocation || isOwnedCarrierLocation,
               let location = resolveUnitTileId(unit, in: game), game.tiles[location] != nil else {
-            return "Diese Einheit befindet sich nicht auf einer gültigen Kartenposition."
+            return L10n.text("Diese Einheit befindet sich nicht auf einer gültigen Kartenposition.", table: "GameState")
         }
         return nil
     }
@@ -4084,13 +4241,13 @@ final class GameState {
     /// Shared explanation for optional unit actions whose more specific
     /// eligibility is represented by their existing `can…` guards.
     var selectedUnitActionUnavailableReason: String {
-        if phase != .inGame { return "Aktionen sind nur im laufenden Spiel verfügbar." }
-        if !isLocalPlayersTurn { return "Aktionen sind nur im eigenen Zug verfügbar." }
-        if movingUnitId != nil { return "Eine andere Aktion wird noch verarbeitet." }
-        if isSavingGame { return "Während des Speicherns sind Aktionen vorübergehend gesperrt." }
-        guard let unit = selectedUnit else { return "Wähle zuerst eine Einheit aus." }
-        if unit.owner != resolveLocalPlayerId() { return "Du kannst nur eigene Einheiten befehligen." }
-        return "Die Voraussetzungen für diese Aktion sind derzeit nicht erfüllt."
+        if phase != .inGame { return L10n.text("Aktionen sind nur im laufenden Spiel verfügbar.", table: "GameState") }
+        if !isLocalPlayersTurn { return L10n.text("Aktionen sind nur im eigenen Zug verfügbar.", table: "GameState") }
+        if movingUnitId != nil { return L10n.text("Eine andere Aktion wird noch verarbeitet.", table: "GameState") }
+        if isSavingGame { return L10n.text("Während des Speicherns sind Aktionen vorübergehend gesperrt.", table: "GameState") }
+        guard let unit = selectedUnit else { return L10n.text("Wähle zuerst eine Einheit aus.", table: "GameState") }
+        if unit.owner != resolveLocalPlayerId() { return L10n.text("Du kannst nur eigene Einheiten befehligen.", table: "GameState") }
+        return L10n.text("Die Voraussetzungen für diese Aktion sind derzeit nicht erfüllt.", table: "GameState")
     }
 
     var errorRecoveryActionTitle: String? {
@@ -4102,8 +4259,8 @@ final class GameState {
             "Die Bewegung wurde vom Server nicht ausgeführt.",
         ]
         guard knownMovementErrors.contains(errorMessage) else { return nil }
-        if isChoosingMoveDestination { return "Zielauswahl abbrechen" }
-        if canClearSelectedUnitDestination { return "Marschziel löschen" }
+        if isChoosingMoveDestination { return L10n.text("Zielauswahl abbrechen", table: "GameState") }
+        if canClearSelectedUnitDestination { return L10n.text("Marschziel löschen", table: "GameState") }
         return nil
     }
 
@@ -4118,7 +4275,7 @@ final class GameState {
 
     func beginChoosingMoveDestination() {
         guard canChooseMoveDestination else {
-            errorMessage = "Diese Einheit kann gerade nicht bewegt werden."
+            errorMessage = L10n.text("Diese Einheit kann gerade nicht bewegt werden.", table: "GameState")
             return
         }
         closeTileActions()
@@ -4149,7 +4306,7 @@ final class GameState {
 
     func moveSelectedUnit(to destinationTileId: String) {
         guard canMoveSelectedUnit(to: destinationTileId) else {
-            errorMessage = "Ungültige Bewegung."
+            errorMessage = L10n.text("Ungültige Bewegung.", table: "GameState")
             return
         }
         startMovingSelectedUnit(to: destinationTileId)
@@ -4168,31 +4325,31 @@ final class GameState {
 
     func moveSelectedUnitTo(destinationTileId: String) {
         guard canChooseMoveDestination else {
-            errorMessage = selectedUnitMoveDisabledReason ?? "Diese Einheit kann gerade nicht bewegt werden."
+            errorMessage = selectedUnitMoveDisabledReason ?? L10n.text("Diese Einheit kann gerade nicht bewegt werden.", table: "GameState")
             return
         }
         guard let unit = selectedUnit, let game = cachedGame else {
-            errorMessage = "Wähle zuerst eine eigene Einheit aus."
+            errorMessage = L10n.text("Wähle zuerst eine eigene Einheit aus.", table: "GameState")
             return
         }
         guard let sourceTileId = selectedUnitTileId else {
-            errorMessage = "Diese Einheit befindet sich nicht auf einer gültigen Kartenposition."
+            errorMessage = L10n.text("Diese Einheit befindet sich nicht auf einer gültigen Kartenposition.", table: "GameState")
             return
         }
         guard game.tiles[destinationTileId] != nil else {
-            errorMessage = "Das ausgewählte Zielfeld ist nicht verfügbar."
+            errorMessage = L10n.text("Das ausgewählte Zielfeld ist nicht verfügbar.", table: "GameState")
             return
         }
         guard sourceTileId != destinationTileId else {
-            errorMessage = "Das Zielfeld ist bereits der Standort dieser Einheit."
+            errorMessage = L10n.text("Das Zielfeld ist bereits der Standort dieser Einheit.", table: "GameState")
             return
         }
         guard canMoveSelectedUnitTo(destinationTileId: destinationTileId) else {
-            errorMessage = "Ziel kann nicht erreicht werden."
+            errorMessage = L10n.text("Ziel kann nicht erreicht werden.", table: "GameState")
             return
         }
         guard nextStepTowardDestination(for: unit, destinationTileId: destinationTileId, in: game) != nil else {
-            errorMessage = "Kein begehbarer Weg zum Ziel verfügbar."
+            errorMessage = L10n.text("Kein begehbarer Weg zum Ziel verfügbar.", table: "GameState")
             return
         }
         startMovingSelectedUnit(to: destinationTileId)
@@ -4239,7 +4396,7 @@ final class GameState {
                       let source = resolveUnitTileId(unit, in: game), source != destinationTileId {
                     guard let next = nextStepTowardDestination(for: unit, destinationTileId: destinationTileId, in: game),
                           let direction = attackDirection(fromTileId: source, toTileId: next, in: game) else {
-                        throw UserFacingActionError(message: "Der weitere Weg zum Ziel ist blockiert.")
+                        throw UserFacingActionError(message: L10n.text("Der weitere Weg zum Ziel ist blockiert.", table: "GameState"))
                     }
                     try Task.checkCancellation()
                     try await sendCoreGameplayAction(ParsedMessage(tag: "move", attributes: [
@@ -4253,7 +4410,7 @@ final class GameState {
                     guard !Task.isCancelled, cachedGame === game else { return }
                     guard let moved = game.units[unitId], resolveUnitTileId(moved, in: game) == next,
                           moved.location != unit.location else {
-                        throw UserFacingActionError(message: "Die Bewegung wurde vom Server nicht ausgeführt.")
+                        throw UserFacingActionError(message: L10n.text("Die Bewegung wurde vom Server nicht ausgeführt.", table: "GameState"))
                     }
                     errorMessage = nil
                     if selectedUnitId == unitId {
@@ -4274,7 +4431,7 @@ final class GameState {
                         gameUpdateID += 1
                     }
                     europeTravelOrders.remove(unitId)
-                    statusMessage = "Segelt nach Europa."
+                    statusMessage = L10n.text("Segelt nach Europa.", table: "GameState")
                 }
                 if storesDestination, !sendsToEurope, cachedGame === game, let unit = game.units[unitId],
                    resolveUnitTileId(unit, in: game) == destinationTileId {
@@ -4296,17 +4453,17 @@ final class GameState {
     func buildColony(name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            errorMessage = "Bitte einen Kolonienamen eingeben."
+            errorMessage = L10n.text("Bitte einen Kolonienamen eingeben.", table: "GameState")
             return
         }
         guard canBuildSelectedColony,
               let unitId = selectedUnitId,
               let game = cachedGame else {
-            errorMessage = "Kolonie kann hier nicht gegruendet werden."
+            errorMessage = L10n.text("Kolonie kann hier nicht gegruendet werden.", table: "GameState")
             return
         }
         if game.colonies.values.contains(where: { ($0.name ?? "").caseInsensitiveCompare(trimmed) == .orderedSame }) {
-            errorMessage = "Der Koloniename ist bereits vergeben."
+            errorMessage = L10n.text("Der Koloniename ist bereits vergeben.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -4344,7 +4501,7 @@ final class GameState {
               let tileId = selectedTileId,
               let game = cachedGame,
               let colony = game.colonies.values.first(where: { $0.tileId == tileId }) else {
-            errorMessage = "Eintritt in die Kolonie nicht möglich."
+            errorMessage = L10n.text("Eintritt in die Kolonie nicht möglich.", table: "GameState")
             return
         }
 
@@ -4411,7 +4568,7 @@ final class GameState {
         guard canEmbarkSelectedUnit(onCarrier: carrierId),
               let unitId = selectedUnitId,
               let game = cachedGame else {
-            errorMessage = "Einschiffen nicht möglich."
+            errorMessage = L10n.text("Einschiffen nicht möglich.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -4434,10 +4591,10 @@ final class GameState {
                 game.embarkUnit(unitId: unitId, carrierId: carrierId)
                 gameUpdateID += 1
                 guard game.units[unitId]?.location == carrierId else {
-                    throw UserFacingActionError(message: "Der Server hat das Einschiffen nicht bestätigt.")
+                    throw UserFacingActionError(message: L10n.text("Der Server hat das Einschiffen nicht bestätigt.", table: "GameState"))
                 }
                 reconcileSelectionWithGame()
-                statusMessage = "Einheit ist an Bord."
+                statusMessage = L10n.text("Einheit ist an Bord.", table: "GameState")
             } catch {
                 errorMessage = ServerErrorMessage.description(for: error)
             }
@@ -4460,7 +4617,7 @@ final class GameState {
               let unitId = selectedUnitId,
               let unit = selectedUnit,
               let game = cachedGame else {
-            errorMessage = selectedUnitDisembarkHint ?? "Ausschiffen nicht möglich."
+            errorMessage = selectedUnitDisembarkHint ?? L10n.text("Ausschiffen nicht möglich.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -4470,7 +4627,7 @@ final class GameState {
                 moveSelectedUnitTo(destinationTileId: destination)
             } else {
                 beginChoosingMoveDestination()
-                statusMessage = "Zum Ausschiffen ein benachbartes Landfeld auswählen."
+                statusMessage = L10n.text("Zum Ausschiffen ein benachbartes Landfeld auswählen.", table: "GameState")
             }
             return
         }
@@ -4489,7 +4646,7 @@ final class GameState {
                     gameUpdateID += 1
                 }
                 guard game.units[unitId]?.location != unit.location else {
-                    throw UserFacingActionError(message: "Das Ausschiffen wurde vom Server nicht ausgeführt.")
+                    throw UserFacingActionError(message: L10n.text("Das Ausschiffen wurde vom Server nicht ausgeführt.", table: "GameState"))
                 }
                 syncAfterModelUpdate()
             } catch {
@@ -4502,7 +4659,7 @@ final class GameState {
         guard canDisbandSelectedUnit,
               let unitId = selectedUnitId,
               let game = cachedGame else {
-            errorMessage = "Einheit kann nicht aufgeloest werden."
+            errorMessage = L10n.text("Einheit kann nicht aufgeloest werden.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -4551,7 +4708,7 @@ final class GameState {
         guard canSetSelectedUnitDestination(to: destinationTileId),
               let unitId = selectedUnitId,
               let game = cachedGame else {
-            errorMessage = "Ziel kann nicht gesetzt werden."
+            errorMessage = L10n.text("Ziel kann nicht gesetzt werden.", table: "GameState")
             return
         }
         updateMovementOrders(unitId, destination: destinationTileId, activate: false, in: game)
@@ -4561,7 +4718,7 @@ final class GameState {
         guard canClearSelectedUnitDestination,
               let unitId = selectedUnitId,
               let game = cachedGame else {
-            errorMessage = "Kein Ziel zum Entfernen gesetzt."
+            errorMessage = L10n.text("Kein Ziel zum Entfernen gesetzt.", table: "GameState")
             return
         }
         updateMovementOrders(unitId, destination: nil, activate: false, in: game)
@@ -4589,7 +4746,7 @@ final class GameState {
         guard canClearSelectedUnitOrders,
               let unitId = selectedUnitId,
               let game = cachedGame else {
-            errorMessage = "Keine Befehle zum Loeschen."
+            errorMessage = L10n.text("Keine Befehle zum Loeschen.", table: "GameState")
             return
         }
         updateMovementOrders(unitId, destination: nil, activate: true, in: game)
@@ -4614,7 +4771,7 @@ final class GameState {
                         gameUpdateID += 1
                     }
                     guard game.units[unitId]?.destination == destination else {
-                        throw UserFacingActionError(message: "Der Server hat die Zieländerung nicht bestätigt.")
+                        throw UserFacingActionError(message: L10n.text("Der Server hat die Zieländerung nicht bestätigt.", table: "GameState"))
                     }
                 }
                 if activate, game.units[unitId]?.state != .active {
@@ -4628,11 +4785,11 @@ final class GameState {
                         gameUpdateID += 1
                     }
                     guard game.units[unitId]?.state == .active else {
-                        throw UserFacingActionError(message: "Der Server hat die Aktivierung nicht bestätigt.")
+                        throw UserFacingActionError(message: L10n.text("Der Server hat die Aktivierung nicht bestätigt.", table: "GameState"))
                     }
                 }
                 errorMessage = nil
-                statusMessage = destination == nil ? "Befehle gelöscht." : "Marschziel gespeichert."
+                statusMessage = destination == nil ? L10n.text("Befehle gelöscht.", table: "GameState") : L10n.text("Marschziel gespeichert.", table: "GameState")
             } catch {
                 guard cachedGame === game else { return }
                 errorMessage = ServerErrorMessage.description(for: error)
@@ -4655,9 +4812,9 @@ final class GameState {
                     gameUpdateID += 1
                 }
                 guard game.units[unitId]?.currentStop == index else {
-                    throw UserFacingActionError(message: "Der Server hat den Haltepunkt nicht bestätigt.")
+                    throw UserFacingActionError(message: L10n.text("Der Server hat den Haltepunkt nicht bestätigt.", table: "GameState"))
                 }
-                statusMessage = "Haltepunkt geändert."
+                statusMessage = L10n.text("Haltepunkt geändert.", table: "GameState")
             } catch {
                 guard cachedGame === game else { return }
                 errorMessage = ServerErrorMessage.description(for: error)
@@ -4682,9 +4839,9 @@ final class GameState {
                     gameUpdateID += 1
                 }
                 guard let unit = game.units[unitId], unit.tradeRoute == routeId else {
-                    throw UserFacingActionError(message: "Der Server hat die Routenzuweisung nicht bestätigt.")
+                    throw UserFacingActionError(message: L10n.text("Der Server hat die Routenzuweisung nicht bestätigt.", table: "GameState"))
                 }
-                statusMessage = routeId == nil ? "Routenzuweisung entfernt." : "Handelsroute zugewiesen."
+                statusMessage = routeId == nil ? L10n.text("Routenzuweisung entfernt.", table: "GameState") : L10n.text("Handelsroute zugewiesen.", table: "GameState")
             } catch {
                 guard cachedGame === game else { return }
                 errorMessage = ServerErrorMessage.description(for: error)
@@ -4765,7 +4922,7 @@ final class GameState {
               let unitId = selectedUnitId,
               let game = cachedGame,
               let europeId = localPlayer?.europe?.id else {
-            errorMessage = "Die Reise nach Europa ist nur mit einem eigenen Schiff auf einem Hochsee-Ausfahrtsfeld am Kartenrand im eigenen Zug möglich."
+            errorMessage = L10n.text("Die Reise nach Europa ist nur mit einem eigenen Schiff auf einem Hochsee-Ausfahrtsfeld am Kartenrand im eigenen Zug möglich.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -4777,7 +4934,7 @@ final class GameState {
                     gameUpdateID += 1
                 }
                 try await sendCoreGameplayAction(msg)
-                statusMessage = "Segelt nach Europa."
+                statusMessage = L10n.text("Segelt nach Europa.", table: "GameState")
             } catch {
                 errorMessage = ServerErrorMessage.description(for: error)
             }
@@ -4814,7 +4971,7 @@ final class GameState {
               let game = cachedGame,
               let source = resolveUnitTileId(unit, in: game),
               let exit = nearestEuropeExit(from: source, for: unit, in: game) else {
-            errorMessage = "Kein befahrbarer Weg zu einem Hochsee-Ausfahrtsfeld nach Europa gefunden."
+            errorMessage = L10n.text("Kein befahrbarer Weg zu einem Hochsee-Ausfahrtsfeld nach Europa gefunden.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -4869,7 +5026,7 @@ final class GameState {
         guard canSendShipToAmerica(unitId),
               let game = cachedGame, let mapId = game.map?.id,
               let europeId = localPlayer?.europe?.id else {
-            errorMessage = "Die Rückreise ist nur mit einem eigenen Schiff im Europahafen im eigenen Zug auf einem Java-Server möglich."
+            errorMessage = L10n.text("Die Rückreise ist nur mit einem eigenen Schiff im Europahafen im eigenen Zug auf einem Java-Server möglich.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -4884,10 +5041,10 @@ final class GameState {
                 guard cachedGame === game else { return }
                 guard let ship = game.units[unitId], ship.location != europeId,
                       ship.destination == mapId, unitTravelStatus(ship) != nil else {
-                    throw UserFacingActionError(message: "Der Server hat die Abreise zur Neuen Welt nicht bestätigt.")
+                    throw UserFacingActionError(message: L10n.text("Der Server hat die Abreise zur Neuen Welt nicht bestätigt.", table: "GameState"))
                 }
                 reconcileSelectionWithGame()
-                statusMessage = "Schiff ist zur Neuen Welt aufgebrochen."
+                statusMessage = L10n.text("Schiff ist zur Neuen Welt aufgebrochen.", table: "GameState")
             } catch {
                 errorMessage = ServerErrorMessage.description(for: error)
             }
@@ -4963,14 +5120,14 @@ final class GameState {
     func changeSelectedUnitWorkImprovement(_ improvementTypeId: String) {
         let trimmed = improvementTypeId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            errorMessage = "Bitte einen Verbesserungstyp auswählen."
+            errorMessage = L10n.text("Bitte einen Verbesserungstyp auswählen.", table: "GameState")
             return
         }
         guard canChangeSelectedUnitWorkImprovement,
               selectedUnitImprovementCandidates.contains(where: { $0.id == trimmed }),
               let unitId = selectedUnitId,
               let game = cachedGame else {
-            errorMessage = "Verbesserung nicht möglich."
+            errorMessage = L10n.text("Verbesserung nicht möglich.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -5007,7 +5164,7 @@ final class GameState {
     func dumpSelectedUnitCargo(typeId: String, amount: Int) {
         let trimmed = typeId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, amount > 0 else {
-            errorMessage = "Ungültige Fracht."
+            errorMessage = L10n.text("Ungültige Fracht.", table: "GameState")
             return
         }
         guard phase == .inGame,
@@ -5018,7 +5175,7 @@ final class GameState {
               carrier.owner == localPlayerId,
               isCarrierUnit(carrier),
               (carrier.goods[trimmed] ?? 0) >= amount else {
-            errorMessage = "Fracht kann nicht abgeworfen werden."
+            errorMessage = L10n.text("Fracht kann nicht abgeworfen werden.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -5036,7 +5193,7 @@ final class GameState {
                     gameUpdateID += 1
                 }
                 try await client?.send(message: msg)
-                statusMessage = "Fracht abgeworfen."
+                statusMessage = L10n.text("Fracht abgeworfen.", table: "GameState")
             } catch {
                 errorMessage = ServerErrorMessage.description(for: error)
             }
@@ -5047,7 +5204,7 @@ final class GameState {
         guard canCashInSelectedTreasureTrain,
               let unitId = selectedUnitId,
               let game = cachedGame else {
-            errorMessage = "Schaetze koennen nicht eingeliefert werden."
+            errorMessage = L10n.text("Schaetze koennen nicht eingeliefert werden.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -5104,7 +5261,7 @@ final class GameState {
         guard canChangeSelectedUnitState(to: targetState),
               let unitId = selectedUnitId,
               let game = cachedGame else {
-            errorMessage = "Statuswechsel nicht möglich."
+            errorMessage = L10n.text("Statuswechsel nicht möglich.", table: "GameState")
             return
         }
 
@@ -5131,14 +5288,14 @@ final class GameState {
     func changeSelectedColonyWorkerWorkType(_ workTypeId: String) {
         let trimmed = workTypeId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            errorMessage = "Bitte eine Arbeitsart-ID eingeben."
+            errorMessage = L10n.text("Bitte eine Arbeitsart-ID eingeben.", table: "GameState")
             return
         }
         guard canManageSelectedColony,
               let unitId = selectedColonyWorkerUnitId,
               selectedColonyWorkTypeCandidates.contains(where: { $0.id == trimmed }),
               let game = cachedGame else {
-            errorMessage = "Diese Ware kann am ausgewählten Arbeitsplatz nicht produziert werden."
+            errorMessage = L10n.text("Diese Ware kann am ausgewählten Arbeitsplatz nicht produziert werden.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -5165,13 +5322,13 @@ final class GameState {
     func changeSelectedColonyWorkerWorkImprovementType(_ improvementTypeId: String) {
         let trimmed = improvementTypeId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            errorMessage = "Bitte eine Verbesserungstyp-ID eingeben."
+            errorMessage = L10n.text("Bitte eine Verbesserungstyp-ID eingeben.", table: "GameState")
             return
         }
         guard canManageSelectedColony,
               let unitId = selectedColonyWorkerUnitId,
               let game = cachedGame else {
-            errorMessage = "Verbesserungstyp kann nicht geändert werden."
+            errorMessage = L10n.text("Verbesserungstyp kann nicht geändert werden.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -5198,7 +5355,7 @@ final class GameState {
     func clearSelectedColonyWorkerSpeciality() {
         guard canManageSelectedColony,
               let unitId = selectedColonyWorkerUnitId else {
-            errorMessage = "Spezialisierung kann nicht entfernt werden."
+            errorMessage = L10n.text("Spezialisierung kann nicht entfernt werden.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -5221,7 +5378,7 @@ final class GameState {
     func assignTeacherToSelectedColonyWorker(_ teacherId: String) {
         let trimmed = teacherId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            errorMessage = "Bitte eine Lehrer-ID eingeben."
+            errorMessage = L10n.text("Bitte eine Lehrer-ID eingeben.", table: "GameState")
             return
         }
         guard canManageSelectedColony,
@@ -5232,14 +5389,14 @@ final class GameState {
               teacher.owner == localPlayerId,
               selectedColonyTeacherCandidates.contains(where: { $0.id == trimmed }),
               studentId != trimmed else {
-            errorMessage = "Lehrer kann nicht zugewiesen werden."
+            errorMessage = L10n.text("Lehrer kann nicht zugewiesen werden.", table: "GameState")
             return
         }
         guard let student = game.units[studentId],
               let colony = selectedColony,
               colony.buildings.contains(where: { $0.id == student.location })
                 || colony.workTiles.contains(where: { $0.id == student.location }) else {
-            errorMessage = "Der Schüler muss zuerst in einem Gebäude oder auf einem Feld arbeiten."
+            errorMessage = L10n.text("Der Schüler muss zuerst in einem Gebäude oder auf einem Feld arbeiten.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -5267,7 +5424,7 @@ final class GameState {
         guard canManageSelectedColony,
               let studentId = selectedColonyWorkerUnitId,
               let game = cachedGame else {
-            errorMessage = "Lehrer kann nicht entfernt werden."
+            errorMessage = L10n.text("Lehrer kann nicht entfernt werden.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -5298,7 +5455,7 @@ final class GameState {
 
         guard canManageSelectedColony,
               let colony = selectedColony else {
-            errorMessage = "Build Queue kann nicht gesetzt werden."
+            errorMessage = L10n.text("Build Queue kann nicht gesetzt werden.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -5325,7 +5482,7 @@ final class GameState {
         guard canPutSelectedColonyWorkerOutside,
               let unitId = selectedColonyWorkerUnitId,
               let game = cachedGame else {
-            errorMessage = "Einheit kann nicht nach draussen gesetzt werden."
+            errorMessage = L10n.text("Einheit kann nicht nach draussen gesetzt werden.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -5355,7 +5512,7 @@ final class GameState {
     func assignSelectedColonyWorker(to workLocationId: String, workTypeId: String? = nil) {
         let trimmed = workLocationId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            errorMessage = "Bitte einen Arbeitsplatz auswählen."
+            errorMessage = L10n.text("Bitte einen Arbeitsplatz auswählen.", table: "GameState")
             return
         }
         guard canManageSelectedColony,
@@ -5363,7 +5520,7 @@ final class GameState {
               let game = cachedGame,
               let unitId = selectedColonyWorkerUnitId,
               let unit = game.units[unitId] else {
-            errorMessage = "Arbeit kann nicht zugewiesen werden."
+            errorMessage = L10n.text("Arbeit kann nicht zugewiesen werden.", table: "GameState")
             return
         }
         if let reason = colonyWorkLocationUnavailableReason(trimmed) {
@@ -5372,14 +5529,14 @@ final class GameState {
         }
         guard selectedColonyWorkLocationCandidates.contains(where: { $0.id == trimmed }),
               unit.owner == colony.owner, canUnitWorkInColony(unit) else {
-            errorMessage = "Dieser Arbeitsplatz ist für die Einheit nicht verfügbar."
+            errorMessage = L10n.text("Dieser Arbeitsplatz ist für die Einheit nicht verfügbar.", table: "GameState")
             return
         }
         let selectedWorkType = workTypeId?.trimmingCharacters(in: .whitespacesAndNewlines)
         let targetOutputs = colonyWorkOutputs(at: trimmed, in: colony).filter { $0.value > 0 }
         if let selectedWorkType,
            (selectedWorkType.isEmpty || targetOutputs[selectedWorkType] == nil) {
-            errorMessage = "Diese Ware kann an diesem Arbeitsplatz nicht produziert werden."
+            errorMessage = L10n.text("Diese Ware kann an diesem Arbeitsplatz nicht produziert werden.", table: "GameState")
             return
         }
         if unit.location == trimmed {
@@ -5502,21 +5659,21 @@ final class GameState {
     func renameSelectedColony(to newName: String) {
         let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            errorMessage = "Bitte einen Kolonienamen eingeben."
+            errorMessage = L10n.text("Bitte einen Kolonienamen eingeben.", table: "GameState")
             return
         }
         guard canManageSelectedColony,
               let colony = selectedColony,
               let game = cachedGame else {
-            errorMessage = "Kolonie kann nicht umbenannt werden."
+            errorMessage = L10n.text("Kolonie kann nicht umbenannt werden.", table: "GameState")
             return
         }
         if (colony.name ?? "").caseInsensitiveCompare(trimmed) == .orderedSame {
-            statusMessage = "Kolonie hat bereits diesen Namen."
+            statusMessage = L10n.text("Kolonie hat bereits diesen Namen.", table: "GameState")
             return
         }
         if game.colonies.values.contains(where: { $0.id != colony.id && ($0.name ?? "").caseInsensitiveCompare(trimmed) == .orderedSame }) {
-            errorMessage = "Der Koloniename ist bereits vergeben."
+            errorMessage = L10n.text("Der Koloniename ist bereits vergeben.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -5543,7 +5700,7 @@ final class GameState {
     func payForSelectedColonyBuilding() {
         guard canManageSelectedColony,
               let colony = selectedColony else {
-            errorMessage = "Bau kann nicht bezahlt werden."
+            errorMessage = L10n.text("Bau kann nicht bezahlt werden.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -5567,7 +5724,7 @@ final class GameState {
         guard canAbandonSelectedColony,
               let colony = selectedColony,
               let game = cachedGame else {
-            errorMessage = "Kolonie kann nicht aufgegeben werden."
+            errorMessage = L10n.text("Kolonie kann nicht aufgegeben werden.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -5596,11 +5753,11 @@ final class GameState {
     func setSelectedColonyGoodsLevel(_ data: ColonyExportData) {
         guard canManageSelectedColony,
               let colony = selectedColony else {
-            errorMessage = "Warenbestände können nicht festgelegt werden."
+            errorMessage = L10n.text("Warenbestände können nicht festgelegt werden.", table: "GameState")
             return
         }
         guard !data.goodsType.isEmpty else {
-            errorMessage = "Warenart erforderlich."
+            errorMessage = L10n.text("Warenart erforderlich.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -5649,11 +5806,11 @@ final class GameState {
         let trimmed = unitType.trimmingCharacters(in: .whitespacesAndNewlines)
         guard phase == .inGame else { return }
         guard !trimmed.isEmpty else {
-            errorMessage = "Bitte einen Einheitentyp fuer Europa angeben."
+            errorMessage = L10n.text("Bitte einen Einheitentyp fuer Europa angeben.", table: "GameState")
             return
         }
         guard localPlayer != nil else {
-            errorMessage = "Lokaler Spieler konnte nicht bestimmt werden."
+            errorMessage = L10n.text("Lokaler Spieler konnte nicht bestimmt werden.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -5706,9 +5863,9 @@ final class GameState {
     }
 
     func unitDisplayLabel(_ unit: FreeColGame.Unit) -> String {
-        let typeName = unit.name ?? unit.unitType.map(unitDisplayName) ?? "Einheit"
+        let typeName = unit.name ?? unit.unitType.map(unitDisplayName) ?? L10n.text("Einheit", table: "GameState")
         guard let role = unit.role, role != "model.role.default" else { return typeName }
-        return "\(GameLabels.name(role)) (\(typeName))"
+        return L10n.text("\(GameLabels.name(role)) (\(typeName))", table: "GameState")
     }
 
     func playerColor(for playerId: String) -> Color {
@@ -5750,12 +5907,12 @@ final class GameState {
         guard phase == .inGame,
               isLocalPlayersTurn,
               canRecruitInEurope else {
-            errorMessage = "Rekrutierung nicht möglich."
+            errorMessage = L10n.text("Rekrutierung nicht möglich.", table: "GameState")
             return
         }
         guard slot >= 0, slot <= min(3, localPlayer?.europe?.recruitable.count ?? 0),
               slot == 0 || canChooseEuropeRecruit else {
-            errorMessage = "Ungültiger Slot."
+            errorMessage = L10n.text("Ungültiger Slot.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -5823,17 +5980,17 @@ final class GameState {
     func loadGoodsForSelectedColony(typeId: String, amount: Int) {
         let trimmedType = typeId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedType.isEmpty else {
-            errorMessage = "Bitte eine Warenart angeben."
+            errorMessage = L10n.text("Bitte eine Warenart angeben.", table: "GameState")
             return
         }
         guard amount > 0 else {
-            errorMessage = "Menge muss groesser als 0 sein."
+            errorMessage = L10n.text("Menge muss groesser als 0 sein.", table: "GameState")
             return
         }
         guard canManageSelectedColony,
               let colony = selectedColony,
               let carrierId = selectedColonyCarrierId else {
-            errorMessage = "Waren können nicht geladen werden."
+            errorMessage = L10n.text("Waren können nicht geladen werden.", table: "GameState")
             return
         }
         let colonyId = colony.id
@@ -5874,20 +6031,20 @@ final class GameState {
     func unloadGoodsFromSelectedCarrier(typeId: String, amount: Int) {
         let trimmedType = typeId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedType.isEmpty else {
-            errorMessage = "Bitte eine Warenart angeben."
+            errorMessage = L10n.text("Bitte eine Warenart angeben.", table: "GameState")
             return
         }
         guard amount > 0 else {
-            errorMessage = "Menge muss groesser als 0 sein."
+            errorMessage = L10n.text("Menge muss groesser als 0 sein.", table: "GameState")
             return
         }
         guard canManageSelectedColony,
               let carrierId = selectedColonyCarrierId else {
-            errorMessage = "Waren können nicht entladen werden."
+            errorMessage = L10n.text("Waren können nicht entladen werden.", table: "GameState")
             return
         }
         guard let colony = selectedColony else {
-            errorMessage = "Waren können nicht entladen werden."
+            errorMessage = L10n.text("Waren können nicht entladen werden.", table: "GameState")
             return
         }
         let colonyId = colony.id
@@ -5977,7 +6134,7 @@ final class GameState {
         do {
             let (europeId, typeId, carrier) = try marketTradeContext(goodsTypeId: goodsTypeId, amount: amount, carrierId: carrierId)
             guard amount <= europeMarketTradeLimits(goodsTypeId: typeId, carrierId: carrierId).buy else {
-                throw MarketTradeError.message("Menge überschreitet Bezahlbarkeit, Frachtraum oder Preisstufe.")
+                throw MarketTradeError.message(L10n.text("Menge überschreitet Bezahlbarkeit, Frachtraum oder Preisstufe.", table: "GameState"))
             }
             errorMessage = nil
             let price = marketPrice(for: typeId, sell: false)
@@ -6011,7 +6168,7 @@ final class GameState {
         do {
             let (_, typeId, carrier) = try marketTradeContext(goodsTypeId: goodsTypeId, amount: amount, carrierId: carrierId)
             guard amount <= europeMarketTradeLimits(goodsTypeId: typeId, carrierId: carrierId).sell else {
-                throw MarketTradeError.message("Menge überschreitet den Warenbestand im Carrier.")
+                throw MarketTradeError.message(L10n.text("Menge überschreitet den Warenbestand im Carrier.", table: "GameState"))
             }
             errorMessage = nil
             let price = marketPrice(for: typeId, sell: true)
@@ -6153,11 +6310,11 @@ final class GameState {
     func payArrears(goodsTypeId: String) {
         let trimmed = goodsTypeId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            errorMessage = "Bitte eine Warenart angeben."
+            errorMessage = L10n.text("Bitte eine Warenart angeben.", table: "GameState")
             return
         }
         guard canPayArrears(for: trimmed) else {
-            errorMessage = "Rueckstaende koennen nicht bezahlt werden."
+            errorMessage = L10n.text("Rueckstaende koennen nicht bezahlt werden.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -6180,33 +6337,33 @@ final class GameState {
                                     carrierId: String) throws -> (europeId: String, typeId: String, carrier: FreeColGame.Unit) {
         let typeId = goodsTypeId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard phase == .inGame else {
-            throw MarketTradeError.message("Handel in Europa nicht möglich.")
+            throw MarketTradeError.message(L10n.text("Handel in Europa nicht möglich.", table: "GameState"))
         }
         guard isLocalPlayersTurn else {
-            throw MarketTradeError.message("Nicht dein Zug.")
+            throw MarketTradeError.message(L10n.text("Nicht dein Zug.", table: "GameState"))
         }
         guard !typeId.isEmpty else {
-            throw MarketTradeError.message("Bitte eine Warenart angeben.")
+            throw MarketTradeError.message(L10n.text("Bitte eine Warenart angeben.", table: "GameState"))
         }
         guard amount > 0 else {
-            throw MarketTradeError.message("Menge muss groesser als 0 sein.")
+            throw MarketTradeError.message(L10n.text("Menge muss groesser als 0 sein.", table: "GameState"))
         }
         guard let game = cachedGame,
               let localPlayerId = resolveLocalPlayerId(),
               let player = game.players[localPlayerId],
               let europeId = player.europe?.id else {
-            throw MarketTradeError.message("Europa-Informationen fehlen.")
+            throw MarketTradeError.message(L10n.text("Europa-Informationen fehlen.", table: "GameState"))
         }
         guard let marketData = player.market?.entry(for: typeId) else {
-            throw MarketTradeError.message("Marktdaten für diese Ware fehlen.")
+            throw MarketTradeError.message(L10n.text("Marktdaten für diese Ware fehlen.", table: "GameState"))
         }
         guard marketData.arrears <= 0 else {
-            throw MarketTradeError.message("Ware boykottiert. Bitte zuerst die Rückstände bezahlen.")
+            throw MarketTradeError.message(L10n.text("Ware boykottiert. Bitte zuerst die Rückstände bezahlen.", table: "GameState"))
         }
         guard let carrier = game.units[carrierId],
               carrier.owner == localPlayerId,
               resolveUnitTileId(carrier, in: game) == nil else {
-            throw MarketTradeError.message("Traeger nicht in Europa.")
+            throw MarketTradeError.message(L10n.text("Traeger nicht in Europa.", table: "GameState"))
         }
         return (europeId, typeId, carrier)
     }
@@ -6214,7 +6371,7 @@ final class GameState {
     func equipSelectedUnitForRole(_ roleId: String, count: Int) {
         guard canEquipSelectedUnit(forRole: roleId, count: count),
               let unitId = selectedUnitId else {
-            errorMessage = "Einheit kann diese Rolle mit der verfügbaren Ausrüstung nicht annehmen."
+            errorMessage = L10n.text("Einheit kann diese Rolle mit der verfügbaren Ausrüstung nicht annehmen.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -6241,36 +6398,91 @@ final class GameState {
     func sendMissionaryAction(direction: String, denounce: Bool) {
         guard canSendMissionaryAction,
               let unitId = selectedUnitId else {
-            errorMessage = "Missionarsaktion nicht möglich."
+            errorMessage = L10n.text("Missionarsaktion nicht möglich.", table: "GameState")
             return
         }
         guard isValidDirection(direction) else {
-            errorMessage = "Ungültige Richtung."
+            errorMessage = L10n.text("Ungültige Richtung.", table: "GameState")
             return
         }
         errorMessage = nil
 
 
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "missionary",
-                    attributes: [
-                        "unit": unitId,
-                        "direction": direction,
-                        "denounce": denounce ? "true" : "false",
-                    ],
-                    children: []
-                )
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = ServerErrorMessage.description(for: error)
-            }
-        }
+        requestNativeInteraction(ParsedMessage(
+            tag: "missionary",
+            attributes: [
+                "unit": unitId,
+                "direction": direction,
+                "denounce": denounce ? "true" : "false",
+            ],
+            children: []
+        ))
     }
 
     var canEquipSelectedUnitForRole: Bool {
         canEquipSelectedUnit(forRole: "model.role.missionary", count: 1)
+    }
+
+    var selectedUnitRoleEquipmentOptions: [RoleEquipmentOption] {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let unitId = selectedUnitId,
+              let unit = game.units[unitId],
+              let localPlayerId = resolveLocalPlayerId(),
+              unit.owner == localPlayerId,
+              canUnitWorkInColony(unit),
+              let specification = game.specification,
+              isAtRoleEquipmentLocation(unit, localPlayerId: localPlayerId, game: game) else {
+            return []
+        }
+
+        guard let unitType = unit.unitType,
+              specification.effectiveAbility(unitTypeId: unitType,
+                                             abilityId: "model.ability.canBeEquipped") != false else {
+            return []
+        }
+
+        return specification.roleTypes.values
+            .filter { roleInfo in
+                guard roleInfo.id.hasPrefix("model.role."),
+                      roleInfo.id != "model.role.default",
+                      !roleInfo.requiredGoods.isEmpty || roleInfo.id == "model.role.missionary" else {
+                    return false
+                }
+                let name = GameLabels.name(roleInfo.id).lowercased()
+                return name != "role" && name != "rolle"
+            }
+            .compactMap { roleInfo in
+                for (abilityId, expectedValue) in roleInfo.requiredAbilities {
+                    let actualValue = specification.effectiveAbility(unitTypeId: unitType,
+                                                                     abilityId: abilityId) ?? false
+                    if actualValue != expectedValue { return nil }
+                }
+
+                let isUpgrade = unit.role == roleInfo.id
+                let count = isUpgrade ? unit.roleCount + 1 : 1
+                if isUpgrade && roleInfo.maximumCount <= 1 { return nil }
+                guard count <= roleInfo.maximumCount else { return nil }
+
+                let delta = Self.roleEquipmentGoodsDelta(unit: unit,
+                                                         targetRoleId: roleInfo.id,
+                                                         targetCount: count,
+                                                         roleTypes: specification.roleTypes)
+                let goodsNeeded = delta
+                    .filter { $0.value > 0 }
+                    .map { (goodsType: $0.key, amount: $0.value) }
+                    .sorted { $0.goodsType < $1.goodsType }
+
+                return RoleEquipmentOption(
+                    roleId: roleInfo.id,
+                    count: count,
+                    isUpgrade: isUpgrade,
+                    isAvailable: canEquipSelectedUnit(forRole: roleInfo.id, count: count),
+                    goodsNeeded: goodsNeeded
+                )
+            }
+            .sorted { GameLabels.name($0.roleId) < GameLabels.name($1.roleId) }
     }
 
     var selectedUnitPioneerEquipmentCount: Int {
@@ -6295,13 +6507,20 @@ final class GameState {
             return false
         }
 
-        guard roleId == "model.role.missionary" || roleId == "model.role.pioneer",
-              unit.role != roleId || roleId == "model.role.pioneer",
+        guard roleId != "model.role.default",
               let specification = game.specification else {
             return false
         }
-
         let roleInfo = specification.roleTypes[roleId]
+        guard roleInfo != nil || roleId == "model.role.missionary" || roleId == "model.role.pioneer" else {
+            return false
+        }
+
+        if unit.role == roleId {
+            guard roleId != "model.role.missionary",
+                  (roleInfo?.maximumCount ?? (roleId == "model.role.pioneer" ? 5 : 1)) > 1,
+                  count > unit.roleCount else { return false }
+        }
         let maximumCount = roleInfo?.maximumCount ?? (roleId == "model.role.pioneer" ? 5 : 1)
         guard count <= maximumCount else { return false }
         if let unitType = unit.unitType {
@@ -6352,6 +6571,16 @@ final class GameState {
         return neededGoods.allSatisfy { colony.goods[$0.key, default: 0] >= $0.value }
     }
 
+    private func isAtRoleEquipmentLocation(
+        _ unit: FreeColGame.Unit,
+        localPlayerId: String,
+        game: FreeColGame.Game
+    ) -> Bool {
+        if unit.location == game.players[localPlayerId]?.europe?.id { return true }
+        guard let tileId = resolveUnitTileId(unit, in: game) else { return false }
+        return game.colonies.values.contains { $0.tileId == tileId && $0.owner == localPlayerId }
+    }
+
     private nonisolated static func roleEquipmentGoodsDelta(
         unit: FreeColGame.Unit,
         targetRoleId: String,
@@ -6385,30 +6614,39 @@ final class GameState {
         return UnitTypeTraits.isMissionary(unitType: unit.unitType, role: unit.role)
     }
 
-    func learnSkillAtSelectedUnit(direction: String) {
+    /// Run FreeCol's native-skill visit as a two-step transaction: refresh the
+    /// settlement's skill (which spends the unit's moves), then ask before
+    /// sending the actual learnSkill action.
+    func beginNativeSkillLearning(settlementId: String, direction: String) {
         guard canLearnSkillAtSelectedUnit,
-              let unitId = selectedUnitId,
-              let game = cachedGame else {
-            errorMessage = "Fähigkeit kann nicht erlernt werden."
+              isValidDirection(direction),
+              nativeTradeTargetsForSelectedUnit.contains(where: { $0.settlementId == settlementId }),
+              let unitId = selectedUnitId else {
+            errorMessage = L10n.text("Fähigkeit kann bei dieser Siedlung nicht erlernt werden.", table: "GameState")
             return
         }
-        errorMessage = nil
-
-
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "learnSkill",
-                    attributes: [
-                        "unit": unitId,
-                        "direction": direction,
-                    ],
-                    children: []
-                )
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = ServerErrorMessage.description(for: error)
+        let message = ParsedMessage(
+            tag: "askSkill",
+            attributes: ["unit": unitId, "direction": direction],
+            children: []
+        )
+        requestNativeInteraction(message) { [weak self] _ in
+            guard let self,
+                  let skill = self.cachedGame?.colonies[settlementId]?.learnableSkill,
+                  !skill.isEmpty else {
+                self?.statusMessage = L10n.text("In dieser Siedlung gibt es derzeit keine Fähigkeit zu erlernen.", table: "GameState")
+                return
             }
+            self.pendingServerDecision = PendingServerDecision(
+                type: .nativeSkill,
+                rawPayload: [
+                    "unit": unitId,
+                    "settlement": settlementId,
+                    "direction": direction,
+                    "skill": skill,
+                ]
+            )
+            self.statusMessage = L10n.text("Fähigkeit geprüft. Bitte bestätige das Lernen.", table: "GameState")
         }
     }
 
@@ -6419,56 +6657,58 @@ final class GameState {
               let unitId = selectedUnitId,
               let unit = game.units[unitId],
               let localPlayerId = resolveLocalPlayerId(),
+              game.players[localPlayerId]?.playerType == .european,
               unit.owner == localPlayerId,
               unit.movesLeft > 0,
-              unit.state == .active else {
+              unit.state == .active,
+              let specification = game.specification,
+              specification.hasAbility("model.ability.foundColony", unitType: unit.unitType),
+              !specification.hasAbility("model.ability.speakWithChief",
+                                         unitType: unit.unitType,
+                                         role: unit.role) else {
             return false
         }
         return true
-    }
-
-    /// Refresh a native settlement's learnable skill from the server.
-    func askSkillAtSelectedUnit(direction: String) {
-        guard canAskSkillAtSelectedUnit,
-              let unitId = selectedUnitId else {
-            errorMessage = "Fähigkeit kann nicht erfragt werden."
-            return
-        }
-        errorMessage = nil
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "askSkill",
-                    attributes: ["unit": unitId, "direction": direction],
-                    children: []
-                )
-                let reply = try await client?.ask(message: msg)
-                if let reply, server == nil, let payload = reply.children.first {
-                    // Remote server: apply the refreshed settlement payload.
-                    try? cachedGame?.applyUpdate(payload)
-                    gameUpdateID += 1
-                }
-                statusMessage = "Fähigkeit erfragt."
-            } catch {
-                errorMessage = ServerErrorMessage.description(for: error)
-            }
-        }
     }
 
     var canAskSkillAtSelectedUnit: Bool {
         canLearnSkillAtSelectedUnit
     }
 
+    func acceptPendingNativeSkill() {
+        guard let decision = pendingServerDecision,
+              decision.type == .nativeSkill,
+              canRespondToPendingDecision(),
+              let unitId = decision.rawPayload["unit"],
+              let direction = decision.rawPayload["direction"] else { return }
+        requestNativeInteraction(ParsedMessage(
+            tag: "learnSkill",
+            attributes: ["unit": unitId, "direction": direction],
+            children: []
+        )) { [weak self] _ in
+            guard let self, self.pendingServerDecision?.id == decision.id else { return }
+            let skill = decision.rawPayload["skill"].map(GameLabels.name) ?? L10n.text("Fähigkeit", table: "GameState")
+            self.clearPendingDecision()
+            self.statusMessage = L10n.text("\(skill) erlernt.", table: "GameState")
+        }
+    }
+
+    func declinePendingNativeSkill() {
+        guard pendingServerDecision?.type == .nativeSkill else { return }
+        clearPendingDecision()
+        statusMessage = L10n.text("Lernen abgebrochen. Die Bewegungspunkte bleiben verbraucht.", table: "GameState")
+    }
+
     func nameNewLandWithSelectedUnit(_ landName: String) {
         let trimmedName = landName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else {
-            errorMessage = "Bitte einen Namen eingeben."
+            errorMessage = L10n.text("Bitte einen Namen eingeben.", table: "GameState")
             return
         }
         guard canNameNewLandWithSelectedUnit,
               let unitId = selectedUnitId,
               let game = cachedGame else {
-            errorMessage = "Neues Land kann nicht benannt werden."
+            errorMessage = L10n.text("Neues Land kann nicht benannt werden.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -6511,17 +6751,17 @@ final class GameState {
     ) {
         let trimmedName = regionName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else {
-            errorMessage = "Bitte einen Namen eingeben."
+            errorMessage = L10n.text("Bitte einen Namen eingeben.", table: "GameState")
             return
         }
         guard canNameNewRegionWithSelectedUnit,
               let unitId = selectedUnitId,
               let game = cachedGame else {
-            errorMessage = "Neue Region kann nicht benannt werden."
+            errorMessage = L10n.text("Neue Region kann nicht benannt werden.", table: "GameState")
             return
         }
         guard !regionId.isEmpty && !tileId.isEmpty else {
-            errorMessage = "Region oder Kachel-ID fehlt."
+            errorMessage = L10n.text("Region oder Kachel-ID fehlt.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -6559,41 +6799,31 @@ final class GameState {
         return true
     }
 
-    func inciteSettlement(
-        settlementId: String,
-        enemyPlayerId: String,
-        gold: Int
-    ) {
+    func inciteSettlement(settlementId: String, enemyPlayerId: String) {
         guard canInciteSelectedUnit,
-              let unitId = selectedUnitId,
-              let game = cachedGame else {
-            errorMessage = "In der Siedlung kann kein Aufstand angezettelt werden."
+              let unitId = selectedUnitId else {
+            errorMessage = L10n.text("In der Siedlung kann kein Aufstand angezettelt werden.", table: "GameState")
             return
         }
         guard !settlementId.isEmpty && !enemyPlayerId.isEmpty else {
-            errorMessage = "Siedlung oder Gegner-ID fehlt."
+            errorMessage = L10n.text("Siedlung oder Gegner-ID fehlt.", table: "GameState")
             return
         }
         errorMessage = nil
 
 
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "incite",
-                    attributes: [
-                        "unit": unitId,
-                        "settlement": settlementId,
-                        "enemy": enemyPlayerId,
-                        "gold": String(gold),
-                    ],
-                    children: []
-                )
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = ServerErrorMessage.description(for: error)
-            }
-        }
+        // A negative gold value is FreeCol's quote request. The returned
+        // <incite gold="..."> is shown for confirmation before paying.
+        requestNativeInteraction(ParsedMessage(
+            tag: "incite",
+            attributes: [
+                "unit": unitId,
+                "settlement": settlementId,
+                "enemy": enemyPlayerId,
+                "gold": "-1",
+            ],
+            children: []
+        ))
     }
 
     var canInciteSelectedUnit: Bool {
@@ -6603,7 +6833,13 @@ final class GameState {
               let unitId = selectedUnitId,
               let unit = game.units[unitId],
               let localPlayerId = resolveLocalPlayerId(),
-              unit.owner == localPlayerId else {
+              unit.owner == localPlayerId,
+              unit.movesLeft > 0,
+              unit.state == .active,
+              let specification = game.specification,
+              specification.hasAbility("model.ability.establishMission",
+                                        unitType: unit.unitType,
+                                        role: unit.role) else {
             return false
         }
         return true
@@ -6612,33 +6848,43 @@ final class GameState {
     // MARK: Phase 42 - DeliverGift
 
     func deliverGiftToSettlement(_ settlementId: String) {
+        guard let gift = selectedUnitCargoGoods.first else {
+            errorMessage = L10n.text("Die Einheit hat keine Waren, die sie verschenken kann.", table: "GameState")
+            return
+        }
+        deliverGiftToSettlement(settlementId, goodsType: gift.id, amount: gift.amount)
+    }
+
+    func deliverGiftToSettlement(_ settlementId: String, goodsType: String, amount: Int) {
         guard canDeliverGiftWithSelectedUnit,
-              let unitId = selectedUnitId else {
-            errorMessage = "Geschenk kann nicht übergeben werden."
+              let unitId = selectedUnitId,
+              let unit = selectedUnit,
+              amount > 0,
+              (unit.goods[goodsType] ?? 0) >= amount else {
+            errorMessage = L10n.text("Geschenk kann nicht übergeben werden.", table: "GameState")
             return
         }
         guard !settlementId.isEmpty else {
-            errorMessage = "Siedlungs-ID erforderlich."
+            errorMessage = L10n.text("Siedlungs-ID erforderlich.", table: "GameState")
             return
         }
         errorMessage = nil
 
 
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "deliverGift",
-                    attributes: [
-                        "unit": unitId,
-                        "settlement": settlementId,
-                    ],
-                    children: []
-                )
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = ServerErrorMessage.description(for: error)
-            }
-        }
+        let goods = ParsedMessage(
+            tag: "goods",
+            attributes: [
+                "type": goodsType,
+                "amount": String(amount),
+                "location": unitId,
+            ],
+            children: []
+        )
+        requestNativeInteraction(ParsedMessage(
+            tag: "deliverGift",
+            attributes: ["unit": unitId, "settlement": settlementId],
+            children: [goods]
+        ))
     }
 
     var canDeliverGiftWithSelectedUnit: Bool {
@@ -6648,7 +6894,8 @@ final class GameState {
               let unitId = selectedUnitId,
               let unit = game.units[unitId],
               let localPlayerId = resolveLocalPlayerId(),
-              unit.owner == localPlayerId else {
+              unit.owner == localPlayerId,
+              unit.goods.values.contains(where: { $0 > 0 }) else {
             return false
         }
         return true
@@ -6659,31 +6906,21 @@ final class GameState {
     func demandTributeFromSettlement(direction: String) {
         guard canDemandTributeWithSelectedUnit,
               let unitId = selectedUnitId else {
-            errorMessage = "Tribut kann nicht gefordert werden."
+            errorMessage = L10n.text("Tribut kann nicht gefordert werden.", table: "GameState")
             return
         }
         guard isValidDirection(direction) else {
-            errorMessage = "Ungültige Richtung."
+            errorMessage = L10n.text("Ungültige Richtung.", table: "GameState")
             return
         }
         errorMessage = nil
 
 
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "demandTribute",
-                    attributes: [
-                        "direction": direction,
-                        "unit": unitId,
-                    ],
-                    children: []
-                )
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = ServerErrorMessage.description(for: error)
-            }
-        }
+        requestNativeInteraction(ParsedMessage(
+            tag: "demandTribute",
+            attributes: ["direction": direction, "unit": unitId],
+            children: []
+        ))
     }
 
     var canDemandTributeWithSelectedUnit: Bool {
@@ -6695,7 +6932,12 @@ final class GameState {
               let localPlayerId = resolveLocalPlayerId(),
               unit.owner == localPlayerId,
               unit.movesLeft > 0,
-              unit.state == .active else {
+              unit.state == .active,
+              let specification = game.specification,
+              specification.hasAbility("model.ability.demandTribute",
+                                        unitType: unit.unitType,
+                                        role: unit.role)
+                  || (specification.unitTypes[unit.unitType ?? ""]?.offence ?? 0) > 0 else {
             return false
         }
         return true
@@ -6706,79 +6948,24 @@ final class GameState {
     func acceptGiftFromNativeSettlement(colonyId: String) {
         guard canAcceptNativeGift,
               let unitId = selectedUnitId else {
-            errorMessage = "Geschenk kann nicht angenommen werden."
+            errorMessage = L10n.text("Geschenk kann nicht angenommen werden.", table: "GameState")
             return
         }
         guard !colonyId.isEmpty else {
-            errorMessage = "Kolonie-ID erforderlich."
+            errorMessage = L10n.text("Kolonie-ID erforderlich.", table: "GameState")
             return
         }
         errorMessage = nil
 
 
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "nativeGift",
-                    attributes: [
-                        "colony": colonyId,
-                        "unit": unitId,
-                    ],
-                    children: []
-                )
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = ServerErrorMessage.description(for: error)
-            }
-        }
+        requestNativeInteraction(ParsedMessage(
+            tag: "nativeGift",
+            attributes: ["colony": colonyId, "unit": unitId],
+            children: []
+        ))
     }
 
     var canAcceptNativeGift: Bool {
-        guard phase == .inGame,
-              isLocalPlayersTurn,
-              let game = cachedGame,
-              let unitId = selectedUnitId,
-              let unit = game.units[unitId],
-              let localPlayerId = resolveLocalPlayerId(),
-              unit.owner == localPlayerId else {
-            return false
-        }
-        return true
-    }
-
-    // MARK: Phase 45 - SpySettlement
-
-    func spyOnNativeSettlement(settlementId: String) {
-        guard canSpyOnNativeSettlement,
-              let unitId = selectedUnitId else {
-            errorMessage = "Spionage ist nicht möglich."
-            return
-        }
-        guard !settlementId.isEmpty else {
-            errorMessage = "Siedlungs-ID erforderlich."
-            return
-        }
-        errorMessage = nil
-
-
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "spySettlement",
-                    attributes: [
-                        "settlement": settlementId,
-                        "unit": unitId,
-                    ],
-                    children: []
-                )
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = ServerErrorMessage.description(for: error)
-            }
-        }
-    }
-
-    var canSpyOnNativeSettlement: Bool {
         guard phase == .inGame,
               isLocalPlayersTurn,
               let game = cachedGame,
@@ -6796,30 +6983,22 @@ final class GameState {
     func scoutIndianSettlement(direction: String) {
         guard canScoutIndianSettlement,
               let unitId = selectedUnitId else {
-            errorMessage = "Erkundung ist nicht möglich."
+            errorMessage = L10n.text("Erkundung ist nicht möglich.", table: "GameState")
             return
         }
-        guard isValidDirection(direction) else {
-            errorMessage = "Ungültige Richtung."
+        guard isValidDirection(direction),
+              nativeTradeTargetsForSelectedUnit.contains(where: {
+                  directionToAdjacentSettlement($0.settlementId) == direction
+              }) else {
+            errorMessage = L10n.text("In dieser Richtung befindet sich keine bekannte Ureinwohner-Siedlung.", table: "GameState")
             return
         }
-        errorMessage = nil
-
-
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "scoutIndianSettlement",
-                    attributes: [
-                        "direction": direction,
-                        "unit": unitId,
-                    ],
-                    children: []
-                )
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = ServerErrorMessage.description(for: error)
-            }
+        requestNativeInteraction(ParsedMessage(
+            tag: "scoutIndianSettlement",
+            attributes: ["direction": direction, "unit": unitId],
+            children: []
+        )) { [weak self] _ in
+            self?.statusMessage = L10n.text("Ureinwohner-Siedlung erkundet.", table: "GameState")
         }
     }
 
@@ -6832,7 +7011,11 @@ final class GameState {
               let localPlayerId = resolveLocalPlayerId(),
               unit.owner == localPlayerId,
               unit.movesLeft > 0,
-              unit.state == .active else {
+              unit.state == .active,
+              let specification = game.specification,
+              specification.hasAbility("model.ability.speakWithChief",
+                                        unitType: unit.unitType,
+                                        role: unit.role) else {
             return false
         }
         return true
@@ -6840,35 +7023,22 @@ final class GameState {
 
     // MARK: Phase 47 - ScoutSpeakToChief
 
-    func scoutSpeakToChief(settlementId: String, result: String) {
+    func scoutSpeakToChief(settlementId: String) {
         guard canScoutSpeakToChief,
-              let unitId = selectedUnitId else {
-            errorMessage = "Gespräch mit Häuptling nicht möglich."
+              let unitId = selectedUnitId,
+              nativeTradeTargetsForSelectedUnit.contains(where: { $0.settlementId == settlementId }) else {
+            errorMessage = L10n.text("Gespräch mit Häuptling nicht möglich.", table: "GameState")
             return
         }
-        guard !settlementId.isEmpty && !result.isEmpty else {
-            errorMessage = "Siedlungs-ID und Ergebnis erforderlich."
+        guard !settlementId.isEmpty else {
+            errorMessage = L10n.text("Siedlungs-ID erforderlich.", table: "GameState")
             return
         }
-        errorMessage = nil
-
-
-        Task {
-            do {
-                let msg = ParsedMessage(
-                    tag: "scoutSpeakToChief",
-                    attributes: [
-                        "result": result,
-                        "settlement": settlementId,
-                        "unit": unitId,
-                    ],
-                    children: []
-                )
-                try await client?.send(message: msg)
-            } catch {
-                errorMessage = ServerErrorMessage.description(for: error)
-            }
-        }
+        requestNativeInteraction(ParsedMessage(
+            tag: "scoutSpeakToChief",
+            attributes: ["settlement": settlementId, "unit": unitId],
+            children: []
+        ))
     }
 
     var canScoutSpeakToChief: Bool {
@@ -6878,7 +7048,13 @@ final class GameState {
               let unitId = selectedUnitId,
               let unit = game.units[unitId],
               let localPlayerId = resolveLocalPlayerId(),
-              unit.owner == localPlayerId else {
+              unit.owner == localPlayerId,
+              unit.movesLeft > 0,
+              unit.state == .active,
+              let specification = game.specification,
+              specification.hasAbility("model.ability.speakWithChief",
+                                        unitType: unit.unitType,
+                                        role: unit.role) else {
             return false
         }
         return true
@@ -6922,7 +7098,7 @@ final class GameState {
                   let colonyTileId = colony.tileId,
                   neighbors.contains(colonyTileId) else { return nil }
             let ownerName = game.players[ownerId]?.name ?? ownerId
-            return (id: colony.id, label: "\(colony.name ?? colony.id) (\(ownerName))")
+            return (id: colony.id, label: L10n.text("\(colony.name ?? colony.id) (\(ownerName))", table: "GameState"))
         }
     }
 
@@ -6938,11 +7114,11 @@ final class GameState {
               let otherOwner = other.owner,
               let context = diplomacyContextForSelectedUnit,
               let ourId = resolveLocalPlayerId() else {
-            errorMessage = "Diplomatie nicht möglich."
+            errorMessage = L10n.text("Diplomatie nicht möglich.", table: "GameState")
             return
         }
         guard diplomacyInitiationTargetsForSelectedUnit.contains(where: { $0.id == otherColonyId }) else {
-            errorMessage = "Keine angrenzende fremde Kolonie."
+            errorMessage = L10n.text("Keine angrenzende fremde Kolonie.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -6967,7 +7143,7 @@ final class GameState {
             rawPayload: ["ourId": unitId, "otherId": otherColonyId],
             children: [tradeNode]
         )
-        statusMessage = context == "TRIBUTE" ? "Tributverhandlung eröffnet." : "Diplomatie eröffnet."
+        statusMessage = context == "TRIBUTE" ? L10n.text("Tributverhandlung eröffnet.", table: "GameState") : L10n.text("Diplomatie eröffnet.", table: "GameState")
     }
 
     var canSendDiplomacy: Bool {
@@ -7031,7 +7207,7 @@ final class GameState {
               let attacker = game.units[unitId],
               let sourceTileId = resolveUnitTileId(attacker, in: game),
               let direction = attackDirection(fromTileId: sourceTileId, toTileId: targetTileId, in: game) else {
-            errorMessage = "Nahkampfangriff nicht möglich."
+            errorMessage = L10n.text("Nahkampfangriff nicht möglich.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -7060,7 +7236,7 @@ final class GameState {
         guard canAttackSelectedUnitRanged(onTile: targetTileId),
               let game = cachedGame,
               let unitId = selectedUnitId else {
-            errorMessage = "Fernkampfangriff nicht möglich."
+            errorMessage = L10n.text("Fernkampfangriff nicht möglich.", table: "GameState")
             return
         }
         errorMessage = nil
@@ -7143,7 +7319,7 @@ final class GameState {
     func unitTravelStatus(_ unit: FreeColGame.Unit) -> String? {
         guard let game = cachedGame else { return nil }
         if game.players.values.contains(where: { $0.europe?.id == unit.location && unit.location != nil }) {
-            return "In Europa"
+            return L10n.text("In Europa", table: "GameState")
         }
         let isOnMap = unit.location.flatMap { game.tiles[$0] } != nil
         guard !isOnMap,
@@ -7152,28 +7328,29 @@ final class GameState {
         let destination: String
         if game.players.values.contains(where: { $0.europe?.id == unit.destination && unit.destination != nil })
             || unit.state == .toEurope {
-            destination = "Europa"
+            destination = L10n.text("Europa", table: "GameState")
         } else if unit.destination == game.map?.id && unit.destination != nil
                     || unit.destination.flatMap({ game.tiles[$0] }) != nil
                     || unit.state == .toAmerica {
-            destination = "Neue Welt"
+            destination = L10n.text("Neue Welt", table: "GameState")
         } else {
-            destination = "Ziel unbekannt"
+            destination = L10n.text("Ziel unbekannt", table: "GameState")
         }
         let turns = max(0, unit.workLeft)
-        return "Überfahrt: \(destination) (\(turns) \(turns == 1 ? "Runde" : "Runden"))"
+        let turnLabel = turns == 1 ? L10n.text("Runde", table: "GameState") : L10n.text("Runden", table: "GameState")
+        return L10n.text("Überfahrt: \(destination) (\(turns) \(turnLabel))", table: "GameState")
     }
 
     func unitLocationDisplayName(_ unit: FreeColGame.Unit) -> String {
         if let travelStatus = unitTravelStatus(unit) { return travelStatus }
-        guard let game = cachedGame else { return "Standort unbekannt" }
+        guard let game = cachedGame else { return L10n.text("Standort unbekannt", table: "GameState") }
         if let tileId = game.resolvedTileId(for: unit), let tile = game.tiles[tileId] {
             if let colony = game.colonies.values.first(where: { $0.tileId == tileId }) {
-                return colony.name ?? "Kolonie"
+                return colony.name ?? L10n.text("Kolonie", table: "GameState")
             }
-            return "Karte \(tile.x), \(tile.y)"
+            return L10n.text("Karte \(tile.x), \(tile.y)", table: "GameState")
         }
-        return "Standort unbekannt"
+        return L10n.text("Standort unbekannt", table: "GameState")
     }
 
     private func surfaceEuropeArrivalMessage() {
@@ -7185,7 +7362,7 @@ final class GameState {
         }) else { return }
         let ship = message.source.flatMap { cachedGame?.units[$0] }
         let name = ship?.name ?? ship?.unitType.map(unitDisplayName) ?? "Ein Schiff"
-        statusMessage = "\(name) ist in Europa eingetroffen."
+        statusMessage = L10n.text("\(name) ist in Europa eingetroffen.", table: "GameState")
     }
 
     private func reconcileSelectionWithGame() {
@@ -7193,7 +7370,16 @@ final class GameState {
             selectedUnitId = nil
             selectedTileId = nil
             closeColonyPanel()
+            closeNativeSettlementPanel()
             return
+        }
+
+        if showNativeSettlementPanel {
+            let settlement = displayedNativeSettlementId.flatMap { game.colonies[$0] }
+            let hasValidTile = settlement?.tileId.flatMap { game.tiles[$0] } != nil
+            if settlement.map({ isNativeSettlement($0, in: game) }) != true || !hasValidTile {
+                closeNativeSettlementPanel()
+            }
         }
 
         // Colony actions must not let unit recovery or movement change the open colony.
@@ -7471,12 +7657,12 @@ final class GameState {
 
         errorMessage = nil
         phase = .reconnecting
-        statusMessage = "Verbindung verloren. Wiederverbindung läuft …"
+        statusMessage = L10n.text("Verbindung verloren. Wiederverbindung läuft …", table: "GameState")
         reconnectTask = Task { [weak self] in
             guard let self else { return }
             for attempt in 1...5 {
                 if Task.isCancelled { return }
-                self.statusMessage = "Wiederverbindung (Versuch \(attempt)/5) …"
+                self.statusMessage = L10n.text("Wiederverbindung (Versuch \(attempt)/5) …", table: "GameState")
                 if attempt > 1 {
                     try? await Task.sleep(nanoseconds: UInt64(attempt - 1) * 1_000_000_000)
                 }
@@ -7493,7 +7679,7 @@ final class GameState {
                     self.bridge = newBridge
                     self.cachedGame = await newClient.game
                     self.applyLoginResult(result)
-                    self.statusMessage = "Wiederverbunden. Prüfe ausstehende Aktionen vor dem erneuten Senden."
+                    self.statusMessage = L10n.text("Wiederverbunden. Prüfe ausstehende Aktionen vor dem erneuten Senden.", table: "GameState")
                     self.reconnectTask = nil
                     self.startMessageLoop(client: newClient)
                     return
@@ -7504,7 +7690,7 @@ final class GameState {
             self.reconnectTask = nil
             self.phase = .disconnected
             self.statusMessage = ""
-            self.errorMessage = "Wiederverbindung nach fünf Versuchen fehlgeschlagen."
+            self.errorMessage = L10n.text("Wiederverbindung nach fünf Versuchen fehlgeschlagen.", table: "GameState")
         }
     }
 

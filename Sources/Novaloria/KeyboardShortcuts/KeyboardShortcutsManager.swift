@@ -16,6 +16,10 @@ struct KeyboardShortcut: Identifiable, Equatable {
     let action: () -> Void
     let description: String
     let category: ShortcutCategory
+
+    var localizedDescription: String {
+        L10n.text(String.LocalizationValue(description), table: "KeyboardShortcutsManager")
+    }
     
     enum KeyModifier: String, CaseIterable {
         case none = ""
@@ -35,7 +39,7 @@ struct KeyboardShortcut: Identifiable, Equatable {
         case view = "Ansicht"
         
         var displayName: String {
-            rawValue
+            L10n.text(String.LocalizationValue(rawValue), table: "KeyboardShortcutsManager")
         }
     }
     
@@ -527,10 +531,10 @@ final class KeyboardShortcutsManager {
             // Colony shortcuts need a selected colony
             return state.selectedColony != nil
             
-        case (.game, let desc) where desc.contains("speichern"):
+        case (.game, _) where shortcut.key == "s" && shortcut.modifier == .command:
             return state.canSaveGame
             
-        case (.game, let desc) where desc.contains("Zug beenden"):
+        case (.game, _) where shortcut.key == "enter" && shortcut.modifier == .control:
             return state.canEndTurn
             
         default:
@@ -548,7 +552,7 @@ final class KeyboardShortcutsManager {
     func scrollMap(direction: ScrollDirection) {
         // This would need implementation to scroll the map
         // For now, just a placeholder
-        gameState?.statusMessage = "Karte scrollen: \(direction)"
+        gameState?.statusMessage = L10n.text("Karte scrollen: \(String(describing: direction))", table: "KeyboardShortcutsManager")
     }
     
     /// Zoom map in/out
@@ -579,9 +583,9 @@ final class KeyboardShortcutsManager {
     /// Prompt to save game
     func promptSaveGame() {
         if let state = gameState, state.canSaveGame {
-            state.statusMessage = "Spiel speichern... (Noch nicht implementiert)"
+            state.statusMessage = L10n.text("Spiel speichern... (Noch nicht implementiert)", table: "KeyboardShortcutsManager")
         } else {
-            gameState?.errorMessage = "Spiel kann derzeit nicht gespeichert werden."
+            gameState?.errorMessage = L10n.text("Spiel kann derzeit nicht gespeichert werden.", table: "KeyboardShortcutsManager")
         }
     }
     

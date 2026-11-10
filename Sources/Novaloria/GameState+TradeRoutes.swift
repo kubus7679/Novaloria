@@ -62,7 +62,7 @@ extension GameState {
         guard canManageTradeRoutes,
               let game = cachedGame,
               let localPlayerId = resolveLocalPlayerId() else {
-            return "Handelsrouten können nur im eigenen Zug verwaltet werden."
+            return L10n.text("Handelsrouten können nur im eigenen Zug verwaltet werden.", table: "GameState+TradeRoutes")
         }
         return Self.tradeRouteValidationError(
             route: route,
@@ -83,23 +83,23 @@ extension GameState {
         enhancedTradeRoutes: Bool
     ) -> String? {
         let name = (route.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return "Die Handelsroute benötigt einen Namen." }
-        guard route.owner == localPlayerId else { return "Diese Handelsroute gehört einem anderen Spieler." }
+        guard !name.isEmpty else { return L10n.text("Die Handelsroute benötigt einen Namen.", table: "GameState+TradeRoutes") }
+        guard route.owner == localPlayerId else { return L10n.text("Diese Handelsroute gehört einem anderen Spieler.", table: "GameState+TradeRoutes") }
         guard !existingRoutes.contains(where: { $0.id != route.id && $0.name == name }) else {
-            return "Eine Handelsroute mit diesem Namen existiert bereits."
+            return L10n.text("Eine Handelsroute mit diesem Namen existiert bereits.", table: "GameState+TradeRoutes")
         }
-        guard route.stops.count >= 2 else { return "Mindestens zwei Haltepunkte hinzufügen." }
+        guard route.stops.count >= 2 else { return L10n.text("Mindestens zwei Haltepunkte hinzufügen.", table: "GameState+TradeRoutes") }
         guard route.stops.allSatisfy({
             guard let location = $0.locationId else { return false }
             return validStopLocationIds.contains(location)
         }) else {
-            return "Für jeden Halt einen gültigen eigenen Ort auswählen."
+            return L10n.text("Für jeden Halt einen gültigen eigenen Ort auswählen.", table: "GameState+TradeRoutes")
         }
         guard route.stops.allSatisfy({ $0.cargoTypeIds.allSatisfy(validGoodsTypeIds.contains) }) else {
-            return "Die Handelsroute enthält eine unbekannte Warenart."
+            return L10n.text("Die Handelsroute enthält eine unbekannte Warenart.", table: "GameState+TradeRoutes")
         }
         guard route.stops.contains(where: { !$0.cargoTypeIds.isEmpty }) else {
-            return "Für mindestens einen Halt Waren auswählen."
+            return L10n.text("Für mindestens einen Halt Waren auswählen.", table: "GameState+TradeRoutes")
         }
         if !enhancedTradeRoutes, let firstStop = route.stops.first {
             var presentAtEveryStop = Set(firstStop.cargoTypeIds)
@@ -107,7 +107,7 @@ extension GameState {
                 presentAtEveryStop.formIntersection(stop.cargoTypeIds)
             }
             if !presentAtEveryStop.isEmpty {
-                return "Bei Standard-Handelsrouten darf dieselbe Ware nicht an allen Haltepunkten ausgewählt sein."
+                return L10n.text("Bei Standard-Handelsrouten darf dieselbe Ware nicht an allen Haltepunkten ausgewählt sein.", table: "GameState+TradeRoutes")
             }
         }
         return nil
@@ -138,7 +138,7 @@ extension GameState {
         guard canAssignSelectedUnitTradeRoute(trimmed),
               let unitId = selectedUnitId,
               let game = cachedGame else {
-            errorMessage = "Handelsroute kann nicht zugewiesen werden."
+            errorMessage = L10n.text("Handelsroute kann nicht zugewiesen werden.", table: "GameState+TradeRoutes")
             return
         }
         updateTradeRouteAssignment(unitId, routeId: trimmed, in: game)
@@ -148,7 +148,7 @@ extension GameState {
         guard canClearSelectedUnitTradeRoute,
               let unitId = selectedUnitId,
               let game = cachedGame else {
-            errorMessage = "Keine Handelsroute zum Entfernen gesetzt."
+            errorMessage = L10n.text("Keine Handelsroute zum Entfernen gesetzt.", table: "GameState+TradeRoutes")
             return
         }
         updateTradeRouteAssignment(unitId, routeId: nil, in: game)
@@ -156,7 +156,7 @@ extension GameState {
 
     func createTradeRoute() {
         guard canManageTradeRoutes else {
-            errorMessage = "Handelsrouten können nur im eigenen Zug verwaltet werden."
+            errorMessage = L10n.text("Handelsrouten können nur im eigenen Zug verwaltet werden.", table: "GameState+TradeRoutes")
             return
         }
         errorMessage = nil
@@ -164,14 +164,14 @@ extension GameState {
             do {
                 try await client?.send(message: ParsedMessage(tag: "newTradeRoute", attributes: [:], children: []))
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
 
     func saveTradeRoute(_ route: TradeRoute) {
         guard let game = cachedGame else {
-            errorMessage = "Handelsroute kann nicht gespeichert werden."
+            errorMessage = L10n.text("Handelsroute kann nicht gespeichert werden.", table: "GameState+TradeRoutes")
             return
         }
         if let validationError = tradeRouteValidationError(for: route) {
@@ -193,7 +193,7 @@ extension GameState {
                 }
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -202,7 +202,7 @@ extension GameState {
         guard canManageTradeRoutes,
               let game = cachedGame,
               game.tradeRoutes[tradeRouteId] != nil else {
-            errorMessage = "Handelsroute kann nicht gelöscht werden."
+            errorMessage = L10n.text("Handelsroute kann nicht gelöscht werden.", table: "GameState+TradeRoutes")
             return
         }
         errorMessage = nil
@@ -220,7 +220,7 @@ extension GameState {
                 }
                 try await client?.send(message: msg)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ServerErrorMessage.description(for: error)
             }
         }
     }
@@ -253,16 +253,16 @@ extension GameState {
               unit.owner == localPlayerId,
               let routeId = unit.tradeRoute, let route = game.tradeRoutes[routeId],
               route.owner == localPlayerId else {
-            errorMessage = "Aktueller Halt kann nicht gesetzt werden."
+            errorMessage = L10n.text("Aktueller Halt kann nicht gesetzt werden.", table: "GameState+TradeRoutes")
             return
         }
         let trimmed = indexText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let index = Int(trimmed), route.stops.indices.contains(index) else {
-            errorMessage = "Bitte einen gültigen Haltepunkt auswählen."
+            errorMessage = L10n.text("Bitte einen gültigen Haltepunkt auswählen.", table: "GameState+TradeRoutes")
             return
         }
         guard unit.currentStop != index else {
-            errorMessage = "Dieser Halt ist bereits gesetzt."
+            errorMessage = L10n.text("Dieser Halt ist bereits gesetzt.", table: "GameState+TradeRoutes")
             return
         }
         updateTradeRouteStop(unitId, index: index, in: game)
@@ -298,7 +298,7 @@ extension GameState {
 
         if anyExecuted {
             gameUpdateID += 1
-            statusMessage = "Handelsrouten ausgeführt."
+            statusMessage = L10n.text("Handelsrouten ausgeführt.", table: "GameState+TradeRoutes")
         }
     }
 
@@ -344,7 +344,7 @@ extension GameState {
             ))
             return true
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = ServerErrorMessage.description(for: error)
             return false
         }
     }
@@ -465,7 +465,7 @@ extension GameState {
             try await client?.send(message: message)
             return true
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = ServerErrorMessage.description(for: error)
             return false
         }
     }

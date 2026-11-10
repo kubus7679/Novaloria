@@ -61,7 +61,7 @@ struct InfoPanelView: View {
                     .font(.caption)
                     .foregroundColor(.white)
                     .lineLimit(2)
-                Text("Bewegungspunkte: \(unit.displayMovesLeft)")
+                Text(L10n.text("Bewegungspunkte: \(unit.displayMovesLeft)", table: "InfoPanelView"))
                     .font(.caption)
                     .foregroundColor(.white)
                 Button {
@@ -76,7 +76,7 @@ struct InfoPanelView: View {
                 }
             }
             if !state.nativeTradeTargetsForSelectedUnit.isEmpty {
-                Menu("Handel") {
+                Menu(L10n.text("Handel", table: "InfoPanelView")) {
                     ForEach(state.nativeTradeTargetsForSelectedUnit) { target in
                         Button(target.name) {
                             state.openNativeTradeWithSelectedUnit(settlementId: target.settlementId)
@@ -123,18 +123,18 @@ struct InfoPanelView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(state.unitDisplayLabel(unit))
                 .font(.headline)
-            detailRow("Erfahrung", "\(unit.experience)")
-            detailRow("Rolle", unit.role.map { displayIdentifier($0) } ?? "Standard")
+            detailRow(L10n.text("Erfahrung", table: "InfoPanelView"), "\(unit.experience)")
+            detailRow(L10n.text("Rolle", table: "InfoPanelView"), unit.role.map { displayIdentifier($0) } ?? L10n.text("Standard", table: "InfoPanelView"))
             if unit.roleCount > 0 {
-                detailRow("Ausrüstung", "\(unit.roleCount)")
+                detailRow(L10n.text("Ausrüstung", table: "InfoPanelView"), "\(unit.roleCount)")
             }
             if unit.role == "model.role.pioneer" {
                 let toolsPerRoleCount = state.game?.specification?.roleTypes["model.role.pioneer"]?
                     .requiredGoods["model.goods.tools"] ?? 20
-                detailRow("Verbleibende Werkzeuge", "\(unit.roleCount * toolsPerRoleCount)")
+                detailRow(L10n.text("Verbleibende Werkzeuge", table: "InfoPanelView"), "\(unit.roleCount * toolsPerRoleCount)")
             }
             if unit.hitPoints > 0 {
-                detailRow("Trefferpunkte", "\(unit.hitPoints)")
+                detailRow(L10n.text("Trefferpunkte", table: "InfoPanelView"), "\(unit.hitPoints)")
             }
 
             if let game = state.game,
@@ -146,7 +146,7 @@ struct InfoPanelView: View {
                     .sorted()
                 if !abilities.isEmpty {
                     Divider()
-                    Text("Fähigkeiten")
+                    Text(L10n.text("Fähigkeiten", table: "InfoPanelView"))
                         .font(.caption.bold())
                     Text(abilities.map(displayIdentifier).joined(separator: ", "))
                         .font(.caption)
@@ -156,7 +156,7 @@ struct InfoPanelView: View {
 
             if !unit.goods.isEmpty {
                 Divider()
-                Text("Ladung")
+                Text(L10n.text("Ladung", table: "InfoPanelView"))
                     .font(.caption.bold())
                 ForEach(unit.goods.keys.sorted(), id: \.self) { goodsType in
                     detailRow(displayIdentifier(goodsType), "\(unit.goods[goodsType] ?? 0)")
@@ -164,12 +164,12 @@ struct InfoPanelView: View {
             }
             if unit.id == state.selectedUnitId, !state.selectedUnitCargoUnits.isEmpty {
                 Divider()
-                Text("Passagiere")
+                Text(L10n.text("Passagiere", table: "InfoPanelView"))
                     .font(.caption.bold())
                 ForEach(state.selectedUnitCargoUnits) { cargoUnit in
                     detailRow(
                         displayUnitName(cargoUnit.unitType),
-                        cargoUnit.name ?? "An Bord"
+                        cargoUnit.name ?? L10n.text("An Bord", table: "InfoPanelView")
                     )
                 }
             }
@@ -202,11 +202,11 @@ struct InfoPanelView: View {
         if let travelStatus = state.unitTravelStatus(unit) { return travelStatus }
         guard let game = state.game,
               let tileId = state.selectedUnitTileId,
-              let tile = game.tiles[tileId] else { return "Standort unbekannt" }
+              let tile = game.tiles[tileId] else { return L10n.text("Standort unbekannt", table: "InfoPanelView") }
         if let colony = game.colonies.values.first(where: { $0.tileId == tileId }) {
-            return "Standort: \(colony.name ?? "Kolonie")"
+            return L10n.text("Standort: \(colony.name ?? L10n.text("Kolonie", table: "InfoPanelView"))", table: "InfoPanelView")
         }
-        return "Standort: \(tile.x), \(tile.y)"
+        return L10n.text("Standort: \(tile.x), \(tile.y)", table: "InfoPanelView")
     }
 
     // MARK: - TILE mode
@@ -239,15 +239,15 @@ struct InfoPanelView: View {
                         .font(.headline)
                         .foregroundColor(.white)
                     if tile.type != nil, tile.moveToEurope {
-                        Text("Hochsee-Ausfahrt nach Europa")
+                        Text(L10n.text("Hochsee-Ausfahrt nach Europa", table: "InfoPanelView"))
                             .font(.caption2)
                             .foregroundColor(.cyan)
                     }
-                    Text(tile.type == nil ? "Unerforscht" : "Erforscht")
+                    Text(tile.type == nil ? L10n.text("Unerforscht", table: "InfoPanelView") : L10n.text("Erforscht", table: "InfoPanelView"))
                         .font(.caption2)
                         .foregroundColor(tile.type == nil ? .secondary : .green)
                     if let ownerId = tile.owner, let game = state.game {
-                         Text(game.players[ownerId]?.name ?? "Unbekannt")
+                         Text(game.players[ownerId]?.name ?? L10n.text("Unbekannt", table: "InfoPanelView"))
                             .font(.caption)
                             .foregroundColor(.yellow)
                     }
@@ -261,7 +261,7 @@ struct InfoPanelView: View {
             if let region = tile.region {
                 let regionName = state.game?.regions[region]?.displayName
                     ?? GameLabels.name(region)
-                Text("Region: \(regionName)")
+                Text(L10n.text("Region: \(regionName)", table: "InfoPanelView"))
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -279,7 +279,7 @@ struct InfoPanelView: View {
                     .foregroundColor(.secondary)
             }
             if !tile.improvements.isEmpty {
-                Text("Verbesserungen: \(tile.improvements.compactMap { $0.type.map(GameLabels.name) }.joined(separator: ", "))")
+                Text(L10n.text("Verbesserungen: \(tile.improvements.compactMap { $0.type.map(GameLabels.name) }.joined(separator: ", "))", table: "InfoPanelView"))
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -291,14 +291,14 @@ struct InfoPanelView: View {
                             .scaledToFit()
                             .frame(width: 32, height: 24)
                     }
-                    Text("Gerücht einer verlorenen Stadt")
+                    Text(L10n.text("Gerücht einer verlorenen Stadt", table: "InfoPanelView"))
                 }
                     .font(.caption2)
                     .foregroundColor(.orange)
             }
             if let settlementId = tile.settlement,
                let settlement = state.game?.colonies[settlementId] {
-                     Text("Siedlung: \(settlement.name ?? "Siedlung")")
+                     Text(L10n.text("Siedlung: \(settlement.name ?? L10n.text("Siedlung", table: "InfoPanelView"))", table: "InfoPanelView"))
                     .font(.caption2)
                     .foregroundColor(.secondary)
                 if settlement.learnableSkill != nil
@@ -306,22 +306,22 @@ struct InfoPanelView: View {
                     || settlement.mostHated != nil {
                     VStack(alignment: .leading, spacing: 2) {
                         if let skill = settlement.learnableSkill {
-                            Text("Fähigkeit: \(GameLabels.name(skill))")
+                            Text(L10n.text("Fähigkeit: \(GameLabels.name(skill))", table: "InfoPanelView"))
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
                         if !settlement.wantedGoods.isEmpty {
-                            Text("Gesuchte Waren: \(settlement.wantedGoods.map(state.goodsDisplayName).joined(separator: ", "))")
+                            Text(L10n.text("Gesuchte Waren: \(settlement.wantedGoods.map(state.goodsDisplayName).joined(separator: ", "))", table: "InfoPanelView"))
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
                         if let hated = settlement.mostHated {
-                            Text("Am meisten verhasst: \(state.game?.players[hated]?.name ?? "Unbekannt")")
+                            Text(L10n.text("Am meisten verhasst: \(state.game?.players[hated]?.name ?? L10n.text("Unbekannt", table: "InfoPanelView"))", table: "InfoPanelView"))
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
                         if let localId = state.localPlayerId, let alarm = settlement.alarm[localId] {
-                            Text("Alarmstufe: \(alarm)")
+                            Text(L10n.text("Alarmstufe: \(alarm)", table: "InfoPanelView"))
                                 .font(.caption2)
                                 .foregroundColor(alarm > 50 ? .red : .secondary)
                         }
@@ -331,7 +331,7 @@ struct InfoPanelView: View {
             let units = units(on: tile.id)
             if !units.isEmpty {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Einheiten")
+                    Text(L10n.text("Einheiten", table: "InfoPanelView"))
                         .font(.caption2)
                         .foregroundColor(.secondary)
                     ForEach(units) { unit in
@@ -355,13 +355,13 @@ struct InfoPanelView: View {
             }
 
             HStack(spacing: 6) {
-                Button("Als Ziel setzen") {
+                Button(L10n.text("Als Ziel setzen", table: "InfoPanelView")) {
                     state.setSelectedUnitDestination(to: tile.id)
                 }
                 .font(.caption2)
                 .disabled(!state.canSetDestinationToSelectedTile)
 
-                Button("Ziel löschen") {
+                Button(L10n.text("Ziel löschen", table: "InfoPanelView")) {
                     state.clearSelectedUnitDestination()
                 }
                 .font(.caption2)
@@ -397,10 +397,10 @@ struct InfoPanelView: View {
 
     private var endTurnContent: some View {
         VStack(spacing: 8) {
-            Text(state.isLocalPlayersTurn ? "Alle Einheiten fertig?" : "Warten auf Gegner…")
+            Text(state.isLocalPlayersTurn ? L10n.text("Alle Einheiten fertig?", table: "InfoPanelView") : L10n.text("Warten auf Gegner…", table: "InfoPanelView"))
                 .font(.caption)
                 .foregroundColor(.white)
-            Text("Einheit oder Feld auf der Karte auswählen.\nKolonie: Doppelklick · Feldaktionen: Rechtsklick")
+            Text(L10n.text("Einheit oder Feld auf der Karte auswählen.\nKolonie oder Dorf: Doppelklick · Feldaktionen: Rechtsklick", table: "InfoPanelView"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

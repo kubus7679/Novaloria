@@ -13,7 +13,7 @@ struct JavaServerLaunch {
                         name: String, seed: String, root: URL) throws -> Self {
         try validate(java: java, port: port)
         guard seed.isEmpty || Int64(seed) != nil else {
-            throw NewGameError.invalid("Der Zufallsstartwert muss eine ganze 64-Bit-Zahl sein.")
+            throw NewGameError.invalid(L10n.text("Der Zufallsstartwert muss eine ganze 64-Bit-Zahl sein.", table: "LocalJavaServer"))
         }
         let xml = try configuration.specificationXML()
         let fm = FileManager.default
@@ -40,7 +40,7 @@ struct JavaServerLaunch {
                                 name: String, root: URL) throws -> Self {
         try validate(java: java, port: port)
         guard savegame.pathExtension.lowercased() == "fsg" else {
-            throw NewGameError.invalid("Bitte eine Spielstand-Datei mit der Endung .fsg wählen.")
+            throw NewGameError.invalid(L10n.text("Bitte eine Spielstand-Datei mit der Endung .fsg wählen.", table: "LocalJavaServer"))
         }
         let directory = try makeRunDirectory(root: root)
         let data = try makeDataDirectory(installation: installation, in: directory)
@@ -54,10 +54,10 @@ struct JavaServerLaunch {
 
     private static func validate(java: URL, port: Int) throws {
         guard (1...65535).contains(port) else {
-            throw NewGameError.invalid("Der Serverport muss zwischen 1 und 65535 liegen.")
+            throw NewGameError.invalid(L10n.text("Der Serverport muss zwischen 1 und 65535 liegen.", table: "LocalJavaServer"))
         }
         guard FileManager.default.isExecutableFile(atPath: java.path) else {
-            throw NewGameError.invalid("Die gewählte Java-Datei ist nicht ausführbar.")
+            throw NewGameError.invalid(L10n.text("Die gewählte Java-Datei ist nicht ausführbar.", table: "LocalJavaServer"))
         }
     }
 
@@ -94,7 +94,7 @@ struct JavaServerLaunch {
         for entry in try fm.contentsOfDirectory(at: originalData.appendingPathComponent("rules"),
                                                includingPropertiesForKeys: nil) {
             guard entry.lastPathComponent != NewGameConfiguration.rulesID else {
-                throw NewGameError.invalid("Das reservierte Regelset \(NewGameConfiguration.rulesID) existiert bereits.")
+                throw NewGameError.invalid(L10n.text("Das reservierte Regelset \(NewGameConfiguration.rulesID) existiert bereits.", table: "LocalJavaServer"))
             }
             try fm.createSymbolicLink(at: rules.appendingPathComponent(entry.lastPathComponent), withDestinationURL: entry)
         }
@@ -141,13 +141,13 @@ final class LocalJavaServer {
     }
 
     func start(_ launch: JavaServerLaunch) async throws {
-        guard process == nil else { throw NewGameError.invalid("Es läuft bereits ein eigener Java-Server.") }
+        guard process == nil else { throw NewGameError.invalid(L10n.text("Es läuft bereits ein eigener Java-Server.", table: "LocalJavaServer")) }
         try await waitForShutdown()
         try Self.requireFreePort(launch.port)
         self.launch = launch
         let log = launch.directory.appendingPathComponent("console.log")
         guard FileManager.default.createFile(atPath: log.path, contents: nil) else {
-            throw NewGameError.invalid("Das Serverprotokoll konnte nicht angelegt werden: \(log.path)")
+            throw NewGameError.invalid(L10n.text("Das Serverprotokoll konnte nicht angelegt werden: \(log.path)", table: "LocalJavaServer"))
         }
         let console = try FileHandle(forWritingTo: log)
         self.console = console
@@ -164,20 +164,20 @@ final class LocalJavaServer {
             for _ in 0..<300 {
                 try Task.checkCancellation()
                 guard process.isRunning else {
-                    throw NewGameError.invalid("Java-Server beendet (Status \(process.terminationStatus)). Protokoll: \(log.path)")
+                    throw NewGameError.invalid(L10n.text("Java-Server beendet (Status \(process.terminationStatus)). Protokoll: \(log.path)", table: "LocalJavaServer"))
                 }
                 if try Self.isListening(port: launch.port) {
                     process.terminationHandler = { [weak self] terminated in
                         Task { @MainActor [weak self] in
                             guard let self, self.process === terminated else { return }
-                            self.onUnexpectedExit?("Java-Server unerwartet beendet (Status \(terminated.terminationStatus)). Protokoll: \(log.path)")
+                            self.onUnexpectedExit?(L10n.text("Java-Server unerwartet beendet (Status \(terminated.terminationStatus)). Protokoll: \(log.path)", table: "LocalJavaServer"))
                         }
                     }
                     return
                 }
                 try await Task.sleep(for: .milliseconds(100))
             }
-            throw NewGameError.invalid("Java-Server nach 30 Sekunden nicht erreichbar. Protokoll: \(log.path)")
+            throw NewGameError.invalid(L10n.text("Java-Server nach 30 Sekunden nicht erreichbar. Protokoll: \(log.path)", table: "LocalJavaServer"))
         } catch {
             stop()
             throw error
@@ -212,7 +212,7 @@ final class LocalJavaServer {
             }
             try await Task.sleep(for: .milliseconds(100))
         }
-        throw NewGameError.invalid("Der bisherige Java-Server wurde nicht rechtzeitig beendet.")
+        throw NewGameError.invalid(L10n.text("Der bisherige Java-Server wurde nicht rechtzeitig beendet.", table: "LocalJavaServer"))
     }
 
     private static func address(port: Int) -> sockaddr_in {
@@ -226,7 +226,7 @@ final class LocalJavaServer {
 
     private static func requireFreePort(_ port: Int) throws {
         let fd = socket(AF_INET, SOCK_STREAM, 0)
-        guard fd >= 0 else { throw NewGameError.invalid("Serverport konnte nicht geprüft werden: \(String(cString: strerror(errno)))") }
+        guard fd >= 0 else { throw NewGameError.invalid(L10n.text("Serverport konnte nicht geprüft werden: \(String(cString: strerror(errno)))", table: "LocalJavaServer")) }
         defer { close(fd) }
         var address = address(port: port)
         let result = withUnsafePointer(to: &address) {
@@ -235,19 +235,19 @@ final class LocalJavaServer {
             }
         }
         guard result == 0 else {
-            throw NewGameError.invalid("Port \(port) ist belegt oder nicht nutzbar. Bitte einen anderen Port wählen.")
+            throw NewGameError.invalid(L10n.text("Port \(port) ist belegt oder nicht nutzbar. Bitte einen anderen Port wählen.", table: "LocalJavaServer"))
         }
     }
 
     private static func isListening(port: Int) throws -> Bool {
         let fd = socket(AF_INET, SOCK_STREAM, 0)
         guard fd >= 0 else {
-            throw NewGameError.invalid("Serververbindung konnte nicht geprüft werden: \(String(cString: strerror(errno)))")
+            throw NewGameError.invalid(L10n.text("Serververbindung konnte nicht geprüft werden: \(String(cString: strerror(errno)))", table: "LocalJavaServer"))
         }
         defer { close(fd) }
         var timeout = timeval(tv_sec: 0, tv_usec: 100_000)
         guard setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size)) == 0 else {
-            throw NewGameError.invalid("Server-Zeitlimit konnte nicht gesetzt werden: \(String(cString: strerror(errno)))")
+            throw NewGameError.invalid(L10n.text("Server-Zeitlimit konnte nicht gesetzt werden: \(String(cString: strerror(errno)))", table: "LocalJavaServer"))
         }
         var address = address(port: port)
         let status = withUnsafePointer(to: &address) {
@@ -257,6 +257,6 @@ final class LocalJavaServer {
         }
         if status == 0 { return true }
         if [ECONNREFUSED, ETIMEDOUT, EINPROGRESS, EINTR].contains(errno) { return false }
-        throw NewGameError.invalid("Serververbindung fehlgeschlagen: \(String(cString: strerror(errno)))")
+        throw NewGameError.invalid(L10n.text("Serververbindung fehlgeschlagen: \(String(cString: strerror(errno)))", table: "LocalJavaServer"))
     }
 }

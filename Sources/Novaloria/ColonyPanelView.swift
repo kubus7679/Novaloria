@@ -69,11 +69,20 @@ struct ColonyPanelView: View {
     @State private var pendingWorkField: ColonyTerrainField?
     @State private var section: ColonySection = .overview
 
-    enum ColonySection: String, CaseIterable {
-        case overview = "Übersicht"
-        case workers = "Arbeiter und Felder"
-        case production = "Produktion und Bau"
-        case storage = "Lager und Fracht"
+    enum ColonySection: CaseIterable {
+        case overview
+        case workers
+        case production
+        case storage
+
+        var title: String {
+            switch self {
+            case .overview: L10n.text("Übersicht", table: "ColonyPanelView")
+            case .workers: L10n.text("Arbeiter und Felder", table: "ColonyPanelView")
+            case .production: L10n.text("Produktion und Bau", table: "ColonyPanelView")
+            case .storage: L10n.text("Lager und Fracht", table: "ColonyPanelView")
+            }
+        }
     }
 
     init(
@@ -192,11 +201,11 @@ struct ColonyPanelView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                metricBadge("Bevölkerung", value: "\(population)", systemImage: "person.2")
+                metricBadge(L10n.text("Bevölkerung", table: "ColonyPanelView"), value: "\(population)", systemImage: "person.2")
                 Spacer(minLength: 0)
             }
-            Picker("Bereich", selection: $section) {
-                ForEach(ColonySection.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            Picker(L10n.text("Bereich", table: "ColonyPanelView"), selection: $section) {
+                ForEach(ColonySection.allCases, id: \.self) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -205,14 +214,14 @@ struct ColonyPanelView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
                     if section == .overview {
-                        panelCard("Status", systemImage: "building.2") {
+                        panelCard(L10n.text("Status", table: "ColonyPanelView"), systemImage: "building.2") {
                             Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 7) {
-                                statRow("Besitzer", value: ownerName)
-                                statRow("Freiheitsstreben", value: "\(colony.sonsOfLiberty)%")
-                                statRow("Freiheit", value: "\(colony.liberty)")
-                                statRow("Einwanderung", value: "\(colony.immigration)")
-                                statRow("Gegründet", value: "\(colony.established)")
-                                statRow("Produktionsbonus", value: "\(colony.productionBonus)%")
+                                statRow(L10n.text("Besitzer", table: "ColonyPanelView"), value: ownerName)
+                                statRow(L10n.text("Freiheitsstreben", table: "ColonyPanelView"), value: "\(colony.sonsOfLiberty)%")
+                                statRow(L10n.text("Freiheit", table: "ColonyPanelView"), value: "\(colony.liberty)")
+                                statRow(L10n.text("Einwanderung", table: "ColonyPanelView"), value: "\(colony.immigration)")
+                                statRow(L10n.text("Gegründet", table: "ColonyPanelView"), value: "\(colony.established)")
+                                statRow(L10n.text("Produktionsbonus", table: "ColonyPanelView"), value: "\(colony.productionBonus)%")
                             }
                         }
                     }
@@ -227,32 +236,30 @@ struct ColonyPanelView: View {
                     }
 
                     if section == .overview {
-                        DisclosureGroup("Verwaltung") {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack(spacing: 8) {
-                                    TextField("Koloniename", text: $colonyNameInput)
-                                        .textFieldStyle(.roundedBorder)
-                                        .accessibilityIdentifier("colony-name")
-                                        .onSubmit {
-                                            if canRename { onRenameColony(colonyNameInput) }
-                                        }
-                                    Button("Umbenennen") {
-                                        onRenameColony(colonyNameInput)
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 8) {
+                                TextField(L10n.text("Koloniename", table: "ColonyPanelView"), text: $colonyNameInput)
+                                    .textFieldStyle(.roundedBorder)
+                                    .accessibilityIdentifier("colony-name")
+                                    .onSubmit {
+                                        if canRename { onRenameColony(colonyNameInput) }
                                     }
-                                    .buttonStyle(.bordered)
-                                    .accessibilityIdentifier("colony-rename")
-                                    .disabled(!canRename)
+                                Button(L10n.text("Umbenennen", table: "ColonyPanelView")) {
+                                    onRenameColony(colonyNameInput)
                                 }
-                                if canManage && canAbandonColony {
-                                    Button("Kolonie verlassen…", role: .destructive) {
-                                        showAbandonConfirmation = true
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .accessibilityIdentifier("colony-abandon")
-                                }
+                                .buttonStyle(.bordered)
+                                .accessibilityIdentifier("colony-rename")
+                                .disabled(!canRename)
                             }
-                            .padding(.top, 6)
+                            if canManage && canAbandonColony {
+                                Button(L10n.text("Kolonie verlassen…", table: "ColonyPanelView"), role: .destructive) {
+                                    showAbandonConfirmation = true
+                                }
+                                .buttonStyle(.bordered)
+                                .accessibilityIdentifier("colony-abandon")
+                            }
                         }
+                        .padding(.top, 6)
                     }
 
                     if section == .production {
@@ -272,14 +279,14 @@ struct ColonyPanelView: View {
                     }
 
                     if section == .storage {
-                        panelCard("Lagerbestand", systemImage: "shippingbox") {
+                        panelCard(L10n.text("Lagerbestand", table: "ColonyPanelView"), systemImage: "shippingbox") {
                             if goodsCandidates.count > storedGoods.count {
-                                Toggle("Auch Waren mit Bestand 0 anzeigen", isOn: $showAllGoods)
+                                Toggle(L10n.text("Auch Waren mit Bestand 0 anzeigen", table: "ColonyPanelView"), isOn: $showAllGoods)
                                     .toggleStyle(.checkbox)
                                     .font(.caption)
                             }
                             if visibleGoods.isEmpty {
-                                Text("Keine gelagerten Waren.")
+                                Text(L10n.text("Keine gelagerten Waren.", table: "ColonyPanelView"))
                                     .font(.callout)
                                     .foregroundStyle(.secondary)
                             } else {
@@ -294,14 +301,14 @@ struct ColonyPanelView: View {
                         }
 
                         if canManage && !exportData.isEmpty {
-                            Button("Export- und Importregeln…") { showWarehouse = true }
+                            Button(L10n.text("Export- und Importregeln…", table: "ColonyPanelView")) { showWarehouse = true }
                                 .buttonStyle(.bordered)
                         }
 
                         if let selectedCarrierId {
-                            panelCard("Fracht", systemImage: "shippingbox.fill") {
+                            panelCard(L10n.text("Fracht", table: "ColonyPanelView"), systemImage: "shippingbox.fill") {
                                 if carrierCandidates.count > 1 {
-                                    Picker("Frachter", selection: Binding(
+                                    Picker(L10n.text("Frachter", table: "ColonyPanelView"), selection: Binding(
                                         get: { selectedCarrierId },
                                         set: onSelectCarrier
                                     )) {
@@ -318,7 +325,7 @@ struct ColonyPanelView: View {
                                 }
 
                                 if carrierGoods.isEmpty {
-                                    Text("Der Transporter ist leer.")
+                                    Text(L10n.text("Der Transporter ist leer.", table: "ColonyPanelView"))
                                         .font(.callout)
                                         .foregroundStyle(.secondary)
                                 } else {
@@ -329,25 +336,25 @@ struct ColonyPanelView: View {
                                 }
 
                                 if !transferGoodsCandidates.isEmpty {
-                                    Picker("Ware", selection: $goodsTypeId) {
+                                    Picker(L10n.text("Ware", table: "ColonyPanelView"), selection: $goodsTypeId) {
                                         ForEach(transferGoodsCandidates, id: \.id) { candidate in
                                             Text(candidate.label).tag(candidate.id)
                                         }
                                     }
-                                    TextField("Menge", text: $goodsAmountInput)
+                                    TextField(L10n.text("Menge", table: "ColonyPanelView"), text: $goodsAmountInput)
                                         .textFieldStyle(.roundedBorder)
 
                                     let loadMaximum = maximumLoadAmount(goodsTypeId)
                                     let unloadMaximum = maximumUnloadAmount(goodsTypeId)
                                     HStack(spacing: 8) {
                                         if loadMaximum > 0 {
-                                            Button("Max laden: \(loadMaximum)") {
+                                            Button(L10n.text("Max laden: \(loadMaximum)", table: "ColonyPanelView")) {
                                                 goodsAmountInput = String(loadMaximum)
                                             }
                                             .buttonStyle(.bordered)
                                         }
                                         if unloadMaximum > 0 {
-                                            Button("Max entladen: \(unloadMaximum)") {
+                                            Button(L10n.text("Max entladen: \(unloadMaximum)", table: "ColonyPanelView")) {
                                                 goodsAmountInput = String(unloadMaximum)
                                             }
                                             .buttonStyle(.bordered)
@@ -355,14 +362,14 @@ struct ColonyPanelView: View {
                                     }
                                     HStack(spacing: 8) {
                                         if loadMaximum > 0 {
-                                            Button("Laden") {
+                                            Button(L10n.text("Laden", table: "ColonyPanelView")) {
                                                 onLoadGoods(goodsTypeId, Int(goodsAmountInput) ?? 0)
                                             }
                                             .buttonStyle(.borderedProminent)
                                             .disabled(!canManage || !validTransferAmount(maximum: loadMaximum))
                                         }
                                         if unloadMaximum > 0 {
-                                            Button("Entladen") {
+                                            Button(L10n.text("Entladen", table: "ColonyPanelView")) {
                                                 onUnloadGoods(goodsTypeId, Int(goodsAmountInput) ?? 0)
                                             }
                                             .buttonStyle(.bordered)
@@ -373,7 +380,7 @@ struct ColonyPanelView: View {
                             }
                             .accessibilityIdentifier("colony-carrier-\(selectedCarrierId)")
                         } else {
-                            Text("Frachtaktionen werden angezeigt, wenn ein Transporter ausgewählt ist.")
+                            Text(L10n.text("Frachtaktionen werden angezeigt, wenn ein Transporter ausgewählt ist.", table: "ColonyPanelView"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -387,30 +394,30 @@ struct ColonyPanelView: View {
         .frame(minHeight: 300, idealHeight: 480, maxHeight: 760)
         .background(Color(NSColor.windowBackgroundColor))
         .confirmationDialog(
-            "Diese Kolonie verlassen?",
+            L10n.text("Diese Kolonie verlassen?", table: "ColonyPanelView"),
             isPresented: $showAbandonConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Kolonie verlassen", role: .destructive) {
+            Button(L10n.text("Kolonie verlassen", table: "ColonyPanelView"), role: .destructive) {
                 onAbandonColony()
             }
-            Button("Abbrechen", role: .cancel) {}
+            Button(L10n.text("Abbrechen", table: "ColonyPanelView"), role: .cancel) {}
         } message: {
-            Text("Die Kolonie wird unwiderruflich entfernt.")
+            Text(L10n.text("Die Kolonie wird unwiderruflich entfernt.", table: "ColonyPanelView"))
         }
         .alert(
-            "Bau bezahlen?",
+            L10n.text("Bau bezahlen?", table: "ColonyPanelView"),
             isPresented: $showBuildPaymentConfirmation
         ) {
-            Button("Ja") {
+            Button(L10n.text("Ja", table: "ColonyPanelView")) {
                 onPayForBuilding()
             }
-            Button("Nein", role: .cancel) {}
+            Button(L10n.text("Nein", table: "ColonyPanelView"), role: .cancel) {}
         } message: {
             if let buildPaymentCost {
-                Text("Möchtest du \(buildPaymentCost.formatted(.number.locale(Locale(identifier: "de_DE")))) Gold bezahlen, um den Bau abzuschließen?")
+                Text(L10n.text("Möchtest du \(buildPaymentCost.formatted(.number.locale(Locale(identifier: "de_DE")))) Gold bezahlen, um den Bau abzuschließen?", table: "ColonyPanelView"))
             } else {
-                Text("Der zu zahlende Goldbetrag konnte nicht ermittelt werden. Möchtest du den Bau trotzdem bezahlen?")
+                Text(L10n.text("Der zu zahlende Goldbetrag konnte nicht ermittelt werden. Möchtest du den Bau trotzdem bezahlen?", table: "ColonyPanelView"))
             }
         }
         .sheet(isPresented: $showWarehouse) {
@@ -454,9 +461,9 @@ struct ColonyPanelView: View {
     }
 
     private var terrainCard: some View {
-        panelCard("Koloniegelände", systemImage: "map") {
+        panelCard(L10n.text("Koloniegelände", table: "ColonyPanelView"), systemImage: "map") {
             if terrainFields.isEmpty {
-                Text("Keine Felder verfügbar.")
+                Text(L10n.text("Keine Felder verfügbar.", table: "ColonyPanelView"))
                     .font(.callout)
                     .foregroundStyle(.secondary)
             } else {
@@ -493,7 +500,7 @@ struct ColonyPanelView: View {
         Group {
             if !unassignedWorkers.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Ohne sichtbaren Arbeitsplatz")
+                    Text(L10n.text("Ohne sichtbaren Arbeitsplatz", table: "ColonyPanelView"))
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -525,7 +532,7 @@ struct ColonyPanelView: View {
                 } else {
                     Image(systemName: "person.fill")
                 }
-                Text(worker.unitType.map(GameLabels.name) ?? "Arbeiter")
+                Text(worker.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyPanelView"))
                     .font(.caption)
                     .lineLimit(1)
             }
@@ -540,24 +547,24 @@ struct ColonyPanelView: View {
         }
         .buttonStyle(.plain)
         .disabled(!canManage)
-        .help("\(worker.unitType.map(GameLabels.name) ?? "Arbeiter") auswählen")
+        .help(L10n.text("\(worker.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyPanelView")) auswählen", table: "ColonyPanelView"))
         .accessibilityIdentifier("colony-unassigned-worker-\(worker.id)")
     }
 
     @ViewBuilder
     private var selectedWorkerActions: some View {
         if let selectedWorker, hasSelectedWorkerActions {
-            DisclosureGroup {
+            panelCard(L10n.text("Weitere Aktionen", table: "ColonyPanelView"), systemImage: "ellipsis.circle") {
                 VStack(alignment: .leading, spacing: 8) {
                     if workTypeCandidates.count > 1 {
                         HStack(spacing: 8) {
-                            Picker("Produktion", selection: $workTypeId) {
+                            Picker(L10n.text("Produktion", table: "ColonyPanelView"), selection: $workTypeId) {
                                 ForEach(workTypeCandidates, id: \.id) { candidate in
                                     Text(candidate.label).tag(candidate.id)
                                 }
                             }
                             .disabled(!canManage)
-                            Button("Ändern") { onChangeWorkType(workTypeId) }
+                            Button(L10n.text("Ändern", table: "ColonyPanelView")) { onChangeWorkType(workTypeId) }
                                 .buttonStyle(.bordered)
                                 .disabled(!canManage || !workTypeCandidates.contains { $0.id == workTypeId })
                         }
@@ -565,13 +572,13 @@ struct ColonyPanelView: View {
 
                     if !workImprovementCandidates.isEmpty {
                         HStack(spacing: 8) {
-                            Picker("Verbesserung", selection: $workImprovementTypeId) {
+                            Picker(L10n.text("Verbesserung", table: "ColonyPanelView"), selection: $workImprovementTypeId) {
                                 ForEach(workImprovementCandidates, id: \.id) { candidate in
                                     Text(candidate.label).tag(candidate.id)
                                 }
                             }
                             .disabled(!canManage)
-                            Button("Ändern") {
+                            Button(L10n.text("Ändern", table: "ColonyPanelView")) {
                                 onChangeWorkImprovementType(workImprovementTypeId)
                             }
                             .buttonStyle(.bordered)
@@ -589,42 +596,39 @@ struct ColonyPanelView: View {
                     }
                     if !otherWorkers.isEmpty {
                         HStack(spacing: 8) {
-                            Picker("Lehrer", selection: $teacherId) {
+                            Picker(L10n.text("Lehrer", table: "ColonyPanelView"), selection: $teacherId) {
                                 ForEach(otherWorkers, id: \.id) { candidate in
-                                    Text(candidate.unitType.map(GameLabels.name) ?? "Einheit")
+                                    Text(candidate.unitType.map(GameLabels.name) ?? L10n.text("Einheit", table: "ColonyPanelView"))
                                         .tag(candidate.id)
                                 }
                             }
                             .disabled(!canManage)
-                            Button("Zuweisen") { onAssignTeacher(teacherId) }
+                            Button(L10n.text("Zuweisen", table: "ColonyPanelView")) { onAssignTeacher(teacherId) }
                                 .buttonStyle(.bordered)
                                 .disabled(!canManage || teacherId.isEmpty || !studentIsWorking)
                         }
                         if !studentIsWorking {
-                            Text("Der Schüler muss zuerst in einem Gebäude oder auf einem Feld arbeiten.")
+                            Text(L10n.text("Der Schüler muss zuerst in einem Gebäude oder auf einem Feld arbeiten.", table: "ColonyPanelView"))
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
                     }
                     if selectedWorker.teacher != nil {
-                        Button("Lehrer entfernen", action: onClearTeacher)
+                        Button(L10n.text("Lehrer entfernen", table: "ColonyPanelView"), action: onClearTeacher)
                             .buttonStyle(.bordered)
                             .disabled(!canManage)
                     }
                     if selectedWorker.role != nil && selectedWorker.role != "model.role.default" {
-                        Button("Spezialisierung löschen", action: onClearSpeciality)
+                        Button(L10n.text("Spezialisierung löschen", table: "ColonyPanelView"), action: onClearSpeciality)
                             .buttonStyle(.bordered)
                             .disabled(!canManage)
                     }
                     if canPutOutsideColony {
-                        Button("Vor die Kolonie stellen", action: onPutOutsideColony)
+                        Button(L10n.text("Vor die Kolonie stellen", table: "ColonyPanelView"), action: onPutOutsideColony)
                             .buttonStyle(.bordered)
                     }
                 }
                 .padding(.top, 6)
-            } label: {
-                Label("Weitere Aktionen", systemImage: "ellipsis.circle")
-                    .font(.subheadline.weight(.medium))
             }
             .padding(.horizontal, 3)
         }
@@ -640,10 +644,10 @@ struct ColonyPanelView: View {
         let capacity = buildingWorkplaces.reduce(0) { $0 + $1.capacity }
         let assignableBuildingIds = Set(buildingWorkLocationCandidates.map(\.id))
 
-        return panelCard("Gebäude", systemImage: "building.2") {
+        return panelCard(L10n.text("Gebäude", table: "ColonyPanelView"), systemImage: "building.2") {
             if buildingWorkplaces.isEmpty {
                 if buildings.isEmpty {
-                    Text("In dieser Kolonie gibt es noch keine Gebäude.")
+                    Text(L10n.text("In dieser Kolonie gibt es noch keine Gebäude.", table: "ColonyPanelView"))
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 } else {
@@ -654,7 +658,7 @@ struct ColonyPanelView: View {
                 }
             } else {
                 HStack(spacing: 8) {
-                    Text("\(occupied) von \(capacity) Arbeitsplätzen belegt")
+                    Text(L10n.text("\(occupied) von \(capacity) Arbeitsplätzen belegt", table: "ColonyPanelView"))
                     Spacer(minLength: 0)
                 }
                 .font(.caption)
@@ -704,7 +708,7 @@ struct ColonyPanelView: View {
                     Text(workplace.label)
                         .font(.callout.weight(.semibold))
                         .lineLimit(1)
-                    Text("\(workplace.workers.count)/\(workplace.capacity) Arbeiter")
+                    Text(L10n.text("\(workplace.workers.count)/\(workplace.capacity) Arbeiter", table: "ColonyPanelView"))
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
@@ -729,20 +733,21 @@ struct ColonyPanelView: View {
                             .font(.caption.weight(.medium))
                             .lineLimit(1)
                         Spacer(minLength: 2)
-                        Text("+\(workplace.productionPerTurn) / Runde")
+                        Text(L10n.text("+\(workplace.productionPerTurn) / Runde", table: "ColonyPanelView"))
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(workplace.productionPerTurn > 0 ? .green : .secondary)
                     }
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel(
-                        "\(GameLabels.name(goodsTypeId)), \(workplace.productionPerTurn) pro Runde"
-                    )
+                    .accessibilityLabel(L10n.text(
+                        "\(GameLabels.name(goodsTypeId)), \(workplace.productionPerTurn) pro Runde",
+                        table: "ColonyPanelView"
+                    ))
                 } else if workplace.isTeachingBuilding {
-                    Label("Ausbildung", systemImage: "graduationcap")
+                    Label(L10n.text("Ausbildung", table: "ColonyPanelView"), systemImage: "graduationcap")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
-                    Text("Keine aktive Produktion")
+                    Text(L10n.text("Keine aktive Produktion", table: "ColonyPanelView"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -768,7 +773,7 @@ struct ColonyPanelView: View {
                                     Image(systemName: "person.fill")
                                         .frame(width: 25, height: 25)
                                 }
-                                Text(worker.unitType.map(GameLabels.name) ?? "Arbeiter")
+                                Text(worker.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyPanelView"))
                                     .font(.caption2)
                                     .lineLimit(1)
                             }
@@ -783,7 +788,7 @@ struct ColonyPanelView: View {
                         }
                         .buttonStyle(.plain)
                         .disabled(!canManage)
-                        .help("\(worker.unitType.map(GameLabels.name) ?? "Arbeiter") auswählen")
+                        .help(L10n.text("\(worker.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyPanelView")) auswählen", table: "ColonyPanelView"))
                         .accessibilityIdentifier("colony-building-worker-\(worker.id)")
                     }
 
@@ -792,7 +797,7 @@ struct ColonyPanelView: View {
                         Button {
                             onWorkAtLocation(workplace.id, workplace.goodsTypeId)
                         } label: {
-                            Label("Zuweisen", systemImage: "plus")
+                            Label(L10n.text("Zuweisen", table: "ColonyPanelView"), systemImage: "plus")
                                 .font(.caption)
                                 .padding(.horizontal, 7)
                                 .padding(.vertical, 5)
@@ -801,11 +806,11 @@ struct ColonyPanelView: View {
                         .controlSize(.small)
                         .disabled(!canAssign)
                         .help(canAssign
-                            ? "Ausgewählten Arbeiter diesem Gebäude zuweisen"
-                            : "Wählen Sie einen geeigneten Arbeiter aus; freie Plätze: \(freeSlots)")
+                            ? L10n.text("Ausgewählten Arbeiter diesem Gebäude zuweisen", table: "ColonyPanelView")
+                            : L10n.text("Wählen Sie einen geeigneten Arbeiter aus; freie Plätze: \(freeSlots)", table: "ColonyPanelView"))
                         .accessibilityIdentifier("colony-building-assign-\(workplace.id)")
                     } else if workplace.capacity == 0 {
-                        Text("Keine Arbeiterplätze")
+                        Text(L10n.text("Keine Arbeiterplätze", table: "ColonyPanelView"))
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     }
@@ -830,10 +835,10 @@ struct ColonyPanelView: View {
 
     private var currentBuildCard: some View {
         panelCard(
-            buildTargetLabel == nil ? "Produktion" : "Aktueller Bauauftrag",
+            buildTargetLabel == nil ? L10n.text("Produktion", table: "ColonyPanelView") : L10n.text("Aktueller Bauauftrag", table: "ColonyPanelView"),
             systemImage: "hammer"
         ) {
-            Text("Vorhersage mit aktiven Aufträgen, Boni und Vorräten.")
+            Text(L10n.text("Vorhersage mit aktiven Aufträgen, Boni und Vorräten.", table: "ColonyPanelView"))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             if let target = buildTargetLabel {
@@ -858,19 +863,21 @@ struct ColonyPanelView: View {
                     }
                 }
                 HStack {
-                    Text("Bauhämmer pro Runde")
+                    Text(L10n.text("Bauhämmer pro Runde", table: "ColonyPanelView"))
                     Spacer(minLength: 4)
                     Text(estimatedBuildPerTurn > 0 ? "\(estimatedBuildPerTurn)" : "—")
                         .monospacedDigit()
                 }
                 .font(.caption)
                 if let eta = buildETATurns {
-                    Text(eta == 0 ? "Fertig in der nächsten Runde" : "Noch etwa \(eta) Runden")
+                    Text(eta == 0
+                         ? L10n.text("Fertig in der nächsten Runde", table: "ColonyPanelView")
+                         : L10n.text("Noch etwa \(eta) Runden", table: "ColonyPanelView"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 if canManage {
-                    Button("Bau bezahlen") {
+                    Button(L10n.text("Bau bezahlen", table: "ColonyPanelView")) {
                         showBuildPaymentConfirmation = true
                     }
                         .buttonStyle(.borderedProminent)
@@ -886,14 +893,14 @@ struct ColonyPanelView: View {
     }
 
     private var colonyProductionSummaryCard: some View {
-        panelCard("Nahrung und Produktion", systemImage: "chart.bar") {
+        panelCard(L10n.text("Nahrung und Produktion", table: "ColonyPanelView"), systemImage: "chart.bar") {
             HStack(alignment: .top, spacing: 14) {
                 VStack(alignment: .leading, spacing: 7) {
-                    Label("Nahrung", systemImage: "leaf")
+                    Label(L10n.text("Nahrung", table: "ColonyPanelView"), systemImage: "leaf")
                         .font(.subheadline.weight(.semibold))
                     if let storedFood {
                         HStack {
-                            Text("Vorrat")
+                            Text(L10n.text("Vorrat", table: "ColonyPanelView"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             Spacer(minLength: 4)
@@ -903,8 +910,8 @@ struct ColonyPanelView: View {
                     }
                     if let growthETATurns {
                         Text(growthETATurns == 1
-                             ? "Wachstum in der nächsten Runde"
-                             : "Wachstum in etwa \(growthETATurns) Runden")
+                             ? L10n.text("Wachstum in der nächsten Runde", table: "ColonyPanelView")
+                             : L10n.text("Wachstum in etwa \(growthETATurns) Runden", table: "ColonyPanelView"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .accessibilityIdentifier("colony-growth-eta")
@@ -926,11 +933,11 @@ struct ColonyPanelView: View {
                     .frame(maxHeight: .infinity)
 
                 VStack(alignment: .leading, spacing: 7) {
-                    Label("Produktion und Verbrauch", systemImage: "chart.bar")
+                    Label(L10n.text("Produktion und Verbrauch", table: "ColonyPanelView"), systemImage: "chart.bar")
                         .font(.subheadline.weight(.semibold))
                     productionTableHeader
                     if nonFoodProductionItems.isEmpty {
-                        Text("Keine weitere Produktion oder kein Verbrauch.")
+                        Text(L10n.text("Keine weitere Produktion oder kein Verbrauch.", table: "ColonyPanelView"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
@@ -966,7 +973,7 @@ struct ColonyPanelView: View {
                     label: GameLabels.name(goodsId),
                     produced: 0,
                     consumed: 0,
-                    explanation: "Produktion: +0 \(GameLabels.name(goodsId))\nVerbrauch: −0 \(GameLabels.name(goodsId))"
+                    explanation: "\(L10n.text("Produktion:", table: "ColonyPanelView")) +0 \(GameLabels.name(goodsId))\n\(L10n.text("Verbrauch:", table: "ColonyPanelView")) −0 \(GameLabels.name(goodsId))"
                 )
         }
     }
@@ -977,11 +984,11 @@ struct ColonyPanelView: View {
 
     private var productionTableHeader: some View {
         HStack {
-            Text("Ware")
+            Text(L10n.text("Ware", table: "ColonyPanelView"))
             Spacer(minLength: 4)
-            Text("Produktion")
+            Text(L10n.text("Produktion", table: "ColonyPanelView"))
                 .frame(width: 66, alignment: .trailing)
-            Text("Verbrauch")
+            Text(L10n.text("Verbrauch", table: "ColonyPanelView"))
                 .frame(width: 66, alignment: .trailing)
         }
         .font(.caption2.bold())
@@ -1008,15 +1015,15 @@ struct ColonyPanelView: View {
         }
         .help(item.explanation)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(item.label), Produktion \(item.produced), Verbrauch \(item.consumed)")
+        .accessibilityLabel(L10n.text("\(item.label), Produktion \(item.produced), Verbrauch \(item.consumed)", table: "ColonyPanelView"))
         .accessibilityIdentifier(accessibilityIdentifier)
     }
 
     private var nextBuildQueueCard: some View {
-        panelCard("Nächste Bauvorhaben", systemImage: "hammer") {
+        panelCard(L10n.text("Nächste Bauvorhaben", table: "ColonyPanelView"), systemImage: "hammer") {
             if canManage && !buildableCandidates.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    Picker("Bauvorhaben", selection: $selectedBuildableId) {
+                    Picker(L10n.text("Bauvorhaben", table: "ColonyPanelView"), selection: $selectedBuildableId) {
                         ForEach(buildableCandidates, id: \.id) { candidate in
                             Text(candidate.label).tag(candidate.id)
                         }
@@ -1027,19 +1034,19 @@ struct ColonyPanelView: View {
                     Button {
                         addBuildQueueItem()
                     } label: {
-                        Label("Hinzufügen", systemImage: "plus")
+                        Label(L10n.text("Hinzufügen", table: "ColonyPanelView"), systemImage: "plus")
                     }
                     .buttonStyle(.bordered)
                     .disabled(selectedBuildableId.isEmpty)
                 }
             } else if buildableCandidates.isEmpty {
-                Text("Derzeit sind keine weiteren Bauvorhaben verfügbar.")
+                Text(L10n.text("Derzeit sind keine weiteren Bauvorhaben verfügbar.", table: "ColonyPanelView"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
             if buildQueueItems.isEmpty {
-                Text("Keine Bauliste festgelegt.")
+                Text(L10n.text("Keine Bauliste festgelegt.", table: "ColonyPanelView"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
@@ -1061,8 +1068,8 @@ struct ColonyPanelView: View {
                                 .buttonStyle(.bordered)
                                 .controlSize(.small)
                                 .disabled(index == 0)
-                                .help("Bauvorhaben nach oben verschieben")
-                                .accessibilityLabel("\(buildingLabel(item)) nach oben verschieben")
+                                .help(L10n.text("Bauvorhaben nach oben verschieben", table: "ColonyPanelView"))
+                                .accessibilityLabel(L10n.text("\(buildingLabel(item)) nach oben verschieben", table: "ColonyPanelView"))
                                 .accessibilityIdentifier("build-queue-up-\(index)")
 
                                 Button {
@@ -1073,8 +1080,8 @@ struct ColonyPanelView: View {
                                 .buttonStyle(.bordered)
                                 .controlSize(.small)
                                 .disabled(index == buildQueueItems.count - 1)
-                                .help("Bauvorhaben nach unten verschieben")
-                                .accessibilityLabel("\(buildingLabel(item)) nach unten verschieben")
+                                .help(L10n.text("Bauvorhaben nach unten verschieben", table: "ColonyPanelView"))
+                                .accessibilityLabel(L10n.text("\(buildingLabel(item)) nach unten verschieben", table: "ColonyPanelView"))
                                 .accessibilityIdentifier("build-queue-down-\(index)")
 
                                 Button(role: .destructive) {
@@ -1084,8 +1091,8 @@ struct ColonyPanelView: View {
                                 }
                                 .buttonStyle(.bordered)
                                 .controlSize(.small)
-                                .help("Bauvorhaben aus der Liste entfernen")
-                                .accessibilityLabel("\(buildingLabel(item)) entfernen")
+                                .help(L10n.text("Bauvorhaben aus der Liste entfernen", table: "ColonyPanelView"))
+                                .accessibilityLabel(L10n.text("\(buildingLabel(item)) entfernen", table: "ColonyPanelView"))
                                 .accessibilityIdentifier("build-queue-remove-\(index)")
                             }
                         }
@@ -1095,9 +1102,9 @@ struct ColonyPanelView: View {
 
             if canManage {
                 HStack(spacing: 8) {
-                    Button("Bauliste übernehmen") { onSetBuildQueue(buildQueueItems) }
+                    Button(L10n.text("Bauliste übernehmen", table: "ColonyPanelView")) { onSetBuildQueue(buildQueueItems) }
                         .buttonStyle(.borderedProminent)
-                    Button("Zurücksetzen") { buildQueueItems = currentBuildQueue }
+                    Button(L10n.text("Zurücksetzen", table: "ColonyPanelView")) { buildQueueItems = currentBuildQueue }
                         .buttonStyle(.bordered)
                         .disabled(buildQueueItems == currentBuildQueue)
                 }
@@ -1227,9 +1234,9 @@ private struct ColonyFieldProductionChooser: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Produktion für dieses Feld")
+            Text(L10n.text("Produktion für dieses Feld", table: "ColonyPanelView"))
                 .font(.title2.bold())
-            Text("\(field.tile.type.map(GameLabels.name) ?? "Gelände"): Wählen Sie aus, welche Ware der Arbeiter erzeugen soll.")
+            Text(L10n.text("\(field.tile.type.map(GameLabels.name) ?? "Gelände"): Wählen Sie aus, welche Ware der Arbeiter erzeugen soll.", table: "ColonyPanelView"))
                 .font(.callout)
                 .foregroundStyle(.secondary)
 
@@ -1253,7 +1260,7 @@ private struct ColonyFieldProductionChooser: View {
                                 Text(GameLabels.name(option.goodsType))
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                 if let amount = option.baseAmount {
-                                    Text("Basis \(amount)")
+                                    Text(L10n.text("Basis \(amount)", table: "ColonyPanelView"))
                                         .monospacedDigit()
                                         .foregroundStyle(.secondary)
                                 }
@@ -1273,7 +1280,7 @@ private struct ColonyFieldProductionChooser: View {
 
             HStack {
                 Spacer()
-                Button("Abbrechen") { dismiss() }
+                Button(L10n.text("Abbrechen", table: "ColonyPanelView")) { dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
         }
@@ -1292,14 +1299,14 @@ private struct WarehouseSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Lager")
+            Text(L10n.text("Lager", table: "ColonyPanelView"))
                 .font(.title3.bold())
-            Text("Export- und Importgrenzen je Ware.")
+            Text(L10n.text("Export- und Importgrenzen je Ware.", table: "ColonyPanelView"))
                 .font(.caption)
                 .foregroundColor(.secondary)
 
             if exportData.isEmpty {
-                Text("Keine Exporteinstellungen vom Server empfangen.")
+                Text(L10n.text("Keine Exporteinstellungen vom Server empfangen.", table: "ColonyPanelView"))
                     .font(.caption)
                     .foregroundColor(.secondary)
             } else {
@@ -1318,7 +1325,7 @@ private struct WarehouseSheet: View {
 
             HStack {
                 Spacer()
-                Button("Schließen") { dismiss() }
+                Button(L10n.text("Schließen", table: "ColonyPanelView")) { dismiss() }
                     .buttonStyle(.borderedProminent)
             }
         }
@@ -1350,18 +1357,18 @@ private struct WarehouseSheet: View {
                 Text(goodsLabel(entry.goodsType))
                     .font(.caption.bold())
                 Spacer()
-                Toggle("Export", isOn: binding.exported)
+                Toggle(L10n.text("Export", table: "ColonyPanelView"), isOn: binding.exported)
                     .toggleStyle(.checkbox)
                     .font(.caption)
-                Button("Übernehmen") { onApply(binding.wrappedValue) }
+                Button(L10n.text("Übernehmen", table: "ColonyPanelView")) { onApply(binding.wrappedValue) }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
             }
             HStack(spacing: 12) {
-                stepper("Import", value: binding.importLevel, range: -1...999)
-                stepper("Export", value: binding.exportLevel, range: 0...999)
-                stepper("Minimum", value: binding.lowLevel, range: 0...999)
-                stepper("Maximum", value: binding.highLevel, range: 0...999)
+                stepper(L10n.text("Import", table: "ColonyPanelView"), value: binding.importLevel, range: -1...999)
+                stepper(L10n.text("Export", table: "ColonyPanelView"), value: binding.exportLevel, range: 0...999)
+                stepper(L10n.text("Minimum", table: "ColonyPanelView"), value: binding.lowLevel, range: 0...999)
+                stepper(L10n.text("Maximum", table: "ColonyPanelView"), value: binding.highLevel, range: 0...999)
             }
         }
     }

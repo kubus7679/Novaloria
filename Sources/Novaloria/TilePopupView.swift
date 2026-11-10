@@ -22,29 +22,29 @@ struct TilePopupView: View {
             Divider()
 
             if state.selectedColony != nil {
-                Button("Kolonie öffnen") { state.openColonyPanel() }
+                Button(L10n.text("Kolonie öffnen", table: "TilePopupView")) { state.openColonyPanel() }
                 Divider()
             }
 
             if state.selectedUnitId != nil {
-                Button("Hierher bewegen") {
+                Button(L10n.text("Hierher bewegen", table: "TilePopupView")) {
                     state.moveSelectedUnitTo(destinationTileId: tileId)
                     state.closeTileActions()
                 }
                     .disabled(!state.canMoveSelectedUnitTo(destinationTileId: tileId))
-                Button("Als Ziel setzen") { state.setSelectedUnitDestination(to: tileId) }
+                Button(L10n.text("Als Ziel setzen", table: "TilePopupView")) { state.setSelectedUnitDestination(to: tileId) }
                     .disabled(!state.canSetSelectedUnitDestination(to: tileId))
-                Button("Befehle löschen") { state.clearSelectedUnitOrders() }
+                Button(L10n.text("Befehle löschen", table: "TilePopupView")) { state.clearSelectedUnitOrders() }
                     .disabled(!state.canClearSelectedUnitOrders)
                 Divider()
-                Button("Befestigen") { state.setSelectedUnitState(.fortifying) }
+                Button(L10n.text("Befestigen", table: "TilePopupView")) { state.setSelectedUnitState(.fortifying) }
                     .disabled(!state.canChangeSelectedUnitState(to: .fortifying))
-                Button("Wache") { state.setSelectedUnitState(.sentry) }
+                Button(L10n.text("Wache", table: "TilePopupView")) { state.setSelectedUnitState(.sentry) }
                     .disabled(!state.canChangeSelectedUnitState(to: .sentry))
-                Button("Warten") { state.setSelectedUnitState(.skipped) }
+                Button(L10n.text("Warten", table: "TilePopupView")) { state.setSelectedUnitState(.skipped) }
                     .disabled(!state.canChangeSelectedUnitState(to: .skipped))
                 if state.showsEuropeTravelOrder {
-                    Button("Gehe nach Europa") { state.goSelectedShipToEurope() }
+                    Button(L10n.text("Gehe nach Europa", table: "TilePopupView")) { state.goSelectedShipToEurope() }
                         .disabled(!state.canGoSelectedShipToEurope)
                 }
                 if state.canChangeSelectedUnitWorkImprovement {
@@ -54,20 +54,20 @@ struct TilePopupView: View {
                 Divider()
             }
 
-            Button("Kolonie gründen") {
+            Button(L10n.text("Kolonie gründen", table: "TilePopupView")) {
                 state.selectUnit(state.selectedUnitId, onTile: tileId)
                 state.buildColony(name: state.suggestedColonyName)
             }
             .disabled(!canBuildColonyHere)
 
-            Button("Feld auswählen") {
+            Button(L10n.text("Feld auswählen", table: "TilePopupView")) {
                 state.selectUnit(nil, onTile: tileId)
                 state.closeTileActions()
             }
 
             Divider()
 
-            Button("Schließen") { state.closeTileActions() }
+            Button(L10n.text("Schließen", table: "TilePopupView")) { state.closeTileActions() }
                 .keyboardShortcut(.cancelAction)
         }
         .buttonStyle(.plain)
@@ -89,7 +89,8 @@ struct TilePopupView: View {
 
     private var header: some View {
         HStack {
-            Text(state.tileActionTile.map { "Feld (\($0.x), \($0.y))" } ?? "Feld")
+            Text(state.tileActionTile.map { L10n.text("Feld (\($0.x), \($0.y))", table: "TilePopupView") }
+                ?? L10n.text("Feld", table: "TilePopupView"))
                 .font(.caption.bold())
             Spacer()
             if let type = state.tileActionTile?.type {
@@ -105,7 +106,7 @@ struct TilePopupView: View {
             Text("Pionierarbeit")
                 .font(.caption2)
                 .foregroundColor(.secondary)
-            Picker("Verbesserung", selection: $improvementTypeId) {
+            Picker(L10n.text("Verbesserung", table: "TilePopupView"), selection: $improvementTypeId) {
                 ForEach(state.selectedUnitImprovementCandidates, id: \.id) { candidate in
                     Text(GameLabels.name(candidate.id)).tag(candidate.id)
                 }
@@ -113,11 +114,11 @@ struct TilePopupView: View {
             .labelsHidden()
             let toolCost = state.selectedUnitImprovementToolCost(for: improvementTypeId)
             if toolCost > 0 {
-                Text("Verbrauch bei Fertigstellung: \(toolCost) Werkzeuge")
+                Text(L10n.text("Verbrauch bei Fertigstellung: \(toolCost) Werkzeuge", table: "TilePopupView"))
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
-            Button("Verbesserung bauen") {
+            Button(L10n.text("Verbesserung bauen", table: "TilePopupView")) {
                 state.changeSelectedUnitWorkImprovement(improvementTypeId)
             }
             .disabled(improvementTypeId.isEmpty)
@@ -130,7 +131,7 @@ struct TilePopupView: View {
 
     private func unitTitle(_ unit: FreeColGame.Unit) -> String {
         let type = unit.unitType.map(shortName) ?? unit.id
-        return "\(type) · \(unit.displayMovesLeft) Bewegungspunkte"
+        return L10n.text("\(type) · \(unit.displayMovesLeft) Bewegungspunkte", table: "TilePopupView")
     }
 
     private func shortName(_ value: String) -> String {

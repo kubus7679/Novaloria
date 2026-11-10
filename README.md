@@ -1,43 +1,43 @@
 # Novaloria
 
-**Novaloria** ist ein nativer macOS-Client in SwiftUI für das rundenbasierte Strategiespiel [FreeCol](https://www.freecol.org). Er verbindet sich über das FreeCol-TCP/XML-Protokoll mit einem Java-FreeCol-Server.
+**Novaloria** is a native macOS client built with SwiftUI for [FreeCol](https://www.freecol.org), the turn-based strategy game. It connects to a Java FreeCol server over the FreeCol TCP/XML protocol.
 
-> **Sprache:** Die Benutzeroberfläche des Clients ist derzeit ausschließlich auf Deutsch verfügbar. Weitere Sprachen sollen zu einem späteren Zeitpunkt ergänzt werden.
+> **Language:** The interface is localized in German, English and Spanish. Choose a language on the startup screen or in-game preferences, or follow macOS's system language (unsupported system languages fall back to English).
 
-Novaloria ist ein unabhängiges Community-Projekt und steht in keiner offiziellen Verbindung zum FreeCol-Projekt.
+Novaloria is an independent community project and is not officially affiliated with the FreeCol project.
 
-## Funktionen
+## Features
 
-- Verbindung zu einem laufenden FreeCol-Server
-- Lokale Java-Partien erstellen und Spielstände laden
-- Karte, Kolonien, Europa, Diplomatie und Handelsrouten in einer nativen macOS-Oberfläche
-- Spielstände über den Java-Server speichern (mit optionaler Server-Erweiterung)
-- Swift-Protokoll-CLI für Protokolltests und Diagnose
+- Connect to a running FreeCol server
+- Create local Java games and load savegames
+- Explore the map, colonies, Europe, diplomacy and trade routes in a native macOS interface
+- Save games through the Java server (with an optional server extension)
+- Swift protocol CLI for protocol testing and diagnostics
 
-Die Details und bekannten Einschränkungen sind in der [Build- und Bedienungsanleitung](Docs/build_and_run.md) beschrieben.
+See the [build and operation guide](Docs/build_and_run.md) for details and known limitations (currently available in German). The German README is [README_DE.md](README_DE.md).
 
-## Voraussetzungen
+## Requirements
 
-- macOS 14 oder neuer
-- Xcode beziehungsweise Swift 5.9 oder neuer
-- Für lokale Java-Partien: eine passende FreeCol-Installation und Java-Version
+- macOS 14 or later
+- Xcode or Swift 5.9 or later
+- For local Java games: a compatible FreeCol installation and Java version
 
-Zum Verbinden mit einem Server ist keine lokale Java-Installation erforderlich.
+A local Java installation is not required to connect to a server.
 
-## Bauen und starten
+## Build and run
 
 ```bash
 swift build --target Novaloria
 swift run Novaloria
 ```
 
-Ein macOS-App-Bundle lässt sich mit folgendem Skript erzeugen:
+Create a macOS app bundle with:
 
 ```bash
 bash Tools/build-app.sh
 ```
 
-Weitere Hinweise zu Spielstart, Bedienung, Tests und Java-Server-Integration stehen in [`Docs/build_and_run.md`](Docs/build_and_run.md).
+For game setup, controls, tests and Java server integration, see [`Docs/build_and_run.md`](Docs/build_and_run.md).
 
 ## Tests
 
@@ -45,10 +45,10 @@ Weitere Hinweise zu Spielstart, Bedienung, Tests und Java-Server-Integration ste
 swift test
 ```
 
-Einige Java-Server-End-to-End-Tests benötigen zusätzlich eine lokal gebaute FreeCol-Installation oder Docker. Sie sind in der Build- und Bedienungsanleitung dokumentiert.
+Some Java server end-to-end tests additionally require a local FreeCol installation or Docker. See the build and operation guide.
 
-## Lizenz und Herkunft von Ressourcen
+## License and resource attributions
 
-Der Quellcode dieses Projekts wird unter der **GNU General Public License, Version 2 only (GPL-2.0-only)** veröffentlicht. Siehe [`LICENSE`](LICENSE).
+The source code is distributed under the **GNU General Public License, version 2 only (GPL-2.0-only)**. See [`LICENSE`](LICENSE).
 
-Das Repository enthält außerdem Grafiken und aus FreeCol-Daten abgeleitete Inhalte. Deren Herkunft und Lizenzhinweise stehen in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md); die mitgelieferte FreeCol-Lizenz befindet sich zusätzlich unter `Sources/Novaloria/Resources/FreeCol-COPYING`.
+The repository also contains graphics and content derived from FreeCol data. Their origins and license notices are listed in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md); the included FreeCol license is also available at `Sources/Novaloria/Resources/FreeCol-COPYING`.

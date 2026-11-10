@@ -7,15 +7,15 @@ enum ColopediaCategory: String, Codable, CaseIterable {
 
     var title: String {
         switch self {
-        case .units: return "Einheiten"
-        case .goods: return "Waren"
-        case .terrain: return "Gelände"
-        case .buildings: return "Gebäude"
-        case .improvements: return "Geländeverbesserungen"
-        case .fathers: return "Gründerväter"
-        case .nations: return "Nationen"
-        case .resources: return "Bodenschätze und Ressourcen"
-        case .roles: return "Ausrüstung und Rollen"
+        case .units: return L10n.text("Einheiten", table: "ColopediaCatalog")
+        case .goods: return L10n.text("Waren", table: "ColopediaCatalog")
+        case .terrain: return L10n.text("Gelände", table: "ColopediaCatalog")
+        case .buildings: return L10n.text("Gebäude", table: "ColopediaCatalog")
+        case .improvements: return L10n.text("Geländeverbesserungen", table: "ColopediaCatalog")
+        case .fathers: return L10n.text("Gründerväter", table: "ColopediaCatalog")
+        case .nations: return L10n.text("Nationen", table: "ColopediaCatalog")
+        case .resources: return L10n.text("Bodenschätze und Ressourcen", table: "ColopediaCatalog")
+        case .roles: return L10n.text("Ausrüstung und Rollen", table: "ColopediaCatalog")
         }
     }
 
@@ -30,6 +30,46 @@ enum ColopediaCategory: String, Codable, CaseIterable {
         case .nations: return "flag.fill"
         case .resources: return "leaf.fill"
         case .roles: return "backpack.fill"
+        }
+    }
+}
+
+private final class ColopediaResourceCache: @unchecked Sendable {
+    private let lock = NSLock()
+    private var entriesByLanguage: [String: [ColopediaEntry]] = [:]
+
+    func entries(language: String) -> [ColopediaEntry] {
+        lock.lock()
+        defer { lock.unlock() }
+        if let cached = entriesByLanguage[language] { return cached }
+        var entries = Self.loadEntries(language: language) ?? []
+        var identifiers = Set(entries.map(\.id))
+        if language == "es" {
+            let english = Self.loadEntries(language: "en") ?? []
+            entries += english.filter { identifiers.insert($0.id).inserted }
+        }
+        if language != "de" {
+            let german = Self.loadEntries(language: "de") ?? []
+            entries += german.filter { identifiers.insert($0.id).inserted }
+        }
+        entriesByLanguage[language] = entries
+        return entries
+    }
+
+    private static func loadEntries(language: String) -> [ColopediaEntry]? {
+        do {
+            let subdirectory = language == "de" ? nil : "\(language).lproj"
+            guard let url = Bundle.module.url(
+                forResource: "colopedia-\(language)",
+                withExtension: "json",
+                subdirectory: subdirectory
+            ) ?? Bundle.module.url(forResource: "colopedia-\(language)", withExtension: "json") else {
+                throw CocoaError(.fileNoSuchFile)
+            }
+            return try JSONDecoder().decode([ColopediaEntry].self, from: Data(contentsOf: url))
+        } catch {
+            FreeColLogger.shared.error("Colopädie konnte nicht geladen werden (colopedia-\(language).json): \(error)")
+            return nil
         }
     }
 }
@@ -52,32 +92,48 @@ struct ColopediaEntry: Decodable, Identifiable {
     func facts(using specification: Specification?) -> [Fact] {
         if let info = specification?.unitTypes[id] {
             var result = [
-                Fact(label: "Sichtweite", value: "\(info.lineOfSight)"),
-                Fact(label: "Angriff", value: "\(info.offence)"),
-                Fact(label: "Verteidigung", value: "\(info.defence)"),
-                Fact(label: "Bewegungspunkte", value: String(format: "%g", Double(info.movement) / 3)),
-                Fact(label: "Frachtplätze", value: "\(info.cargoSpace ?? 0)"),
+                Fact(label: L10n.text("Sichtweite", table: "ColopediaCatalog"), value: "\(info.lineOfSight)"),
+                Fact(label: L10n.text("Angriff", table: "ColopediaCatalog"), value: "\(info.offence)"),
+                Fact(label: L10n.text("Verteidigung", table: "ColopediaCatalog"), value: "\(info.defence)"),
+                Fact(label: L10n.text("Bewegungspunkte", table: "ColopediaCatalog"), value: String(format: "%g", Double(info.movement) / 3)),
+                Fact(label: L10n.text("Frachtplätze", table: "ColopediaCatalog"), value: "\(info.cargoSpace ?? 0)"),
             ]
-            if let price = info.price { result.append(Fact(label: "Preis in Gold", value: "\(price)")) }
-            if let skill = info.skill { result.append(Fact(label: "Fähigkeitsstufe", value: "\(skill)")) }
+            if let price = info.price {
+                result.append(Fact(label: L10n.text("Preis in Gold", table: "ColopediaCatalog"), value: "\(price)"))
+            }
+            if let skill = info.skill {
+                result.append(Fact(label: L10n.text("Fähigkeitsstufe", table: "ColopediaCatalog"), value: "\(skill)"))
+            }
             return result
         }
         if let info = specification?.buildingTypes[id] {
             return [
-                Fact(label: "Benötigte Bevölkerung", value: "\(info.requiredPopulation)"),
-                Fact(label: "Unterhalt in Gold", value: "\(info.upkeep)"),
-            ] + goodsFacts(info.requiredGoods, label: "Baukosten")
-                + goodsFacts(info.productionInputs, label: "Verbrauch")
-                + goodsFacts(info.productionOutputs, label: "Produktion")
+                Fact(label: L10n.text("Benötigte Bevölkerung", table: "ColopediaCatalog"), value: "\(info.requiredPopulation)"),
+                Fact(label: L10n.text("Unterhalt in Gold", table: "ColopediaCatalog"), value: "\(info.upkeep)"),
+            ] + goodsFacts(info.requiredGoods, label: L10n.text("Baukosten", table: "ColopediaCatalog"))
+                + goodsFacts(info.productionInputs, label: L10n.text("Verbrauch", table: "ColopediaCatalog"))
+                + goodsFacts(info.productionOutputs, label: L10n.text("Produktion", table: "ColopediaCatalog"))
         }
         if let info = specification?.tileTypes[id] {
-            return [Fact(label: "Geländeart", value: info.isWater ? "Wasser" : "Land")]
-                + goodsFacts(info.centerOutputs, label: "Produktion im Koloniezentrum")
-                + goodsFacts(info.workerOutputs, label: "Produktion mit Arbeiter")
+            return [Fact(
+                label: L10n.text("Geländeart", table: "ColopediaCatalog"),
+                value: info.isWater
+                    ? L10n.text("Wasser", table: "ColopediaCatalog")
+                    : L10n.text("Land", table: "ColopediaCatalog")
+            )]
+                + goodsFacts(info.centerOutputs, label: L10n.text("Produktion im Koloniezentrum", table: "ColopediaCatalog"))
+                + goodsFacts(info.workerOutputs, label: L10n.text("Produktion mit Arbeiter", table: "ColopediaCatalog"))
         }
         if let info = specification?.improvementTypes[id] {
-            return [Fact(label: "Zusätzliche Arbeitsrunden", value: "\(info.addWorkTurns)"),
-                    Fact(label: "Natürlich", value: info.isNatural ? "Ja" : "Nein")]
+            return [
+                Fact(label: L10n.text("Zusätzliche Arbeitsrunden", table: "ColopediaCatalog"), value: "\(info.addWorkTurns)"),
+                Fact(
+                    label: L10n.text("Natürlich", table: "ColopediaCatalog"),
+                    value: info.isNatural
+                        ? L10n.text("Ja", table: "ColopediaCatalog")
+                        : L10n.text("Nein", table: "ColopediaCatalog")
+                ),
+            ]
         }
         return facts
     }
@@ -90,17 +146,23 @@ struct ColopediaEntry: Decodable, Identifiable {
 }
 
 enum ColopediaCatalog {
-    static let classicEntries: [ColopediaEntry] = {
-        do {
-            guard let url = Bundle.module.url(forResource: "colopedia-de", withExtension: "json") else {
-                throw CocoaError(.fileNoSuchFile)
+    private static let resourceCache = ColopediaResourceCache()
+
+    static var classicEntries: [ColopediaEntry] {
+        let language: String
+        switch InterfaceLanguage.selected {
+        case .german: language = "de"
+        case .english: language = "en"
+        case .spanish: language = "es"
+        case .system:
+            switch Locale.autoupdatingCurrent.language.languageCode?.identifier {
+            case "de": language = "de"
+            case "es": language = "es"
+            default: language = "en"
             }
-            return try JSONDecoder().decode([ColopediaEntry].self, from: Data(contentsOf: url))
-        } catch {
-            FreeColLogger.shared.error("Colopädie konnte nicht geladen werden: \(error)")
-            return []
         }
-    }()
+        return resourceCache.entries(language: language)
+    }
 
     static func entries(specification: Specification?) -> [ColopediaEntry] {
         var result = classicEntries

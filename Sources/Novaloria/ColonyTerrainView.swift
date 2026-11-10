@@ -7,7 +7,9 @@ struct ColonyTerrainProduction: Identifiable {
     let baseAmount: Int?
 
     var label: String {
-        GameLabels.name(goodsType) + (baseAmount.map { ": Basis \($0)" } ?? "")
+        GameLabels.name(goodsType) + (baseAmount.map {
+            L10n.text(": Basis \($0)", table: "ColonyTerrainView")
+        } ?? "")
     }
 }
 
@@ -34,12 +36,12 @@ struct ColonyTerrainView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if showsHeader {
-                Text("Koloniegelände").font(.headline)
+                Text(L10n.text("Koloniegelände", table: "ColonyTerrainView")).font(.headline)
             }
-            Text("Arbeiter auswählen, dann ein Feld anklicken. Ein belegtes Feld tauscht die Arbeiter.")
+            Text(L10n.text("Arbeiter auswählen, dann ein Feld anklicken. Ein belegtes Feld tauscht die Arbeiter.", table: "ColonyTerrainView"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Text("Warensymbole zeigen die Produktion. Mengen sind Basiswerte ohne Arbeiter- und Geländeboni.")
+            Text(L10n.text("Warensymbole zeigen die Produktion. Mengen sind Basiswerte ohne Arbeiter- und Geländeboni.", table: "ColonyTerrainView"))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             GeometryReader { geometry in
@@ -95,7 +97,7 @@ struct ColonyTerrainView: View {
                             )
                             if field.offset == .zero {
                                 VStack(spacing: 2) {
-                                    Label("Zentrum", systemImage: "house.fill")
+                                    Label(L10n.text("Zentrum", table: "ColonyTerrainView"), systemImage: "house.fill")
                                         .font(.caption2.bold())
                                     productionBadges(field)
                                 }
@@ -146,8 +148,8 @@ struct ColonyTerrainView: View {
                         }
                         .buttonStyle(.plain)
                         .disabled(!canManage)
-                        .help("\(worker.unitType.map(GameLabels.name) ?? "Arbeiter") auswählen")
-                        .accessibilityLabel("\(worker.unitType.map(GameLabels.name) ?? "Arbeiter") auswählen")
+                        .help(L10n.text("\(worker.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyTerrainView")) auswählen", table: "ColonyTerrainView"))
+                        .accessibilityLabel(L10n.text("\(worker.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyTerrainView")) auswählen", table: "ColonyTerrainView"))
                         .accessibilityIdentifier("colony-field-worker-\(worker.id)")
                         .position(x: geometry.size.width / 2 + field.offset.x * width,
                                   y: geometry.size.height / 2 + field.offset.y * height - height * 0.08)
@@ -202,12 +204,17 @@ struct ColonyTerrainView: View {
     }
 
     private func fieldHelp(_ field: ColonyTerrainField) -> String {
-        let name = field.tile.type.map(GameLabels.name) ?? "Unbekanntes Gelände"
-        let production = field.production.isEmpty ? "" : " Produktion: "
+        let name = field.tile.type.map(GameLabels.name) ?? L10n.text("Unbekanntes Gelände", table: "ColonyTerrainView")
+        let production = field.production.isEmpty ? "" : " " + L10n.text("Produktion:", table: "ColonyTerrainView") + " "
             + field.production.map(\.label).joined(separator: ", ") + "."
-        if let reason = field.unavailableReason { return "\(name): \(reason)\(production)" }
-        let workers = field.workers.map { $0.unitType.map(GameLabels.name) ?? "Arbeiter" }.joined(separator: ", ")
-        return "\(name): \(workers.isEmpty ? "Freies Feld – Arbeiter zuweisen" : workers + " – Arbeiter tauschen")\(production)"
+        if let reason = field.unavailableReason {
+            return L10n.text("\(name): \(reason)\(production)", table: "ColonyTerrainView")
+        }
+        let workers = field.workers.map { $0.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyTerrainView") }.joined(separator: ", ")
+        let work = workers.isEmpty
+            ? L10n.text("Freies Feld – Arbeiter zuweisen", table: "ColonyTerrainView")
+            : workers + " – " + L10n.text("Arbeiter tauschen", table: "ColonyTerrainView")
+        return L10n.text("\(name): \(work)\(production)", table: "ColonyTerrainView")
     }
 
     private struct Diamond: Shape {

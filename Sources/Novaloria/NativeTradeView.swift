@@ -11,26 +11,27 @@ struct NativeTradeView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Handel mit Ureinwohnern")
+                Text(L10n.text("Handel mit Ureinwohnern", table: "NativeTradeView"))
                     .font(.title2.bold())
                 Spacer()
-                Button("Schließen") { state.closeNativeTrade() }
+                Button(L10n.text("Schließen", table: "NativeTradeView")) { state.closeNativeTrade() }
                     .keyboardShortcut(.cancelAction)
+                    .disabled(state.isNativeInteractionInProgress)
             }
 
             if let session = state.pendingNativeTrade {
-                Text("Siedlung: \(settlementName(session.settlementId))")
+                Text(L10n.text("Siedlung: \(settlementName(session.settlementId))", table: "NativeTradeView"))
                     .font(.caption)
                     .foregroundColor(.secondary)
 
-                GroupBox("Von der Siedlung kaufen") {
+                GroupBox(L10n.text("Von der Siedlung kaufen", table: "NativeTradeView")) {
                     itemList(session.settlementToUnit, action: .buy)
                 }
-                GroupBox("An die Siedlung verkaufen") {
+                GroupBox(L10n.text("An die Siedlung verkaufen", table: "NativeTradeView")) {
                     itemList(session.unitToSettlement, action: .sell)
                 }
             } else {
-                Text("Kein aktiver Handel.")
+                Text(L10n.text("Kein aktiver Handel.", table: "NativeTradeView"))
                     .foregroundColor(.secondary)
             }
 
@@ -59,7 +60,7 @@ struct NativeTradeView: View {
     private func itemList(_ items: [NativeTradeItem], action: TradeAction) -> some View {
         let valid = items.filter { $0.priceIsValid }
         if valid.isEmpty {
-            Text("Keine Angebote.")
+            Text(L10n.text("Keine Angebote.", table: "NativeTradeView"))
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .padding(.vertical, 2)
@@ -68,17 +69,17 @@ struct NativeTradeView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(valid) { item in
                         HStack(spacing: 8) {
-                            Text(item.goodsType.map(state.goodsDisplayName) ?? "Ware")
+                            Text(item.goodsType.map(state.goodsDisplayName) ?? L10n.text("Ware", table: "NativeTradeView"))
                                 .font(.caption)
                             Spacer()
-                            Text("x\(item.amount)")
+                            Text(L10n.text("x\(item.amount)", table: "NativeTradeView"))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            Text("\(item.price) G")
+                            Text(L10n.text("\(item.price) G", table: "NativeTradeView"))
                                 .font(.caption)
                                 .foregroundColor(.yellow)
                             if item.haggleCount > 0 {
-                                Text("Nachverhandelt: \(item.haggleCount)×")
+                                Text(L10n.text("Nachverhandelt: \(item.haggleCount)×", table: "NativeTradeView"))
                                     .font(.caption2)
                                     .foregroundColor(.orange)
                             }
@@ -102,13 +103,14 @@ struct NativeTradeView: View {
             get: { offerPrices[item.id] ?? state.nativeTradeHaggleOffer(item, buying: buying) },
             set: { offerPrices[item.id] = max(1, $0) }
         ), in: 1...(max(2, item.price) * 3)) {
-            Text("Angebot: \(offer) G")
+            Text(L10n.text("Angebot: \(offer) G", table: "NativeTradeView"))
                 .font(.caption2)
                 .frame(width: 78, alignment: .leading)
         }
         .controlSize(.mini)
+        .disabled(state.isNativeInteractionInProgress)
 
-        Button("Anbieten") {
+        Button(L10n.text("Anbieten", table: "NativeTradeView")) {
             if buying {
                 state.nativeTradeBuy(item, offerPrice: offer)
             } else {
@@ -117,8 +119,9 @@ struct NativeTradeView: View {
         }
         .buttonStyle(.bordered)
         .controlSize(.small)
+        .disabled(state.isNativeInteractionInProgress)
 
-        Button("Annehmen") {
+        Button(L10n.text("Annehmen", table: "NativeTradeView")) {
             if buying {
                 state.nativeTradeBuy(item)
             } else {
@@ -127,11 +130,13 @@ struct NativeTradeView: View {
         }
         .buttonStyle(.bordered)
         .controlSize(.small)
+        .disabled(state.isNativeInteractionInProgress)
 
         if !buying {
-            Button("Schenken") { state.nativeTradeGift(item) }
+            Button(L10n.text("Schenken", table: "NativeTradeView")) { state.nativeTradeGift(item) }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                .disabled(state.isNativeInteractionInProgress)
         }
     }
 

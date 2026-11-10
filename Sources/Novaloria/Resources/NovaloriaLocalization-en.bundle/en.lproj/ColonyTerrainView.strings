@@ -1,0 +1,12 @@
+"%@ auswählen" = "Select %@";
+"%@: %@%@" = "%@: %@%@";
+": Basis %lld" = ": Base %lld";
+"Arbeiter" = "Workers";
+"Arbeiter auswählen, dann ein Feld anklicken. Ein belegtes Feld tauscht die Arbeiter." = "Select a worker, then click a tile. An occupied tile swaps workers.";
+"Arbeiter tauschen" = "Swap workers";
+"Freies Feld – Arbeiter zuweisen" = "Empty tile — assign a worker";
+"Koloniegelände" = "Colony land";
+"Produktion:" = "Production:";
+"Unbekanntes Gelände" = "Unknown terrain";
+"Warensymbole zeigen die Produktion. Mengen sind Basiswerte ohne Arbeiter- und Geländeboni." = "Goods icons show production. Amounts are base values without worker or terrain bonuses.";
+"Zentrum" = "Center";

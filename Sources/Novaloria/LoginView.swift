@@ -15,32 +15,36 @@ struct LoginView: View {
     }()
 
     // Fallback-Völker für den Fall, dass keine Serverdaten verfügbar sind
-    private static let fallbackNations: [(id: String, name: String, description: String)] = [
-        (id: "model.nation.dutch", name: "Niederländer", description: "+10% Handel, ideal für Kaufleute"),
-        (id: "model.nation.english", name: "Engländer", description: "Ausgewogen, gut für Anfänger"),
-        (id: "model.nation.french", name: "Franzosen", description: "+Kultur, bessere Beziehungen zu Eingeborenen"),
-        (id: "model.nation.spanish", name: "Spanier", description: "+Militär, aber langsamer Bau"),
-        (id: "model.nation.portuguese", name: "Portugiesen", description: "+Erkundung, schnellere Schiffe")
-    ]
+    private static var fallbackNations: [(id: String, name: String, description: String)] {
+        [
+            (id: "model.nation.dutch", name: L10n.text("Niederländer", table: "LoginView"), description: L10n.text("+10% Handel, ideal für Kaufleute", table: "LoginView")),
+            (id: "model.nation.english", name: L10n.text("Engländer", table: "LoginView"), description: L10n.text("Ausgewogen, gut für Anfänger", table: "LoginView")),
+            (id: "model.nation.french", name: L10n.text("Franzosen", table: "LoginView"), description: L10n.text("+Kultur, bessere Beziehungen zu Eingeborenen", table: "LoginView")),
+            (id: "model.nation.spanish", name: L10n.text("Spanier", table: "LoginView"), description: L10n.text("+Militär, aber langsamer Bau", table: "LoginView")),
+            (id: "model.nation.portuguese", name: L10n.text("Portugiesen", table: "LoginView"), description: L10n.text("+Erkundung, schnellere Schiffe", table: "LoginView"))
+        ]
+    }
 
     // Verfügbare Farben mit deutschen Namen
-    private static let playerColors: [(id: String, name: String)] = [
-        (id: "#FF0000", name: "Rot"),
-        (id: "#00FF00", name: "Grün"),
-        (id: "#0000FF", name: "Blau"),
-        (id: "#FFFF00", name: "Gelb"),
-        (id: "#FF00FF", name: "Magenta"),
-        (id: "#00FFFF", name: "Cyan"),
-        (id: "#FFFFFF", name: "Weiß"),
-        (id: "#000000", name: "Schwarz"),
-        (id: "#FF8000", name: "Orange"),
-        (id: "#8000FF", name: "Lila"),
-        (id: "#336699", name: "Dunkelblau"),
-        (id: "#996633", name: "Braun"),
-        (id: "#CC9900", name: "Gold"),
-        (id: "#669966", name: "Olive"),
-        (id: "#FF6699", name: "Rosa")
-    ]
+    private static var playerColors: [(id: String, name: String)] {
+        [
+            (id: "#FF0000", name: L10n.text("Rot", table: "LoginView")),
+            (id: "#00FF00", name: L10n.text("Grün", table: "LoginView")),
+            (id: "#0000FF", name: L10n.text("Blau", table: "LoginView")),
+            (id: "#FFFF00", name: L10n.text("Gelb", table: "LoginView")),
+            (id: "#FF00FF", name: L10n.text("Magenta", table: "LoginView")),
+            (id: "#00FFFF", name: L10n.text("Cyan", table: "LoginView")),
+            (id: "#FFFFFF", name: L10n.text("Weiß", table: "LoginView")),
+            (id: "#000000", name: L10n.text("Schwarz", table: "LoginView")),
+            (id: "#FF8000", name: L10n.text("Orange", table: "LoginView")),
+            (id: "#8000FF", name: L10n.text("Lila", table: "LoginView")),
+            (id: "#336699", name: L10n.text("Dunkelblau", table: "LoginView")),
+            (id: "#996633", name: L10n.text("Braun", table: "LoginView")),
+            (id: "#CC9900", name: L10n.text("Gold", table: "LoginView")),
+            (id: "#669966", name: L10n.text("Olive", table: "LoginView")),
+            (id: "#FF6699", name: L10n.text("Rosa", table: "LoginView"))
+        ]
+    }
 
     @Environment(GameState.self) private var state
 
@@ -49,6 +53,7 @@ struct LoginView: View {
     @AppStorage("freecol.port") private var portString: String = "3541"
     @AppStorage("freecol.userName") private var userName: String = "Alice"
     @AppStorage("freecol.showAdvancedOptions") private var showAdvancedOptions: Bool = false
+    @AppStorage(InterfaceLanguage.preferenceKey) private var interfaceLanguage = InterfaceLanguage.system.rawValue
 
     // Spielerauswahl
     @State private var selectedNation: String = ""
@@ -99,6 +104,54 @@ struct LoginView: View {
         return value
     }
 
+    private var readyButtonTitle: String {
+        state.isReadyToStart
+            ? L10n.text("Nicht bereit", table: "LoginView")
+            : L10n.text("Bereit", table: "LoginView")
+    }
+
+    private func hostedSavegameMessage(_ name: String) -> String {
+        L10n.text(
+            "Spielstand „\(name)“ läuft auf diesem Mac. Melde dich mit dem Namen eines menschlichen Spielers aus dem Spielstand an.",
+            table: "LoginView"
+        )
+    }
+
+    @ViewBuilder
+    private var lobbyControls: some View {
+        GroupBox {
+            HStack {
+                Spacer()
+                Button {
+                    state.setReady(!state.isReadyToStart)
+                } label: {
+                    Text(readyButtonTitle)
+                }
+                .buttonStyle(.bordered)
+                .tint(state.isReadyToStart ? .orange : .green)
+
+                if state.isLocalPlayerAdmin {
+                    Button(L10n.text("Spiel starten", table: "LoginView")) {
+                        state.requestLaunch()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.blue)
+                }
+                Spacer()
+            }
+            .padding(.vertical, 8)
+
+            if !state.isLocalPlayerAdmin {
+                Text(L10n.text("Nur der Administrator kann das Spiel starten.", table: "LoginView"))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 4)
+            }
+        }
+        .groupBoxStyle(FreeColGroupBoxStyle())
+    }
+
     // Synchronisiert die ausgewählte Nation mit den verfügbaren Optionen
     private func syncSelectedNation() {
         let ids = availableNationIds
@@ -134,437 +187,21 @@ struct LoginView: View {
             .disabled(disabled)
     }
 
-    // MARK: - Körper der View
+    // MARK: - Body
 
     var body: some View {
         ZStack {
-            Color(red: 0.08, green: 0.07, blue: 0.06)
-                .ignoresSafeArea()
-            if let backgroundImage = Self.backgroundImage {
-                GeometryReader { geometry in
-                    Image(nsImage: backgroundImage)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                        .clipped()
-                        .overlay {
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.08, green: 0.07, blue: 0.06).opacity(0.72),
-                                    Color.black.opacity(0.28),
-                                    Color(red: 0.08, green: 0.07, blue: 0.06).opacity(0.78)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        }
-                }
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-            }
-
+            backgroundLayer
             ScrollView(.vertical) {
                 VStack(spacing: 16) {
-                    VStack(spacing: 5) {
-                        Image(systemName: "sailboat.fill")
-                            .font(.system(size: 25))
-                            .foregroundStyle(Color(red: 0.88, green: 0.71, blue: 0.39))
-                            .padding(.bottom, 2)
-                        Text("novaloria")
-                            .font(.system(size: 42, weight: .bold, design: .serif))
-                            .foregroundStyle(Color(red: 0.98, green: 0.94, blue: 0.84))
-                        Text("EINE NEUE WELT ERWARTET DICH")
-                            .font(.system(size: 10, weight: .semibold, design: .rounded))
-                            .tracking(2.4)
-                            .foregroundStyle(Color(red: 0.88, green: 0.71, blue: 0.39))
-                    }
-                    .shadow(color: .black.opacity(0.55), radius: 8, y: 3)
-                    .padding(.top, 28)
-                    .padding(.bottom, 4)
-
-                    // Statusmeldungen (Lobby, Verbindung, Fehler)
-                    if case .lobby = state.phase {
-                        VStack(spacing: 6) {
-                            Text("Angemeldet – Warten auf Spielstart…")
-                                .foregroundColor(.secondary)
-                            Text(state.isReadyToStart ? "Status: Bereit" : "Status: Nicht bereit")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Text(state.isLocalPlayerAdmin ? "Rolle: Administrator" : "Rolle: Spieler")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-
-                    if let err = state.errorMessage {
-                        Text(err)
-                            .foregroundColor(.red)
-                            .font(.callout)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-                            .padding(8)
-                            .background(Color(.controlBackgroundColor).opacity(0.8))
-                            .cornerRadius(8)
-                    }
-
-                    if case .connecting = state.phase {
-                        ProgressView(state.statusMessage)
-                            .progressViewStyle(.linear)
-                            .tint(.white)
-                            .padding()
-                    }
-
-                    // ============================================
-                    // SERVERVERBINDUNG (Standard)
-                    // ============================================
-                    GroupBox {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("🌍 Serververbindung")
-                                .font(.headline)
-                                .foregroundColor(.white)
-
-                            if state.phase == .disconnected {
-                                HStack {
-                                    labelText("Server-Adresse:")
-                                    TextField("localhost", text: $host)
-                                        .textFieldStyle(.roundedBorder)
-                                        .help("Die IP oder URL des Spielservers (z. B. 'localhost' für lokalen Server).")
-                                }
-
-                                HStack {
-                                    labelText("Port:")
-                                    TextField("3541", text: $portString)
-                                        .textFieldStyle(.roundedBorder)
-                                        .frame(width: 100)
-                                        .help("Die Netzwerk-Portnummer des Servers (Standard: 3541).")
-                                    Spacer()
-                                }
-
-                                if validPort == nil {
-                                    Text("Bitte gib einen Port zwischen 1 und 65535 ein.")
-                                        .font(.caption)
-                                        .foregroundStyle(.red)
-                                }
-                            } else {
-                                Text("Server: \(host):\(portString)")
-                                    .font(.callout)
-                            }
-
-                            // Verbindungsbuttons
-                            if state.phase == .disconnected || isLobby {
-                                HStack(spacing: 12) {
-                                    Button("Neues Spiel erstellen…", systemImage: "plus.circle") {
-                                        showNewGame = true
-                                    }
-                                    .buttonStyle(.borderedProminent)
-                                    .tint(Color(red: 0.72, green: 0.48, blue: 0.19))
-
-                                    Button("Spielstand laden…", systemImage: "square.and.arrow.down") {
-                                        showLoadSavegame = true
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .tint(Color(red: 0.88, green: 0.71, blue: 0.39))
-                                }
-                            }
-                            HStack(spacing: 12) {
-                                if state.phase == .disconnected {
-                                    Button(action: {
-                                        guard let validPort else { return }
-                                        state.connect(host: host, port: validPort)
-                                    }) {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "globe")
-                                            Text("Verbinden")
-                                        }
-                                    }
-                                    .buttonStyle(.borderedProminent)
-                                    .tint(Color(red: 0.72, green: 0.48, blue: 0.19))
-                                    .disabled(validPort == nil)
-
-                                    Button(action: {
-                                        guard let validStartingMoney else { return }
-                                        // Setze Spieloptionen für lokales Spiel
-                                        state.setGameOption("model.option.startingMoney", value: String(validStartingMoney))
-                                        state.startLocal(userName: userName, nationId: selectedNation)
-                                    }) {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "desktopcomputer")
-                                            Text("Lokales Spiel")
-                                        }
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .tint(Color(red: 0.88, green: 0.71, blue: 0.39))
-                                    .disabled(validStartingMoney == nil || selectedNation.isEmpty)
-                                } else {
-                                    Button(action: {
-                                        state.disconnect()
-                                    }) {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "arrow.left")
-                                            Text("Verbindung trennen")
-                                        }
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .tint(.orange)
-                                }
-                            }
-
-                            if let directory = state.hostedGameDirectory {
-                                HStack {
-                                    Text("Optionen und Serverprotokolle:")
-                                    Button("Im Finder zeigen") { NSWorkspace.shared.open(directory) }
-                                }
-                                .font(.caption)
-                            }
-
-                            // Sicherheitshinweis
-                            Label(
-                                "Hinweis: Verbindung ist unverschlüsselt. Nutze sie nur in vertrauenswürdigen Netzwerken.",
-                                systemImage: "lock.open"
-                            )
-                            .font(.caption)
-                            .foregroundStyle(.orange)
-                            .fixedSize(horizontal: false, vertical: true)
-                        }
-                        .padding(.vertical, 4)
-                    }
-                    .groupBoxStyle(FreeColGroupBoxStyle())
-
-                    // ============================================
-                    // SPIELCHARAKTER (Standard)
-                    // ============================================
-                    GroupBox {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("👤 Dein Spielcharakter")
-                                .font(.headline)
-                                .foregroundColor(.white)
-
-                            // Name
-                            HStack {
-                                labelText("Dein Name:")
-                                if state.phase == .disconnected || state.phase == .login {
-                                    TextField("Spielername", text: $userName)
-                                        .textFieldStyle(.roundedBorder)
-                                        .help("Dein Spielername im Spiel (wird von anderen Spielern gesehen).")
-                                } else {
-                                    Text(state.localPlayer?.name ?? userName)
-                                }
-                            }
-
-                            // Volk
-                            HStack {
-                                labelText("Volk:")
-                                if state.phase == .disconnected || state.phase == .login
-                                    || (isLobby && !state.availableLobbyNationIds.isEmpty) {
-                                    Picker("", selection: $selectedNation) {
-                                        ForEach(availableNations, id: \.id) { nation in
-                                            Text(nation.name).tag(nation.id)
-                                        }
-                                    }
-                                    .pickerStyle(.menu)
-                                    .onAppear {
-                                        syncSelectedNation()
-                                    }
-                                    .help("Wähle eines der verfügbaren Völker.")
-
-                                    if let selected = availableNations.first(where: { $0.id == selectedNation }) {
-                                        Image(systemName: "info.circle")
-                                            .foregroundColor(.gray)
-                                            .help(selected.description)
-                                    }
-
-                                    if isLobby, state.availableLobbyNationIds.contains(selectedNation),
-                                       selectedNation != state.localPlayer?.nationId {
-                                        actionButton("Übernehmen") {
-                                            state.setLocalPlayerNation(selectedNation)
-                                        }
-                                    }
-                                } else {
-                                    Text(GameLabels.name(state.localPlayer?.nationId ?? selectedNation))
-                                }
-                            }
-
-                            // Farbe
-                            if isLobby, state.localPlayer?.nationId != nil {
-                                HStack {
-                                    labelText("Farbe:")
-                                    Picker("", selection: $selectedColor) {
-                                        ForEach(Self.playerColors, id: \.id) { color in
-                                            Text(color.name).tag(color.id)
-                                        }
-                                    }
-                                    .pickerStyle(.menu)
-                                    .help("Wähle die Farbe deiner Einheiten auf der Karte.")
-
-                                    Color(hex: selectedColor)
-                                        .frame(width: 24, height: 24)
-                                        .cornerRadius(4)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 4)
-                                                .stroke(Color.white, lineWidth: 1)
-                                        )
-
-                                    actionButton("Übernehmen", disabled: selectedColor.isEmpty) {
-                                        state.setLocalPlayerColor(selectedColor)
-                                    }
-                                }
-                            }
-
-                            if state.phase == .login, let savegameName = state.hostedSavegameName {
-                                Text("Spielstand „\(savegameName)“ läuft auf diesem Mac. Melde dich mit dem Namen eines menschlichen Spielers aus dem Spielstand an.")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-
-                            // Anmeldebutton (nur in Login-Phase)
-                            if state.phase == .login, !selectedNation.isEmpty {
-                                HStack {
-                                    Spacer()
-                                    Button(action: {
-                                        state.login(userName: userName, nationId: selectedNation)
-                                    }) {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "person.crop.circle")
-                                            Text("Anmelden")
-                                        }
-                                    }
-                                    .buttonStyle(.borderedProminent)
-                                    .tint(.green)
-                                    Spacer()
-                                }
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
-                    .groupBoxStyle(FreeColGroupBoxStyle())
-
-                    // ============================================
-                    // ERWEITERTE OPTIONEN (ausklappbar)
-                    // ============================================
-                    if state.phase == .disconnected {
-                        DisclosureGroup(isExpanded: $showAdvancedOptions) {
-                            VStack(alignment: .leading, spacing: 12) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack {
-                                        labelText("Startkapital:")
-                                        TextField("Gold", text: $startingMoneyValue)
-                                            .textFieldStyle(.roundedBorder)
-                                            .help("Wie viel Gold du zu Spielbeginn erhältst. Mehr Gold = schnellerer Start.")
-                                    }
-                                    Text("Startkapital in Gold. Empfohlener Wert: 3000-5000 für Anfänger.")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                        .padding(.leading, 102)
-                                }
-
-                                Text("Gilt nur für „Lokales Spiel“ (Mock-Start). Bei einer Serververbindung legt der Server Startgold, Karte und Spielregeln fest.")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                if validStartingMoney == nil {
-                                    Text("Bitte einen ganzzahligen Goldbetrag zwischen 0 und 2147483647 eingeben.")
-                                        .font(.caption)
-                                        .foregroundStyle(.red)
-                                }
-                            }
-                        } label: {
-                            Text("🔧 Optionen für lokales Spiel")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                        }
-                        .groupBoxStyle(FreeColGroupBoxStyle())
-                    }
-
-                    // ============================================
-                    // LOBBY-STEUERUNG (falls in Lobby)
-                    // ============================================
-                    if isLobby {
-                        GroupBox {
-                            HStack {
-                                Spacer()
-                                Button(state.isReadyToStart ? "Nicht bereit" : "Bereit") {
-                                    state.setReady(!state.isReadyToStart)
-                                }
-                                .buttonStyle(.bordered)
-                                .tint(state.isReadyToStart ? .orange : .green)
-
-                                if state.isLocalPlayerAdmin {
-                                    Button("Spiel starten") {
-                                        state.requestLaunch()
-                                    }
-                                    .buttonStyle(.borderedProminent)
-                                    .tint(.blue)
-                                }
-                                Spacer()
-                            }
-                            .padding(.vertical, 8)
-
-                            if !state.isLocalPlayerAdmin {
-                                Text("Nur der Administrator kann das Spiel starten.")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.top, 4)
-                            }
-                        }
-                        .groupBoxStyle(FreeColGroupBoxStyle())
-                    }
-
-                    // ============================================
-                    // SPIELERLISTE (falls in Lobby)
-                    // ============================================
-                    if !state.lobbyPlayers.isEmpty {
-                        GroupBox {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text("👥 Spieler in der Lobby")
-                                    .font(.subheadline)
-                                    .foregroundColor(.white)
-                                    .padding(.bottom, 4)
-
-                                ForEach(state.lobbyPlayers) { player in
-                                    HStack(spacing: 8) {
-                                        Text(player.name ?? player.id)
-                                            .font(.caption)
-                                            .frame(width: 90, alignment: .leading)
-                                            .foregroundColor(player.id == state.localPlayerId ? .yellow : .primary)
-
-                                        Text(shortOptionId(player.nationId ?? "—"))
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                            .frame(width: 90, alignment: .leading)
-
-                                        Text(player.playerType == .european ? (player.ai ? "KI" : "Mensch") : player.playerType.rawValue)
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                            .frame(width: 60, alignment: .leading)
-
-                                        if player.admin {
-                                            Text("Admin")
-                                                .font(.caption2)
-                                                .foregroundColor(.blue)
-                                        }
-
-                                        Spacer()
-
-                                        Text(player.ready ? "Bereit" : "Nicht bereit")
-                                            .font(.caption2)
-                                            .foregroundColor(player.ready ? .green : .secondary)
-                                    }
-                                    .padding(.vertical, 2)
-                                }
-                            }
-                            .padding(.vertical, 4)
-                        }
-                        .groupBoxStyle(FreeColGroupBoxStyle())
-                    }
-
-                    // Versionsinfo
-                    Text("Novaloria \(AppVersion.displayString)")
-                        .font(.caption2)
-                        .foregroundColor(Color(white: 0.6))
-                        .padding(.top, 8)
-                        .padding(.bottom, 12)
+                    loginHeader
+                    statusMessages
+                    serverConnectionPanel
+                    playerCharacterPanel
+                    advancedOptionsPanel
+                    if isLobby { lobbyControls }
+                    lobbyPlayersPanel
+                    versionLabel
                 }
                 .frame(width: 500)
                 .padding()
@@ -594,11 +231,447 @@ struct LoginView: View {
             }
         }
         .onAppear {
-            // Standard-Nation setzen, falls leer
             if selectedNation.isEmpty, let firstNation = availableNationIds.first {
                 selectedNation = firstNation
             }
         }
+    }
+
+    private var backgroundLayer: some View {
+        ZStack {
+            Color(red: 0.08, green: 0.07, blue: 0.06).ignoresSafeArea()
+            if let backgroundImage = Self.backgroundImage {
+                GeometryReader { geometry in
+                    Image(nsImage: backgroundImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .clipped()
+                        .overlay {
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.08, green: 0.07, blue: 0.06).opacity(0.72),
+                                    Color.black.opacity(0.28),
+                                    Color(red: 0.08, green: 0.07, blue: 0.06).opacity(0.78)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        }
+                }
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
+        }
+    }
+
+    private var loginHeader: some View {
+        VStack(spacing: 5) {
+            Image(systemName: "sailboat.fill")
+                .font(.system(size: 25))
+                .foregroundStyle(Color(red: 0.88, green: 0.71, blue: 0.39))
+                .padding(.bottom, 2)
+            Text(L10n.text("novaloria", table: "LoginView"))
+                .font(.system(size: 42, weight: .bold, design: .serif))
+                .foregroundStyle(Color(red: 0.98, green: 0.94, blue: 0.84))
+            Text(L10n.text("EINE NEUE WELT ERWARTET DICH", table: "LoginView"))
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .tracking(2.4)
+                .foregroundStyle(Color(red: 0.88, green: 0.71, blue: 0.39))
+            languagePicker
+        }
+        .shadow(color: .black.opacity(0.55), radius: 8, y: 3)
+        .padding(.top, 28)
+        .padding(.bottom, 4)
+    }
+
+    private var languagePicker: some View {
+        Picker(L10n.text("Sprache", table: "LoginView"), selection: $interfaceLanguage) {
+            ForEach(InterfaceLanguage.allCases) { language in
+                Text(language == .system ? L10n.text("Systemsprache", table: "LoginView") : language.title)
+                    .tag(language.rawValue)
+            }
+        }
+        .pickerStyle(.menu)
+        .frame(maxWidth: 180)
+    }
+
+    @ViewBuilder
+    private var statusMessages: some View {
+        if case .lobby = state.phase {
+            VStack(spacing: 6) {
+                Text(L10n.text("Angemeldet – Warten auf Spielstart…", table: "LoginView"))
+                    .foregroundColor(.secondary)
+                Text(L10n.text(state.isReadyToStart ? "Status: Bereit" : "Status: Nicht bereit", table: "LoginView"))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text(L10n.text(state.isLocalPlayerAdmin ? "Rolle: Administrator" : "Rolle: Spieler", table: "LoginView"))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        if let err = state.errorMessage {
+            Text(err)
+                .foregroundColor(.red)
+                .font(.callout)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+                .padding(8)
+                .background(Color(.controlBackgroundColor).opacity(0.8))
+                .cornerRadius(8)
+        }
+        if case .connecting = state.phase {
+            ProgressView(state.statusMessage)
+                .progressViewStyle(.linear)
+                .tint(.white)
+                .padding()
+        }
+    }
+
+    private var serverConnectionPanel: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(L10n.text("🌍 Serververbindung", table: "LoginView"))
+                    .font(.headline)
+                    .foregroundColor(.white)
+                serverSettings
+                gameCreationButtons
+                connectionButtons
+                hostedServerLogs
+                securityNotice
+            }
+            .padding(.vertical, 4)
+        }
+        .groupBoxStyle(FreeColGroupBoxStyle())
+    }
+
+    @ViewBuilder
+    private var serverSettings: some View {
+        if state.phase == .disconnected {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    labelText(L10n.text("Server-Adresse:", table: "LoginView"))
+                    TextField(L10n.text("localhost", table: "LoginView"), text: $host)
+                        .textFieldStyle(.roundedBorder)
+                        .help(L10n.text("Die IP oder URL des Spielservers (z. B. 'localhost' für lokalen Server).", table: "LoginView"))
+                }
+                HStack {
+                    labelText(L10n.text("Port:", table: "LoginView"))
+                    TextField(L10n.text("3541", table: "LoginView"), text: $portString)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 100)
+                        .help(L10n.text("Die Netzwerk-Portnummer des Servers (Standard: 3541).", table: "LoginView"))
+                    Spacer()
+                }
+                if validPort == nil {
+                    Text(L10n.text("Bitte gib einen Port zwischen 1 und 65535 ein.", table: "LoginView"))
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+            }
+        } else {
+            Text(L10n.text("Server: \(host):\(portString)", table: "LoginView"))
+                .font(.callout)
+        }
+    }
+
+    @ViewBuilder
+    private var gameCreationButtons: some View {
+        if state.phase == .disconnected || isLobby {
+            HStack(spacing: 12) {
+                Button(L10n.text("Neues Spiel erstellen…", table: "LoginView"), systemImage: "plus.circle") {
+                    showNewGame = true
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color(red: 0.72, green: 0.48, blue: 0.19))
+                Button(L10n.text("Spielstand laden…", table: "LoginView"), systemImage: "square.and.arrow.down") {
+                    showLoadSavegame = true
+                }
+                .buttonStyle(.bordered)
+                .tint(Color(red: 0.88, green: 0.71, blue: 0.39))
+            }
+        }
+    }
+
+    private var connectionButtons: some View {
+        HStack(spacing: 12) {
+            if state.phase == .disconnected {
+                Button(L10n.text("Verbinden", table: "LoginView"), systemImage: "globe") {
+                    guard let validPort else { return }
+                    state.connect(host: host, port: validPort)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color(red: 0.72, green: 0.48, blue: 0.19))
+                .disabled(validPort == nil)
+
+                Button(L10n.text("Lokales Spiel", table: "LoginView"), systemImage: "desktopcomputer") {
+                    guard let validStartingMoney else { return }
+                    state.setGameOption("model.option.startingMoney", value: String(validStartingMoney))
+                    state.startLocal(userName: userName, nationId: selectedNation)
+                }
+                .buttonStyle(.bordered)
+                .tint(Color(red: 0.88, green: 0.71, blue: 0.39))
+                .disabled(validStartingMoney == nil || selectedNation.isEmpty)
+            } else {
+                Button(L10n.text("Verbindung trennen", table: "LoginView"), systemImage: "arrow.left") {
+                    state.disconnect()
+                }
+                .buttonStyle(.bordered)
+                .tint(.orange)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var hostedServerLogs: some View {
+        if let directory = state.hostedGameDirectory {
+            HStack {
+                Text(L10n.text("Optionen und Serverprotokolle:", table: "LoginView"))
+                Button(L10n.text("Im Finder zeigen", table: "LoginView")) {
+                    NSWorkspace.shared.open(directory)
+                }
+            }
+            .font(.caption)
+        }
+    }
+
+    private var securityNotice: some View {
+        Label(
+            L10n.text("Hinweis: Verbindung ist unverschlüsselt. Nutze sie nur in vertrauenswürdigen Netzwerken.", table: "LoginView"),
+            systemImage: "lock.open"
+        )
+        .font(.caption)
+        .foregroundStyle(.orange)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var playerCharacterPanel: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(L10n.text("👤 Dein Spielcharakter", table: "LoginView"))
+                    .font(.headline)
+                    .foregroundColor(.white)
+                playerNameRow
+                nationRow
+                playerColorRow
+                hostedSavegameInfo
+                loginButton
+            }
+            .padding(.vertical, 4)
+        }
+        .groupBoxStyle(FreeColGroupBoxStyle())
+    }
+
+    private var playerNameRow: some View {
+        HStack {
+            labelText(L10n.text("Dein Name:", table: "LoginView"))
+            if state.phase == .disconnected || state.phase == .login {
+                TextField(L10n.text("Spielername", table: "LoginView"), text: $userName)
+                    .textFieldStyle(.roundedBorder)
+                    .help(L10n.text("Dein Spielername im Spiel (wird von anderen Spielern gesehen).", table: "LoginView"))
+            } else {
+                Text(state.localPlayer?.name ?? userName)
+            }
+        }
+    }
+
+    private var nationRow: some View {
+        HStack {
+            labelText(L10n.text("Volk:", table: "LoginView"))
+            nationSelection
+        }
+    }
+
+    @ViewBuilder
+    private var nationSelection: some View {
+        if state.phase == .disconnected || state.phase == .login
+            || (isLobby && !state.availableLobbyNationIds.isEmpty) {
+            HStack {
+                Picker("", selection: $selectedNation) {
+                    ForEach(availableNations, id: \.id) { nation in
+                        Text(nation.name).tag(nation.id)
+                    }
+                }
+                .pickerStyle(.menu)
+                .onAppear(perform: syncSelectedNation)
+                .help(L10n.text("Wähle eines der verfügbaren Völker.", table: "LoginView"))
+
+                if let selected = availableNations.first(where: { $0.id == selectedNation }) {
+                    Image(systemName: "info.circle")
+                        .foregroundColor(.gray)
+                        .help(selected.description)
+                }
+
+                if isLobby, state.availableLobbyNationIds.contains(selectedNation),
+                   selectedNation != state.localPlayer?.nationId {
+                    actionButton(L10n.text("Übernehmen", table: "LoginView")) {
+                        state.setLocalPlayerNation(selectedNation)
+                    }
+                }
+            }
+        } else {
+            Text(GameLabels.name(state.localPlayer?.nationId ?? selectedNation))
+        }
+    }
+
+    @ViewBuilder
+    private var playerColorRow: some View {
+        if isLobby, state.localPlayer?.nationId != nil {
+            HStack {
+                labelText(L10n.text("Farbe:", table: "LoginView"))
+                Picker("", selection: $selectedColor) {
+                    ForEach(Self.playerColors, id: \.id) { color in
+                        Text(color.name).tag(color.id)
+                    }
+                }
+                .pickerStyle(.menu)
+                .help(L10n.text("Wähle die Farbe deiner Einheiten auf der Karte.", table: "LoginView"))
+                Color(hex: selectedColor)
+                    .frame(width: 24, height: 24)
+                    .cornerRadius(4)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.white, lineWidth: 1)
+                    )
+                actionButton(L10n.text("Übernehmen", table: "LoginView"), disabled: selectedColor.isEmpty) {
+                    state.setLocalPlayerColor(selectedColor)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var hostedSavegameInfo: some View {
+        if state.phase == .login, let savegameName = state.hostedSavegameName {
+            Text(hostedSavegameMessage(savegameName))
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder
+    private var loginButton: some View {
+        if state.phase == .login, !selectedNation.isEmpty {
+            HStack {
+                Spacer()
+                Button(L10n.text("Anmelden", table: "LoginView"), systemImage: "person.crop.circle") {
+                    state.login(userName: userName, nationId: selectedNation)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                Spacer()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var advancedOptionsPanel: some View {
+        if state.phase == .disconnected {
+            DisclosureGroup(isExpanded: $showAdvancedOptions) {
+                VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            labelText(L10n.text("Startkapital:", table: "LoginView"))
+                            TextField(L10n.text("Gold", table: "LoginView"), text: $startingMoneyValue)
+                                .textFieldStyle(.roundedBorder)
+                                .help(L10n.text("Wie viel Gold du zu Spielbeginn erhältst. Mehr Gold = schnellerer Start.", table: "LoginView"))
+                        }
+                        Text(L10n.text("Startkapital in Gold. Empfohlener Wert: 3000-5000 für Anfänger.", table: "LoginView"))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.leading, 102)
+                    }
+                    Text(L10n.text("Gilt nur für „Lokales Spiel“ (Mock-Start). Bei einer Serververbindung legt der Server Startgold, Karte und Spielregeln fest.", table: "LoginView"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if validStartingMoney == nil {
+                        Text(L10n.text("Bitte einen ganzzahligen Goldbetrag zwischen 0 und 2147483647 eingeben.", table: "LoginView"))
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                }
+            } label: {
+                Text(L10n.text("🔧 Optionen für lokales Spiel", table: "LoginView"))
+                    .font(.headline)
+                    .foregroundColor(.white)
+            }
+            .groupBoxStyle(FreeColGroupBoxStyle())
+        }
+    }
+
+    @ViewBuilder
+    private var lobbyPlayersPanel: some View {
+        if !state.lobbyPlayers.isEmpty {
+            GroupBox {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(L10n.text("👥 Spieler in der Lobby", table: "LoginView"))
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                        .padding(.bottom, 4)
+                    ForEach(state.lobbyPlayers) { player in
+                        let type = player.playerType == .european
+                            ? L10n.text(player.ai ? "KI" : "Mensch", table: "LoginView")
+                            : player.playerType.rawValue
+                        LoginLobbyPlayerRow(
+                            name: player.name ?? player.id,
+                            nation: shortOptionId(player.nationId ?? "—"),
+                            type: type,
+                            isLocalPlayer: player.id == state.localPlayerId,
+                            isAdmin: player.admin,
+                            isReady: player.ready
+                        )
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            .groupBoxStyle(FreeColGroupBoxStyle())
+        }
+    }
+
+    private var versionLabel: some View {
+        Text(L10n.text("Novaloria \(AppVersion.displayString)", table: "LoginView"))
+            .font(.caption2)
+            .foregroundColor(Color(white: 0.6))
+            .padding(.top, 8)
+            .padding(.bottom, 12)
+    }
+}
+
+private struct LoginLobbyPlayerRow: View {
+    let name: String
+    let nation: String
+    let type: String
+    let isLocalPlayer: Bool
+    let isAdmin: Bool
+    let isReady: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(name)
+                .font(.caption)
+                .frame(width: 90, alignment: .leading)
+                .foregroundColor(isLocalPlayer ? .yellow : .primary)
+            Text(nation)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .frame(width: 90, alignment: .leading)
+            Text(type)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .frame(width: 60, alignment: .leading)
+            if isAdmin {
+                Text(L10n.text("Admin", table: "LoginView"))
+                    .font(.caption2)
+                    .foregroundColor(.blue)
+            }
+            Spacer()
+            Text(L10n.text(isReady ? "Bereit" : "Nicht bereit", table: "LoginView"))
+                .font(.caption2)
+                .foregroundColor(isReady ? .green : .secondary)
+        }
+        .padding(.vertical, 2)
     }
 }
 

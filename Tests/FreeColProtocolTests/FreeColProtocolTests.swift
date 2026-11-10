@@ -1302,7 +1302,7 @@ final class FreeColProtocolTests: XCTestCase {
         ))
         XCTAssertEqual(state.pendingServerDecision?.type, .scoutReport)
         XCTAssertEqual(state.scoutReportText,
-                       "The scout learned from the chief and became an expert.")
+                       "Der Kundschafter lernte vom Häuptling und wurde zum erfahrenen Kundschafter.")
         state.acknowledgePendingDecision()
         XCTAssertNil(state.pendingServerDecision)
 

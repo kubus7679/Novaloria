@@ -24,10 +24,10 @@ struct KeyboardShortcutsView: View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Text("Tastaturkürzel")
+                Text(L10n.text("Tastaturkürzel", table: "KeyboardShortcutsView"))
                     .font(.title2.bold())
                 Spacer()
-                Button("Schließen") {
+                Button(L10n.text("Schließen", table: "KeyboardShortcutsView")) {
                     state.showShortcutsHelp = false
                 }
                 .buttonStyle(.bordered)
@@ -38,14 +38,14 @@ struct KeyboardShortcutsView: View {
             Divider()
             
             // Search field
-            TextField("Suchen...", text: $searchText)
+            TextField(L10n.text("Suchen...", table: "KeyboardShortcutsView"), text: $searchText)
                 .textFieldStyle(.roundedBorder)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
 
             HStack(spacing: 6) {
                 Image(systemName: "info.circle")
-                Text("„Verfügbar“ zeigt an, ob das Kürzel im aktuellen Spielzustand nutzbar ist.")
+                Text(L10n.text("„Verfügbar“ zeigt an, ob das Kürzel im aktuellen Spielzustand nutzbar ist.", table: "KeyboardShortcutsView"))
             }
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -61,7 +61,7 @@ struct KeyboardShortcutsView: View {
                     ForEach(KeyboardShortcut.ShortcutCategory.allCases, id: \.self) { category in
                         let categoryShortcuts = shortcuts
                             .filter { $0.category == category }
-                            .filter { searchText.isEmpty || $0.description.localizedCaseInsensitiveContains(searchText) }
+                            .filter { searchText.isEmpty || $0.localizedDescription.localizedCaseInsensitiveContains(searchText) }
                         
                         if categoryShortcuts.isEmpty {
                             EmptyView()
@@ -76,7 +76,7 @@ struct KeyboardShortcutsView: View {
             // Footer with hint
             Divider()
             HStack {
-                Text("Tipp: ⇧/ – Tastaturkürzel anzeigen")
+                Text(L10n.text("Tipp: ⇧/ – Tastaturkürzel anzeigen", table: "KeyboardShortcutsView"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -115,13 +115,13 @@ struct KeyboardShortcutsView: View {
                 )
             
             // Description
-            Text(shortcut.description)
+            Text(shortcut.localizedDescription)
                 .font(.body)
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             let isAvailable = manager?.isShortcutEnabled(shortcut) == true
-            Text(isAvailable ? "Verfügbar" : "Nicht verfügbar")
+            Text(L10n.text(isAvailable ? "Verfügbar" : "Nicht verfügbar", table: "KeyboardShortcutsView"))
                 .font(.caption)
                 .foregroundStyle(isAvailable ? .green : .secondary)
                 .frame(width: 105, alignment: .trailing)

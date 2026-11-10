@@ -28,9 +28,9 @@ struct GameView: View {
             }
             if state.isChoosingMoveDestination {
                 HStack {
-                    Text("Bewegen: Zielfeld auf der Karte anklicken.")
+                    Text(L10n.text("Bewegen: Zielfeld auf der Karte anklicken.", table: "GameView"))
                     Spacer()
-                    Button("Abbrechen") { state.cancelChoosingMoveDestination() }
+                    Button(L10n.text("Abbrechen", table: "GameView")) { state.cancelChoosingMoveDestination() }
                         .keyboardShortcut(.cancelAction)
                 }
                 .font(.callout)
@@ -106,20 +106,20 @@ struct GameView: View {
                     .minimumScaleFactor(0.8)
                 Spacer(minLength: 4)
                 if state.unitsAwaitingOrders.isEmpty {
-                    Label("Alle Einheiten befohlen", systemImage: "checkmark.circle")
+                    Label(L10n.text("Alle Einheiten befohlen", table: "GameView"), systemImage: "checkmark.circle")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
                     Button {
                         state.selectAdjacentUnit(forward: true, onlyAwaitingOrders: true)
                     } label: {
-                        Label("\(state.unitsAwaitingOrders.count) ohne Befehl",
+                        Label(L10n.text("\(state.unitsAwaitingOrders.count) ohne Befehl", table: "GameView"),
                               systemImage: "arrow.right.circle")
                             .font(.caption)
                     }
                     .buttonStyle(.plain)
-                    .help("Wählt die nächste Einheit ohne Befehl aus und zentriert die Karte, falls sie sich dort befindet.")
-                    .accessibilityLabel("\(state.unitsAwaitingOrders.count) Einheiten ohne Befehl. Nächste Einheit auswählen.")
+                    .help(L10n.text("Wählt die nächste Einheit ohne Befehl aus und zentriert die Karte, falls sie sich dort befindet.", table: "GameView"))
+                    .accessibilityLabel(L10n.text("\(state.unitsAwaitingOrders.count) Einheiten ohne Befehl. Nächste Einheit auswählen.", table: "GameView"))
                     .accessibilityIdentifier("units-awaiting-orders")
                 }
             }
@@ -152,15 +152,15 @@ struct GameView: View {
                                     state.openColonyPanel(colonyId: colony.id)
                                 } label: {
                                     if colony.id == selectedColony.id {
-                                        Label(colony.name ?? "Kolonie", systemImage: "checkmark")
+                                        Label(colony.name ?? L10n.text("Kolonie", table: "GameView"), systemImage: "checkmark")
                                     } else {
-                                        Text(colony.name ?? "Kolonie")
+                                        Text(colony.name ?? L10n.text("Kolonie", table: "GameView"))
                                     }
                                 }
                                 .accessibilityIdentifier("select-colony-\(colony.id)")
                             }
                         } label: {
-                            Text(selectedColony.name ?? "Kolonie")
+                            Text(selectedColony.name ?? L10n.text("Kolonie", table: "GameView"))
                                 .font(.title2.bold())
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.8)
@@ -168,24 +168,24 @@ struct GameView: View {
                         }
                         .fixedSize(horizontal: false, vertical: true)
                         .disabled(state.coloniesForNavigation.isEmpty)
-                        .accessibilityLabel("Kolonie auswählen")
+                        .accessibilityLabel(L10n.text("Kolonie auswählen", table: "GameView"))
                         .accessibilityIdentifier("colony-selector")
                         Spacer()
                         Button {
                             state.selectPreviousColony()
                         } label: {
-                            Label("Vorherige", systemImage: "chevron.left")
+                            Label(L10n.text("Vorherige", table: "GameView"), systemImage: "chevron.left")
                         }
                         .disabled(!state.canNavigateColonies)
                         .accessibilityIdentifier("previous-colony")
                         Button {
                             state.selectNextColony()
                         } label: {
-                            Label("Nächste", systemImage: "chevron.right")
+                            Label(L10n.text("Nächste", table: "GameView"), systemImage: "chevron.right")
                         }
                         .disabled(!state.canNavigateColonies)
                         .accessibilityIdentifier("next-colony")
-                        Button("Schließen") { state.closeColonyPanel() }
+                        Button(L10n.text("Schließen", table: "GameView")) { state.closeColonyPanel() }
                             .buttonStyle(.bordered)
                             .keyboardShortcut(.cancelAction)
                     }
@@ -297,15 +297,23 @@ struct GameView: View {
         }
         .sheet(
             isPresented: Binding(
+                get: { state.showNativeSettlementPanel && state.selectedNativeSettlement != nil },
+                set: { if !$0 { state.closeNativeSettlementPanel() } }
+            )
+        ) {
+            NativeSettlementPanelView()
+        }
+        .sheet(
+            isPresented: Binding(
                 get: { state.showDebugPanel },
                 set: { state.showDebugPanel = $0 }
             )
         ) {
             VStack(spacing: 0) {
                 HStack {
-                    Text("Diagnose").font(.headline)
+                    Text(L10n.text("Diagnose", table: "GameView")).font(.headline)
                     Spacer()
-                    Button("Schließen") { state.closeDebugPanel() }
+                    Button(L10n.text("Schließen", table: "GameView")) { state.closeDebugPanel() }
                         .keyboardShortcut(.cancelAction)
                 }
                 .padding()
@@ -376,15 +384,15 @@ struct GameView: View {
             endTurnDialog
         }
         .confirmationDialog(
-            "Angriff bestätigen",
+            L10n.text("Angriff bestätigen", table: "GameView"),
             isPresented: Binding(
                 get: { state.showAttackConfirmation },
                 set: { if !$0 { state.dismissPendingAttack() } }
             ),
             titleVisibility: .visible
         ) {
-            Button("Angreifen", role: .destructive) { state.confirmPendingAttack() }
-            Button("Abbrechen", role: .cancel) { state.dismissPendingAttack() }
+            Button(L10n.text("Angreifen", table: "GameView"), role: .destructive) { state.confirmPendingAttack() }
+            Button(L10n.text("Abbrechen", table: "GameView"), role: .cancel) { state.dismissPendingAttack() }
         } message: {
             Text(state.pendingAttackSummary)
         }
@@ -403,7 +411,7 @@ struct GameView: View {
         }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Verbindung trennen") { state.disconnect() }
+                Button(L10n.text("Verbindung trennen", table: "GameView")) { state.disconnect() }
             }
         }
         } // End KeyboardShortcutHandlerView
@@ -413,11 +421,11 @@ struct GameView: View {
     private func errorBanner(_ message: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Label("Aktion fehlgeschlagen", systemImage: "exclamationmark.triangle.fill")
+                Label(L10n.text("Aktion fehlgeschlagen", table: "GameView"), systemImage: "exclamationmark.triangle.fill")
                     .font(.caption.bold())
                     .foregroundStyle(.red)
                 Spacer(minLength: 4)
-                Button("Schließen") { state.clearError() }
+                Button(L10n.text("Schließen", table: "GameView")) { state.clearError() }
                     .font(.caption)
                     .buttonStyle(.plain)
             }
@@ -426,12 +434,12 @@ struct GameView: View {
                 .foregroundStyle(.primary)
                 .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
-                .accessibilityLabel("Fehler: \(message)")
+                .accessibilityLabel(L10n.text("Fehler: \(message)", table: "GameView"))
 
             if let recoveryTitle = state.errorRecoveryActionTitle {
                 Button(recoveryTitle) { state.performErrorRecoveryAction() }
                     .buttonStyle(.bordered)
-                    .help("Behebt den bekannten Bewegungsfehler, sofern die Aktion weiterhin möglich ist.")
+                    .help(L10n.text("Behebt den bekannten Bewegungsfehler, sofern die Aktion weiterhin möglich ist.", table: "GameView"))
             }
         }
         .padding(10)
@@ -449,19 +457,19 @@ struct GameView: View {
     private var queuedActionsPanel: some View {
         if !state.queuedGameplayActions.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Ausstehende Aktionen – vor dem erneuten Senden prüfen")
+                Text(L10n.text("Ausstehende Aktionen – vor dem erneuten Senden prüfen", table: "GameView"))
                     .font(.caption.bold())
                 ForEach(state.queuedGameplayActions) { action in
                     HStack {
                         Text(action.title)
                             .font(.caption)
                         Spacer()
-                        Button("Erneut senden") {
+                        Button(L10n.text("Erneut senden", table: "GameView")) {
                             queuedActionToConfirm = action
                             showQueuedActionConfirmation = true
                         }
                         .disabled(state.phase != .inGame)
-                        Button("Verwerfen") {
+                        Button(L10n.text("Verwerfen", table: "GameView")) {
                             state.discardQueuedGameplayAction(action)
                         }
                     }
@@ -473,27 +481,27 @@ struct GameView: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .padding(8)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .alert("Aktion erneut senden?", isPresented: $showQueuedActionConfirmation) {
-                Button("Erneut senden", role: .destructive) {
+            .alert(L10n.text("Aktion erneut senden?", table: "GameView"), isPresented: $showQueuedActionConfirmation) {
+                Button(L10n.text("Erneut senden", table: "GameView"), role: .destructive) {
                     if let action = queuedActionToConfirm {
                         state.resendQueuedGameplayAction(action)
                     }
                     queuedActionToConfirm = nil
                 }
-                Button("Abbrechen", role: .cancel) {
+                Button(L10n.text("Abbrechen", table: "GameView"), role: .cancel) {
                     queuedActionToConfirm = nil
                 }
             } message: {
-                Text("Der Server könnte diese Aktion bereits vor dem Verbindungsabbruch verarbeitet haben.")
+                Text(L10n.text("Der Server könnte diese Aktion bereits vor dem Verbindungsabbruch verarbeitet haben.", table: "GameView"))
             }
         }
     }
 
     private var endTurnDialog: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Zug beenden?")
+            Text(L10n.text("Zug beenden?", table: "GameView"))
                 .font(.title3.bold())
-            Text("Diese Einheiten haben noch keinen Befehl:")
+            Text(L10n.text("Diese Einheiten haben noch keinen Befehl:", table: "GameView"))
                 .font(.caption)
                 .foregroundColor(.secondary)
             ScrollView {
@@ -513,7 +521,7 @@ struct GameView: View {
                                         .foregroundColor(.secondary)
                                 }
                                 Spacer()
-                                Text("\(unit.displayMovesLeft) Bewegungspunkte")
+                                Text(L10n.text("\(unit.displayMovesLeft) Bewegungspunkte", table: "GameView"))
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
                             }
@@ -525,8 +533,8 @@ struct GameView: View {
             .frame(maxHeight: 220)
             HStack {
                 Spacer()
-                Button("Abbrechen") { state.dismissEndTurnDialog() }
-                Button("Trotzdem beenden") { state.confirmEndTurn() }
+                Button(L10n.text("Abbrechen", table: "GameView")) { state.dismissEndTurnDialog() }
+                Button(L10n.text("Trotzdem beenden", table: "GameView")) { state.confirmEndTurn() }
                     .buttonStyle(.borderedProminent)
             }
         }
@@ -536,19 +544,19 @@ struct GameView: View {
 
     private var defeatOverlay: some View {
         VStack(spacing: 14) {
-            Text("Besiegt")
+            Text(L10n.text("Besiegt", table: "GameView"))
                 .font(.largeTitle.bold())
                 .foregroundColor(.white)
-            Text("Deine Nation wurde ausgeschaltet.")
+            Text(L10n.text("Deine Nation wurde ausgeschaltet.", table: "GameView"))
                 .foregroundColor(.white)
             HStack(spacing: 12) {
                 if !state.isUndead {
-                    Button("Rachemodus starten") {
+                    Button(L10n.text("Rachemodus starten", table: "GameView")) {
                         state.enterRevengeModeFromDefeat()
                     }
                     .buttonStyle(.borderedProminent)
                 }
-                Button("Verbindung trennen") { state.disconnect() }
+                Button(L10n.text("Verbindung trennen", table: "GameView")) { state.disconnect() }
                     .buttonStyle(.bordered)
             }
         }
@@ -561,19 +569,19 @@ struct GameView: View {
 
     private var victoryOverlay: some View {
         VStack(spacing: 14) {
-            Text("Sieg!")
+            Text(L10n.text("Sieg!", table: "GameView"))
                 .font(.largeTitle.bold())
                 .foregroundColor(.white)
             Text(state.gameEndedHighScore
-                 ? "Du hast das Spiel mit einer Spitzenpunktzahl gewonnen."
-                 : "Du hast das Spiel gewonnen!")
+                 ? L10n.text("Du hast das Spiel mit einer Spitzenpunktzahl gewonnen.", table: "GameView")
+                 : L10n.text("Du hast das Spiel gewonnen!", table: "GameView"))
                 .foregroundColor(.white)
             HStack(spacing: 12) {
-                Button("Weiterspielen") {
+                Button(L10n.text("Weiterspielen", table: "GameView")) {
                     state.continueAfterVictory()
                 }
                 .buttonStyle(.borderedProminent)
-                Button("Aufgeben") {
+                Button(L10n.text("Aufgeben", table: "GameView")) {
                     state.retireAfterVictory()
                 }
                 .buttonStyle(.bordered)
@@ -591,18 +599,20 @@ struct GameView: View {
             Group {
                 if let game = state.game {
                     let turnInfo = yearSeason(for: game.turn.number)
-                    let date = turnInfo.season.map { "\($0) \(turnInfo.year)" } ?? "Jahr \(turnInfo.year)"
-                    Text("R\(game.turn.number) · \(turnInfo.year)")
+                    let date = turnInfo.season.map {
+                        L10n.text("\($0) \(turnInfo.year)", table: "GameView")
+                    } ?? L10n.text("Jahr \(turnInfo.year)", table: "GameView")
+                    Text(L10n.text("R\(game.turn.number) · \(turnInfo.year)", table: "GameView"))
                         .font(.headline.monospacedDigit())
                         .lineLimit(1)
-                        .help("Runde \(game.turn.number), \(date)")
-                        .accessibilityLabel("Runde \(game.turn.number), \(date)")
+                        .help(L10n.text("Runde \(game.turn.number), \(date)", table: "GameView"))
+                        .accessibilityLabel(L10n.text("Runde \(game.turn.number), \(date)", table: "GameView"))
                     if let local = state.localPlayer {
-                        resourceItem("\(local.gold)", systemImage: "dollarsign.circle.fill", help: "Gold")
-                        Text("Steuern \(local.tax)%")
-                        Text("Freiheit \(local.liberty)")
+                        resourceItem("\(local.gold)", systemImage: "dollarsign.circle.fill", help: L10n.text("Gold", table: "GameView"))
+                        Text(L10n.text("Steuern \(local.tax)%", table: "GameView"))
+                        Text(L10n.text("Freiheit \(local.liberty)", table: "GameView"))
                         if let required = local.immigrationRequired {
-                            Text("Einwanderung \(local.immigration)/\(required)")
+                            Text(L10n.text("Einwanderung \(local.immigration)/\(required)", table: "GameView"))
                         }
                     }
                 }
@@ -612,13 +622,13 @@ struct GameView: View {
             .foregroundStyle(.secondary)
             .fixedSize()
             Spacer(minLength: 8)
-            Button("Nächste Einheit") { state.selectNextUnit() }
+            Button(L10n.text("Nächste Einheit", table: "GameView")) { state.selectNextUnit() }
                 .disabled(state.cyclingLocalUnits.isEmpty)
-                .help("Wählt die nächste eigene Einheit aus.")
-            Button("Zug beenden") { state.requestEndTurn() }
+                .help(L10n.text("Wählt die nächste eigene Einheit aus.", table: "GameView"))
+            Button(L10n.text("Zug beenden", table: "GameView")) { state.requestEndTurn() }
                 .buttonStyle(GameActionButtonStyle())
                 .disabled(!state.canEndTurn)
-                .help("Vor dem Zugende werden Einheiten ohne Befehl angezeigt.")
+                .help(L10n.text("Vor dem Zugende werden Einheiten ohne Befehl angezeigt.", table: "GameView"))
         }
         .padding(.horizontal)
         .padding(.vertical, 6)
@@ -635,14 +645,14 @@ struct GameView: View {
         .font(.caption)
         .fixedSize()
         .help(help)
-        .accessibilityLabel("\(help): \(value)")
+        .accessibilityLabel(L10n.text("\(help): \(value)", table: "GameView"))
     }
 
     private func shortcutLabel(_ title: String, description: String) -> String {
         guard let shortcut = state.keyboardShortcutsManager?.shortcuts.first(
             where: { $0.description == description }
         ) else { return title }
-        return "\(title) (\(shortcut.fullDisplay))"
+        return L10n.text("\(title) (\(shortcut.fullDisplay))", table: "GameView")
     }
 
     private func actionSectionTitle(_ title: String) -> some View {
@@ -720,10 +730,10 @@ struct GameView: View {
             switch pending.type {
             case .indianDemand:
                 HStack(spacing: 8) {
-                    Button("Akzeptieren") { state.acceptPendingDecision() }
+                    Button(L10n.text("Akzeptieren", table: "GameView")) { state.acceptPendingDecision() }
                         .buttonStyle(.borderedProminent)
                         .disabled(!state.canRespondToPendingDecision())
-                    Button("Ablehnen") { state.declinePendingDecision() }
+                    Button(L10n.text("Ablehnen", table: "GameView")) { state.declinePendingDecision() }
                         .buttonStyle(.bordered)
                         .disabled(!state.canRespondToPendingDecision())
                 }
@@ -733,19 +743,19 @@ struct GameView: View {
                 emigrantDecisionControls()
             case .firstContact:
                 HStack(spacing: 8) {
-                    Button("Kontakt herstellen") { state.acceptFirstContact() }
+                    Button(L10n.text("Kontakt herstellen", table: "GameView")) { state.acceptFirstContact() }
                         .buttonStyle(.borderedProminent)
                         .disabled(!state.canRespondToPendingDecision())
-                    Button("Ablehnen") { state.declineFirstContact() }
+                    Button(L10n.text("Ablehnen", table: "GameView")) { state.declineFirstContact() }
                         .buttonStyle(.bordered)
                         .disabled(!state.canRespondToPendingDecision())
                 }
             case .monarchAction:
                 HStack(spacing: 8) {
-                    Button("Akzeptieren") { state.answerMonarch(accept: true) }
+                    Button(L10n.text("Akzeptieren", table: "GameView")) { state.answerMonarch(accept: true) }
                         .buttonStyle(.borderedProminent)
                         .disabled(!state.canRespondToPendingDecision())
-                    Button("Ablehnen") { state.answerMonarch(accept: false) }
+                    Button(L10n.text("Ablehnen", table: "GameView")) { state.answerMonarch(accept: false) }
                         .buttonStyle(.bordered)
                         .disabled(!state.canRespondToPendingDecision())
                 }
@@ -753,33 +763,42 @@ struct GameView: View {
                 nameDecisionControls()
             case .nativeTrade:
                 HStack(spacing: 8) {
-                    Button("Handel öffnen") { showNativeTrade = true }
+                    Button(L10n.text("Handel öffnen", table: "GameView")) { showNativeTrade = true }
                         .buttonStyle(.borderedProminent)
                         .disabled(!state.canRespondToPendingDecision())
-                    Button("Schließen") { state.closeNativeTrade() }
+                    Button(L10n.text("Schließen", table: "GameView")) { state.closeNativeTrade() }
+                        .buttonStyle(.bordered)
+                        .disabled(!state.canRespondToPendingDecision())
+                }
+            case .nativeSkill:
+                HStack(spacing: 8) {
+                    Button(L10n.text("Fähigkeit erlernen", table: "GameView")) { state.acceptPendingNativeSkill() }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!state.canRespondToPendingDecision())
+                    Button(L10n.text("Abbrechen", table: "GameView")) { state.declinePendingNativeSkill() }
                         .buttonStyle(.bordered)
                         .disabled(!state.canRespondToPendingDecision())
                 }
             case .diplomacy:
                 HStack(spacing: 8) {
-                    Button("Prüfen") { showDiplomacy = true }
+                    Button(L10n.text("Prüfen", table: "GameView")) { showDiplomacy = true }
                         .buttonStyle(.borderedProminent)
                         .disabled(!state.canRespondToPendingDecision())
-                    Button("Ablehnen") { state.rejectDiplomacy() }
+                    Button(L10n.text("Ablehnen", table: "GameView")) { state.rejectDiplomacy() }
                         .buttonStyle(.bordered)
                         .disabled(!state.canRespondToPendingDecision())
                 }
             case .foundingFather:
                 EmptyView()
             case .scoutReport:
-                Button("OK") { state.acknowledgePendingDecision() }
+                Button(L10n.text("OK", table: "GameView")) { state.acknowledgePendingDecision() }
                     .buttonStyle(.borderedProminent)
             case .incite:
                 HStack(spacing: 8) {
-                    Button("Bestätigen") { state.confirmPendingIncite() }
+                    Button(L10n.text("Bestätigen", table: "GameView")) { state.confirmPendingIncite() }
                         .buttonStyle(.borderedProminent)
                         .disabled(!state.canRespondToPendingDecision())
-                    Button("Ablehnen") { state.declinePendingIncite() }
+                    Button(L10n.text("Ablehnen", table: "GameView")) { state.declinePendingIncite() }
                         .buttonStyle(.bordered)
                         .disabled(!state.canRespondToPendingDecision())
                 }
@@ -799,10 +818,10 @@ struct GameView: View {
     private func lootDecisionControls() -> some View {
         let options = state.pendingLootOptions
         if options.isEmpty {
-            Text("Keine Fracht verfügbar.")
+            Text(L10n.text("Keine Fracht verfügbar.", table: "GameView"))
                 .font(.caption2)
                 .foregroundColor(.secondary)
-            Button("Nichts nehmen") { state.lootPendingCargo(selected: []) }
+            Button(L10n.text("Nichts nehmen", table: "GameView")) { state.lootPendingCargo(selected: []) }
                 .buttonStyle(.bordered)
         } else {
             ForEach(options) { option in
@@ -813,19 +832,19 @@ struct GameView: View {
                         else { selectedLootTypes.remove(option.type) }
                     }
                 )) {
-                    Text("\(state.goodsDisplayName(option.type)) ×\(option.amount)")
+                    Text(L10n.text("\(state.goodsDisplayName(option.type)) ×\(option.amount)", table: "GameView"))
                         .font(.caption2)
                         .foregroundColor(.white)
                 }
                 .toggleStyle(.checkbox)
             }
             HStack(spacing: 8) {
-                Button("Ausgewählte nehmen") {
+                Button(L10n.text("Ausgewählte nehmen", table: "GameView")) {
                     state.lootPendingCargo(selected: options.filter { selectedLootTypes.contains($0.type) })
                     selectedLootTypes.removeAll()
                 }
                 .buttonStyle(.borderedProminent)
-                Button("Nichts nehmen") {
+                Button(L10n.text("Nichts nehmen", table: "GameView")) {
                     state.lootPendingCargo(selected: [])
                     selectedLootTypes.removeAll()
                 }
@@ -838,7 +857,7 @@ struct GameView: View {
     private func emigrantDecisionControls() -> some View {
         let options = state.pendingEmigrantOptions
         if options.isEmpty {
-            Text("Keine Auswanderer verfügbar.")
+            Text(L10n.text("Keine Auswanderer verfügbar.", table: "GameView"))
                 .font(.caption2)
                 .foregroundColor(.secondary)
         } else {
@@ -846,7 +865,7 @@ struct GameView: View {
                 Button {
                     state.emigratePendingMigrant(slot: option.slot)
                 } label: {
-                    Text("\(option.unitType.map(state.unitDisplayName) ?? "Einheit") platzieren")
+                    Text(L10n.text("\(option.unitType.map(state.unitDisplayName) ?? L10n.text("Einheit", table: "GameView")) platzieren", table: "GameView"))
                         .font(.caption2)
                 }
                 .buttonStyle(.bordered)
@@ -859,13 +878,13 @@ struct GameView: View {
     private func nameDecisionControls() -> some View {
         let defaultText = state.pendingTextPrompt?.defaultText ?? ""
         VStack(alignment: .leading, spacing: 6) {
-            TextField("Name", text: $namePromptText)
+            TextField(L10n.text("Name", table: "GameView"), text: $namePromptText)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 220)
                 .onAppear { namePromptText = defaultText }
                 .onChange(of: defaultText) { _, newValue in namePromptText = newValue }
             HStack(spacing: 8) {
-                Button("Bestätigen") {
+                Button(L10n.text("Bestätigen", table: "GameView")) {
                     guard let type = state.pendingServerDecision?.type else { return }
                     if type == .newLandName {
                         state.submitNewLandName(namePromptText)
@@ -884,24 +903,24 @@ struct GameView: View {
 
     private var independenceSheet: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Unabhängigkeit erklären")
+            Text(L10n.text("Unabhängigkeit erklären", table: "GameView"))
                 .font(.title3.bold())
             HStack {
-                Text("Land:")
+                Text(L10n.text("Land:", table: "GameView"))
                     .frame(width: 70, alignment: .trailing)
-                TextField("Land", text: $independenceCountry)
+                TextField(L10n.text("Land", table: "GameView"), text: $independenceCountry)
                     .textFieldStyle(.roundedBorder)
             }
             HStack {
-                Text("Nation:")
+                Text(L10n.text("Nation:", table: "GameView"))
                     .frame(width: 70, alignment: .trailing)
-                TextField("Nation", text: $independenceNation)
+                TextField(L10n.text("Nation", table: "GameView"), text: $independenceNation)
                     .textFieldStyle(.roundedBorder)
             }
             HStack {
                 Spacer()
-                Button("Abbrechen") { state.showIndependencePanel = false }
-                Button("Erklären") {
+                Button(L10n.text("Abbrechen", table: "GameView")) { state.showIndependencePanel = false }
+                Button(L10n.text("Erklären", table: "GameView")) {
                     state.declareIndependence(countryName: independenceCountry,
                                               nationName: independenceNation)
                     state.showIndependencePanel = false
@@ -918,9 +937,9 @@ struct GameView: View {
         let colonies = (state.game.map { Array($0.colonies.values) } ?? [])
             .sorted { ($0.name ?? "") < ($1.name ?? "") }
         return VStack(alignment: .leading, spacing: 12) {
-            Text("Siedlung suchen")
+            Text(L10n.text("Siedlung suchen", table: "GameView"))
                 .font(.title3.bold())
-            TextField("Suchen", text: $findSettlementQuery)
+            TextField(L10n.text("Suchen", table: "GameView"), text: $findSettlementQuery)
                 .textFieldStyle(.roundedBorder)
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
@@ -949,7 +968,7 @@ struct GameView: View {
             }
             HStack {
                 Spacer()
-                Button("Schließen") { state.showFindSettlementPanel = false }
+                Button(L10n.text("Schließen", table: "GameView")) { state.showFindSettlementPanel = false }
             }
         }
         .padding(16)
@@ -964,67 +983,67 @@ struct GameView: View {
                     InfoPanelView()
                     Divider()
 
-                    Button("Bewegen…") { state.beginChoosingMoveDestination() }
+                    Button(L10n.text("Bewegen…", table: "GameView")) { state.beginChoosingMoveDestination() }
                         .buttonStyle(.borderedProminent)
                         .help(state.selectedUnitMoveDisabledReason
-                              ?? "Wählt ein Zielfeld per Linksklick. Alternativ bewegt ein Rechtsklick auf ein Feld die Einheit direkt.")
+                              ?? L10n.text("Wählt ein Zielfeld per Linksklick. Alternativ bewegt ein Rechtsklick auf ein Feld die Einheit direkt.", table: "GameView"))
                         .disabled(!state.canChooseMoveDestination)
 
                     if let tileId = state.selectedTileId,
                         state.canMoveSelectedUnitTo(destinationTileId: tileId)
                     {
-                        Button("Zum ausgewählten Feld") {
+                        Button(L10n.text("Zum ausgewählten Feld", table: "GameView")) {
                             state.moveSelectedUnitTo(destinationTileId: tileId)
                         }
                     }
 
                     if state.selectedColony != nil {
-                        Button(shortcutLabel("Kolonie öffnen", description: "Kolonie-Panel öffnen")) {
+                        Button(shortcutLabel(L10n.text("Kolonie öffnen", table: "GameView"), description: L10n.text("Kolonie-Panel öffnen", table: "GameView"))) {
                             state.openColonyPanel()
                         }
                     }
 
-                    actionSectionTitle("Einheitenbefehle")
-                    Button(shortcutLabel("Aktivieren", description: "Einheit aktivieren")) {
+                    actionSectionTitle(L10n.text("Einheitenbefehle", table: "GameView"))
+                    Button(shortcutLabel(L10n.text("Aktivieren", table: "GameView"), description: L10n.text("Einheit aktivieren", table: "GameView"))) {
                         state.setSelectedUnitState(.active)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .disabled(!state.canChangeSelectedUnitState(to: .active))
                     .help(state.canChangeSelectedUnitState(to: .active)
-                          ? "Einheit wieder für Befehle aktivieren."
+                          ? L10n.text("Einheit wieder für Befehle aktivieren.", table: "GameView")
                           : state.selectedUnitActionUnavailableReason)
 
-                    Button(shortcutLabel("Warten", description: "Warten / Überspringen")) {
+                    Button(shortcutLabel(L10n.text("Warten", table: "GameView"), description: L10n.text("Warten / Überspringen", table: "GameView"))) {
                         state.setSelectedUnitState(.skipped)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .disabled(!state.canChangeSelectedUnitState(to: .skipped))
                     .help(state.canChangeSelectedUnitState(to: .skipped)
-                          ? "Einheit bis zu einem späteren Zug überspringen."
+                          ? L10n.text("Einheit bis zu einem späteren Zug überspringen.", table: "GameView")
                           : state.selectedUnitActionUnavailableReason)
 
-                    Button(shortcutLabel("Wache", description: "Wache halten")) {
+                    Button(shortcutLabel(L10n.text("Wache", table: "GameView"), description: L10n.text("Wache halten", table: "GameView"))) {
                         state.setSelectedUnitState(.sentry)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .disabled(!state.canChangeSelectedUnitState(to: .sentry))
                     .help(state.canChangeSelectedUnitState(to: .sentry)
-                          ? "Einheit in Verteidigungsbereitschaft versetzen."
+                          ? L10n.text("Einheit in Verteidigungsbereitschaft versetzen.", table: "GameView")
                           : state.selectedUnitActionUnavailableReason)
 
-                    Button(shortcutLabel("Befestigen", description: "Befestigen")) {
+                    Button(shortcutLabel(L10n.text("Befestigen", table: "GameView"), description: L10n.text("Befestigen", table: "GameView"))) {
                         state.setSelectedUnitState(.fortifying)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .disabled(!state.canChangeSelectedUnitState(to: .fortifying))
                     .help(state.canChangeSelectedUnitState(to: .fortifying)
-                          ? "Einheit befestigen."
+                          ? L10n.text("Einheit befestigen.", table: "GameView")
                           : state.selectedUnitActionUnavailableReason)
 
                     if !state.selectedUnitImprovementCandidates.isEmpty {
-                        actionSectionTitle("Pionierarbeit")
+                        actionSectionTitle(L10n.text("Pionierarbeit", table: "GameView"))
                         ForEach(state.selectedUnitImprovementCandidates, id: \.id) { candidate in
-                            Button("\(candidate.label) bauen") {
+                            Button(L10n.text("\(candidate.label) bauen", table: "GameView")) {
                                 state.changeSelectedUnitWorkImprovement(candidate.id)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1032,38 +1051,38 @@ struct GameView: View {
                         }
                     }
 
-                    Button(shortcutLabel("Befehle löschen", description: "Befehle löschen")) {
+                    Button(shortcutLabel(L10n.text("Befehle löschen", table: "GameView"), description: L10n.text("Befehle löschen", table: "GameView"))) {
                         state.clearSelectedUnitOrders()
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .disabled(!state.canClearSelectedUnitOrders)
                     .help(state.canClearSelectedUnitOrders
-                          ? "Marschziel und Einheitenstatus zurücksetzen."
+                          ? L10n.text("Marschziel und Einheitenstatus zurücksetzen.", table: "GameView")
                           : state.selectedUnitActionUnavailableReason)
 
                     if state.showsEuropeTravelOrder {
-                        Button("Gehe nach Europa") { state.goSelectedShipToEurope() }
+                        Button(L10n.text("Gehe nach Europa", table: "GameView")) { state.goSelectedShipToEurope() }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .disabled(!state.canGoSelectedShipToEurope)
                     }
 
-                    Button("Einheit auflösen…", role: .destructive) {
+                    Button(L10n.text("Einheit auflösen…", table: "GameView"), role: .destructive) {
                         state.disbandSelectedUnit()
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .disabled(!state.canDisbandSelectedUnit)
                     .help(state.selectedUnitDisbandDisabledReason
-                          ?? "Einheit dauerhaft aus dem Spiel entfernen.")
+                          ?? L10n.text("Einheit dauerhaft aus dem Spiel entfernen.", table: "GameView"))
 
                     if state.canBuildSelectedColony {
-                        actionSectionTitle("Kolonie")
-                        TextField("Koloniename", text: $colonyName)
+                        actionSectionTitle(L10n.text("Kolonie", table: "GameView"))
+                        TextField(L10n.text("Koloniename", table: "GameView"), text: $colonyName)
                             .textFieldStyle(.roundedBorder)
                             .onAppear { colonyName = state.suggestedColonyName }
                             .onChange(of: state.selectedUnitId) { _, _ in
                                 colonyName = state.suggestedColonyName
                             }
-                        Button(shortcutLabel("Kolonie gründen", description: "Kolonie bauen")) {
+                        Button(shortcutLabel(L10n.text("Kolonie gründen", table: "GameView"), description: L10n.text("Kolonie bauen", table: "GameView"))) {
                             state.buildColony(name: colonyName)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1071,18 +1090,18 @@ struct GameView: View {
                     }
 
                     if state.canJoinSelectedColony {
-                        actionSectionTitle("Kolonie")
-                        Button(shortcutLabel("In der Kolonie arbeiten", description: "In der Kolonie arbeiten")) {
+                        actionSectionTitle(L10n.text("Kolonie", table: "GameView"))
+                        Button(shortcutLabel(L10n.text("In der Kolonie arbeiten", table: "GameView"), description: L10n.text("In der Kolonie arbeiten", table: "GameView"))) {
                             state.joinSelectedColony()
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
 
                     if !state.embarkCarrierOptions.isEmpty {
-                        actionSectionTitle("Transport")
+                        actionSectionTitle(L10n.text("Transport", table: "GameView"))
                         ForEach(state.embarkCarrierOptions, id: \.id) { carrier in
-                            Button(shortcutLabel("An Bord: \(carrier.unitType.map(state.unitDisplayName) ?? "Transporter")",
-                                                description: "An Bord gehen")) {
+                            Button(shortcutLabel(L10n.text("An Bord: \(carrier.unitType.map(state.unitDisplayName) ?? L10n.text("Transporter", table: "GameView"))", table: "GameView"),
+                                                description: L10n.text("An Bord gehen", table: "GameView"))) {
                                 state.embarkSelectedUnit(onCarrier: carrier.id)
                             }
                             .disabled(!state.canEmbarkSelectedUnit(onCarrier: carrier.id))
@@ -1091,8 +1110,8 @@ struct GameView: View {
                     }
 
                     if state.selectedUnitCarrier != nil {
-                        actionSectionTitle("Transport")
-                        Button(shortcutLabel("Von Bord gehen", description: "Von Bord gehen")) {
+                        actionSectionTitle(L10n.text("Transport", table: "GameView"))
+                        Button(shortcutLabel(L10n.text("Von Bord gehen", table: "GameView"), description: L10n.text("Von Bord gehen", table: "GameView"))) {
                             state.disembarkSelectedUnit()
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1108,28 +1127,28 @@ struct GameView: View {
                         state.canAttackSelectedUnitMelee(onTile: targetTileId)
                             || state.canAttackSelectedUnitRanged(onTile: targetTileId)
                     {
-                        actionSectionTitle("Angriff")
-                        Button(shortcutLabel("Nahkampf", description: "Nahkampf")) {
+                        actionSectionTitle(L10n.text("Angriff", table: "GameView"))
+                        Button(shortcutLabel(L10n.text("Nahkampf", table: "GameView"), description: L10n.text("Nahkampf", table: "GameView"))) {
                             state.requestAttack(onTile: targetTileId, ranged: false)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .disabled(!state.canAttackSelectedUnitMelee(onTile: targetTileId))
                         .help(state.canAttackSelectedUnitMelee(onTile: targetTileId)
-                              ? "Das ausgewählte Feld im Nahkampf angreifen."
+                              ? L10n.text("Das ausgewählte Feld im Nahkampf angreifen.", table: "GameView")
                               : state.selectedUnitActionUnavailableReason)
 
-                        Button(shortcutLabel("Fernkampf", description: "Fernkampf")) {
+                        Button(shortcutLabel(L10n.text("Fernkampf", table: "GameView"), description: L10n.text("Fernkampf", table: "GameView"))) {
                             state.requestAttack(onTile: targetTileId, ranged: true)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .disabled(!state.canAttackSelectedUnitRanged(onTile: targetTileId))
                         .help(state.canAttackSelectedUnitRanged(onTile: targetTileId)
-                              ? "Das ausgewählte Feld im Fernkampf angreifen."
+                              ? L10n.text("Das ausgewählte Feld im Fernkampf angreifen.", table: "GameView")
                               : state.selectedUnitActionUnavailableReason)
                     }
 
-                    actionSectionTitle("Marschziel")
-                    Button("Ausgewähltes Feld als Ziel") {
+                    actionSectionTitle(L10n.text("Marschziel", table: "GameView"))
+                    Button(L10n.text("Ausgewähltes Feld als Ziel", table: "GameView")) {
                         if let tileId = state.selectedTileId {
                             state.setSelectedUnitDestination(to: tileId)
                         }
@@ -1137,43 +1156,34 @@ struct GameView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .disabled(!state.canSetDestinationToSelectedTile)
                     .help(state.canSetDestinationToSelectedTile
-                          ? "Das ausgewählte Kartenfeld als Marschziel festlegen."
+                          ? L10n.text("Das ausgewählte Kartenfeld als Marschziel festlegen.", table: "GameView")
                           : state.selectedUnitActionUnavailableReason)
 
-                    Button("Ziel löschen") {
+                    Button(L10n.text("Ziel löschen", table: "GameView")) {
                         state.clearSelectedUnitDestination()
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .disabled(!state.canClearSelectedUnitDestination)
                     .help(state.canClearSelectedUnitDestination
-                          ? "Das gespeicherte Marschziel entfernen."
+                          ? L10n.text("Das gespeicherte Marschziel entfernen.", table: "GameView")
                           : state.selectedUnitActionUnavailableReason)
 
-                    if state.canEquipSelectedUnitForRole {
-                        actionSectionTitle("Ausrüstung")
-                        Button("Als Missionar ausrüsten") {
-                            state.equipSelectedUnitForRole("model.role.missionary", count: 1)
+                    if !state.selectedUnitRoleEquipmentOptions.isEmpty {
+                        actionSectionTitle(L10n.text("Ausrüstung", table: "GameView"))
+                        ForEach(state.selectedUnitRoleEquipmentOptions) { option in
+                            Button(option.buttonTitle) {
+                                state.equipSelectedUnitForRole(option.roleId, count: option.count)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .disabled(!option.isAvailable)
+                            .help(option.helpText)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-
-                    if state.canEquipSelectedUnitAsPioneer {
-                        if !state.canEquipSelectedUnitForRole { actionSectionTitle("Ausrüstung") }
-                        Button(state.selectedUnit?.role == "model.role.pioneer"
-                               ? "Pionier-Werkzeuge nachrüsten (+\(state.pioneerToolsPerRoleCount))"
-                               : "Als Pionier ausrüsten (\(state.pioneerToolsPerRoleCount) Werkzeuge)") {
-                            state.equipSelectedUnitForRole(
-                                "model.role.pioneer",
-                                count: state.selectedUnitPioneerEquipmentCount
-                            )
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
 
                     if !state.selectedUnitCargoUnits.isEmpty {
-                        actionSectionTitle("Passagiere")
+                        actionSectionTitle(L10n.text("Passagiere", table: "GameView"))
                         ForEach(state.selectedUnitCargoUnits, id: \.id) { cargo in
-                            Button("Auswählen: \(cargo.unitType.map(state.unitDisplayName) ?? "Einheit")") {
+                            Button(L10n.text("Auswählen: \(cargo.unitType.map(state.unitDisplayName) ?? L10n.text("Einheit", table: "GameView"))", table: "GameView")) {
                                 let tileId = state.selectedUnitTileId
                                 state.selectUnit(
                                     cargo.id,
@@ -1184,10 +1194,10 @@ struct GameView: View {
                     }
 
                     if !state.selectedUnitCargoGoods.isEmpty {
-                        actionSectionTitle("Ladung")
+                        actionSectionTitle(L10n.text("Ladung", table: "GameView"))
                         ForEach(state.selectedUnitCargoGoods, id: \.id) { item in
                             HStack {
-                                Text("\(item.label): \(item.amount)")
+                                Text(L10n.text("\(item.label): \(item.amount)", table: "GameView"))
                                 Spacer()
                                 Button(role: .destructive) {
                                     state.dumpSelectedUnitCargo(typeId: item.id, amount: item.amount)
@@ -1195,84 +1205,89 @@ struct GameView: View {
                                     Image(systemName: "trash")
                                 }
                                 .buttonStyle(.bordered)
-                                .help("\(item.label) abwerfen")
-                                .accessibilityLabel("\(item.label) abwerfen")
+                                .help(L10n.text("\(item.label) abwerfen", table: "GameView"))
+                                .accessibilityLabel(L10n.text("\(item.label) abwerfen", table: "GameView"))
                             }
                         }
                     }
 
-                    if let target = state.nativeTradeTargetsForSelectedUnit.first {
-                        actionSectionTitle("Ureinwohner-Siedlung")
-                        Menu("\(target.name)") {
-                            Button("Handeln…") {
-                                state.openNativeTradeWithSelectedUnit(settlementId: target.settlementId)
-                            }
-                            .disabled(!state.canOpenNativeTrade)
-
-                            Button("Geschenk überbringen") {
-                                state.deliverGiftToSettlement(target.settlementId)
-                            }
-                            .disabled(!state.canDeliverGiftWithSelectedUnit)
-
-                            Button("Tribut fordern") {
-                                if let direction = state.directionToAdjacentSettlement(target.settlementId) {
-                                    state.demandTributeFromSettlement(direction: direction)
+                    if !state.nativeTradeTargetsForSelectedUnit.isEmpty {
+                        actionSectionTitle(L10n.text("Ureinwohner-Siedlung", table: "GameView"))
+                        ForEach(state.nativeTradeTargetsForSelectedUnit) { target in
+                            Menu(target.name) {
+                                Button(L10n.text("Handeln…", table: "GameView")) {
+                                    state.openNativeTradeWithSelectedUnit(settlementId: target.settlementId)
                                 }
-                            }
-                            .disabled(
-                                !state.canDemandTributeWithSelectedUnit
-                                    || state.directionToAdjacentSettlement(target.settlementId) == nil)
+                                .disabled(!state.canOpenNativeTrade)
 
-                            Button("Ausspionieren") {
-                                state.spyOnNativeSettlement(settlementId: target.settlementId)
-                            }
-                            .disabled(!state.canSpyOnNativeSettlement)
-
-                            Button("Siedlung erkunden") {
-                                if let direction = state.directionToAdjacentSettlement(target.settlementId) {
-                                    state.scoutIndianSettlement(direction: direction)
-                                }
-                            }
-                            .disabled(
-                                !state.canScoutIndianSettlement
-                                    || state.directionToAdjacentSettlement(target.settlementId) == nil)
-
-                            Button("Fähigkeit erfragen") {
-                                if let direction = state.directionToAdjacentSettlement(target.settlementId) {
-                                    state.askSkillAtSelectedUnit(direction: direction)
-                                }
-                            }
-                            .disabled(
-                                !state.canAskSkillAtSelectedUnit
-                                    || state.directionToAdjacentSettlement(target.settlementId) == nil)
-
-                            Button("Fähigkeit erlernen") {
-                                if let direction = state.directionToAdjacentSettlement(target.settlementId) {
-                                    state.learnSkillAtSelectedUnit(direction: direction)
-                                }
-                            }
-                            .disabled(
-                                !state.canLearnSkillAtSelectedUnit
-                                    || state.directionToAdjacentSettlement(target.settlementId) == nil)
-
-                            Menu("Aufstand anzetteln…") {
-                                ForEach(state.diplomacyVictimOptions(), id: \.id) { victim in
-                                    Button(victim.label) {
-                                        state.inciteSettlement(
-                                            settlementId: target.settlementId,
-                                            enemyPlayerId: victim.id,
-                                            gold: 0)
+                                Menu(L10n.text("Geschenk überbringen", table: "GameView")) {
+                                    ForEach(state.selectedUnitCargoGoods, id: \.id) { goods in
+                                        Button(L10n.text("\(goods.label) (\(goods.amount))", table: "GameView")) {
+                                            state.deliverGiftToSettlement(
+                                                target.settlementId,
+                                                goodsType: goods.id,
+                                                amount: goods.amount
+                                            )
+                                        }
                                     }
                                 }
+                                .disabled(!state.canDeliverGiftWithSelectedUnit || state.selectedUnitCargoGoods.isEmpty)
+
+                                Button(L10n.text("Tribut fordern", table: "GameView")) {
+                                    if let direction = state.directionToAdjacentSettlement(target.settlementId) {
+                                        state.demandTributeFromSettlement(direction: direction)
+                                    }
+                                }
+                                .disabled(
+                                    !state.canDemandTributeWithSelectedUnit
+                                        || state.directionToAdjacentSettlement(target.settlementId) == nil)
+
+                                Button(L10n.text("Siedlung erkunden", table: "GameView")) {
+                                    if let direction = state.directionToAdjacentSettlement(target.settlementId) {
+                                        state.scoutIndianSettlement(direction: direction)
+                                    }
+                                }
+                                .disabled(
+                                    !state.canScoutIndianSettlement
+                                        || state.directionToAdjacentSettlement(target.settlementId) == nil)
+
+                                Button(L10n.text("Mit Häuptling sprechen", table: "GameView")) {
+                                    state.scoutSpeakToChief(settlementId: target.settlementId)
+                                }
+                                .disabled(
+                                    !state.canScoutSpeakToChief
+                                        || state.directionToAdjacentSettlement(target.settlementId) == nil)
+
+                                Button(L10n.text("Fähigkeit erlernen…", table: "GameView")) {
+                                    if let direction = state.directionToAdjacentSettlement(target.settlementId) {
+                                        state.beginNativeSkillLearning(
+                                            settlementId: target.settlementId,
+                                            direction: direction
+                                        )
+                                    }
+                                }
+                                .disabled(
+                                    !state.canLearnSkillAtSelectedUnit
+                                        || state.directionToAdjacentSettlement(target.settlementId) == nil)
+
+                                Menu(L10n.text("Aufstand anzetteln…", table: "GameView")) {
+                                    ForEach(state.diplomacyVictimOptions(), id: \.id) { victim in
+                                        Button(victim.label) {
+                                            state.inciteSettlement(
+                                                settlementId: target.settlementId,
+                                                enemyPlayerId: victim.id)
+                                        }
+                                    }
+                                }
+                                .disabled(!state.canInciteSelectedUnit)
                             }
-                            .disabled(!state.canInciteSelectedUnit)
+                            .font(.caption)
+                            .fixedSize()
                         }
-                        .font(.caption)
-                        .fixedSize()
                     }
 
                     if !state.diplomacyInitiationTargetsForSelectedUnit.isEmpty {
-                        Menu(state.diplomacyContextForSelectedUnit == "TRIBUTE" ? "Tribut verhandeln…" : "Diplomatie…") {
+                        Menu(state.diplomacyContextForSelectedUnit == "TRIBUTE" ? L10n.text("Tribut verhandeln…", table: "GameView") : L10n.text("Diplomatie…", table: "GameView")) {
                             ForEach(state.diplomacyInitiationTargetsForSelectedUnit, id: \.id) { target in
                                 Button(target.label) {
                                     state.beginDiplomacy(otherColonyId: target.id)
@@ -1301,7 +1316,7 @@ struct GameView: View {
             return (raw, nil)
         }
         let delta = raw - 1600
-        return (1600 + delta / 2, delta % 2 == 0 ? "Frühling" : "Herbst")
+        return (1600 + delta / 2, delta % 2 == 0 ? L10n.text("Frühling", table: "GameView") : L10n.text("Herbst", table: "GameView"))
     }
 }
 

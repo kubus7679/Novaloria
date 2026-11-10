@@ -9,14 +9,14 @@ struct ReportsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Berichte")
+                Text(L10n.text("Berichte", table: "ReportsView"))
                     .font(.title2.bold())
                 Spacer()
-                Button("Schließen") { dismiss() }
+                Button(L10n.text("Schließen", table: "ReportsView")) { dismiss() }
             }
 
             if state.nationSummaryReport == nil && state.highScoresReport == nil {
-                Text("Keine Berichte verfügbar.")
+                Text(L10n.text("Keine Berichte verfügbar.", table: "ReportsView"))
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -37,39 +37,39 @@ struct ReportsView: View {
     }
 
     private func nationSummarySection(_ summary: ParsedMessage) -> some View {
-        GroupBox("Nationsübersicht") {
+        GroupBox(L10n.text("Nationsübersicht", table: "ReportsView")) {
             VStack(alignment: .leading, spacing: 4) {
                 let player = summary.attributes["player"] ?? "?"
-                Text("Spieler: \(player)")
+                Text(L10n.text("Spieler: \(player)", table: "ReportsView"))
                     .font(.caption.bold())
                 reportRow("Siedlungen", summary.attributes["numberOfSettlements"])
-                reportRow("Einheiten", summary.attributes["numberOfUnits"])
-                reportRow("Militär", summary.attributes["militaryStrength"])
-                reportRow("Flotte", summary.attributes["navalStrength"])
-                reportRow("Gold", summary.attributes["gold"])
-                reportRow("Freiheitsbewusstsein", summary.attributes["SoL"])
-                reportRow("Steuer", summary.attributes["tax"])
-                reportRow("Haltung", summary.attributes["stance"])
+                reportRow(L10n.text("Einheiten", table: "ReportsView"), summary.attributes["numberOfUnits"])
+                reportRow(L10n.text("Militär", table: "ReportsView"), summary.attributes["militaryStrength"])
+                reportRow(L10n.text("Flotte", table: "ReportsView"), summary.attributes["navalStrength"])
+                reportRow(L10n.text("Gold", table: "ReportsView"), summary.attributes["gold"])
+                reportRow(L10n.text("Freiheitsbewusstsein", table: "ReportsView"), summary.attributes["SoL"])
+                reportRow(L10n.text("Steuer", table: "ReportsView"), summary.attributes["tax"])
+                reportRow(L10n.text("Haltung", table: "ReportsView"), summary.attributes["stance"])
             }
             .padding(.vertical, 4)
         }
     }
 
     private func highScoresSection(_ report: ParsedMessage) -> some View {
-        GroupBox("Bestenliste") {
+        GroupBox(L10n.text("Bestenliste", table: "ReportsView")) {
             VStack(alignment: .leading, spacing: 4) {
                 let entries = report.children.filter { $0.tag == "highScore" }
                 if entries.isEmpty {
-                    Text("Keine Einträge.")
+                    Text(L10n.text("Keine Einträge.", table: "ReportsView"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 } else {
                     HStack(spacing: 0) {
-                        Text("Spieler").frame(width: 120, alignment: .leading)
-                        Text("Nation").frame(width: 90, alignment: .leading)
-                        Text("Punkte").frame(width: 55, alignment: .trailing)
-                        Text("Einheiten").frame(width: 45, alignment: .trailing)
-                        Text("Kolonien").frame(width: 60, alignment: .trailing)
+                        Text(L10n.text("Spieler", table: "ReportsView")).frame(width: 120, alignment: .leading)
+                        Text(L10n.text("Nation", table: "ReportsView")).frame(width: 90, alignment: .leading)
+                        Text(L10n.text("Punkte", table: "ReportsView")).frame(width: 55, alignment: .trailing)
+                        Text(L10n.text("Einheiten", table: "ReportsView")).frame(width: 45, alignment: .trailing)
+                        Text(L10n.text("Kolonien", table: "ReportsView")).frame(width: 60, alignment: .trailing)
                     }
                     .font(.caption2.bold())
                     .foregroundColor(.secondary)

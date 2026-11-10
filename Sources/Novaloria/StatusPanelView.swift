@@ -9,60 +9,60 @@ struct StatusPanelView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Spielstatus")
+                Text(L10n.text("Spielstatus", table: "StatusPanelView"))
                     .font(.title2.bold())
                 Spacer()
-                Button("Schließen") { dismiss() }
+                Button(L10n.text("Schließen", table: "StatusPanelView")) { dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
 
             ScrollView([.horizontal, .vertical]) {
                 VStack(alignment: .leading, spacing: 12) {
             if let game = state.game {
-                GroupBox("Spiel") {
+                GroupBox(L10n.text("Spiel", table: "StatusPanelView")) {
                     VStack(alignment: .leading, spacing: 4) {
                         row("Spielkennung", game.id)
-                        row("Runde", "\(game.turn.number)")
-                        row("Aktueller Spieler", game.players[game.currentPlayerId ?? ""]?.name ?? "—")
-                        row("Spieler", "\(game.players.count)")
-                        row("Kolonien", "\(game.colonies.count)")
-                        row("Einheiten", "\(game.units.count)")
+                        row(L10n.text("Runde", table: "StatusPanelView"), "\(game.turn.number)")
+                        row(L10n.text("Aktueller Spieler", table: "StatusPanelView"), game.players[game.currentPlayerId ?? ""]?.name ?? "—")
+                        row(L10n.text("Spieler", table: "StatusPanelView"), "\(game.players.count)")
+                        row(L10n.text("Kolonien", table: "StatusPanelView"), "\(game.colonies.count)")
+                        row(L10n.text("Einheiten", table: "StatusPanelView"), "\(game.units.count)")
                         if !game.tiles.isEmpty {
                             let explored = game.exploredTileIds().count
                             let total = game.tiles.count
                             let percent = total > 0 ? Int(Double(explored) / Double(total) * 100) : 0
-                             row("Erkundet", "\(explored) / \(total) (\(percent)%)")
+                             row(L10n.text("Erkundet", table: "StatusPanelView"), "\(explored) / \(total) (\(percent)%)")
                         }
                     }
                     .padding(.vertical, 4)
                 }
 
-                GroupBox("Spieler") {
+                GroupBox(L10n.text("Spieler", table: "StatusPanelView")) {
                     playerTable(game: game)
                         .padding(.vertical, 4)
                 }
 
-                GroupBox("Eigener Spieler") {
+                GroupBox(L10n.text("Eigener Spieler", table: "StatusPanelView")) {
                     if let local = state.localPlayer {
                         VStack(alignment: .leading, spacing: 4) {
-                            row("Name", local.name ?? local.id)
-                            row("Gold", "\(local.gold)")
+                            row(L10n.text("Name", table: "StatusPanelView"), local.name ?? local.id)
+                            row(L10n.text("Gold", table: "StatusPanelView"), "\(local.gold)")
                             row("Steuern", "\(local.tax)%")
-                            row("Einwanderung", "\(local.immigration)")
-                            row("Freiheit", "\(local.liberty)")
-                            row("Punkte", "\(local.score)")
-                            row("Gründerväter", "\(local.foundingFathers.count)")
+                            row(L10n.text("Einwanderung", table: "StatusPanelView"), "\(local.immigration)")
+                            row(L10n.text("Freiheit", table: "StatusPanelView"), "\(local.liberty)")
+                            row(L10n.text("Punkte", table: "StatusPanelView"), "\(local.score)")
+                            row(L10n.text("Gründerväter", table: "StatusPanelView"), "\(local.foundingFathers.count)")
                             row("Spielmeldungen", "\(local.modelMessages.count)")
                         }
                         .padding(.vertical, 4)
                     } else {
-                        Text("Kein eigener Spieler.")
+                        Text(L10n.text("Kein eigener Spieler.", table: "StatusPanelView"))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                 }
             } else {
-                Text("Kein Spiel geladen.")
+                Text(L10n.text("Kein Spiel geladen.", table: "StatusPanelView"))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -80,19 +80,19 @@ struct StatusPanelView: View {
     private func playerTable(game: Game) -> some View {
         let players = state.lobbyPlayers
         if players.isEmpty {
-            Text("Keine Spieler.")
+            Text(L10n.text("Keine Spieler.", table: "StatusPanelView"))
                 .font(.caption)
                 .foregroundColor(.secondary)
         } else {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 0) {
-                    Text("Spieler").frame(width: 110, alignment: .leading)
-                    Text("Nation").frame(width: 90, alignment: .leading)
-                    Text("Typ").frame(width: 150, alignment: .leading)
-                    Text("Gold").frame(width: 60, alignment: .trailing)
-                    Text("Punkte").frame(width: 50, alignment: .trailing)
-                    Text("Einheiten").frame(width: 45, alignment: .trailing)
-                    Text("Kolonien").frame(width: 60, alignment: .trailing)
+                    Text(L10n.text("Spieler", table: "StatusPanelView")).frame(width: 110, alignment: .leading)
+                    Text(L10n.text("Nation", table: "StatusPanelView")).frame(width: 90, alignment: .leading)
+                    Text(L10n.text("Typ", table: "StatusPanelView")).frame(width: 150, alignment: .leading)
+                    Text(L10n.text("Gold", table: "StatusPanelView")).frame(width: 60, alignment: .trailing)
+                    Text(L10n.text("Punkte", table: "StatusPanelView")).frame(width: 50, alignment: .trailing)
+                    Text(L10n.text("Einheiten", table: "StatusPanelView")).frame(width: 45, alignment: .trailing)
+                    Text(L10n.text("Kolonien", table: "StatusPanelView")).frame(width: 60, alignment: .trailing)
                 }
                 .font(.caption2.bold())
                 .foregroundColor(.secondary)
@@ -125,9 +125,9 @@ struct StatusPanelView: View {
 
     private func playerTypeLabel(_ player: Player) -> String {
         switch player.playerType {
-        case .indian: return "Ureinwohner"
-        case .ref: return "Königliche Expeditionsstreitkräfte"
-        case .undead: return "Untot"
+        case .indian: return L10n.text("Ureinwohner", table: "StatusPanelView")
+        case .ref: return L10n.text("Königliche Expeditionsstreitkräfte", table: "StatusPanelView")
+        case .undead: return L10n.text("Untot", table: "StatusPanelView")
         case .european: return player.ai ? "KI" : "Mensch"
         }
     }

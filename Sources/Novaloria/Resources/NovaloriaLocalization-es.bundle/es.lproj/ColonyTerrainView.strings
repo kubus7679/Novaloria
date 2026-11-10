@@ -1,0 +1,12 @@
+"%@ auswählen" = "Seleccionar %@";
+"%@: %@%@" = "%@: %@%@";
+": Basis %lld" = ": Base %lld";
+"Arbeiter" = "Trabajadores";
+"Arbeiter auswählen, dann ein Feld anklicken. Ein belegtes Feld tauscht die Arbeiter." = "Selecciona un trabajador y luego haz clic en una casilla. Una casilla ocupada intercambia a los trabajadores.";
+"Arbeiter tauschen" = "Intercambiar trabajadores";
+"Freies Feld – Arbeiter zuweisen" = "Casilla vacía: asignar trabajador";
+"Koloniegelände" = "Terreno de la colonia";
+"Produktion:" = "Producción:";
+"Unbekanntes Gelände" = "Terreno desconocido";
+"Warensymbole zeigen die Produktion. Mengen sind Basiswerte ohne Arbeiter- und Geländeboni." = "Los iconos de mercancías muestran la producción. Las cantidades son valores base sin bonificaciones de trabajadores ni terreno.";
+"Zentrum" = "Centro";

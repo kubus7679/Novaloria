@@ -1,0 +1,10 @@
+"Das Gelände ist unbekannt." = "The terrain is unknown.";
+"Das Zentrum wird automatisch bewirtschaftet." = "The center tile is worked automatically.";
+"Die Ruinen müssen zuerst erkundet werden." = "The ruins must be explored first.";
+"Dieser Arbeitsplatz ist nicht verfügbar." = "This work location is unavailable.";
+"Dieses Feld gehört zu einer anderen Siedlung." = "This tile belongs to another settlement.";
+"Dieses Land gehört einem anderen Volk." = "This land belongs to another nation.";
+"Für Wasserfelder werden Docks benötigt." = "Docks are required to work water tiles.";
+"Für dieses Feld fehlt der Arbeitsplatz in den Serverdaten." = "The server data has no work location for this tile.";
+"Keine Kolonie ausgewählt." = "No colony selected.";
+"Name: %@ · Typ: %@" = "Name: %@ · Type: %@";

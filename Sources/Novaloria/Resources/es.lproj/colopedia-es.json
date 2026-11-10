@@ -1,0 +1,5022 @@
+[
+  {
+    "id": "model.goods.food",
+    "category": "goods",
+    "title": "Alimento",
+    "summary": "El Alimento es necesario para alimentar a los colonos y criar caballos. Un nuevo colono nace cada vez que una colonia tiene 200 unidades de alimento o más.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.food.png"
+  },
+  {
+    "id": "model.goods.grain",
+    "category": "goods",
+    "title": "Granos",
+    "summary": "Los Granos, como el trigo, el arroz y el maíz, son la fuente más importante de comida para nuestros colonos.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.grain.png"
+  },
+  {
+    "id": "model.goods.fish",
+    "category": "goods",
+    "title": "Pescado",
+    "summary": "El Pescado es convertido automáticamente en alimento.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.fish.png"
+  },
+  {
+    "id": "model.goods.sugar",
+    "category": "goods",
+    "title": "Azúcar",
+    "summary": "El Azúcar es un edulcorante efectivo y también puede ser usado para destilar Ron, que alcanza precios más altos.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.sugar.png"
+  },
+  {
+    "id": "model.goods.tobacco",
+    "category": "goods",
+    "title": "Tabaco",
+    "summary": "El Tabaco puede ser fumado o usado para liar cigarros, que alcanzan precios más altos.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.tobacco.png"
+  },
+  {
+    "id": "model.goods.cotton",
+    "category": "goods",
+    "title": "Algodones",
+    "summary": "El Algodón puede ser usado para producir tela, que alcanza precios más altos.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.cotton.png"
+  },
+  {
+    "id": "model.goods.furs",
+    "category": "goods",
+    "title": "Pieles",
+    "summary": "Las Pieles de los animales pueden ser usadas para producir abrigos.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.furs.png"
+  },
+  {
+    "id": "model.goods.lumber",
+    "category": "goods",
+    "title": "Madera",
+    "summary": "La Madera se requiere para construir edificios y ciertas unidades, como barcos.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.lumber.png"
+  },
+  {
+    "id": "model.goods.ore",
+    "category": "goods",
+    "title": "Mineral",
+    "summary": "El Mineral de Hierro es necesario para producir herramientas, que tienen múltiples usos.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.ore.png"
+  },
+  {
+    "id": "model.goods.silver",
+    "category": "goods",
+    "title": "Plata",
+    "summary": "La Plata es un metal muy valioso que alcanza precios muy altos.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.silver.png"
+  },
+  {
+    "id": "model.goods.horses",
+    "category": "goods",
+    "title": "Caballos",
+    "summary": "Los caballos son necesarios para crear unidades de exploración y caballería. Para criar caballos en una colonia, es necesario algunos caballos y al menos una unidad de forraje por turno.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.food"
+    ],
+    "icon": "model.goods.horses.png"
+  },
+  {
+    "id": "model.goods.rum",
+    "category": "goods",
+    "title": "Ron",
+    "summary": "El Ron es una bebida alcohólica hecha de la caña de azúcar. Como un bien de lujo, alcanza precios muy altos.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.sugar"
+    ],
+    "icon": "model.goods.rum.png"
+  },
+  {
+    "id": "model.goods.cigars",
+    "category": "goods",
+    "title": "Cigarros",
+    "summary": "Los Cigarros están hechos del tabaco. Como un bien de lujo, alcanza precios muy altos.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.tobacco"
+    ],
+    "icon": "model.goods.cigars.png"
+  },
+  {
+    "id": "model.goods.cloth",
+    "category": "goods",
+    "title": "Telas",
+    "summary": "La Tela está hecha de algodón.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.cotton"
+    ],
+    "icon": "model.goods.cloth.png"
+  },
+  {
+    "id": "model.goods.coats",
+    "category": "goods",
+    "title": "Abrigos",
+    "summary": "Los Abrigos están hechos de pieles de animales.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.furs"
+    ],
+    "icon": "model.goods.coats.png"
+  },
+  {
+    "id": "model.goods.tradeGoods",
+    "category": "goods",
+    "title": "Mercaderías",
+    "summary": "Las Mercaderías sólo se producen en Europa y se usan para comerciar con los nativos.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.tradeGoods.png"
+  },
+  {
+    "id": "model.goods.tools",
+    "category": "goods",
+    "title": "Herramientas",
+    "summary": "Las Herramientas son necesarias para equipar pioneros, así como construir edificios avanzados y ciertas unidades como barcos. También se pueden usar para producir mosquetes.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.ore"
+    ],
+    "icon": "model.goods.tools.png"
+  },
+  {
+    "id": "model.goods.muskets",
+    "category": "goods",
+    "title": "Mosquetes",
+    "summary": "Los Mosquetes son necesarios para armar infantería y caballería.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.tools"
+    ],
+    "icon": "model.goods.muskets.png"
+  },
+  {
+    "id": "model.goods.bells",
+    "category": "goods",
+    "title": "Campanas",
+    "summary": "Las Campanas representan los deseos de independencia de los colonos.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.bells.png"
+  },
+  {
+    "id": "model.goods.crosses",
+    "category": "goods",
+    "title": "Cruces",
+    "summary": "Las Cruces representan el malestar religioso en Europa.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.crosses.png"
+  },
+  {
+    "id": "model.goods.hammers",
+    "category": "goods",
+    "title": "Martillos",
+    "summary": "Los Martillos representan el trabajo de construcción realizado en sus colonias.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Precio en oro",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.goods.lumber"
+    ],
+    "icon": "model.goods.hammers.png"
+  },
+  {
+    "id": "model.resource.game",
+    "category": "resources",
+    "title": "Caza",
+    "summary": "El bosque es el hogar de muchos animales, apropiado para cazar y obtener pieles o comida.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.game.png"
+  },
+  {
+    "id": "model.resource.minerals",
+    "category": "resources",
+    "title": "Minerales",
+    "summary": "El terreno es rico en minerales, y los que tienen paciencia, pueden encontrar mineral de hierro o incluso plata.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.minerals.png"
+  },
+  {
+    "id": "model.resource.ore",
+    "category": "resources",
+    "title": "Mineral de hierro",
+    "summary": "La tierra se abre y una larga veta de mineral de hierro está disponible para extraerlo. Sólo se encuentran en terrenos montañosos.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.ore.png"
+  },
+  {
+    "id": "model.resource.silver",
+    "category": "resources",
+    "title": "Plata",
+    "summary": "Esta montaña es conocida por sus vetas de plata, y hará que los pueblos cercanos prosperen.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.silver.png"
+  },
+  {
+    "id": "model.resource.lumber",
+    "category": "resources",
+    "title": "Madera",
+    "summary": "Este bosque tiene buenos y grandes árboles para obtener madera.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.lumber.png"
+  },
+  {
+    "id": "model.resource.furs",
+    "category": "resources",
+    "title": "Pieles",
+    "summary": "La abundancia de animales en estos bosques atraen muchos cazadores buscando presas fáciles.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.furs.png"
+  },
+  {
+    "id": "model.resource.tobacco",
+    "category": "resources",
+    "title": "Tabaco",
+    "summary": "El terreno de esta pradera es excepcionalmente apropiado para el crecimiento de tabaco.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.tobacco.png"
+  },
+  {
+    "id": "model.resource.sugar",
+    "category": "resources",
+    "title": "Caña de Azúcar",
+    "summary": "El terreno de esta sabana es excepcionalmente apropiado para el crecimiento de caña de azúcar.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.sugar.png"
+  },
+  {
+    "id": "model.resource.cotton",
+    "category": "resources",
+    "title": "Algodón",
+    "summary": "El terreno de este pradillo es excepcionalmente apropiado para el crecimiento de algodón.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.cotton.png"
+  },
+  {
+    "id": "model.resource.oasis",
+    "category": "resources",
+    "title": "Oasis",
+    "summary": "El oasis en el desierto es una vista deseada para todos los viajeros cansados.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.oasis.png"
+  },
+  {
+    "id": "model.resource.grain",
+    "category": "resources",
+    "title": "Grano",
+    "summary": "Los cultivos crecen excepcionalmente bien en esta fértil llanura.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.grain.png"
+  },
+  {
+    "id": "model.resource.fish",
+    "category": "resources",
+    "title": "Pescado",
+    "summary": "Una gran cantidad de peces pequeños sirven de alimento a muchos grandes peces en este punto, que a su vez atraen a los animosos pescadores.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.fish.png"
+  },
+  {
+    "id": "model.tile.plains",
+    "category": "terrain",
+    "title": "Llanuras",
+    "summary": "Las Llanuras son grandes áreas de tierra con poco relieve, más apropiadas para la agricultura. Producen grandes cantidades de grano, algo de algodón y mineral de hierro. Se encuentran en regiones templadas.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Granos",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Algodones",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "5"
+      },
+      {
+        "label": "Producción: Algodones",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Mineral",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.cotton",
+      "model.goods.grain",
+      "model.goods.ore"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.grassland",
+    "category": "terrain",
+    "title": "Pradera",
+    "summary": "Las Praderas son áreas continuas y planas con césped. A menudo se localizan cerca de bosques templados en áreas altas o desiertos en áreas subtropicales. Las Praderas son idóneas para el crecimiento de tabaco. También se pueden cultivar grano.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Granos",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Tabaco",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Tabaco",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.grain",
+      "model.goods.tobacco"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.prairie",
+    "category": "terrain",
+    "title": "Pradillo",
+    "summary": "El Pradillo es un área poblada por hierbas y matojos, con pocos árboles, y de un clima moderado o templado. El Pradillo es apropiada para cultivar grano y algodón.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Granos",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Algodones",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Algodones",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.cotton",
+      "model.goods.grain"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.savannah",
+    "category": "terrain",
+    "title": "Sabana",
+    "summary": "En la Sabana, los árboles y el césped dominan sobre las otras especies vegetales. La Sabana es generalmente una zona de transición entre bosques madereros y las praderas o desiertos. La Sabana produce principalmente grano y azúcar.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Granos",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Azúcar",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "4"
+      },
+      {
+        "label": "Producción: Azúcar",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.grain",
+      "model.goods.sugar"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.marsh",
+    "category": "terrain",
+    "title": "Marisma",
+    "summary": "La Marisma es un tipo de humedal que contiene pastos, juncos, cañas, carrizos, y otras hierbas de poca profundidad. Una Marisma produce algo de grano y de tabaco, además de mineral de hierro. Estas se encuentran principalmente cerca de zonas polares.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Granos",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Tabaco",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Tabaco",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Mineral",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Plata",
+        "value": "0"
+      }
+    ],
+    "related": [
+      "model.goods.grain",
+      "model.goods.ore",
+      "model.goods.silver",
+      "model.goods.tobacco"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.swamp",
+    "category": "terrain",
+    "title": "Pantano",
+    "summary": "Son tierras húmedas tropicales con agua superficial. Las Pantanos tienen una proporción mayor y más profunda agua superficial que las marismas. Pueden proporcionar algo de grano y poca cantidad de azúcar, tabaco y mineral de hierro.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Granos",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Azúcar",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Azúcar",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Mineral",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Plata",
+        "value": "0"
+      }
+    ],
+    "related": [
+      "model.goods.grain",
+      "model.goods.ore",
+      "model.goods.silver",
+      "model.goods.sugar"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.desert",
+    "category": "terrain",
+    "title": "Desierto",
+    "summary": "Los Desiertos son muy secos, reciben una precipitación mínima. Aunque en pequeñas cantidades, producen grano, algodón y mineral de hierro.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Granos",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Mineral",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "1"
+      },
+      {
+        "label": "Producción: Mineral",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "1"
+      },
+      {
+        "label": "Producción: Mineral",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Algodones",
+        "value": "1"
+      },
+      {
+        "label": "Producción: Mineral",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.goods.cotton",
+      "model.goods.grain",
+      "model.goods.ore"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.tundra",
+    "category": "terrain",
+    "title": "Tundra",
+    "summary": "La Tundra es una zona donde el crecimiento de los árboles se ve obstaculizado por las bajas temperaturas y las cortas temporadas de crecimiento. La tundra produce cereales y algo de mineral de hierro. Se encuentra cerca de las regiones polares.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Granos",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Mineral",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Mineral",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Plata",
+        "value": "0"
+      }
+    ],
+    "related": [
+      "model.goods.grain",
+      "model.goods.ore",
+      "model.goods.silver"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.mixedForest",
+    "category": "terrain",
+    "title": "Bosque Mixto",
+    "summary": "Los Bosques Mixtos, que se pueden encontrar en latitudes templadas producen grano, madera, pieles y algo de algodón. Si se despejan se convierten en llanuras.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Granos",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Pieles",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Algodones",
+        "value": "1"
+      },
+      {
+        "label": "Producción: Pieles",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Madera",
+        "value": "6"
+      }
+    ],
+    "related": [
+      "model.goods.cotton",
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.coniferForest",
+    "category": "terrain",
+    "title": "Bosque de Coníferas",
+    "summary": "Los Bosques de Coníferas producen grano, madera, pieles y algo de tabaco. Se encuentran principalmente en latitudes tropicales y se convierten en praderas cuando son desforestados.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Granos",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Pieles",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Tabaco",
+        "value": "1"
+      },
+      {
+        "label": "Producción: Pieles",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Madera",
+        "value": "6"
+      }
+    ],
+    "related": [
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber",
+      "model.goods.tobacco"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.broadleafForest",
+    "category": "terrain",
+    "title": "Bosque Robledal",
+    "summary": "Los Bosques Robledales producen grano, madera, pieles y algo de algodón. Se suelen encontrar en latitudes templadas y se convierten en pradillo cuando se desforestan.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Granos",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Pieles",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Algodones",
+        "value": "1"
+      },
+      {
+        "label": "Producción: Pieles",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Madera",
+        "value": "4"
+      }
+    ],
+    "related": [
+      "model.goods.cotton",
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.tropicalForest",
+    "category": "terrain",
+    "title": "Bosque Tropical",
+    "summary": "Los Bosques Tropicales producen grano, madera, pieles y algo de azúcar. Al despejarlos se convierten en Sabana.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Granos",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Pieles",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Azúcar",
+        "value": "1"
+      },
+      {
+        "label": "Producción: Pieles",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Madera",
+        "value": "4"
+      }
+    ],
+    "related": [
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber",
+      "model.goods.sugar"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.wetlandForest",
+    "category": "terrain",
+    "title": "Bosque Húmedo",
+    "summary": "Los Bosques Húmedos producen grano, madera, pieles y algo de mineral de hierro. Los Bosques Húmedos se pueden desforestar para producir tierras de marismas. Se encuentran cerca de las regiones polares.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Granos",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Pieles",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Tabaco",
+        "value": "1"
+      },
+      {
+        "label": "Producción: Pieles",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Madera",
+        "value": "4"
+      },
+      {
+        "label": "Producción: Mineral",
+        "value": "1"
+      },
+      {
+        "label": "Producción: Plata",
+        "value": "0"
+      }
+    ],
+    "related": [
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber",
+      "model.goods.ore",
+      "model.goods.silver",
+      "model.goods.tobacco"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.rainForest",
+    "category": "terrain",
+    "title": "Bosque Lluvioso",
+    "summary": "Los Bosques Lluviosos producen grano, madera, pieles y algo de mineral y azúcar. Se encuentran en los trópicos y pueden despejarse para producir pantanos.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Granos",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Azúcar",
+        "value": "1"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Azúcar",
+        "value": "1"
+      },
+      {
+        "label": "Producción: Pieles",
+        "value": "1"
+      },
+      {
+        "label": "Producción: Madera",
+        "value": "4"
+      },
+      {
+        "label": "Producción: Mineral",
+        "value": "1"
+      },
+      {
+        "label": "Producción: Plata",
+        "value": "0"
+      }
+    ],
+    "related": [
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber",
+      "model.goods.ore",
+      "model.goods.silver",
+      "model.goods.sugar"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.scrubForest",
+    "category": "terrain",
+    "title": "Bosque de Arbustos",
+    "summary": "El Bosque de Arbustos produce grano, madera, pieles y algo de algodón y mineral de hierro. Si se despejan, la tierra se convierte en un desierto. Se encuentran en zonas templadas.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Granos",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Pieles",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "1"
+      },
+      {
+        "label": "Producción: Pieles",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "1"
+      },
+      {
+        "label": "Producción: Pieles",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Algodones",
+        "value": "1"
+      },
+      {
+        "label": "Producción: Pieles",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Madera",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Mineral",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.cotton",
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber",
+      "model.goods.ore"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.borealForest",
+    "category": "terrain",
+    "title": "Bosque Boreal",
+    "summary": "Los Bosques Boreales producen grano, madera, pieles y algo de hierro. Se encuentran cerca de las regiones polares, y si se despejan sus bosques se produce zonas de tundra.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Granos",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Pieles",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Pieles",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Madera",
+        "value": "4"
+      },
+      {
+        "label": "Producción: Mineral",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber",
+      "model.goods.ore"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.hills",
+    "category": "terrain",
+    "title": "Colinas",
+    "summary": "Las Colinas se yerguen sobre el terreno circundante en un área limitada. Producen gran cantidad de mineral de hierro y también algo de grano.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Granos",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Mineral",
+        "value": "4"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Mineral",
+        "value": "4"
+      }
+    ],
+    "related": [
+      "model.goods.grain",
+      "model.goods.ore"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.mountains",
+    "category": "terrain",
+    "title": "Montañas",
+    "summary": "Las Montañas se extienden sobre el terreno circundante en un área limitada. Generalmente son más altas que las colinas. Son difíciles de recorrer y no se puede fundar colonias allí. Proporcionan una alta bonificación defensiva pero la fortificación no la incrementa. La minería resulta útil para la extracción de mineral de hierro y plata.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Mineral",
+        "value": "4"
+      },
+      {
+        "label": "Producción: Plata",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.ore",
+      "model.goods.silver"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.arctic",
+    "category": "terrain",
+    "title": "Ártico",
+    "summary": "El Ártico es mayormente una océano vasto y cubierto de hielo, el cual esta rodeado por suelo congelado y sin arboles, además de no producir nada. Estas zonas se encuentran cerca del Polo Norte y Sur, y por lo general, no pueden sostener colonias.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Granos",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Granos",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.grain"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.ocean",
+    "category": "terrain",
+    "title": "Océano",
+    "summary": "Los Océanos son cantidades enormes de agua salada, buena para la pesca. La cantidad de pescado se incrementa por la presencia de tierra y especialmente por desembocaduras de ríos.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Pescado",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.goods.fish"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.lake",
+    "category": "terrain",
+    "title": "Lago",
+    "summary": "Los Lagos son masas de agua tierra adentro. Las colonias pueden beneficiarse de los recursos de estos lagos, pero son inaccesibles por los barcos.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Pescado",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.goods.fish"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.highSeas",
+    "category": "terrain",
+    "title": "Alta Mar",
+    "summary": "El Alta Mar produce pescado. También permite a los barcos navegar hacia y desde Europa.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Pescado",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.goods.fish"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.greatRiver",
+    "category": "terrain",
+    "title": "Gran Río",
+    "summary": "Los Grandes Ríos son ríos por los que pueden navegar los barcos.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Pescado",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.goods.fish"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.role.default",
+    "category": "roles",
+    "title": "Predeterminado",
+    "summary": "",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.role.scout",
+    "category": "roles",
+    "title": "Explorador",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Coste de construcción / equipamiento: Caballos",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.goods.horses",
+      "model.unit.seasonedScout"
+    ],
+    "icon": "model.role.scout.png"
+  },
+  {
+    "id": "model.role.soldier",
+    "category": "roles",
+    "title": "Soldado",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Coste de construcción / equipamiento: Mosquetes",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.goods.muskets",
+      "model.unit.veteranSoldier"
+    ],
+    "icon": "model.role.soldier.png"
+  },
+  {
+    "id": "model.role.dragoon",
+    "category": "roles",
+    "title": "Dragón",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Coste de construcción / equipamiento: Mosquetes",
+        "value": "50"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Caballos",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.goods.horses",
+      "model.goods.muskets",
+      "model.unit.veteranSoldier"
+    ],
+    "icon": "model.role.dragoon.png"
+  },
+  {
+    "id": "model.role.pioneer",
+    "category": "roles",
+    "title": "Pionero",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Equipamiento máximo",
+        "value": "5"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.goods.tools",
+      "model.unit.hardyPioneer"
+    ],
+    "icon": "model.role.pioneer.png"
+  },
+  {
+    "id": "model.role.missionary",
+    "category": "roles",
+    "title": "Misionero",
+    "summary": "",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.unit.jesuitMissionary"
+    ],
+    "icon": "model.role.missionary.png"
+  },
+  {
+    "id": "model.role.infantry",
+    "category": "roles",
+    "title": "Infantería",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Coste de construcción / equipamiento: Mosquetes",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.goods.muskets",
+      "model.unit.kingsRegular"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.role.cavalry",
+    "category": "roles",
+    "title": "Caballería",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Coste de construcción / equipamiento: Mosquetes",
+        "value": "50"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Caballos",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.goods.horses",
+      "model.goods.muskets",
+      "model.unit.kingsRegular"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.role.mountedBrave",
+    "category": "roles",
+    "title": "Bravo Montado",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Coste de construcción / equipamiento: Caballos",
+        "value": "25"
+      }
+    ],
+    "related": [
+      "model.goods.horses"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.role.armedBrave",
+    "category": "roles",
+    "title": "Guerrero Armado",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Coste de construcción / equipamiento: Mosquetes",
+        "value": "25"
+      }
+    ],
+    "related": [
+      "model.goods.muskets"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.role.nativeDragoon",
+    "category": "roles",
+    "title": "Nativo Dragón",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Coste de construcción / equipamiento: Mosquetes",
+        "value": "25"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Caballos",
+        "value": "25"
+      }
+    ],
+    "related": [
+      "model.goods.horses",
+      "model.goods.muskets"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.improvement.river",
+    "category": "improvements",
+    "title": "Río",
+    "summary": "Río",
+    "text": "",
+    "facts": [
+      {
+        "label": "Turnos de trabajo adicionales",
+        "value": "0"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.improvement.road",
+    "category": "improvements",
+    "title": "Camino",
+    "summary": "Camino",
+    "text": "",
+    "facts": [
+      {
+        "label": "Turnos de trabajo adicionales",
+        "value": "0"
+      }
+    ],
+    "related": [
+      "model.role.pioneer"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.improvement.plow",
+    "category": "improvements",
+    "title": "Arado",
+    "summary": "Arado",
+    "text": "",
+    "facts": [
+      {
+        "label": "Turnos de trabajo adicionales",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.role.pioneer"
+    ],
+    "icon": "model.improvement.plow.png"
+  },
+  {
+    "id": "model.improvement.clearForest",
+    "category": "improvements",
+    "title": "Desforestar",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Turnos de trabajo adicionales",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.role.pioneer"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.improvement.fishBonusLand",
+    "category": "improvements",
+    "title": "Bonificación de pesca (costa)",
+    "summary": "Bonificación de pesca por la cercanía de tierra",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.improvement.fishBonusRiver",
+    "category": "improvements",
+    "title": "Bonificación de pesca (río)",
+    "summary": "Bonificación de pesca debido a la presencia de un río",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.freeColonist",
+    "category": "units",
+    "title": "Colono Libre",
+    "summary": "El Colono Libre no posee ninguna habilidad en particular. Sin embargo, los Colonos Libres pueden convertirse en otras unidades especializadas trabajando en las casillas de sus colonias o visitando asentamientos indios. También pueden ascender a Soldados Veteranos o ser educados en colonias que dispongan al menos de una escuela.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "0"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Alimento",
+        "value": "200"
+      }
+    ],
+    "related": [
+      "model.goods.food"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.expertFarmer",
+    "category": "units",
+    "title": "Granjero Experto",
+    "summary": "El Granjero Experto es un especialista en producir alimento.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "1"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "1100"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.grain"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.expertFisherman",
+    "category": "units",
+    "title": "Pescador Experto",
+    "summary": "El Pescador Experto es un especialista en pescar, el pescado se convierte automáticamente en alimento.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "1"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "1000"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.fish"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.expertFurTrapper",
+    "category": "units",
+    "title": "Cazador de Pieles Experto",
+    "summary": "El Cazador de Pieles Experto es un especialista obteniendo pieles.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "1"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.furs"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.expertSilverMiner",
+    "category": "units",
+    "title": "Minero de Plata Experto",
+    "summary": "El Minero Experto de Plata es la unidad que más plata obtiene.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "1"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "900"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.silver"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.expertLumberJack",
+    "category": "units",
+    "title": "Leñador Experto",
+    "summary": "El Leñador Experto tala árboles para producir madera.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "1"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "700"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.lumber"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.expertOreMiner",
+    "category": "units",
+    "title": "Minero de Hierro Experto",
+    "summary": "El Minero de Hierro Experto es un especialista obteniendo mineral de hierro.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "1"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "600"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.ore"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterSugarPlanter",
+    "category": "units",
+    "title": "Cultivador de Azúcar Experto",
+    "summary": "El Cultivador de Azúcar Experto es un especialista cultivando la caña de azúcar.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "2"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.sugar"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterCottonPlanter",
+    "category": "units",
+    "title": "Cultivador de Algodón Experto",
+    "summary": "El Cultivador de Algodón Experto es un especialista en cultivar algodón.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "2"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.cotton"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterTobaccoPlanter",
+    "category": "units",
+    "title": "Cultivador de Tabaco Experto",
+    "summary": "El Cultivador de Tabaco Experto es un especialista en cultivar tabaco.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "2"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.tobacco"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.firebrandPreacher",
+    "category": "units",
+    "title": "Predicador Ferviente",
+    "summary": "El Predicador Ferviente aumenta el malestar religioso en Europa (simbolizado por las cruces), lo que aumenta la emigración al Nuevo Mundo.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "3"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "1500"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.crosses"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.elderStatesman",
+    "category": "units",
+    "title": "Estadista Mayor",
+    "summary": "El Estadista Mayor aumenta el deseo de independencia por parte de los colonos (simbolizado por las Campanas de la Libertad), lo que aumenta la afiliación de Hijos de la Libertad en las colonias.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "3"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "1900"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.bells"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterCarpenter",
+    "category": "units",
+    "title": "Carpintero Experto",
+    "summary": "El Carpintero Experto está especializado en producir edificios y unidades en sus colonias.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "1"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "1000"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.hammers"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterDistiller",
+    "category": "units",
+    "title": "Destilador Experto",
+    "summary": "El Destilador Experto está especializado en usar azúcar para hacer Ron.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "2"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "1100"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.rum"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterWeaver",
+    "category": "units",
+    "title": "Tejedor Experto",
+    "summary": "El Tejedor Experto está especializado en usar algodón para convertirlo en tela.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "2"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "1300"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.cloth"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterTobacconist",
+    "category": "units",
+    "title": "Tabaquero Experto",
+    "summary": "El Tabaquero Experto está especializado en hacer cigarros a partir de las hojas de tabaco.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "2"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "1200"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.cigars"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterFurTrader",
+    "category": "units",
+    "title": "Comerciante de Piel Experto",
+    "summary": "El Comerciante de Piel Experto está especializado en realizar abrigos a partir de las pieles.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "2"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "950"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.coats"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterBlacksmith",
+    "category": "units",
+    "title": "Herrero Experto",
+    "summary": "El Herrero Experto está especializado en convertir el hierro en herramientas.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "2"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "1050"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterGunsmith",
+    "category": "units",
+    "title": "Armero Experto",
+    "summary": "El Armero Experto está especializado en usar herramientas para realizar mosquetes.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "2"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "850"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.muskets"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.seasonedScout",
+    "category": "units",
+    "title": "Explorador Experto",
+    "summary": "El Explorador Experto es el mejor explorando el Nuevo Mundo, particularmente asentamientos indios y rumores de ciudades perdidas.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "1"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.hardyPioneer",
+    "category": "units",
+    "title": "Pionero Experto",
+    "summary": "El Pionero Experto está especializado en despejar bosques, arar campos y construir caminos.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "1"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "1200"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.veteranSoldier",
+    "category": "units",
+    "title": "Soldado Veterano",
+    "summary": "El Soldado Veterano es una fuerza militar experimentada. Cualquier Colono Libre puede ser ascendido a Soldado Veterano al ganar una batalla.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "2"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "2000"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.jesuitMissionary",
+    "category": "units",
+    "title": "Misionero Jesuita",
+    "summary": "El Misionero Jesuita es capaz de establecer una misión en un asentamiento indio y está especializado en convertir indios.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "3"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "1400"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.indenturedServant",
+    "category": "units",
+    "title": "Siervo Aprendiz",
+    "summary": "El Siervo Aprendiz es apropiado para el trabajo en las cercanías de la colonia, pero lo es menos para el trabajo en su interior. Puede convertirse en Colono Libre a través de ascenso o de educación.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "-1"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.pettyCriminal",
+    "category": "units",
+    "title": "Criminal Menor",
+    "summary": "El Criminal Menor es apropiado para el trabajo en las cercanías de la colonia, pero no lo es para el trabajo dentro. Puede convertirse en Siervo Aprendiz a través de ascenso o educación.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "-2"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.indianConvert",
+    "category": "units",
+    "title": "Indio Converso",
+    "summary": "El Indio Converso es un nativo que se ha unido a una de nuestras colonias. Está especializado en cualquiera de los trabajos en las cercanías de la colonia pero no lo está para el trabajo en su interior. Tan pronto como Bartolomé de las Casas se una al Congreso Continental todos los Indios Conversos se convertirán en Colonos Libres.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "0"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.brave",
+    "category": "units",
+    "title": "Bravo",
+    "summary": "El Bravo es un nativo capaz de llevar una pequeña cantidad de bienes. Puede estar armado y montado. Los bravos menudo visitan las colonias para ofrecer regalos o realizar exigencias o peticiones.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "1"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Espacio de carga",
+        "value": "1"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.colonialRegular",
+    "category": "units",
+    "title": "Regular Colonial",
+    "summary": "El Regular Colonial es una unidad de choque que solo está disponible después de la Declaración de Independencia.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "3"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.kingsRegular",
+    "category": "units",
+    "title": "Regular del Rey",
+    "summary": "El Regular del Rey está sólo disponible para la Corona. Los veremos sólo cuando llegue la Fuerza Real Expedicionaria después de la Declaración de Independencia.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Nivel de habilidad",
+        "value": "4"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.caravel",
+    "category": "units",
+    "title": "Carabela",
+    "summary": "La Carabela es pequeña y un barco mercante no particularmente rápido.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "2"
+      },
+      {
+        "label": "Espacio de carga",
+        "value": "2"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "1000"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "4"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "128"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "40"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.frigate",
+    "category": "units",
+    "title": "Fragata",
+    "summary": "La Fragata es un buque de guerra pequeño.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "2"
+      },
+      {
+        "label": "Ataque",
+        "value": "16"
+      },
+      {
+        "label": "Defensa",
+        "value": "16"
+      },
+      {
+        "label": "Espacio de carga",
+        "value": "4"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "5000"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "6"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "512"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "200"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.galleon",
+    "category": "units",
+    "title": "Galeón",
+    "summary": "El Galeón es un gran barco mercante. Es el único barco capaz de transportar un Carro de Tesoros a Europa.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "2"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "10"
+      },
+      {
+        "label": "Espacio de carga",
+        "value": "6"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "3000"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "6"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "320"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.manOWar",
+    "category": "units",
+    "title": "Hombre de Guerra",
+    "summary": "El Hombre de Guerra es un buque enorme. Está disponible sólo después de la Declaración de Independencia.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "2"
+      },
+      {
+        "label": "Ataque",
+        "value": "24"
+      },
+      {
+        "label": "Defensa",
+        "value": "24"
+      },
+      {
+        "label": "Espacio de carga",
+        "value": "6"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "6"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "1024"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "300"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.merchantman",
+    "category": "units",
+    "title": "Navío Mercante",
+    "summary": "El Navío Mercante es un barco de tamaño medio.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "6"
+      },
+      {
+        "label": "Espacio de carga",
+        "value": "4"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "2000"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "5"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "192"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "80"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.privateer",
+    "category": "units",
+    "title": "Barco Corsario",
+    "summary": "La Barco Corsario es un pequeño buque de guerra que no hace uso de la bandera del país para el que actúa. Es la única unidad capaz de atacar a otras sin declarar la guerra.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "2"
+      },
+      {
+        "label": "Ataque",
+        "value": "8"
+      },
+      {
+        "label": "Defensa",
+        "value": "8"
+      },
+      {
+        "label": "Espacio de carga",
+        "value": "2"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "2000"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "8"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "256"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "120"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.artillery",
+    "category": "units",
+    "title": "Artillería",
+    "summary": "La Artillería es buena atacando y defendiendo colonias, pero muy vulnerable en campo abierto.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "7"
+      },
+      {
+        "label": "Defensa",
+        "value": "5"
+      },
+      {
+        "label": "Precio en oro",
+        "value": "500"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "192"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "40"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.damagedArtillery",
+    "category": "units",
+    "title": "Artillería dañada",
+    "summary": "La Artillería dañada es como la Pieza de Artillería pero más débil.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "5"
+      },
+      {
+        "label": "Defensa",
+        "value": "3"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": "model.unit.damagedArtillery.png"
+  },
+  {
+    "id": "model.unit.treasureTrain",
+    "category": "units",
+    "title": "Carro de Tesoros",
+    "summary": "El único propósito del Carro de Tesoros es para transportar el oro encontrado en las ruinas de una Ciudad Perdida, o saqueado un asentamiento indio. Si entra en una colonia de nuestra propiedad, la Corona ofrecerá transportarlo a Europa \"a un precio razonable\". Si tenemos un Galeón, podemos trasladarlo a Europa nosotros mismos.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "0"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": "model.unit.treasureTrain.png"
+  },
+  {
+    "id": "model.unit.wagonTrain",
+    "category": "units",
+    "title": "Carro",
+    "summary": "Un Carro es capaz de transportar hasta 200 unidades de bienes por tierra. Puede ser usado para comerciar con otros jugadores o transportar bienes entre nuestras propias colonias.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "0"
+      },
+      {
+        "label": "Defensa",
+        "value": "1"
+      },
+      {
+        "label": "Espacio de carga",
+        "value": "2"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "2"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "40"
+      }
+    ],
+    "related": [
+      "model.goods.hammers"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.revenger",
+    "category": "units",
+    "title": "El Capitán",
+    "summary": "El Capitán ha vendido su alma al Diablo.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "3"
+      },
+      {
+        "label": "Ataque",
+        "value": "666"
+      },
+      {
+        "label": "Defensa",
+        "value": "666"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "6"
+      }
+    ],
+    "related": [],
+    "icon": "model.unit.revenger.png"
+  },
+  {
+    "id": "model.unit.flyingDutchman",
+    "category": "units",
+    "title": "El Holandés Errante",
+    "summary": "El Holandés Errante es el barco maldito.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "3"
+      },
+      {
+        "label": "Ataque",
+        "value": "666"
+      },
+      {
+        "label": "Defensa",
+        "value": "666"
+      },
+      {
+        "label": "Espacio de carga",
+        "value": "6"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "12"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.undead",
+    "category": "units",
+    "title": "noMuerto",
+    "summary": "Los noMuerto son la tripulación del Holandés Errante.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Alcance visual",
+        "value": "1"
+      },
+      {
+        "label": "Ataque",
+        "value": "18"
+      },
+      {
+        "label": "Defensa",
+        "value": "4"
+      },
+      {
+        "label": "Puntos de movimiento",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": "model.unit.undead.png"
+  },
+  {
+    "id": "model.building.townHall",
+    "category": "buildings",
+    "title": "Ayuntamiento",
+    "summary": "El Ayuntamiento, que no puede evolucionar, provee espacio de hasta tres colonos para producir campanas de la libertad. Su efecto puede incrementarse construyendo una prensa y un periódico.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Producción: Campanas",
+        "value": "1"
+      },
+      {
+        "label": "Producción: Campanas",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.bells"
+    ],
+    "icon": "model.building.townHall.png"
+  },
+  {
+    "id": "model.building.carpenterHouse",
+    "category": "buildings",
+    "title": "Casa del Carpintero",
+    "summary": "La casa del carpintero, que puede evolucionar en aserradero una vez que la colonia haya alcanzado 3 de población, se usa para convertir madera en martillos. Los martillos se usan para construir o evolucionar todo tipo de edificios.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Consumo: Madera",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Martillos",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.lumber"
+    ],
+    "icon": "model.building.carpenterHouse.png"
+  },
+  {
+    "id": "model.building.lumberMill",
+    "category": "buildings",
+    "title": "Aserradero",
+    "summary": "El aserradero, que no puede evolucionar, se usa para convertir madera en martillos. Los martillos se usan para construir o evolucionar todo tipo de edificios. \\nUn aserradero aumenta la producción de martillos.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Población requerida",
+        "value": "3"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "10"
+      },
+      {
+        "label": "Consumo: Madera",
+        "value": "6"
+      },
+      {
+        "label": "Producción: Martillos",
+        "value": "6"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "52"
+      }
+    ],
+    "related": [
+      "model.building.carpenterHouse",
+      "model.goods.hammers",
+      "model.goods.lumber"
+    ],
+    "icon": "model.building.lumberMill.png"
+  },
+  {
+    "id": "model.building.blacksmithHouse",
+    "category": "buildings",
+    "title": "Casa del Herrero",
+    "summary": "La casa del herrero, que puede evolucionar a taller de fundición, se usa para convertir mineral de hierro en herramientas. Las herramientas se usan para construir ciertos tipos de edificios y evolucionar todo tipo de edificios. También las usan los pioneros y pueden producir mosquetes. Una vez que la colonia haya alcanzado 8 de población, el taller de fundición puede ser sustituido por un alto horno, siempre que Adam Smith se haya unido al Congreso Continental.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Consumo: Mineral",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Herramientas",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.ore",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.blacksmithHouse.png"
+  },
+  {
+    "id": "model.building.blacksmithShop",
+    "category": "buildings",
+    "title": "Taller de Fundición",
+    "summary": "El taller de fundición, que puede evolucionar a alto horno, se usa para convertir mineral de hierro en herramientas. Las herramientas se usan para construir ciertos tipos de edificios y evolucionar todo tipo de edificios. También las usan los pioneros y pueden producir mosquetes. Una vez que la colonia haya alcanzado 8 de población, el taller de fundición puede ser sustituido por un alto horno, siempre que Adam Smith se haya unido al Congreso Continental.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Mantenimiento en oro",
+        "value": "5"
+      },
+      {
+        "label": "Consumo: Mineral",
+        "value": "6"
+      },
+      {
+        "label": "Producción: Herramientas",
+        "value": "6"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "64"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.building.blacksmithHouse",
+      "model.goods.hammers",
+      "model.goods.ore",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.blacksmithShop.png"
+  },
+  {
+    "id": "model.building.ironWorks",
+    "category": "buildings",
+    "title": "Alto Horno",
+    "summary": "El alto horno, que no puede evolucionar, se usa para convertir mineral de hierro en herramientas. Las herramientas se requieren al construir ciertos tipos de edificios y evolucionar todo tipo de edificios. Las herramientas las usan los pioneros y son necesarias para producir mosquetes. Un alto horno aumenta la producción de herramientas.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Población requerida",
+        "value": "8"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "15"
+      },
+      {
+        "label": "Consumo: Mineral",
+        "value": "6"
+      },
+      {
+        "label": "Producción: Herramientas",
+        "value": "9"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "240"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.blacksmithShop",
+      "model.goods.hammers",
+      "model.goods.ore",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.ironWorks.png"
+  },
+  {
+    "id": "model.building.tobacconistHouse",
+    "category": "buildings",
+    "title": "Casa del Tabaquero",
+    "summary": "La casa del tabaquero, que puede evolucionar a una tienda del tabaquero, se usa para convertir tabaco en cigarros. Una vez que la población de la colonia ha alcanzado los 8, puede evolucionar a industria tabaquera, siempre que Adam Smith se haya unido al Congreso Continental.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Consumo: Tabaco",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Cigarros",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.cigars",
+      "model.goods.tobacco"
+    ],
+    "icon": "model.building.tobacconistHouse.png"
+  },
+  {
+    "id": "model.building.tobacconistShop",
+    "category": "buildings",
+    "title": "Tienda del Tabaquero",
+    "summary": "La tienda del tabaquero, que puede evolucionar a una industria tabaquera, se usa para convertir tabaco en cigarros. Una vez que la población de la colonia ha alcanzado los 8, puede evolucionar a industria tabaquera, siempre que Adam Smith se haya unido al Congreso Continental. \\nUna tienda del tabaquero aumenta la producción de cigarros.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Mantenimiento en oro",
+        "value": "5"
+      },
+      {
+        "label": "Consumo: Tabaco",
+        "value": "6"
+      },
+      {
+        "label": "Producción: Cigarros",
+        "value": "6"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "64"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.building.tobacconistHouse",
+      "model.goods.cigars",
+      "model.goods.hammers",
+      "model.goods.tobacco",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.tobacconistShop.png"
+  },
+  {
+    "id": "model.building.cigarFactory",
+    "category": "buildings",
+    "title": "Fabrica Tabaquera",
+    "summary": "La fabrica tabaquera, que no puede evolucionar, se usa para convertir tabaco en cigarros. \\nAumenta la producción de cigarros.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Población requerida",
+        "value": "8"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "15"
+      },
+      {
+        "label": "Consumo: Tabaco",
+        "value": "6"
+      },
+      {
+        "label": "Producción: Cigarros",
+        "value": "9"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "160"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.tobacconistShop",
+      "model.goods.cigars",
+      "model.goods.hammers",
+      "model.goods.tobacco",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.cigarFactory.png"
+  },
+  {
+    "id": "model.building.weaverHouse",
+    "category": "buildings",
+    "title": "Casa del Sastre",
+    "summary": "La casa del sastre, que puede evolucionar a un taller de confección, se usa para convertir algodón en tela. Una vez que la población de la colonia ha alcanzado los 8, puede evolucionar a molino textil, siempre que Adam Smith se haya unido al Congreso Continental.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Consumo: Algodones",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Telas",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.cloth",
+      "model.goods.cotton"
+    ],
+    "icon": "model.building.weaverHouse.png"
+  },
+  {
+    "id": "model.building.weaverShop",
+    "category": "buildings",
+    "title": "Taller de Confección",
+    "summary": "El taller de confección, que puede evolucionar a un molino textil, se usa para convertir algodón en tela. Puede evolucionar a molino textil tan pronto como la colonia alcance 8 de población y siempre que Adam Smith se haya unido al Congreso Continental. Un taller de confección aumenta la producción de tela.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Mantenimiento en oro",
+        "value": "5"
+      },
+      {
+        "label": "Consumo: Algodones",
+        "value": "6"
+      },
+      {
+        "label": "Producción: Telas",
+        "value": "6"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "64"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.building.weaverHouse",
+      "model.goods.cloth",
+      "model.goods.cotton",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.weaverShop.png"
+  },
+  {
+    "id": "model.building.textileMill",
+    "category": "buildings",
+    "title": "Molino Textil",
+    "summary": "El molino textil, que no puede evolucionar, se usa para convertir algodón en tela. \\nUn molino textil aumenta la producción de tela.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Población requerida",
+        "value": "8"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "15"
+      },
+      {
+        "label": "Consumo: Algodones",
+        "value": "6"
+      },
+      {
+        "label": "Producción: Telas",
+        "value": "9"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "160"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.weaverShop",
+      "model.goods.cloth",
+      "model.goods.cotton",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.textileMill.png"
+  },
+  {
+    "id": "model.building.distillerHouse",
+    "category": "buildings",
+    "title": "Casa de la Destilería",
+    "summary": "La casa de la destilería, que puede evolucionar a una destilería de ron, se usa para convertir azúcar en ron.\\nUna vez que Adam Smith se haya unido al Congreso Continental y la colonia haya alcanzado 8 de población, puede evolucionar a fabrica de ron.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Consumo: Azúcar",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Ron",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.rum",
+      "model.goods.sugar"
+    ],
+    "icon": "model.building.distillerHouse.png"
+  },
+  {
+    "id": "model.building.rumDistillery",
+    "category": "buildings",
+    "title": "Destilería de Ron",
+    "summary": "La destilería de ron, que puede evolucionar a una fabrica de ron, se usa para convertir azúcar en ron. Una vez Adam Smith se haya unido al Congreso Continental y la colonia haya alcanzado 8 de población, puede evolucionar a fabrica de ron.\\nAumenta la producción de ron.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Mantenimiento en oro",
+        "value": "5"
+      },
+      {
+        "label": "Consumo: Azúcar",
+        "value": "6"
+      },
+      {
+        "label": "Producción: Ron",
+        "value": "6"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "64"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.building.distillerHouse",
+      "model.goods.hammers",
+      "model.goods.rum",
+      "model.goods.sugar",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.rumDistillery.png"
+  },
+  {
+    "id": "model.building.rumFactory",
+    "category": "buildings",
+    "title": "Fabrica de Ron",
+    "summary": "La fabrica de ron, que no puede evolucionar, se usa para convertir azúcar en ron. Aumenta la producción de ron.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Población requerida",
+        "value": "8"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "15"
+      },
+      {
+        "label": "Consumo: Azúcar",
+        "value": "6"
+      },
+      {
+        "label": "Producción: Ron",
+        "value": "9"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "160"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.rumDistillery",
+      "model.goods.hammers",
+      "model.goods.rum",
+      "model.goods.sugar",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.rumFactory.png"
+  },
+  {
+    "id": "model.building.furTraderHouse",
+    "category": "buildings",
+    "title": "Casa Comercial de Pieles",
+    "summary": "La casa comercial de pieles, que puede evolucionar a un puesto comercial de pieles, se usa para convertir pieles en abrigos. Una vez que la colonia haya alcanzado 6 de población, puede evolucionar a industria peletera, siempre que Adam Smith se haya unido al Congreso Continental.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Consumo: Pieles",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Abrigos",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.coats",
+      "model.goods.furs"
+    ],
+    "icon": "model.building.furTraderHouse.png"
+  },
+  {
+    "id": "model.building.furTradingPost",
+    "category": "buildings",
+    "title": "Puesto Comercial de Pieles",
+    "summary": "El puesto comercial de pieles, que puede evolucionar a una industria peletera, se usa para convertir pieles en abrigos. Una vez que la colonia haya alcanzado 6 de población, puede evolucionar a industria peletera, siempre que Adam Smith se haya unido al Congreso Continental. Aumenta la producción de abrigos.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Mantenimiento en oro",
+        "value": "5"
+      },
+      {
+        "label": "Consumo: Pieles",
+        "value": "6"
+      },
+      {
+        "label": "Producción: Abrigos",
+        "value": "6"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "56"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.building.furTraderHouse",
+      "model.goods.coats",
+      "model.goods.furs",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.furTradingPost.png"
+  },
+  {
+    "id": "model.building.furFactory",
+    "category": "buildings",
+    "title": "Industria Peletera",
+    "summary": "La industria peletera, que no puede evolucionar, se usa para producir pieles.\\nAumenta la producción de pieles.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Población requerida",
+        "value": "6"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "15"
+      },
+      {
+        "label": "Consumo: Pieles",
+        "value": "6"
+      },
+      {
+        "label": "Producción: Abrigos",
+        "value": "9"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "160"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.furTradingPost",
+      "model.goods.coats",
+      "model.goods.furs",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.furFactory.png"
+  },
+  {
+    "id": "model.building.schoolhouse",
+    "category": "buildings",
+    "title": "Casa Escuela",
+    "summary": "Una colonia con una población de 4 puede construir una casa escuela, lo que permite a algún maestro artesano enseñar a un colono su oficio. Tan pronto como la población alcance 8, puede evolucionar a instituto, en el que dos colonos pueden enseñar oficios adicionales. Una vez que la población alcance 10, el instituto puede reemplazarse por una universidad, donde todos los oficios pueden enseñarse por tres colonos.\\n\\nUna casa escuela permite enseñar las habilidades de nivel facultad 1.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Puestos de trabajo",
+        "value": "1"
+      },
+      {
+        "label": "Población requerida",
+        "value": "4"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "5"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "64"
+      }
+    ],
+    "related": [
+      "model.goods.hammers"
+    ],
+    "icon": "model.building.schoolhouse.png"
+  },
+  {
+    "id": "model.building.college",
+    "category": "buildings",
+    "title": "Instituto",
+    "summary": "Una colonia con una población de 4 puede construir una casa escuela, lo que permite a algún maestro artesano enseñar a un colono su oficio. Tan pronto como la población alcance 8, puede evolucionar a instituto, en el que dos colonos pueden enseñar oficios adicionales. Una vez que la población alcance 10, el instituto puede reemplazarse por una universidad, donde todos los oficios pueden enseñarse por tres colonos.\\n\\nUn instituto permite enseñar las habilidades del nivel facultad 2.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Puestos de trabajo",
+        "value": "2"
+      },
+      {
+        "label": "Población requerida",
+        "value": "8"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "10"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "160"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.building.schoolhouse",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.college.png"
+  },
+  {
+    "id": "model.building.university",
+    "category": "buildings",
+    "title": "Universidad",
+    "summary": "Una colonia con una población de 4 puede construir una casa escuela, lo que permite a algún maestro artesano enseñar a un colono su oficio. Tan pronto como la población alcance 8, puede evolucionar a instituto, en el que dos colonos pueden enseñar oficios adicionales. Una vez que la población alcance 10, el instituto puede reemplazarse por una universidad, donde todos los oficios pueden enseñarse por tres colonos.\\n\\nUna universidad permite enseñar las habilidades de facultad 3.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Puestos de trabajo",
+        "value": "3"
+      },
+      {
+        "label": "Población requerida",
+        "value": "10"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "15"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "200"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.college",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.university.png"
+  },
+  {
+    "id": "model.building.armory",
+    "category": "buildings",
+    "title": "Armería",
+    "summary": "La armería se usa para convertir herramientas en mosquetes. Una vez que la colonia haya alcanzado 8 de población, la armería puede evolucionar a maestranza y luego a un arsenal, siempre que Adam Smith se haya unido al Congreso Continental.\\n\\nDespués de construir una armería se puede producir mosquetes y artillería.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Mantenimiento en oro",
+        "value": "5"
+      },
+      {
+        "label": "Consumo: Herramientas",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Mosquetes",
+        "value": "3"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "52"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.muskets",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.armory.png"
+  },
+  {
+    "id": "model.building.magazine",
+    "category": "buildings",
+    "title": "Maestranza",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Población requerida",
+        "value": "8"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "10"
+      },
+      {
+        "label": "Consumo: Herramientas",
+        "value": "6"
+      },
+      {
+        "label": "Producción: Mosquetes",
+        "value": "6"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "120"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.building.armory",
+      "model.goods.hammers",
+      "model.goods.muskets",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.magazine.png"
+  },
+  {
+    "id": "model.building.arsenal",
+    "category": "buildings",
+    "title": "Arsenal",
+    "summary": "El arsenal se usa para convertir herramientas en mosquetes.\\n\\nDespués de construir un arsenal, con una herramienta se producen dos mosquetes.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Población requerida",
+        "value": "8"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "15"
+      },
+      {
+        "label": "Consumo: Herramientas",
+        "value": "9"
+      },
+      {
+        "label": "Producción: Mosquetes",
+        "value": "9"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "240"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.magazine",
+      "model.goods.hammers",
+      "model.goods.muskets",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.arsenal.png"
+  },
+  {
+    "id": "model.building.chapel",
+    "category": "buildings",
+    "title": "Capilla",
+    "summary": "La capilla es donde los colonos realizan sus practicas religiosas. Una capilla produce una pequeña cantidad de cruces por sí misma, pero no puede albergar un predicador. Se necesita evolucionar a iglesia para ello.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Puestos de trabajo",
+        "value": "0"
+      },
+      {
+        "label": "Producción: Cruces",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.crosses"
+    ],
+    "icon": "model.building.chapel.png"
+  },
+  {
+    "id": "model.building.church",
+    "category": "buildings",
+    "title": "Iglesia",
+    "summary": "Una colonia con una población de 3 ó mas puede construir una iglesia, que puede evolucionar a catedral tan pronto como la colonia alcance 8 de población. La libertad religiosa del Nuevo Mundo (simbolizada por cruces) causa un incremento de inmigración desde Europa.\\n\\nDespués de construir una iglesia la producción de cruces aumenta y se pueden poner en servicio los misioneros.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Puestos de trabajo",
+        "value": "3"
+      },
+      {
+        "label": "Población requerida",
+        "value": "3"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "5"
+      },
+      {
+        "label": "Producción: Cruces",
+        "value": "2"
+      },
+      {
+        "label": "Producción: Cruces",
+        "value": "3"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "64"
+      }
+    ],
+    "related": [
+      "model.building.chapel",
+      "model.goods.crosses",
+      "model.goods.hammers"
+    ],
+    "icon": "model.building.church.png"
+  },
+  {
+    "id": "model.building.cathedral",
+    "category": "buildings",
+    "title": "Catedral",
+    "summary": "Una colonia que haya alcanzado 3 de población puede construir una iglesia, que puede evolucionar a catedral tan pronto como la población alcance 8. La libertad religiosa en el Nuevo Mundo (simbolizada por las cruces) causa un incremento de la inmigración desde Europa.\\n\\nDespués de construir una catedral la producción de cruces aumenta.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Puestos de trabajo",
+        "value": "3"
+      },
+      {
+        "label": "Población requerida",
+        "value": "8"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "15"
+      },
+      {
+        "label": "Producción: Cruces",
+        "value": "3"
+      },
+      {
+        "label": "Producción: Cruces",
+        "value": "6"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "176"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.church",
+      "model.goods.crosses",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.cathedral.png"
+  },
+  {
+    "id": "model.building.stockade",
+    "category": "buildings",
+    "title": "Empalizada",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Puestos de trabajo",
+        "value": "0"
+      },
+      {
+        "label": "Población requerida",
+        "value": "3"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "64"
+      }
+    ],
+    "related": [
+      "model.goods.hammers"
+    ],
+    "icon": "model.building.stockade.png"
+  },
+  {
+    "id": "model.building.fort",
+    "category": "buildings",
+    "title": "Fuerte",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Puestos de trabajo",
+        "value": "0"
+      },
+      {
+        "label": "Población requerida",
+        "value": "3"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "10"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "120"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.stockade",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.fort.png"
+  },
+  {
+    "id": "model.building.fortress",
+    "category": "buildings",
+    "title": "Fortaleza",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Puestos de trabajo",
+        "value": "0"
+      },
+      {
+        "label": "Población requerida",
+        "value": "8"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "15"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "320"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "200"
+      }
+    ],
+    "related": [
+      "model.building.fort",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.fortress.png"
+  },
+  {
+    "id": "model.building.depot",
+    "category": "buildings",
+    "title": "Depósito",
+    "summary": "El depósito almacena todo tipo de bienes. Su capacidad inicial es de 100 unidades de cada tipo de bienes, puede evolucionar a almacén, donde caben 200. \\nConstruir una expansión del almacén aumenta la capacidad a 300.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Puestos de trabajo",
+        "value": "0"
+      }
+    ],
+    "related": [],
+    "icon": "model.building.depot.png"
+  },
+  {
+    "id": "model.building.warehouse",
+    "category": "buildings",
+    "title": "Almacén",
+    "summary": "El almacén almacena todo tipo de bienes. Es la primera evolución del depósito, con una capacidad de 200 unidades de cada tipo de bienes. \\nConstruir la expansión del almacén aumenta la capacidad a 300.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Puestos de trabajo",
+        "value": "0"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "5"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "80"
+      }
+    ],
+    "related": [
+      "model.building.depot",
+      "model.goods.hammers"
+    ],
+    "icon": "model.building.warehouse.png"
+  },
+  {
+    "id": "model.building.warehouseExpansion",
+    "category": "buildings",
+    "title": "Expansión del Almacén",
+    "summary": "La expansión de almacén, almacena todo tipo de bienes. Es una mejora del almacén que permite almacenar 300 unidades de cada tipo de bienes.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Puestos de trabajo",
+        "value": "0"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "5"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "80"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.building.warehouse",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.warehouseExpansion.png"
+  },
+  {
+    "id": "model.building.country",
+    "category": "buildings",
+    "title": "Pastizal",
+    "summary": "El pastizal es un lugar cerca de la colonia donde los caballos trotan libremente. Construir establos aumentará la producción de caballos.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Puestos de trabajo",
+        "value": "0"
+      },
+      {
+        "label": "Consumo: Alimento",
+        "value": "1"
+      },
+      {
+        "label": "Producción: Caballos",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.food",
+      "model.goods.horses"
+    ],
+    "icon": "model.building.country.png"
+  },
+  {
+    "id": "model.building.stables",
+    "category": "buildings",
+    "title": "Establo",
+    "summary": "El establo aumenta la producción máxima de caballos reduciendo el tamaño de los rebaños.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Puestos de trabajo",
+        "value": "0"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "5"
+      },
+      {
+        "label": "Consumo: Alimento",
+        "value": "1"
+      },
+      {
+        "label": "Producción: Caballos",
+        "value": "1"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "64"
+      }
+    ],
+    "related": [
+      "model.building.country",
+      "model.goods.food",
+      "model.goods.hammers",
+      "model.goods.horses"
+    ],
+    "icon": "model.building.stables.png"
+  },
+  {
+    "id": "model.building.docks",
+    "category": "buildings",
+    "title": "Muelle",
+    "summary": "El muelle permite a los colonos obtener pescado de casillas de océano adyacentes a la colonia. Tan pronto como la población alcance 4, puede evolucionar a dique seco, lo que permite a la colonia reparar barcos dañados. Cuando la colonia haya alcanzado 8 de población, puede evolucionar a astillero, lo que permite a la colonia construir nuevos barcos.\\n\\nConstruir el muelle permite pescar.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Puestos de trabajo",
+        "value": "0"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "5"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "52"
+      }
+    ],
+    "related": [
+      "model.goods.hammers"
+    ],
+    "icon": "model.building.docks.png"
+  },
+  {
+    "id": "model.building.drydock",
+    "category": "buildings",
+    "title": "Dique Seco",
+    "summary": "El dique seco permite a los colonos obtener pescado de casillas de océano adyacentes a la colonia, y permite reparar barcos. Cuando la colonia haya alcanzado 8 de población, puede evolucionar a astillero, lo que permite a la colonia construir nuevos barcos.\\n\\nConstruir un dique seco permite la reparación de barcos.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Puestos de trabajo",
+        "value": "0"
+      },
+      {
+        "label": "Población requerida",
+        "value": "4"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "10"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "80"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.building.docks",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.drydock.png"
+  },
+  {
+    "id": "model.building.shipyard",
+    "category": "buildings",
+    "title": "Astillero",
+    "summary": "El astillero permite a los colonos obtener pescado del océano adyacente a la colonia, reparar barcos dañados y construir nuevos barcos.\\n\\nConstruir el astillero permite construir barcos.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Puestos de trabajo",
+        "value": "0"
+      },
+      {
+        "label": "Población requerida",
+        "value": "8"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "15"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "240"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.drydock",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.shipyard.png"
+  },
+  {
+    "id": "model.building.printingPress",
+    "category": "buildings",
+    "title": "Imprenta",
+    "summary": "La imprenta, que puede evolucionar a periódico tan pronto como la población alcance 4, incrementara la producción de campanas de la libertad.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Puestos de trabajo",
+        "value": "0"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "5"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "52"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.printingPress.png"
+  },
+  {
+    "id": "model.building.newspaper",
+    "category": "buildings",
+    "title": "Periódico",
+    "summary": "El periódico, que sólo se puede construir después de una imprenta y tan pronto como la población alcance 4, incrementara la producción de campanas de la libertad.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Puestos de trabajo",
+        "value": "0"
+      },
+      {
+        "label": "Población requerida",
+        "value": "4"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "10"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "120"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.building.printingPress",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.newspaper.png"
+  },
+  {
+    "id": "model.building.customHouse",
+    "category": "buildings",
+    "title": "Aduana",
+    "summary": "La aduana, que puede ser construida tan pronto como Peter Stuyvesant se haya unido al Congreso Continental, permite la exportación de bienes a Europa directamente sin necesidad de barcos. Además, permite comerciar con potencias extranjeras después de la declaración de independencia. Opcionalmente también puede ignorar boicots.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Puestos de trabajo",
+        "value": "0"
+      },
+      {
+        "label": "Mantenimiento en oro",
+        "value": "15"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Martillos",
+        "value": "160"
+      },
+      {
+        "label": "Coste de construcción / equipamiento: Herramientas",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.customHouse.png"
+  },
+  {
+    "id": "model.foundingFather.adamSmith",
+    "category": "fathers",
+    "title": "Adam Smith",
+    "summary": "Permite la construcción de fábricas.",
+    "text": "Mejor conocido como el padre de la economía moderna, Smith escribió varios textos sobre teoría económica, entre otros \"La riqueza de las naciones\", su texto más famoso.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1723-1790"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.adamSmith.jpg"
+  },
+  {
+    "id": "model.foundingFather.jacobFugger",
+    "category": "fathers",
+    "title": "Jacob Fugger II",
+    "summary": "Elimina todos los boicots actuales.",
+    "text": "Mercader y banquero alemán extremadamente rico. Amasó una fortuna con sociedades familiares y acciones en las industrias mineras.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1459 - 1525"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.jacobFugger.jpg"
+  },
+  {
+    "id": "model.foundingFather.peterMinuit",
+    "category": "fathers",
+    "title": "Peter Minuit",
+    "summary": "Los indios ya no pedirán pago por sus tierras.",
+    "text": "Compró lo que luego se llamaría la Isla Manhattan a los nativos americanos por unos 60 florines holandeses. También colonizó posteriormente el area de la Bahía Delaware.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1580-1638"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.peterMinuit.jpg"
+  },
+  {
+    "id": "model.foundingFather.peterStuyvesant",
+    "category": "fathers",
+    "title": "Peter Stuyvesant",
+    "summary": "La construcción de aduanas esta permitida.",
+    "text": "Fue designado Gobernador General de Nueva Holanda, la cual, después de una invasión britanica que no pudo detener, se convirtió en Nueva York.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1592-1672"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.peterStuyvesant.jpg"
+  },
+  {
+    "id": "model.foundingFather.janDeWitt",
+    "category": "fathers",
+    "title": "Jan de Witt",
+    "summary": "El comercio con las colonias extranjeras llega a ser posible y se muestra más información sobre rivales coloniales.",
+    "text": "De Witt era un gran hombre de estado holandés.  El representaba a los mercaderes y a una fortalecida industria y comercio. También negoció varios importantes tratados para finalizar las guerras entre Holanda e Inglaterra.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1625-1672"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.janDeWitt.jpg"
+  },
+  {
+    "id": "model.foundingFather.ferdinandMagellan",
+    "category": "fathers",
+    "title": "Fernando Magallanes",
+    "summary": "Todos los navíos navales aumentan sus movimientos en 1 y reducen el tiempo para navegar entre Europa y América.",
+    "text": "Fue uno de los exploradores de navegación más importantes. Magallanes fue el primero en circunnavegar el globo y cruzar el Océano Pacífico.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1480-1521"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.ferdinandMagellan.jpg"
+  },
+  {
+    "id": "model.foundingFather.franciscoDeCoronado",
+    "category": "fathers",
+    "title": "Francisco de Coronado",
+    "summary": "Permite ver todas las colonias existentes en el mapa.",
+    "text": "Fue el primer explorador Europeo en ver el Gran Cañón. Aunque nunca encontró las ciudades de oro que buscaba, sus mapas sobre el actual llamado Sudoeste de U.S. fueron importantes para exploraciones posteriores.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1510-1554"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.franciscoDeCoronado.jpg"
+  },
+  {
+    "id": "model.foundingFather.hernandoDeSoto",
+    "category": "fathers",
+    "title": "Hernando de Soto",
+    "summary": "La exploración de rumores de Ciudades Perdidas no obtendrá nunca resultados negativos y todas las unidades terrestres tendrán mayor campo de visión.",
+    "text": "Fue el primer Europeo en explorar la Florida y el sudeste de U.S. El también tuvo un papel importante en las conquistas en América Central.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1496-1542"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.hernandoDeSoto.jpg"
+  },
+  {
+    "id": "model.foundingFather.henryHudson",
+    "category": "fathers",
+    "title": "Henry Hudson",
+    "summary": "",
+    "text": "Fue un navegante inglés que exploró y realizó mapas de una gran parte del noreste continental de Norte América. Muchas vías fluviales en esa región reciben su nombre en su honor. Su objetivo inicial era encontrar el famoso Paso del Noroeste.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1565-1611"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.henryHudson.jpg"
+  },
+  {
+    "id": "model.foundingFather.laSalle",
+    "category": "fathers",
+    "title": "Robert de La Salle",
+    "summary": "Da a todas las colonias existentes y futuras una empalizada cuando la población llegue a 3.",
+    "text": "El primer europeo en recorrer el río Mississippi, de La Salle tenía la misión de situar numerosos puestos comerciales en sus orillas. En esa misma cuenca fundó Luisiana en honor al rey francés. Más tarde, exploró varios de los Grandes Lagos.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1643-1687"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.laSalle.jpg"
+  },
+  {
+    "id": "model.foundingFather.hernanCortes",
+    "category": "fathers",
+    "title": "Hernán Cortés",
+    "summary": "Los asentamientos nativos conquistados siempre arrojan tesoros (y en mayor abundancia) y los galeones del monarca los transportan sin coste.",
+    "text": "Afamado conquistador español que conquistó el imperio Azteca y anexionó México a España.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1485-1547"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.hernanCortes.jpg"
+  },
+  {
+    "id": "model.foundingFather.georgeWashington",
+    "category": "fathers",
+    "title": "George Washington",
+    "summary": "Cualquier soldado o dragón no experto que gane un combate será ascendido automáticamente a su próximo nivel.",
+    "text": "El general Washington lideró el ejército colonial a la victoria sobre los britanicos y consiguió la independencia de las colonias. Esta victoria y su liderazgo le llevaron a ser proclamado el primer presidente de la nueva nación.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1732-1799"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.georgeWashington.jpg"
+  },
+  {
+    "id": "model.foundingFather.paulRevere",
+    "category": "fathers",
+    "title": "Paul Revere",
+    "summary": "Cuando una colonia sin soldados es atacada, un colono automáticamente tomará los mosquetes almacenados y la defenderá.",
+    "text": "El famoso jinete de la América colonial que montó su caballo y cabalgó a lo largo del país alertando a los colonos de la llegada de tropas británicas. Fue capturado durante la cabalgada y liberado cuando sus captores creyeron que se encontraban en grave peligro y su prisionero les podría hacer ir más lentos.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1734-1818"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.paulRevere.jpg"
+  },
+  {
+    "id": "model.foundingFather.francisDrake",
+    "category": "fathers",
+    "title": "Francis Drake",
+    "summary": "",
+    "text": "Un gran capitán de marina inglés, Drake fue el primer inglés en circunnavegar el globo y héroe que combatió contra la Armada Española.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1542-1596"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.francisDrake.jpg"
+  },
+  {
+    "id": "model.foundingFather.johnPaulJones",
+    "category": "fathers",
+    "title": "John Paul Jones",
+    "summary": "Una Fragata se añadirá a nuestra armada colonial sin coste.",
+    "text": "Aclamado como un gran capitán en Norte América, Jones pronunció las famosas palabras \"Señor, todavía no he empezado a luchar\" mientras combatía a los britanicos en el mar. Más tarde vio hundirse su barco hasta el fondo del océano desde la cubierta de un navío Británico.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1741-1792"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.johnPaulJones.jpg"
+  },
+  {
+    "id": "model.foundingFather.thomasJefferson",
+    "category": "fathers",
+    "title": "Thomas Jefferson",
+    "summary": "",
+    "text": "Una poderosa voz de patriotismo, a Jefferson se le atribuyó el mérito de escribir la Declaración de Independencia. Más tarde se convirtió en el tercer presidente de los U.S.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1743-1826"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.thomasJefferson.jpg"
+  },
+  {
+    "id": "model.foundingFather.pocahontas",
+    "category": "fathers",
+    "title": "Pocahontas",
+    "summary": "Hace desaparecer toda la tensión entre nosotros y los nativos y la alarma india se generará la mitad de rápido.",
+    "text": "Una pacificadora entre los primeros habitantes de Jamestown y los nativos americanos. Se le atribuye el envío de comida y otros avituallamientos a los hambrientos colonos en épocas duras. Más tarde se convirtió al cristianismo y se casó con un inglés.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1595-1617"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.pocahontas.jpg"
+  },
+  {
+    "id": "model.foundingFather.thomasPaine",
+    "category": "fathers",
+    "title": "Thomas Paine",
+    "summary": "Aumenta la producción de Campanas de la Libertad en las colonias por el valor de la tasa impositiva del momento en el que se incorpora.",
+    "text": "Inspiró a los colonos con su pluma, bajo petición de Benjamin Franklin. Publicó un panfleto, \"Sentido Común\" guiando los pensamientos de los patriotas de las colonias.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1737-1809"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.thomasPaine.jpg"
+  },
+  {
+    "id": "model.foundingFather.simonBolivar",
+    "category": "fathers",
+    "title": "Simon Bolivar",
+    "summary": "",
+    "text": "Recordado como un gran líder en la lucha de la independencia Sudamericana de España. Bolivar liberó lo que hoy es Venezuela y se convirtió en su primer Presidente.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1783-1830"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.simonBolivar.jpg"
+  },
+  {
+    "id": "model.foundingFather.benjaminFranklin",
+    "category": "fathers",
+    "title": "Benjamin Franklin",
+    "summary": "Las guerras extranjeras de la Corona ya no tienen efecto en las relaciones en el Nuevo Mundo y ademas los europeos en el Nuevo Mundo siempre ofrecerán la paz en las negociaciones.",
+    "text": "Un gran contribuidor a la Declaración de Independencia, Franklin era una de las voces de la Revolución. Viajó intensamente entre Europa y las colonias, y ganó el apoyo de los franceses en la guerra.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1706-1790"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.benjaminFranklin.jpg"
+  },
+  {
+    "id": "model.foundingFather.williamBrewster",
+    "category": "fathers",
+    "title": "William Brewster",
+    "summary": "Ya no aparecen criminales o sirvientes en los muelles, y puedes seleccionar a cual inmigrante, dentro del grupo de reclutamiento para moverlo a los muelles.",
+    "text": "Brewster era el líder Puritano de la colonia de Plymouth en Nueva Inglaterra.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1567-1644"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.williamBrewster.jpg"
+  },
+  {
+    "id": "model.foundingFather.williamPenn",
+    "category": "fathers",
+    "title": "William Penn",
+    "summary": "",
+    "text": "Como amigo íntimo del Duque de York, se le concedió el territorio en su mayoría de Pennsylvania, Delaware y New Jersey. Dirigió a los miembros de la colonia religiosa Quaker durante varios años en sus esfuerzos para conseguir un lugar seguro.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1644-1718"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.williamPenn.jpg"
+  },
+  {
+    "id": "model.foundingFather.fatherJeanDeBrebeuf",
+    "category": "fathers",
+    "title": "Padre Jean de Brebeuf",
+    "summary": "Todos los misioneros funcionaran como expertos.",
+    "text": "Formó una gran amistad con los indios Hurones y convirtió varios de ellos al cristianismo. Murió en manos de los Iroquíes, quienes finalmente derrotaron a su enemigo Hurón.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1593-1649"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.fatherJeanDeBrebeuf.jpg"
+  },
+  {
+    "id": "model.foundingFather.juanDeSepulveda",
+    "category": "fathers",
+    "title": "Juan de Sepúlveda",
+    "summary": "",
+    "text": "Fue un teólogo español que promovió la conquista de las tierras indias y la forzada evangelización de los nativos.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1781-1872"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.juanDeSepulveda.jpg"
+  },
+  {
+    "id": "model.foundingFather.bartolomeDeLasCasas",
+    "category": "fathers",
+    "title": "Bartolomé de las Casas",
+    "summary": "Todos los conversos indios existentes se convierten en colonos libres.",
+    "text": "Fue un sacerdote católico que viajó por las Indias convirtiendo a los indios y censurando a España por el maltrato a los nativos.",
+    "facts": [
+      {
+        "label": "Vida y muerte",
+        "value": "1474-1566"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.bartolomeDeLasCasas.jpg"
+  },
+  {
+    "id": "model.nation.unknownEnemy",
+    "category": "nations",
+    "title": "Enemigo",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Unknown"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.nation.dutch",
+    "category": "nations",
+    "title": "Holanda",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Guillermo I"
+      },
+      {
+        "label": "Nombre del Nuevo Mundo",
+        "value": "Nueva Holanda"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.dutch.png"
+  },
+  {
+    "id": "model.nation.french",
+    "category": "nations",
+    "title": "Francia",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Luis XIV"
+      },
+      {
+        "label": "Nombre del Nuevo Mundo",
+        "value": "Nueva Francia"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.french.png"
+  },
+  {
+    "id": "model.nation.english",
+    "category": "nations",
+    "title": "Inglaterra",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Isabel I"
+      },
+      {
+        "label": "Nombre del Nuevo Mundo",
+        "value": "Nueva Inglaterra"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.english.png"
+  },
+  {
+    "id": "model.nation.spanish",
+    "category": "nations",
+    "title": "España",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Felipe II"
+      },
+      {
+        "label": "Nombre del Nuevo Mundo",
+        "value": "Nueva España"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.spanish.png"
+  },
+  {
+    "id": "model.nation.inca",
+    "category": "nations",
+    "title": "Inca",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Atahualpa"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.inca.png"
+  },
+  {
+    "id": "model.nation.aztec",
+    "category": "nations",
+    "title": "Azteca",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Moctezuma II"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.aztec.png"
+  },
+  {
+    "id": "model.nation.arawak",
+    "category": "nations",
+    "title": "Arawak",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Tamanaco"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.arawak.png"
+  },
+  {
+    "id": "model.nation.cherokee",
+    "category": "nations",
+    "title": "Cherokee",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Moytoy"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.cherokee.png"
+  },
+  {
+    "id": "model.nation.iroquois",
+    "category": "nations",
+    "title": "Iroqueses",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Segoyewatha"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.iroquois.png"
+  },
+  {
+    "id": "model.nation.sioux",
+    "category": "nations",
+    "title": "Siux",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Taoyateduta"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.sioux.png"
+  },
+  {
+    "id": "model.nation.apache",
+    "category": "nations",
+    "title": "Apache",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Gerónimo"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.apache.png"
+  },
+  {
+    "id": "model.nation.tupi",
+    "category": "nations",
+    "title": "Tupi",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Guairá"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.tupi.png"
+  },
+  {
+    "id": "model.nation.dutchREF",
+    "category": "nations",
+    "title": "Holandesista Fuerza Real Expedicionaria",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Guillermo II"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.dutchREF.png"
+  },
+  {
+    "id": "model.nation.frenchREF",
+    "category": "nations",
+    "title": "Francesista Fuerza Real Expedicionaria",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Luis XV"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.frenchREF.png"
+  },
+  {
+    "id": "model.nation.englishREF",
+    "category": "nations",
+    "title": "Inglesista Fuerza Real Expedicionaria",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Jorge III"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.englishREF.png"
+  },
+  {
+    "id": "model.nation.spanishREF",
+    "category": "nations",
+    "title": "Españolista Fuerza Real Expedicionaria",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Felipe III"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.spanishREF.png"
+  },
+  {
+    "id": "model.nation.portuguese",
+    "category": "nations",
+    "title": "Portugal",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Don Manuel I"
+      },
+      {
+        "label": "Nombre del Nuevo Mundo",
+        "value": "Tierra de la Santa Cruz"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.portuguese.png"
+  },
+  {
+    "id": "model.nation.swedish",
+    "category": "nations",
+    "title": "Suecia",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Charles XI"
+      },
+      {
+        "label": "Nombre del Nuevo Mundo",
+        "value": "Nueva Suecia"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.swedish.png"
+  },
+  {
+    "id": "model.nation.danish",
+    "category": "nations",
+    "title": "Dinamarca",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Frederick II"
+      },
+      {
+        "label": "Nombre del Nuevo Mundo",
+        "value": "Nueva Dinamarca"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.danish.png"
+  },
+  {
+    "id": "model.nation.russian",
+    "category": "nations",
+    "title": "Rusia",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Peter I"
+      },
+      {
+        "label": "Nombre del Nuevo Mundo",
+        "value": "Nueva Rusia"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.russian.png"
+  },
+  {
+    "id": "model.nation.portugueseREF",
+    "category": "nations",
+    "title": "Portuguesista Fuerza Real Expedicionaria",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Don Juan IV"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.portugueseREF.png"
+  },
+  {
+    "id": "model.nation.swedishREF",
+    "category": "nations",
+    "title": "Suecista Fuerza Real Expedicionaria",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Charles XII"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.swedishREF.png"
+  },
+  {
+    "id": "model.nation.danishREF",
+    "category": "nations",
+    "title": "Danesista Fuerza Real Expedicionaria",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Frederick III"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.danishREF.png"
+  },
+  {
+    "id": "model.nation.russianREF",
+    "category": "nations",
+    "title": "Rusista Fuerza Real Expedicionaria",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Gobernante",
+        "value": "Catherine I"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.russianREF.png"
+  }
+]

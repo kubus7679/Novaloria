@@ -1,0 +1,16 @@
+"Bitte eine Spielstand-Datei mit der Endung .fsg wählen." = "Elige un archivo de partida guardada con la extensión .fsg.";
+"Das Serverprotokoll konnte nicht angelegt werden: %@" = "No se pudo crear el registro del servidor: %@";
+"Das reservierte Regelset %@ existiert bereits." = "El conjunto de reglas reservado %@ ya existe.";
+"Der Serverport muss zwischen 1 und 65535 liegen." = "El puerto del servidor debe estar entre 1 y 65535.";
+"Der Zufallsstartwert muss eine ganze 64-Bit-Zahl sein." = "La semilla aleatoria debe ser un número entero de 64 bits.";
+"Der bisherige Java-Server wurde nicht rechtzeitig beendet." = "El servidor Java anterior no se detuvo a tiempo.";
+"Die gewählte Java-Datei ist nicht ausführbar." = "El archivo Java seleccionado no es ejecutable.";
+"Es läuft bereits ein eigener Java-Server." = "Ya hay un servidor Java local en ejecución.";
+"Java-Server beendet (Status %lld). Protokoll: %@" = "El servidor Java terminó (estado %lld). Registro: %@";
+"Java-Server nach 30 Sekunden nicht erreichbar. Protokoll: %@" = "No se pudo acceder al servidor Java después de 30 segundos. Registro: %@";
+"Java-Server unerwartet beendet (Status %lld). Protokoll: %@" = "El servidor Java terminó inesperadamente (estado %lld). Registro: %@";
+"Port %lld ist belegt oder nicht nutzbar. Bitte einen anderen Port wählen." = "El puerto %lld está ocupado o no está disponible. Elige otro puerto.";
+"Server-Zeitlimit konnte nicht gesetzt werden: %@" = "No se pudo establecer el tiempo de espera del servidor: %@";
+"Serverport konnte nicht geprüft werden: %@" = "No se pudo comprobar el puerto del servidor: %@";
+"Serververbindung fehlgeschlagen: %@" = "La conexión con el servidor ha fallado: %@";
+"Serververbindung konnte nicht geprüft werden: %@" = "No se pudo comprobar la conexión con el servidor: %@";

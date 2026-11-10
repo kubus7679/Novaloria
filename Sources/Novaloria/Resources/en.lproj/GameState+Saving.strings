@@ -1,0 +1,4 @@
+"FreeCol-Runde-%lld.fsg" = "FreeCol-Turn-%lld.fsg";
+"Speichern ist nur als Spieladministrator im eigenen Zug auf einem Java-Server möglich." = "Only the game administrator can save, on their own turn and on a Java server.";
+"Spiel speichern" = "Save game";
+"Vollständiger Server-Spielstand (.fsg). Der Java-Server muss mit der NovaloriaClient-Speichererweiterung gestartet sein." = "Full server save (.fsg). The Java server must be launched with the NovaloriaClient save extension.";

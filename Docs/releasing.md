@@ -1,22 +1,19 @@
-# Release-Veröffentlichung
+# Publishing a release
 
-Der GitHub-Workflow **Release** wird manuell gestartet und baut ausschließlich
-einen bereits gepushten Tag, dessen Name zur App-Version passt.
+The GitHub **Release** workflow is started manually and builds only a pushed tag whose name matches the app version.
 
-Für Version `0.0.1`:
+For version `0.0.1`:
 
-1. Änderungen einschließlich `Sources/Novaloria/AppVersion.swift` und
-   `Docs/releases/0.0.1.md` committen und auf den Standard-Branch pushen.
-2. Den Tag auf genau diesem Commit anlegen und pushen:
+1. Commit and push the changes, including `Sources/Novaloria/AppVersion.swift` and `Docs/releases/0.0.1.md`, to the default branch.
+2. Create and push a tag on that exact commit:
 
    ```bash
    git tag -a v0.0.1 -m "Novaloria 0.0.1"
    git push origin v0.0.1
    ```
 
-3. Auf GitHub **Actions → Release → Run workflow** wählen und als `release_tag`
-   `v0.0.1` angeben.
+3. On GitHub, select **Actions → Release → Run workflow** and enter `v0.0.1` as `release_tag`.
 
-Der Workflow prüft Tag, Version und Release-Notiz, führt `swift test` aus, baut
-ein Release-App-Bundle und veröffentlicht das DMG zusammen mit der Notiz als
-GitHub Release. Dafür muss der selbst gehostete macOS-ARM64-Runner online sein.
+The workflow validates the tag, version and release notes, runs `swift test`, builds a release app bundle, and publishes the DMG together with the notes as a GitHub Release. The self-hosted macOS ARM64 runner must be online.
+
+For the German version, see [releasing_DE.md](releasing_DE.md).

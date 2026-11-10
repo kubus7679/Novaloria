@@ -1715,6 +1715,361 @@ final class InteractionRepairTests: XCTestCase {
     }
 
     @MainActor
+    func testCombatRolesUseSpecificationGoodsAndAllowRoleChanges() throws {
+        let game = Game()
+        try game.load(from: XMLDecoder.decode("""
+        <game id="combat-equipment" clientUserName="Alice" currentPlayer="player-1">
+          <freecol-specification>
+            <unit-type id="colonist">
+              <ability id="model.ability.person" value="true"/>
+              <ability id="model.ability.canBeEquipped" value="true"/>
+            </unit-type>
+            <unit-type id="model.unit.freeColonist" extends="colonist"/>
+            <goods-type id="model.goods.muskets"><market initial-amount="1000" initial-price="2" price-difference="1"/></goods-type>
+            <goods-type id="model.goods.horses"><market initial-amount="1000" initial-price="3" price-difference="1"/></goods-type>
+            <role id="model.role.default" maximum-count="1"/>
+            <role id="model.role"/>
+            <role id="model.role.noEquipment"/>
+            <role id="model.role.soldier" maximum-count="1">
+              <required-goods id="model.goods.muskets" value="50"/>
+              <required-ability id="model.ability.canBeEquipped" value="true"/>
+            </role>
+            <role id="model.role.dragoon" maximum-count="1">
+              <required-goods id="model.goods.muskets" value="50"/>
+              <required-goods id="model.goods.horses" value="50"/>
+              <required-ability id="model.ability.canBeEquipped" value="true"/>
+            </role>
+          </freecol-specification>
+          <player id="player-1" username="Alice" nationId="model.nation.dutch" gold="5000">
+            <europe id="europe-1"/>
+            <market owner="player-1">
+              <marketData goods-type="model.goods.muskets" amount="1000" initialPrice="2"/>
+              <marketData goods-type="model.goods.horses" amount="1000" initialPrice="3"/>
+            </market>
+          </player>
+          <map id="map-1" width="1" height="1">
+            <tile id="tile-0" x="0" y="0" type="model.tile.plains" owner="player-1"/>
+          </map>
+          <colony id="colony-1" name="Boston" owner="player-1" tile="tile-0">
+            <goodsContainer><storedGoods>
+              <goods type="model.goods.muskets" amount="50"/>
+              <goods type="model.goods.horses" amount="50"/>
+            </storedGoods></goodsContainer>
+          </colony>
+          <unit id="colony-worker" owner="player-1" unitType="model.unit.freeColonist"
+                role="model.role.default" roleCount="0" location="tile-0"/>
+          <unit id="europe-worker" owner="player-1" unitType="model.unit.freeColonist"
+                role="model.role.default" roleCount="0" location="europe-1"/>
+        </game>
+        """))
+
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+        state.selectUnit("colony-worker", onTile: "tile-0")
+
+        let colonyOptions = state.selectedUnitRoleEquipmentOptions
+        XCTAssertEqual(Set(colonyOptions.map(\.roleId)), ["model.role.soldier", "model.role.dragoon"])
+        let soldier = try XCTUnwrap(colonyOptions.first { $0.roleId == "model.role.soldier" })
+        let dragoon = try XCTUnwrap(colonyOptions.first { $0.roleId == "model.role.dragoon" })
+        XCTAssertTrue(soldier.isAvailable)
+        XCTAssertEqual(soldier.goodsNeeded.map(\.amount), [50])
+        XCTAssertEqual(soldier.buttonTitle, "Als Soldat ausrüsten (50 Musketen)")
+        XCTAssertTrue(dragoon.isAvailable)
+        XCTAssertEqual(Set(dragoon.goodsNeeded.map(\.goodsType)),
+                       ["model.goods.horses", "model.goods.muskets"])
+        XCTAssertEqual(dragoon.buttonTitle, "Als Dragoner ausrüsten (50 Pferde, 50 Musketen)")
+        XCTAssertFalse(colonyOptions.contains { $0.buttonTitle == "Als Role ausrüsten" })
+
+        try game.applyPartial(XMLDecoder.decode("""
+        <partial id="colony-worker" role="model.role.soldier" roleCount="1"/>
+        """))
+        state.gameUpdateID += 1
+        let upgradedDragoon = try XCTUnwrap(
+            state.selectedUnitRoleEquipmentOptions.first { $0.roleId == "model.role.dragoon" }
+        )
+        XCTAssertTrue(upgradedDragoon.isAvailable)
+        XCTAssertFalse(upgradedDragoon.isUpgrade)
+        XCTAssertEqual(upgradedDragoon.goodsNeeded.map(\.goodsType), ["model.goods.horses"],
+                       "Changing from soldier to dragoon should only require the additional horses")
+
+        state.selectUnit("europe-worker", onTile: nil)
+        let europeDragoon = try XCTUnwrap(
+            state.selectedUnitRoleEquipmentOptions.first { $0.roleId == "model.role.dragoon" }
+        )
+        XCTAssertTrue(europeDragoon.isAvailable,
+                      "Europe should allow buying the role's required goods when the player has enough gold")
+    }
+
+    @MainActor
+    func testNativeSettlementActionsMatchUnitTypeAndRoleAbilities() throws {
+        let game = Game()
+        try game.load(from: XMLDecoder.decode("""
+        <game id="native-actions" clientUserName="Alice" currentPlayer="player-european">
+          <freecol-specification>
+            <unit-types>
+              <unit-type id="model.unit.freeColonist">
+                <ability id="model.ability.foundColony" value="true"/>
+              </unit-type>
+            </unit-types>
+            <roles>
+              <role id="model.role.default"/>
+              <role id="model.role.scout">
+                <ability id="model.ability.speakWithChief" value="true"/>
+              </role>
+            </roles>
+          </freecol-specification>
+          <player id="player-european" username="Alice" playerType="european"/>
+          <map id="map-1" width="1" height="1">
+            <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+          </map>
+          <unit id="colonist" owner="player-european" unitType="model.unit.freeColonist"
+                role="model.role.default" movesLeft="3" location="tile-0"/>
+          <unit id="scout" owner="player-european" unitType="model.unit.freeColonist"
+                role="model.role.scout" movesLeft="3" location="tile-0"/>
+        </game>
+        """))
+
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+
+        state.selectUnit("colonist", onTile: "tile-0")
+        XCTAssertTrue(state.canAskSkillAtSelectedUnit)
+        XCTAssertTrue(state.canLearnSkillAtSelectedUnit)
+        XCTAssertFalse(state.canScoutIndianSettlement,
+                       "A free colonist must not send a scout-only request")
+
+        state.selectUnit("scout", onTile: "tile-0")
+        XCTAssertFalse(state.canAskSkillAtSelectedUnit,
+                       "A scout's move type is not the free-colonist skill-entry type")
+        XCTAssertFalse(state.canLearnSkillAtSelectedUnit)
+        XCTAssertTrue(state.canScoutIndianSettlement,
+                      "The scout role grants the speak-with-chief ability")
+    }
+
+    @MainActor
+    func testNativeSettlementVisitAndChiefConversationUseQuestionReplies() async throws {
+        let server = MockServer()
+        let state = GameState()
+        let gameXML = """
+        <game id="native-interaction" clientUserName="Alice" currentPlayer="player-european">
+          <freecol-specification>
+            <unit-types>
+              <unit-type id="model.unit.freeColonist"/>
+            </unit-types>
+            <roles>
+              <role id="model.role.default"/>
+              <role id="model.role.scout">
+                <ability id="model.ability.speakWithChief" value="true"/>
+              </role>
+            </roles>
+          </freecol-specification>
+          <player id="player-european" username="Alice" playerType="european"/>
+          <player id="player-native" username="Urutu" playerType="indian"/>
+          <map id="map-1" width="2" height="1">
+            <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+            <tile id="tile-1" x="1" y="0" type="model.tile.plains">
+              <indianSettlement id="village" name="Urutu" owner="player-native" tile="tile-1" settlementType="model.settlement.indianVillage"/>
+            </tile>
+          </map>
+          <unit id="scout" owner="player-european" unitType="model.unit.freeColonist" role="model.role.scout" location="tile-0" movesLeft="3" state="active"/>
+        </game>
+        """
+        let serverTask = Task {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let visitQuestion = try XMLDecoder.decode(await server.nextLine())
+            XCTAssertEqual(visitQuestion.tag, "question")
+            let visit = try XCTUnwrap(visitQuestion.children.first)
+            XCTAssertEqual(visit.tag, "scoutIndianSettlement")
+            XCTAssertEqual(visit.attributes["unit"], "scout")
+            XCTAssertEqual(visit.attributes["direction"], "E")
+            let visitReplyID = try XCTUnwrap(visitQuestion.attributes["networkReplyId"])
+            await server.send("""
+            <reply networkReplyId="\(visitReplyID)">
+              <nationSummary player="player-native"/>
+            </reply>
+            """.replacingOccurrences(of: "\n", with: " "))
+            await server.flush()
+
+            let chiefQuestion = try XMLDecoder.decode(await server.nextLine())
+            XCTAssertEqual(chiefQuestion.tag, "question")
+            let chief = try XCTUnwrap(chiefQuestion.children.first)
+            XCTAssertEqual(chief.tag, "scoutSpeakToChief")
+            XCTAssertEqual(chief.attributes["unit"], "scout")
+            XCTAssertEqual(chief.attributes["settlement"], "village")
+            XCTAssertNil(chief.attributes["result"], "The result is produced by the server, never sent by the client")
+            let chiefReplyID = try XCTUnwrap(chiefQuestion.attributes["networkReplyId"])
+            await server.send("""
+            <reply networkReplyId="\(chiefReplyID)">
+              <multiple>
+                <partial id="scout" movesLeft="0"/>
+                <scoutSpeakToChief unit="scout" settlement="village" result="tales"/>
+              </multiple>
+            </reply>
+            """.replacingOccurrences(of: "\n", with: " "))
+            await server.flush()
+        }
+        defer { state.disconnect(); serverTask.cancel(); Task { await server.stop() } }
+
+        state.connect(host: "127.0.0.1", port: server.port)
+        try await waitUntil { state.phase == .login }
+        state.login(userName: "Alice", nationId: "model.nation.dutch")
+        try await waitUntil { state.phase == .inGame && state.game != nil }
+        state.selectUnit("scout", onTile: "tile-0")
+
+        XCTAssertEqual(state.directionToAdjacentSettlement("village"), "E")
+        state.scoutIndianSettlement(direction: "E")
+        try await waitUntil { state.statusMessage == "Ureinwohner-Siedlung erkundet." }
+        XCTAssertNotNil(state.nationSummaryReport)
+
+        state.scoutSpeakToChief(settlementId: "village")
+        try await waitUntil { state.pendingServerDecision?.type == .scoutReport }
+        XCTAssertEqual(state.scoutReportText, "Der Häuptling erzählte von diesem Land.")
+        XCTAssertEqual(state.game?.units["scout"]?.movesLeft, 0)
+        try await serverTask.value
+    }
+
+    @MainActor
+    func testNativeSkillLearningRefreshesThenConfirmsWithServer() async throws {
+        let server = MockServer()
+        let state = GameState()
+        let gameXML = """
+        <game id="native-skill" clientUserName="Alice" currentPlayer="player-european">
+          <freecol-specification>
+            <unit-types>
+              <unit-type id="model.unit.freeColonist">
+                <ability id="model.ability.foundColony" value="true"/>
+              </unit-type>
+            </unit-types>
+            <roles><role id="model.role.default"/></roles>
+          </freecol-specification>
+          <player id="player-european" username="Alice" playerType="european"/>
+          <player id="player-native" username="Urutu" playerType="indian"/>
+          <map id="map-1" width="2" height="1">
+            <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+            <tile id="tile-1" x="1" y="0" type="model.tile.plains">
+              <indianSettlement id="village" name="Urutu" owner="player-native" tile="tile-1" settlementType="model.settlement.indianVillage"/>
+            </tile>
+          </map>
+          <unit id="colonist" owner="player-european" unitType="model.unit.freeColonist" role="model.role.default" location="tile-0" movesLeft="3" state="active"/>
+        </game>
+        """
+        let serverTask = Task {
+            try await server.doHandshake(gameResponse: gameXML)
+
+            let askQuestion = try XMLDecoder.decode(await server.nextLine())
+            XCTAssertEqual(askQuestion.tag, "question")
+            let ask = try XCTUnwrap(askQuestion.children.first)
+            XCTAssertEqual(ask.tag, "askSkill")
+            XCTAssertEqual(ask.attributes["unit"], "colonist")
+            XCTAssertEqual(ask.attributes["direction"], "E")
+            let askReplyID = try XCTUnwrap(askQuestion.attributes["networkReplyId"])
+            await server.send("""
+            <reply networkReplyId="\(askReplyID)">
+              <update>
+                <tile id="tile-1" x="1" y="0" type="model.tile.plains">
+                  <indianSettlement id="village" name="Urutu" owner="player-native"
+                                    tile="tile-1" learnableSkill="model.unit.expertFarmer"/>
+                </tile>
+                <unit id="colonist" movesLeft="0"/>
+              </update>
+            </reply>
+            """.replacingOccurrences(of: "\n", with: " "))
+            await server.flush()
+
+            let learnQuestion = try XMLDecoder.decode(await server.nextLine())
+            XCTAssertEqual(learnQuestion.tag, "question")
+            let learn = try XCTUnwrap(learnQuestion.children.first)
+            XCTAssertEqual(learn.tag, "learnSkill")
+            XCTAssertEqual(learn.attributes["unit"], "colonist")
+            XCTAssertEqual(learn.attributes["direction"], "E")
+            let learnReplyID = try XCTUnwrap(learnQuestion.attributes["networkReplyId"])
+            await server.send("""
+            <reply networkReplyId="\(learnReplyID)">
+              <update><unit id="colonist" unitType="model.unit.expertFarmer" movesLeft="0"/></update>
+            </reply>
+            """.replacingOccurrences(of: "\n", with: " "))
+            await server.flush()
+        }
+        defer { state.disconnect(); serverTask.cancel(); Task { await server.stop() } }
+
+        state.connect(host: "127.0.0.1", port: server.port)
+        try await waitUntil { state.phase == .login }
+        state.login(userName: "Alice", nationId: "model.nation.dutch")
+        try await waitUntil { state.phase == .inGame && state.game != nil }
+        state.selectUnit("colonist", onTile: "tile-0")
+
+        state.beginNativeSkillLearning(settlementId: "village", direction: "E")
+        try await waitUntil { state.pendingServerDecision?.type == .nativeSkill }
+        XCTAssertEqual(state.game?.units["colonist"]?.movesLeft, 0)
+        XCTAssertTrue(state.pendingDecisionSummary.contains(GameLabels.name("model.unit.expertFarmer")))
+
+        state.acceptPendingNativeSkill()
+        try await waitUntil { state.pendingServerDecision == nil && state.game?.units["colonist"]?.unitType == "model.unit.expertFarmer" }
+        XCTAssertTrue(state.statusMessage.contains("erlernt"))
+        try await serverTask.value
+    }
+
+    @MainActor
+    func testDeliveringNativeGiftSendsGoodsObjectInQuestion() async throws {
+        let server = MockServer()
+        let state = GameState()
+        let gameXML = """
+        <game id="native-gift" clientUserName="Alice" currentPlayer="player-european">
+          <freecol-specification>
+            <unit-types>
+              <unit-type id="model.unit.freeColonist">
+                <ability id="model.ability.carryGoods" value="true"/>
+              </unit-type>
+            </unit-types>
+          </freecol-specification>
+          <player id="player-european" username="Alice" playerType="european"/>
+          <player id="player-native" username="Urutu" playerType="indian"/>
+          <map id="map-1" width="2" height="1">
+            <tile id="tile-0" x="0" y="0" type="model.tile.plains"/>
+            <tile id="tile-1" x="1" y="0" type="model.tile.plains">
+              <indianSettlement id="village" name="Urutu" owner="player-native" tile="tile-1"/>
+            </tile>
+          </map>
+          <unit id="carrier" owner="player-european" unitType="model.unit.freeColonist" role="model.role.default" location="tile-0" movesLeft="3">
+            <goodsContainer><storedGoods><goods type="model.goods.furs" amount="100"/></storedGoods></goodsContainer>
+          </unit>
+        </game>
+        """
+        let serverTask = Task {
+            try await server.doHandshake(gameResponse: gameXML)
+            let question = try XMLDecoder.decode(await server.nextLine())
+            XCTAssertEqual(question.tag, "question")
+            let message = try XCTUnwrap(question.children.first)
+            XCTAssertEqual(message.tag, "deliverGift")
+            XCTAssertEqual(message.attributes["unit"], "carrier")
+            XCTAssertEqual(message.attributes["settlement"], "village")
+            let goods = try XCTUnwrap(message.children.first)
+            XCTAssertEqual(goods.tag, "goods")
+            XCTAssertEqual(goods.attributes["type"], "model.goods.furs")
+            XCTAssertEqual(goods.attributes["amount"], "50")
+            XCTAssertEqual(goods.attributes["location"], "carrier")
+            let replyID = try XCTUnwrap(question.attributes["networkReplyId"])
+            await server.send("<reply networkReplyId=\"\(replyID)\"/>")
+            await server.flush()
+        }
+        defer { state.disconnect(); serverTask.cancel(); Task { await server.stop() } }
+
+        state.connect(host: "127.0.0.1", port: server.port)
+        try await waitUntil { state.phase == .login }
+        state.login(userName: "Alice", nationId: "model.nation.dutch")
+        try await waitUntil { state.phase == .inGame && state.game != nil }
+        state.selectUnit("carrier", onTile: "tile-0")
+        XCTAssertTrue(state.canDeliverGiftWithSelectedUnit)
+
+        state.deliverGiftToSettlement("village", goodsType: "model.goods.furs", amount: 50)
+        try await waitUntil { state.statusMessage == "Siedlungsaktion vom Server bestätigt." }
+        try await serverTask.value
+    }
+
+    @MainActor
     func testEquippingPioneerSendsRoleAndAppliesServerEquipmentUpdate() async throws {
         let server = MockServer()
         let state = GameState()

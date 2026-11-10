@@ -1,0 +1,17 @@
+"%@ · %lld Bewegungspunkte" = "%@ · %lld movement points";
+"Als Ziel setzen" = "Set as destination";
+"Befehle löschen" = "Clear orders";
+"Befestigen" = "Fortify";
+"Feld" = "Tile";
+"Feld (%lld, %lld)" = "Tile (%lld, %lld)";
+"Feld auswählen" = "Select tile";
+"Gehe nach Europa" = "Sail to Europe";
+"Hierher bewegen" = "Move here";
+"Kolonie gründen" = "Found colony";
+"Kolonie öffnen" = "Open colony";
+"Schließen" = "Close";
+"Verbesserung" = "Improvement";
+"Verbesserung bauen" = "Build improvement";
+"Verbrauch bei Fertigstellung: %lld Werkzeuge" = "Cost on completion: %lld tools";
+"Wache" = "Sentry";
+"Warten" = "Wait";

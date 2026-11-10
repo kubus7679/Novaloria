@@ -26,11 +26,11 @@ extension GameState {
             let location = colony.workTiles.first(where: { $0.tileId == id })
             let reason: String?
             if id == tileId {
-                reason = "Das Zentrum wird automatisch bewirtschaftet."
+                reason = L10n.text("Das Zentrum wird automatisch bewirtschaftet.", table: "GameState_ColonyQueries")
             } else if let location {
                 reason = colonyWorkLocationUnavailableReason(location.id)
             } else {
-                reason = "Für dieses Feld fehlt der Arbeitsplatz in den Serverdaten."
+                reason = L10n.text("Für dieses Feld fehlt der Arbeitsplatz in den Serverdaten.", table: "GameState_ColonyQueries")
             }
             let workers = location.map { location in
                 selectedColonyUnits.filter { $0.location == location.id }
@@ -75,25 +75,25 @@ extension GameState {
     }
 
     func colonyWorkLocationUnavailableReason(_ locationId: String) -> String? {
-        guard let colony = selectedColony, let game = cachedGame else { return "Keine Kolonie ausgewählt." }
+        guard let colony = selectedColony, let game = cachedGame else { return L10n.text("Keine Kolonie ausgewählt.", table: "GameState_ColonyQueries") }
         if colony.buildings.contains(where: { $0.id == locationId }) { return nil }
         guard let location = colony.workTiles.first(where: { $0.id == locationId }),
               let tileId = location.tileId, let tile = game.tiles[tileId] else {
-            return "Dieser Arbeitsplatz ist nicht verfügbar."
+            return L10n.text("Dieser Arbeitsplatz ist nicht verfügbar.", table: "GameState_ColonyQueries")
         }
-        if tileId == colony.tileId { return "Das Zentrum wird automatisch bewirtschaftet." }
-        if tile.type == nil { return "Das Gelände ist unbekannt." }
-        if tile.hasLostCityRumour { return "Die Ruinen müssen zuerst erkundet werden." }
-        if let owner = tile.owner, owner != colony.owner { return "Dieses Land gehört einem anderen Volk." }
+        if tileId == colony.tileId { return L10n.text("Das Zentrum wird automatisch bewirtschaftet.", table: "GameState_ColonyQueries") }
+        if tile.type == nil { return L10n.text("Das Gelände ist unbekannt.", table: "GameState_ColonyQueries") }
+        if tile.hasLostCityRumour { return L10n.text("Die Ruinen müssen zuerst erkundet werden.", table: "GameState_ColonyQueries") }
+        if let owner = tile.owner, owner != colony.owner { return L10n.text("Dieses Land gehört einem anderen Volk.", table: "GameState_ColonyQueries") }
         if let settlement = tile.owningSettlement, settlement != colony.id {
-            return "Dieses Feld gehört zu einer anderen Siedlung."
+            return L10n.text("Dieses Feld gehört zu einer anderen Siedlung.", table: "GameState_ColonyQueries")
         }
         let isWater = game.specification?.tileTypes[tile.type ?? ""]?.isWater
             ?? ["model.tile.ocean", "model.tile.highSeas", "model.tile.lake", "model.tile.greatRiver"].contains(tile.type ?? "")
         if isWater, !colony.buildings.contains(where: {
             ["model.building.docks", "model.building.drydock", "model.building.shipyard"].contains($0.buildingType ?? "")
         }) {
-            return "Für Wasserfelder werden Docks benötigt."
+            return L10n.text("Für Wasserfelder werden Docks benötigt.", table: "GameState_ColonyQueries")
         }
         return nil
     }
@@ -161,7 +161,7 @@ extension GameState {
         let name = carrier.name?.trimmingCharacters(in: .whitespacesAndNewlines)
         let displayName = name.flatMap { $0.isEmpty ? nil : $0 } ?? "Unbenannt"
         let type = carrier.unitType.map(unitDisplayName) ?? "Unbekannter Typ"
-        return "Name: \(displayName) · Typ: \(type)"
+        return L10n.text("Name: \(displayName) · Typ: \(type)", table: "GameState_ColonyQueries")
     }
 
     /// Local cargo carriers currently at or inside the selected colony.

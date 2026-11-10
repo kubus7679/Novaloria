@@ -201,6 +201,8 @@ public struct ImprovementTypeInfo: @unchecked Sendable {
 public struct RoleTypeInfo: @unchecked Sendable {
     public var id: String
     public var maximumCount: Int
+    /// Abilities granted by this role.
+    public var abilities: [String: Bool]
     /// Goods required for each role-count unit, keyed by goods type id.
     public var requiredGoods: [String: Int]
     /// Required unit abilities and their expected values.
@@ -209,11 +211,13 @@ public struct RoleTypeInfo: @unchecked Sendable {
 
     public init(id: String,
                 maximumCount: Int = 1,
+                abilities: [String: Bool] = [:],
                 requiredGoods: [String: Int] = [:],
                 requiredAbilities: [String: Bool] = [:],
                 productionModifiers: [ProductionModifierInfo] = []) {
         self.id = id
         self.maximumCount = maximumCount
+        self.abilities = abilities
         self.requiredGoods = requiredGoods
         self.requiredAbilities = requiredAbilities
         self.productionModifiers = productionModifiers
@@ -405,6 +409,14 @@ public final class Specification: @unchecked Sendable {
     public func hasAbility(_ abilityId: String, unitType: String?) -> Bool {
         guard let unitType else { return false }
         return effectiveAbility(unitTypeId: unitType, abilityId: abilityId) ?? false
+    }
+
+    /// Whether a unit has an ability from its type or equipped role.
+    public func hasAbility(_ abilityId: String, unitType: String?, role: String?) -> Bool {
+        if let role, let value = roleTypes[role]?.abilities[abilityId] {
+            return value
+        }
+        return hasAbility(abilityId, unitType: unitType)
     }
 
     /// Best-effort fallback when the specification was not received.
@@ -732,10 +744,15 @@ public final class Specification: @unchecked Sendable {
     private func collectRoleTypes(from node: ParsedMessage) {
         for child in node.children {
             if child.tag == "role", let roleId = child.attributes["id"] {
+                var abilities: [String: Bool] = [:]
                 var requiredGoods: [String: Int] = [:]
                 var requiredAbilities: [String: Bool] = [:]
                 for requirement in child.children {
                     switch requirement.tag {
+                    case "ability":
+                        if let abilityId = requirement.attributes["id"] {
+                            abilities[abilityId] = requirement.attributes.bool("value", default: true)
+                        }
                     case "required-goods":
                         if let goodsId = requirement.attributes["id"] {
                             requiredGoods[goodsId] = requirement.attributes.int("value")
@@ -751,6 +768,7 @@ public final class Specification: @unchecked Sendable {
                 roleTypes[roleId] = RoleTypeInfo(
                     id: roleId,
                     maximumCount: max(1, child.attributes.int("maximum-count", default: 1)),
+                    abilities: abilities,
                     requiredGoods: requiredGoods,
                     requiredAbilities: requiredAbilities,
                     productionModifiers: Self.productionModifiers(in: child.children)

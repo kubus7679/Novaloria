@@ -1,0 +1,16 @@
+"Bitte eine Spielstand-Datei mit der Endung .fsg wählen." = "Choose a saved-game file with the .fsg extension.";
+"Das Serverprotokoll konnte nicht angelegt werden: %@" = "Could not create the server log: %@";
+"Das reservierte Regelset %@ existiert bereits." = "The reserved ruleset %@ already exists.";
+"Der Serverport muss zwischen 1 und 65535 liegen." = "The server port must be between 1 and 65535.";
+"Der Zufallsstartwert muss eine ganze 64-Bit-Zahl sein." = "The random seed must be a whole 64-bit number.";
+"Der bisherige Java-Server wurde nicht rechtzeitig beendet." = "The previous Java server did not stop in time.";
+"Die gewählte Java-Datei ist nicht ausführbar." = "The selected Java file is not executable.";
+"Es läuft bereits ein eigener Java-Server." = "A local Java server is already running.";
+"Java-Server beendet (Status %lld). Protokoll: %@" = "Java server exited (status %lld). Log: %@";
+"Java-Server nach 30 Sekunden nicht erreichbar. Protokoll: %@" = "Java server was not reachable after 30 seconds. Log: %@";
+"Java-Server unerwartet beendet (Status %lld). Protokoll: %@" = "Java server exited unexpectedly (status %lld). Log: %@";
+"Port %lld ist belegt oder nicht nutzbar. Bitte einen anderen Port wählen." = "Port %lld is in use or unavailable. Choose another port.";
+"Server-Zeitlimit konnte nicht gesetzt werden: %@" = "Could not set the server timeout: %@";
+"Serverport konnte nicht geprüft werden: %@" = "Could not check the server port: %@";
+"Serververbindung fehlgeschlagen: %@" = "The server connection failed: %@";
+"Serververbindung konnte nicht geprüft werden: %@" = "Could not check the server connection: %@";

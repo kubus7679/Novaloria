@@ -24,16 +24,16 @@ struct ColopediaView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Colopädie").font(.title2.bold())
+                Text(L10n.text("Colopädie", table: "ColopediaView")).font(.title2.bold())
                 Spacer()
-                Button("Schließen") { dismiss() }
+                Button(L10n.text("Schließen", table: "ColopediaView")) { dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
-            TextField("Einträge auf Deutsch durchsuchen", text: $query)
+            TextField(L10n.text("Einträge auf Deutsch durchsuchen", table: "ColopediaView"), text: $query)
                 .textFieldStyle(.roundedBorder)
                 .accessibilityIdentifier("colopedia-search")
-            Picker("Kategorie", selection: $categoryFilter) {
-                Text("Alle Kategorien").tag(Optional<ColopediaCategory>.none)
+            Picker(L10n.text("Kategorie", table: "ColopediaView"), selection: $categoryFilter) {
+                Text(L10n.text("Alle Kategorien", table: "ColopediaView")).tag(Optional<ColopediaCategory>.none)
                 ForEach(ColopediaCategory.allCases, id: \.self) { category in
                     Text(category.title).tag(Optional(category))
                 }
@@ -75,7 +75,7 @@ struct ColopediaView: View {
                             }
                         }
                         if filtered.isEmpty {
-                            Text("Keine passenden Einträge.").foregroundStyle(.secondary)
+                            Text(L10n.text("Keine passenden Einträge.", table: "ColopediaView")).foregroundStyle(.secondary)
                         }
                     }
                     .padding(.trailing, 10)
@@ -89,14 +89,14 @@ struct ColopediaView: View {
                             .padding(16)
                     } else {
                         Text(entries.isEmpty
-                             ? "Die Colopädie-Ressourcen konnten nicht geladen werden."
-                             : "Wähle links einen Eintrag, um Beschreibung und Spielwerte zu sehen.")
+                             ? L10n.text("Die Colopädie-Ressourcen konnten nicht geladen werden.", table: "ColopediaView")
+                             : L10n.text("Wähle links einen Eintrag, um Beschreibung und Spielwerte zu sehen.", table: "ColopediaView"))
                             .foregroundStyle(entries.isEmpty ? .red : .secondary)
                             .padding()
                     }
                 }
             }
-            Text("Klassisches Regelwerk. Verfügbare Spielwerte werden aus der aktuellen Serverspezifikation übernommen.")
+            Text(L10n.text("Klassisches Regelwerk. Verfügbare Spielwerte werden aus der aktuellen Serverspezifikation übernommen.", table: "ColopediaView"))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -144,7 +144,7 @@ struct ColopediaView: View {
             let related = entries.filter { entry.related.contains($0.id) }
             if !related.isEmpty {
                 Divider()
-                Text("Verwandte Einträge").font(.headline)
+                Text(L10n.text("Verwandte Einträge", table: "ColopediaView")).font(.headline)
                 ForEach(related) { item in
                     Button {
                         query = ""
@@ -162,7 +162,7 @@ struct ColopediaView: View {
                 }
             }
             if entry.summary.isEmpty && entry.text.isEmpty && facts.isEmpty {
-                Text("Für diesen Eintrag sind im Regelwerk keine weiteren Informationen hinterlegt.")
+                Text(L10n.text("Für diesen Eintrag sind im Regelwerk keine weiteren Informationen hinterlegt.", table: "ColopediaView"))
                     .foregroundStyle(.secondary)
             }
         }

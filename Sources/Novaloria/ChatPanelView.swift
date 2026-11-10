@@ -10,10 +10,10 @@ struct ChatPanelView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Chat")
+                Text(L10n.text("Chat", table: "ChatPanelView"))
                     .font(.title3.bold())
                 Spacer()
-                Button("Schließen") { dismiss() }
+                Button(L10n.text("Schließen", table: "ChatPanelView")) { dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
 
@@ -21,7 +21,7 @@ struct ChatPanelView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 4) {
                         if state.incomingChatLog.isEmpty {
-                            Text("Noch keine Nachrichten.")
+                            Text(L10n.text("Noch keine Nachrichten.", table: "ChatPanelView"))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -44,10 +44,10 @@ struct ChatPanelView: View {
             }
 
             HStack {
-                TextField("Nachricht", text: $message)
+                TextField(L10n.text("Nachricht", table: "ChatPanelView"), text: $message)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit(send)
-                Button("Senden", action: send)
+                Button(L10n.text("Senden", table: "ChatPanelView"), action: send)
                     .disabled(message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }

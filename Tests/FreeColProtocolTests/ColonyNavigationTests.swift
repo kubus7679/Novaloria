@@ -157,6 +157,28 @@ final class ColonyNavigationTests: XCTestCase {
     }
 
     @MainActor
+    func testOpeningNativeSettlementShowsVillagePanelInsteadOfColonyPanel() throws {
+        let state = try makeState()
+        try state.game?.applyUpdate(XMLDecoder.decode("""
+        <update>
+          <player id="native-player" username="Urutu" playerType="indian"/>
+          <indianSettlement id="native-village" name="Urutu" owner="native-player"
+                            tile="tile-4-0" settlementType="model.settlement.indianVillage"
+                            unitCount="4" learnableSkill="model.unit.expertFarmer"
+                            wantedGoods0="model.goods.tools"/>
+        </update>
+        """))
+        state.gameUpdateID += 1
+
+        state.selectMapTile("tile-4-0", openColony: true)
+
+        XCTAssertTrue(state.showNativeSettlementPanel)
+        XCTAssertFalse(state.showColonyPanel)
+        XCTAssertEqual(state.selectedNativeSettlement?.id, "native-village")
+        XCTAssertEqual(state.selectedTileId, "tile-4-0")
+    }
+
+    @MainActor
     func testSingleColonyDisablesCyclingAndForeignColonyRemainsReadOnly() throws {
         let state = try makeState()
         try state.game?.applyRemove(XMLDecoder.decode("""

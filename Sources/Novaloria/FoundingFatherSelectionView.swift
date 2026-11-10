@@ -15,9 +15,9 @@ struct FoundingFatherSelectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Kontinentalkongress")
+            Text(L10n.text("Kontinentalkongress", table: "FoundingFatherSelectionView"))
                 .font(.title2.bold())
-            Text("Wähle einen Gründervater aus.")
+            Text(L10n.text("Wähle einen Gründervater aus.", table: "FoundingFatherSelectionView"))
                 .font(.body)
                 .foregroundColor(.secondary)
             GeometryReader { geometry in
@@ -43,7 +43,7 @@ struct FoundingFatherSelectionView: View {
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                     .padding(4)
                     if options.isEmpty {
-                        Text("Keine Kandidaten verfügbar.")
+                        Text(L10n.text("Keine Kandidaten verfügbar.", table: "FoundingFatherSelectionView"))
                             .foregroundColor(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -116,11 +116,11 @@ struct FoundingFatherSelectionView: View {
 
     private func categoryLabel(_ key: String) -> String {
         switch key.lowercased() {
-        case "trade": return "Handel"
-        case "exploration": return "Erkundung"
-        case "military": return "Militär"
-        case "political": return "Politik"
-        case "religious": return "Religion"
+        case "trade": return L10n.text("Handel", table: "FoundingFatherSelectionView")
+        case "exploration": return L10n.text("Erkundung", table: "FoundingFatherSelectionView")
+        case "military": return L10n.text("Militär", table: "FoundingFatherSelectionView")
+        case "political": return L10n.text("Politik", table: "FoundingFatherSelectionView")
+        case "religious": return L10n.text("Religion", table: "FoundingFatherSelectionView")
         default: return GameLabels.name(key)
         }
     }

@@ -7,6 +7,7 @@ import java.util.Base64;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.xml.stream.XMLStreamException;
+import net.sf.freecol.FreeCol;
 import net.sf.freecol.common.io.FreeColXMLReader;
 import net.sf.freecol.common.model.Game;
 import net.sf.freecol.server.FreeColServer;
@@ -39,9 +40,15 @@ public final class SaveGameMessage extends AttributeMessage {
             return player.clientError("Only the game administrator may export a savegame.");
         }
         Path temporary = null;
+        String originalName = FreeCol.getName();
         try {
             logger.info("Creating client savegame export");
             temporary = Files.createTempFile("freecol-client-save-", ".fsg");
+            // FreeCol stores FreeCol.name as the savegame owner and later uses
+            // it as the client login name when opening the save. The process
+            // name (often the macOS account name) may not match the saved
+            // player's name, so temporarily use the actual player name.
+            FreeCol.setName(player.getName());
             server.saveGame(temporary.toFile(), null, null);
             if (Files.size(temporary) > MAX_BYTES) {
                 return player.clientError("Savegame exceeds the 8 MiB export limit.");
@@ -60,6 +67,7 @@ public final class SaveGameMessage extends AttributeMessage {
                     logger.log(Level.WARNING, "Could not remove temporary savegame", e);
                 }
             }
+            FreeCol.setName(originalName);
         }
     }
 }

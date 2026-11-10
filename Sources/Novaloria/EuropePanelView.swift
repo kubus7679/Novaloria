@@ -11,10 +11,18 @@ struct EuropePanelView: View {
     @State private var tradeAmount: String = "10"
     @State private var section: EuropeSection = .harbor
 
-    enum EuropeSection: String, CaseIterable {
-        case harbor = "Hafen und Fracht"
-        case market = "Markt"
-        case recruitment = "Rekrutierung"
+    enum EuropeSection: CaseIterable {
+        case harbor
+        case market
+        case recruitment
+
+        var title: String {
+            switch self {
+            case .harbor: L10n.text("Hafen und Fracht", table: "EuropePanelView")
+            case .market: L10n.text("Markt", table: "EuropePanelView")
+            case .recruitment: L10n.text("Rekrutierung", table: "EuropePanelView")
+            }
+        }
     }
 
     init(section: EuropeSection = .harbor) {
@@ -24,15 +32,15 @@ struct EuropePanelView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Europa")
+                Text(L10n.text("Europa", table: "EuropePanelView"))
                     .font(.title2.bold())
                 Spacer()
                 if let local = state.localPlayer {
-                    Text("Gold: \(local.gold)")
+                    Text(L10n.text("Gold: \(local.gold)", table: "EuropePanelView"))
                         .font(.headline)
                         .foregroundColor(.yellow)
                 }
-                Button("Schließen") { state.closeEuropePanel() }
+                Button(L10n.text("Schließen", table: "EuropePanelView")) { state.closeEuropePanel() }
                     .keyboardShortcut(.cancelAction)
                     .buttonStyle(.bordered)
             }
@@ -46,14 +54,14 @@ struct EuropePanelView: View {
             }
             Divider()
             VStack(alignment: .leading, spacing: 8) {
-                Picker("Bereich", selection: $section) {
-                    ForEach(EuropeSection.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                Picker(L10n.text("Bereich", table: "EuropePanelView"), selection: $section) {
+                    ForEach(EuropeSection.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .accessibilityIdentifier("europe-section")
-                Picker("Handelsschiff", selection: $selectedCarrierId) {
-                    Text("Kein Schiff ausgewählt").tag("")
+                Picker(L10n.text("Handelsschiff", table: "EuropePanelView"), selection: $selectedCarrierId) {
+                    Text(L10n.text("Kein Schiff ausgewählt", table: "EuropePanelView")).tag("")
                     ForEach(state.europeCarrierUnits) { carrier in
                         Text("\(unitLabel(carrier.unitType)) · \(carrier.name ?? cargoLabel(carrier))").tag(carrier.id)
                     }
@@ -76,7 +84,7 @@ struct EuropePanelView: View {
                             purchaseSection(local)
                         }
                     } else {
-                        Text("Keine Europa-Daten verfügbar.")
+                        Text(L10n.text("Keine Europa-Daten verfügbar.", table: "EuropePanelView"))
                             .foregroundColor(.secondary)
                     }
                 }
@@ -96,11 +104,11 @@ struct EuropePanelView: View {
     // MARK: - Recruit
 
     private func recruitSection(_ local: Player) -> some View {
-        GroupBox("Rekrutierung") {
+        GroupBox(L10n.text("Rekrutierung", table: "EuropePanelView")) {
             VStack(alignment: .leading, spacing: 6) {
                 if let europe = local.europe {
                     if europe.recruitable.isEmpty {
-                        Text("Keine Rekruten verfügbar.")
+                        Text(L10n.text("Keine Rekruten verfügbar.", table: "EuropePanelView"))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     } else {
@@ -111,12 +119,15 @@ struct EuropePanelView: View {
                                     .font(.caption)
                                 Spacer()
                                 Text(
-                                    state.europeRecruitmentCost.map { $0 == 0 ? "Kostenlos" : "\($0) G" }
-                                        ?? "Preis unbekannt"
+                                    state.europeRecruitmentCost.map {
+                                        $0 == 0 ? L10n.text("Kostenlos", table: "EuropePanelView") : "\($0) G"
+                                    } ?? L10n.text("Preis unbekannt", table: "EuropePanelView")
                                 )
                                 .font(.caption)
                                 .foregroundColor(.yellow)
-                                Button(recruit.number > 1 ? "Anwerben (×\(recruit.number))" : "Anwerben") {
+                                Button(recruit.number > 1
+                                       ? L10n.text("Anwerben (×\(recruit.number))", table: "EuropePanelView")
+                                       : L10n.text("Anwerben", table: "EuropePanelView")) {
                                     state.recruitUnitInEurope(slot: index + 1)
                                 }
                                 .buttonStyle(.bordered)
@@ -125,15 +136,15 @@ struct EuropePanelView: View {
                         }
                     }
                     if state.europeRecruitmentCost == 0, !state.canChooseEuropeRecruit {
-                        Button("Kostenlosen Auswanderer aufnehmen (Zufall)") {
+                        Button(L10n.text("Kostenlosen Auswanderer aufnehmen (Zufall)", table: "EuropePanelView")) {
                             state.recruitUnitInEurope(slot: 0)
                         }
                         .disabled(!state.canRecruitInEurope)
                     }
                     Text(
                         state.europeRecruitmentCost == nil
-                            ? "Einwanderungsschwelle fehlt in den Serverdaten."
-                            : "Anwerbung abhängig von Einwanderungspunkten; Grundpreis: \(europe.recruitPrice) G"
+                            ? L10n.text("Einwanderungsschwelle fehlt in den Serverdaten.", table: "EuropePanelView")
+                            : L10n.text("Anwerbung abhängig von Einwanderungspunkten; Grundpreis: \(europe.recruitPrice) G", table: "EuropePanelView")
                     )
                     .font(.caption2)
                     .foregroundColor(.secondary)
@@ -146,11 +157,11 @@ struct EuropePanelView: View {
     // MARK: - Market history
 
     private var marketHistorySection: some View {
-        GroupBox("Preisverlauf") {
+        GroupBox(L10n.text("Preisverlauf", table: "EuropePanelView")) {
             let buySeries = state.marketBuyPriceHistory[selectedGoodsType] ?? []
             let saleSeries = state.marketPriceHistory[selectedGoodsType] ?? []
             if selectedGoodsType.isEmpty || (buySeries.isEmpty && saleSeries.isEmpty) {
-                Text("Wähle eine Ware und handle, um den Preisverlauf zu sehen.")
+                Text(L10n.text("Wähle eine Ware und handle, um den Preisverlauf zu sehen.", table: "EuropePanelView"))
                     .font(.caption)
                     .foregroundColor(.secondary)
             } else {
@@ -161,10 +172,10 @@ struct EuropePanelView: View {
                         Spacer()
                     }
                     HStack {
-                        Text(priceHistorySummary("Kauf", values: buySeries))
+                        Text(priceHistorySummary(L10n.text("Kauf", table: "EuropePanelView"), values: buySeries))
                             .foregroundColor(.orange)
                         Spacer()
-                        Text(priceHistorySummary("Verkauf", values: saleSeries))
+                        Text(priceHistorySummary(L10n.text("Verkauf", table: "EuropePanelView"), values: saleSeries))
                             .foregroundColor(.yellow)
                     }
                     .font(.caption2)
@@ -182,21 +193,21 @@ struct EuropePanelView: View {
     }
 
     private func priceHistorySummary(_ label: String, values: [(turn: Int, price: Int)]) -> String {
-        guard let latest = values.last?.price else { return "\(label): —" }
+        guard let latest = values.last?.price else { return L10n.text("\(label): —", table: "EuropePanelView") }
         let minPrice = values.map { $0.price }.min() ?? values.last!.price
         let maxPrice = values.map { $0.price }.max() ?? values.last!.price
         let firstTurn = values.first?.turn ?? 0
         let lastTurn = values.last?.turn ?? 0
-        return "\(label): \(latest) G (\(minPrice)–\(maxPrice)), Runden \(firstTurn)–\(lastTurn)"
+        return L10n.text("\(label): \(latest) G (\(minPrice)–\(maxPrice)), Runden \(firstTurn)–\(lastTurn)", table: "EuropePanelView")
     }
 
     // MARK: - Purchase
 
     private func purchaseSection(_ local: Player) -> some View {
         let purchasable = state.purchasableEuropeUnits
-        return GroupBox("Kauf und Ausbildung") {
+        return GroupBox(L10n.text("Kauf und Ausbildung", table: "EuropePanelView")) {
             if purchasable.isEmpty {
-                Text("Keine kaufbaren Einheiten verfügbar.")
+                Text(L10n.text("Keine kaufbaren Einheiten verfügbar.", table: "EuropePanelView"))
                     .font(.caption)
                     .foregroundColor(.secondary)
             } else {
@@ -207,10 +218,10 @@ struct EuropePanelView: View {
                             Text(unit.label)
                                 .font(.caption)
                             Spacer()
-                            Text("\(unit.price) G")
+                            Text(L10n.text("\(unit.price) G", table: "EuropePanelView"))
                                 .font(.caption)
                                 .foregroundColor(local.gold >= unit.price ? .yellow : .red)
-                            Button("Kaufen") {
+                            Button(L10n.text("Kaufen", table: "EuropePanelView")) {
                                 state.trainUnitInEurope(unitType: unit.unitType)
                             }
                             .buttonStyle(.bordered)
@@ -226,20 +237,20 @@ struct EuropePanelView: View {
     // MARK: - Market
 
     private func marketSection(_ local: Player) -> some View {
-        GroupBox("Markt") {
+        GroupBox(L10n.text("Markt", table: "EuropePanelView")) {
             VStack(alignment: .leading, spacing: 6) {
                 let marketData = state.localPlayerMarketData
                 if marketData.isEmpty {
-                    Text("Keine Marktdaten verfügbar.")
+                    Text(L10n.text("Keine Marktdaten verfügbar.", table: "EuropePanelView"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 } else {
                     HStack(spacing: 6) {
-                        Text("Ware").frame(width: 120, alignment: .leading)
-                        Text("Kauf").frame(width: 46, alignment: .trailing)
-                        Text("Verkauf").frame(width: 56, alignment: .trailing)
-                        Text("Vorrat").frame(width: 56, alignment: .trailing)
-                        Text("Trend").frame(width: 40, alignment: .center)
+                        Text(L10n.text("Ware", table: "EuropePanelView")).frame(width: 120, alignment: .leading)
+                        Text(L10n.text("Kauf", table: "EuropePanelView")).frame(width: 46, alignment: .trailing)
+                        Text(L10n.text("Verkauf", table: "EuropePanelView")).frame(width: 56, alignment: .trailing)
+                        Text(L10n.text("Vorrat", table: "EuropePanelView")).frame(width: 56, alignment: .trailing)
+                        Text(L10n.text("Trend", table: "EuropePanelView")).frame(width: 40, alignment: .center)
                         Spacer()
                     }
                     .font(.caption2.bold())
@@ -253,15 +264,15 @@ struct EuropePanelView: View {
                                     Text(goodsLabel(entry.goodsType))
                                         .frame(width: 120, alignment: .leading)
                                         .font(.caption)
-                                    Text("\(prices.costToBuy)")
+                                    Text(L10n.text("\(prices.costToBuy)", table: "EuropePanelView"))
                                         .frame(width: 46, alignment: .trailing)
                                         .font(.caption)
                                         .foregroundColor(.orange)
-                                    Text("\(prices.paidForSale)")
+                                    Text(L10n.text("\(prices.paidForSale)", table: "EuropePanelView"))
                                         .frame(width: 56, alignment: .trailing)
                                         .font(.caption)
                                         .foregroundColor(.yellow)
-                                    Text("\(entry.amount)")
+                                    Text(L10n.text("\(entry.amount)", table: "EuropePanelView"))
                                         .frame(width: 56, alignment: .trailing)
                                         .font(.caption)
                                         .foregroundColor(.secondary)
@@ -271,14 +282,14 @@ struct EuropePanelView: View {
                                         .foregroundColor(trendColor(for: entry.goodsType))
                                     Spacer()
                                     if entry.arrears > 0 {
-                                        Button("\(entry.arrears) G zahlen") {
+                                        Button(L10n.text("\(entry.arrears) G zahlen", table: "EuropePanelView")) {
                                             state.payArrears(goodsTypeId: entry.goodsType ?? "")
                                         }
                                         .buttonStyle(.bordered)
                                         .controlSize(.small)
                                         .disabled(!state.canPayArrears(for: entry.goodsType))
                                     }
-                                    Button("Auswählen") {
+                                    Button(L10n.text("Auswählen", table: "EuropePanelView")) {
                                         selectedGoodsType = entry.goodsType ?? ""
                                     }
                                     .buttonStyle(.bordered)
@@ -305,25 +316,25 @@ struct EuropePanelView: View {
                             carrierId: selectedCarrierId
                         )
                         HStack {
-                            Text("Ware: \(goodsLabel(selectedGoodsType))")
+                            Text(L10n.text("Ware: \(goodsLabel(selectedGoodsType))", table: "EuropePanelView"))
                                 .font(.caption)
                             Spacer()
-                            TextField("Menge", text: $tradeAmount)
+                            TextField(L10n.text("Menge", table: "EuropePanelView"), text: $tradeAmount)
                                 .textFieldStyle(.roundedBorder)
                                 .frame(width: 70)
-                            Button("Verkaufen") {
+                            Button(L10n.text("Verkaufen", table: "EuropePanelView")) {
                                 trade(selectedGoodsType, amount: Int(tradeAmount) ?? 0, sell: true)
                             }
                             .buttonStyle(.bordered)
                             .disabled(!canTrade || arrears > 0 || requestedTradeAmount > limits.sell)
-                            Button("Kaufen") {
+                            Button(L10n.text("Kaufen", table: "EuropePanelView")) {
                                 trade(selectedGoodsType, amount: Int(tradeAmount) ?? 0, sell: false)
                             }
                             .buttonStyle(.bordered)
                             .disabled(!canTrade || arrears > 0 || requestedTradeAmount > limits.buy)
                         }
                         HStack {
-                            Button("Max. Kauf") {
+                            Button(L10n.text("Max. Kauf", table: "EuropePanelView")) {
                                 tradeAmount = String(limits.buy)
                             }
                             .buttonStyle(.bordered)
@@ -333,7 +344,7 @@ struct EuropePanelView: View {
                                     || selectedCarrierId.isEmpty
                                     || limits.buy == 0)
 
-                            Button("Max. Verkauf") {
+                            Button(L10n.text("Max. Verkauf", table: "EuropePanelView")) {
                                 tradeAmount = String(limits.sell)
                             }
                             .buttonStyle(.bordered)
@@ -346,8 +357,8 @@ struct EuropePanelView: View {
                             Spacer()
                             Text(
                                 arrears > 0
-                                    ? "Boykott: zuerst \(arrears) G Rückstände zahlen"
-                                    : "Kauflimit: \(limits.buy) · Verkaufslimit: \(limits.sell)"
+                                    ? L10n.text("Boykott: zuerst \(arrears) G Rückstände zahlen", table: "EuropePanelView")
+                                    : L10n.text("Kauflimit: \(limits.buy) · Verkaufslimit: \(limits.sell)", table: "EuropePanelView")
                             )
                             .font(.caption2)
                             .foregroundColor(.secondary)
@@ -358,7 +369,7 @@ struct EuropePanelView: View {
                                 amount: requestedTradeAmount
                             )
                         {
-                            Text("Schätzung: Kauf \(quote.buyTotal) G · Verkauf nach Steuern \(quote.sellAfterTax) G")
+                            Text(L10n.text("Schätzung: Kauf \(quote.buyTotal) G · Verkauf nach Steuern \(quote.sellAfterTax) G", table: "EuropePanelView"))
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
@@ -389,17 +400,17 @@ struct EuropePanelView: View {
     // MARK: - Purchases
 
     private func purchasesSummary(_ local: Player) -> some View {
-        GroupBox("Handelsbilanz") {
+        GroupBox(L10n.text("Handelsbilanz", table: "EuropePanelView")) {
             HStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Rekrutiert: \(state.purchasesRecruits)")
-                    Text("Ausgebildet: \(state.purchasesTrained)")
+                    Text(L10n.text("Rekrutiert: \(state.purchasesRecruits)", table: "EuropePanelView"))
+                    Text(L10n.text("Ausgebildet: \(state.purchasesTrained)", table: "EuropePanelView"))
                 }
                 .font(.caption)
                 Spacer()
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Ausgaben: \(state.purchasesTotal) G")
-                    Text("Nettogewinn: \(state.purchasesNetProfit) G")
+                    Text(L10n.text("Ausgaben: \(state.purchasesTotal) G", table: "EuropePanelView"))
+                    Text(L10n.text("Nettogewinn: \(state.purchasesNetProfit) G", table: "EuropePanelView"))
                         .foregroundColor(state.purchasesNetProfit >= 0 ? .green : .red)
                 }
                 .font(.caption)
@@ -411,10 +422,10 @@ struct EuropePanelView: View {
     // MARK: - Ships in port
 
     private func shipsSection(_ local: Player) -> some View {
-        GroupBox("Schiffe im Hafen") {
+        GroupBox(L10n.text("Schiffe im Hafen", table: "EuropePanelView")) {
             VStack(alignment: .leading, spacing: 4) {
                 if state.europeCarrierUnits.isEmpty {
-                    Text("Keine Schiffe im Hafen.")
+                    Text(L10n.text("Keine Schiffe im Hafen.", table: "EuropePanelView"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 } else {
@@ -450,10 +461,10 @@ struct EuropePanelView: View {
                     }
                     if let carrier = state.europeCarrierUnits.first(where: { $0.id == selectedCarrierId }) {
                         Divider()
-                        Text("Fracht")
+                        Text(L10n.text("Fracht", table: "EuropePanelView"))
                             .font(.headline)
                         ForEach(carrier.goods.keys.sorted(), id: \.self) { type in
-                            Text("\(goodsLabel(type)): \(carrier.goods[type] ?? 0)")
+                            Text(L10n.text("\(goodsLabel(type)): \(carrier.goods[type] ?? 0)", table: "EuropePanelView"))
                         }
                         let passengers = state.game?.units.values.filter { $0.location == carrier.id } ?? []
                         ForEach(passengers.sorted { $0.id < $1.id }) { unit in
@@ -461,7 +472,7 @@ struct EuropePanelView: View {
                                 unitPortrait(unit.unitType)
                                 Text(unitLabel(unit.unitType))
                                 Spacer()
-                                Button("Von Bord gehen") {
+                                Button(L10n.text("Von Bord gehen", table: "EuropePanelView")) {
                                     state.selectUnit(unit.id, onTile: nil)
                                     state.disembarkSelectedUnit()
                                 }
@@ -469,18 +480,18 @@ struct EuropePanelView: View {
                             }
                         }
                         if carrier.goods.isEmpty && passengers.isEmpty {
-                            Text("Keine Fracht oder Passagiere.")
+                            Text(L10n.text("Keine Fracht oder Passagiere.", table: "EuropePanelView"))
                                 .foregroundStyle(.secondary)
                         }
-                        Button("Mit diesem Schiff handeln") { section = .market }
-                        Button("Zur Neuen Welt aufbrechen") {
+                        Button(L10n.text("Mit diesem Schiff handeln", table: "EuropePanelView")) { section = .market }
+                        Button(L10n.text("Zur Neuen Welt aufbrechen", table: "EuropePanelView")) {
                             state.sendShipToAmerica(carrier.id)
                         }
                         .disabled(!state.canSendShipToAmerica(carrier.id))
-                        .help("Das Schiff verlässt Europa mit seiner gesamten Fracht und allen Passagieren.")
+                        .help(L10n.text("Das Schiff verlässt Europa mit seiner gesamten Fracht und allen Passagieren.", table: "EuropePanelView"))
                     }
                     if selectedCarrierId.isEmpty {
-                        Text("Schiff für Handel auswählen.")
+                        Text(L10n.text("Schiff für Handel auswählen.", table: "EuropePanelView"))
                             .font(.caption2)
                             .foregroundColor(.secondary)
                     }
@@ -493,29 +504,29 @@ struct EuropePanelView: View {
     // MARK: - Helpers
 
     private var dockSection: some View {
-        GroupBox("Docks") {
+        GroupBox(L10n.text("Docks", table: "EuropePanelView")) {
             VStack(alignment: .leading, spacing: 8) {
                 let dockUnits = state.europeUnits.filter { !state.isCarrierUnit($0) }
                 if dockUnits.isEmpty {
-                    Text("Keine Einheiten an den Docks.").foregroundStyle(.secondary)
+                    Text(L10n.text("Keine Einheiten an den Docks.", table: "EuropePanelView")).foregroundStyle(.secondary)
                 }
                 ForEach(dockUnits) { unit in
                     HStack {
                         unitPortrait(unit.unitType)
                         Text(unitLabel(unit.unitType))
                         Spacer()
-                        Button("An Bord") {
+                        Button(L10n.text("An Bord", table: "EuropePanelView")) {
                             state.selectUnit(unit.id, onTile: nil)
                             state.embarkSelectedUnit(onCarrier: selectedCarrierId)
                         }
                         .disabled(!state.canEmbarkUnit(unit.id, onCarrier: selectedCarrierId))
-                        .help("Auf das oben ausgewählte Schiff laden. Das Schiff muss im Europahafen sein und Platz haben.")
+                        .help(L10n.text("Auf das oben ausgewählte Schiff laden. Das Schiff muss im Europahafen sein und Platz haben.", table: "EuropePanelView"))
                     }
                 }
                 if !dockUnits.isEmpty {
                     Text(selectedCarrierId.isEmpty
-                         ? "Zum Einschiffen muss ein Schiff im Europahafen liegen."
-                         : "„An Bord“ lädt die Einheit auf das ausgewählte Schiff, sofern Platz frei ist.")
+                         ? L10n.text("Zum Einschiffen muss ein Schiff im Europahafen liegen.", table: "EuropePanelView")
+                         : L10n.text("„An Bord“ lädt die Einheit auf das ausgewählte Schiff, sofern Platz frei ist.", table: "EuropePanelView"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -527,7 +538,7 @@ struct EuropePanelView: View {
                     } ?? []
                 if !traveling.isEmpty {
                     Divider()
-                    Text("Auf See").font(.headline)
+                    Text(L10n.text("Auf See", table: "EuropePanelView")).font(.headline)
                     ForEach(traveling.sorted { $0.id < $1.id }) { unit in
                         Text("\(unitLabel(unit.unitType)) · \(state.unitTravelStatus(unit) ?? "")")
                     }
@@ -575,7 +586,7 @@ struct EuropePanelView: View {
     private func cargoLabel(_ carrier: FreeColGame.Unit) -> String {
         guard let game = state.game else { return "" }
         let aboard = game.units.values.filter { $0.location == carrier.id }.count
-        return "\(aboard) Passagiere · \(carrier.goods.values.reduce(0, +)) Waren"
+        return L10n.text("\(aboard) Passagiere · \(carrier.goods.values.reduce(0, +)) Waren", table: "EuropePanelView")
     }
 
     private func unitLabel(_ unitType: String?) -> String {

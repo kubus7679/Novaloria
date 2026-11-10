@@ -27,11 +27,11 @@ enum GameDifficulty: String, CaseIterable, Identifiable {
     }
     var title: String {
         switch self {
-        case .veryEasy: return "Sehr leicht"
-        case .easy: return "Leicht"
-        case .medium: return "Normal"
-        case .hard: return "Schwer"
-        case .veryHard: return "Sehr schwer"
+        case .veryEasy: return L10n.text("Sehr leicht", table: "NewGameConfiguration")
+        case .easy: return L10n.text("Leicht", table: "NewGameConfiguration")
+        case .medium: return L10n.text("Normal", table: "NewGameConfiguration")
+        case .hard: return L10n.text("Schwer", table: "NewGameConfiguration")
+        case .veryHard: return L10n.text("Sehr schwer", table: "NewGameConfiguration")
         }
     }
 }
@@ -65,7 +65,7 @@ struct GameSetupOption: Identifiable {
         if isXML {
             let parsed = try XMLDecoder.decode(value)
             guard parsed.tag == node.tag, parsed.attributes["id"] == id else {
-                throw invalid("XML-Typ und Options-ID dürfen nicht geändert werden.")
+                throw invalid(L10n.text("XML-Typ und Options-ID dürfen nicht geändert werden.", table: "NewGameConfiguration"))
             }
             if parsed.tag == "unitListOption" {
                 for unit in parsed.children where unit.tag != "template" {
@@ -76,37 +76,37 @@ struct GameSetupOption: Identifiable {
                           roleIDs.contains(role),
                           let count = unit.children.first(where: { $0.tag == "number" })?.attributes["value"],
                           let number = Int32(count), number > 0 else {
-                        throw invalid("Einheiten benötigen gültige unitType-, role- und positive number-Werte.")
+                        throw invalid(L10n.text("Einheiten benötigen gültige unitType-, role- und positive number-Werte.", table: "NewGameConfiguration"))
                     }
                 }
             }
             return parsed
         }
         if isBoolean, !["true", "false"].contains(value) {
-            throw invalid("Bitte true oder false wählen.")
+            throw invalid(L10n.text("Bitte true oder false wählen.", table: "NewGameConfiguration"))
         }
         if ["integerOption", "percentageOption", "rangeOption", "selectOption"].contains(node.tag) {
-            guard let number = Int32(value) else { throw invalid("Bitte eine ganze 32-Bit-Zahl eingeben.") }
+            guard let number = Int32(value) else { throw invalid(L10n.text("Bitte eine ganze 32-Bit-Zahl eingeben.", table: "NewGameConfiguration")) }
             func bound(_ key: String, defaultValue: Int32) throws -> Int32 {
                 guard let text = node.attributes[key] else { return defaultValue }
-                guard let bound = Int32(text) else { throw invalid("Ungültige Bereichsdefinition: \(key).") }
+                guard let bound = Int32(text) else { throw invalid(L10n.text("Ungültige Bereichsdefinition: \(key).", table: "NewGameConfiguration")) }
                 return bound
             }
             let minimum = try bound("minimumValue", defaultValue: node.tag == "percentageOption" ? 0 : Int32.min)
             let maximum = try bound("maximumValue", defaultValue: node.tag == "percentageOption" ? 100 : Int32.max)
-            guard minimum <= maximum else { throw invalid("Minimum ist größer als Maximum.") }
+            guard minimum <= maximum else { throw invalid(L10n.text("Minimum ist größer als Maximum.", table: "NewGameConfiguration")) }
             guard (minimum...maximum).contains(number) else {
-                throw invalid("Erlaubter Bereich: \(minimum) bis \(maximum).")
+                throw invalid(L10n.text("Erlaubter Bereich: \(minimum) bis \(maximum).", table: "NewGameConfiguration"))
             }
         }
         if !choices.isEmpty, !choices.contains(where: { $0.value == value }) {
-            throw invalid("Bitte einen der angebotenen Werte wählen.")
+            throw invalid(L10n.text("Bitte einen der angebotenen Werte wählen.", table: "NewGameConfiguration"))
         }
         if node.tag == "fileOption", !value.isEmpty {
             var isDirectory: ObjCBool = false
             guard FileManager.default.fileExists(atPath: value, isDirectory: &isDirectory),
                   !isDirectory.boolValue, FileManager.default.isReadableFile(atPath: value) else {
-                throw invalid("Die Importdatei ist keine lesbare Datei.")
+                throw invalid(L10n.text("Die Importdatei ist keine lesbare Datei.", table: "NewGameConfiguration"))
             }
         }
         var attributes = node.attributes
@@ -132,7 +132,7 @@ struct NewGameConfiguration {
     let installation: URL
     let difficulty: GameDifficulty
     let groups: [ParsedMessage]
-    let labels: [String: String]
+    var labels: [String: String]
     let unitTypeIDs: Set<String>
     let roleIDs: Set<String>
     var values: [String: String]
@@ -154,20 +154,28 @@ struct NewGameConfiguration {
         labels[key + ".name"] ?? labels[key] ?? key
     }
 
-    static func load(installation: URL, difficulty: GameDifficulty) throws -> Self {
+    mutating func reloadLabels(for language: InterfaceLanguage) throws {
+        labels = try Self.loadLabels(installation: installation, language: language)
+    }
+
+    static func load(
+        installation: URL,
+        difficulty: GameDifficulty,
+        language: InterfaceLanguage = .german
+    ) throws -> Self {
         let installation = installation.standardizedFileURL.resolvingSymlinksInPath()
         guard FileManager.default.isReadableFile(atPath: installation.appendingPathComponent("FreeCol.jar").path) else {
-            throw NewGameError.invalid("Im Installationsordner fehlt eine lesbare FreeCol.jar.")
+            throw NewGameError.invalid(L10n.text("Im Installationsordner fehlt eine lesbare FreeCol.jar.", table: "NewGameConfiguration"))
         }
         let rules = installation.appendingPathComponent("data/rules")
         func readSpec(_ id: String, visited: Set<String>) throws -> [ParsedMessage] {
             guard !visited.contains(id), !id.contains("/"), !id.contains("..") else {
-                throw NewGameError.invalid("Ungültige oder zyklische Regelset-Vererbung: \(id)")
+                throw NewGameError.invalid(L10n.text("Ungültige oder zyklische Regelset-Vererbung: \(id)", table: "NewGameConfiguration"))
             }
             let xml = try String(contentsOf: rules.appendingPathComponent("\(id)/specification.xml"), encoding: .utf8)
             let root = try XMLDecoder.decode(xml)
             guard root.tag == "freecol-specification" else {
-                throw NewGameError.invalid("Ungültige FreeCol-Spezifikation: \(id)")
+                throw NewGameError.invalid(L10n.text("Ungültige FreeCol-Spezifikation: \(id)", table: "NewGameConfiguration"))
             }
             var parents: [ParsedMessage] = []
             if let parent = root.attributes["extends"] {
@@ -195,27 +203,18 @@ struct NewGameConfiguration {
               let selected = levels.children.first(where: { $0.attributes["id"] == difficulty.optionID }),
               let game = options.children.first(where: { $0.attributes["id"] == "gameOptions" }),
               let map = options.children.first(where: { $0.attributes["id"] == "mapGeneratorOptions" }) else {
-            throw NewGameError.invalid("Spiel-, Karten- oder Schwierigkeitsoptionen fehlen im Regelset.")
+            throw NewGameError.invalid(L10n.text("Spiel-, Karten- oder Schwierigkeitsoptionen fehlen im Regelset.", table: "NewGameConfiguration"))
         }
         // Custom contains the bounds and choices omitted by the preset difficulty levels.
         let template = levels.children.first { $0.attributes["id"] == "model.difficulty.custom" }
         let difficultyGroup = template.map { merge($0, selected) } ?? selected
-        var labels: [String: String] = [:]
-        for name in ["FreeColMessages.properties", "FreeColMessages_de.properties"] {
-            let text = try String(contentsOf: installation.appendingPathComponent("data/strings/\(name)"), encoding: .utf8)
-            for line in text.components(separatedBy: .newlines) where !line.hasPrefix("#") {
-                if let separator = line.firstIndex(of: "=") {
-                    labels[String(line[..<separator]).trimmingCharacters(in: .whitespaces)] =
-                        String(line[line.index(after: separator)...]).trimmingCharacters(in: .whitespaces)
-                }
-            }
-        }
+        let labels = try loadLabels(installation: installation, language: language)
         var result = Self(installation: installation, difficulty: difficulty,
                           groups: [game, map, difficultyGroup], labels: labels,
                           unitTypeIDs: unitTypeIDs, roleIDs: roleIDs, values: [:])
         func validateIDs(_ node: ParsedMessage) throws {
             guard let id = node.attributes["id"], !id.isEmpty else {
-                throw NewGameError.invalid("Optionsdefinition ohne ID: \(node.tag)")
+                throw NewGameError.invalid(L10n.text("Optionsdefinition ohne ID: \(node.tag)", table: "NewGameConfiguration"))
             }
             if node.tag == "optionGroup" {
                 try node.children.forEach(validateIDs)
@@ -224,11 +223,49 @@ struct NewGameConfiguration {
         try result.groups.forEach(validateIDs)
         for option in result.sections.flatMap(\.options) {
             guard result.values[option.id] == nil else {
-                throw NewGameError.invalid("Doppelte Optionsdefinition: \(option.id)")
+                throw NewGameError.invalid(L10n.text("Doppelte Optionsdefinition: \(option.id)", table: "NewGameConfiguration"))
             }
             result.values[option.id] = option.initialValue
         }
         return result
+    }
+
+    private static func loadLabels(installation: URL, language: InterfaceLanguage) throws -> [String: String] {
+        let stringsDirectory = installation.appendingPathComponent("data/strings")
+        let baseURL = stringsDirectory.appendingPathComponent("FreeColMessages.properties")
+        let baseText = try String(contentsOf: baseURL, encoding: .utf8)
+        var labels = parseLabels(baseText)
+
+        guard let languageCode = overrideLanguageCode(for: language) else { return labels }
+        let overrideURL = stringsDirectory.appendingPathComponent("FreeColMessages_\(languageCode).properties")
+        guard let overrideText = try? String(contentsOf: overrideURL, encoding: .utf8) else { return labels }
+        labels.merge(parseLabels(overrideText)) { _, localized in localized }
+        return labels
+    }
+
+    private static func overrideLanguageCode(for language: InterfaceLanguage) -> String? {
+        switch language {
+        case .german:
+            return "de"
+        case .english:
+            return "en"
+        case .spanish:
+            return "es"
+        case .system:
+            guard let code = Locale.autoupdatingCurrent.language.languageCode?.identifier,
+                  ["en", "es", "de"].contains(code) else { return nil }
+            return code
+        }
+    }
+
+    private static func parseLabels(_ text: String) -> [String: String] {
+        var labels: [String: String] = [:]
+        for line in text.components(separatedBy: .newlines) where !line.hasPrefix("#") {
+            guard let separator = line.firstIndex(of: "=") else { continue }
+            labels[String(line[..<separator]).trimmingCharacters(in: .whitespaces)] =
+                String(line[line.index(after: separator)...]).trimmingCharacters(in: .whitespaces)
+        }
+        return labels
     }
 
     private static func merge(_ base: ParsedMessage, _ override: ParsedMessage) -> ParsedMessage {
@@ -258,7 +295,7 @@ struct NewGameConfiguration {
             if node.tag != "optionGroup" {
                 let option = GameSetupOption(node: node)
                 guard let value = values[option.id] else {
-                    throw NewGameError.invalid("Optionswert fehlt: \(option.id)")
+                    throw NewGameError.invalid(L10n.text("Optionswert fehlt: \(option.id)", table: "NewGameConfiguration"))
                 }
                 return try option.validatedNode(value: value, unitTypeIDs: unitTypeIDs, roleIDs: roleIDs)
             }
@@ -270,7 +307,7 @@ struct NewGameConfiguration {
                                ("lastColonialYear", "lastYear")] {
             if let low = values["model.option.\(lower)"].flatMap(Int.init),
                let high = values["model.option.\(upper)"].flatMap(Int.init), low > high {
-                throw NewGameError.invalid("\(label("model.option." + lower)) darf nicht größer als \(label("model.option." + upper)) sein.")
+                throw NewGameError.invalid(L10n.text("\(label("model.option." + lower)) darf nicht größer als \(label("model.option." + upper)) sein.", table: "NewGameConfiguration"))
             }
         }
         let configuredGroups = try groups.map(configured)

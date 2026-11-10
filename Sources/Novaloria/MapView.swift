@@ -517,7 +517,7 @@ struct MapView: View {
                             )
                             let marker = Path(ellipseIn: markerRect)
                             ctx.stroke(marker, with: .color(.yellow), lineWidth: 2)
-                            ctx.draw(Text("Ziel").font(.system(size: max(10, tileW * 0.1), weight: .bold))
+                            ctx.draw(Text(L10n.text("Ziel", table: "MapView")).font(.system(size: max(10, tileW * 0.1), weight: .bold))
                                 .foregroundColor(.yellow),
                                      at: CGPoint(x: destinationOrigin.x, y: destinationOrigin.y + markerSize))
                            }
@@ -648,7 +648,7 @@ struct MapView: View {
                 }
             }
         } else {
-            Text("Keine Karte geladen")
+            Text(L10n.text("Keine Karte geladen", table: "MapView"))
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -679,7 +679,7 @@ struct MapView: View {
         var occupiedRects: [CGRect] = []
         for (tile, colony, _) in candidates {
             let origin = tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
-            let title = "\(colony.name ?? "?") · Bevölkerung: \(state.colonyPopulation(colony))"
+            let title = L10n.text("\(colony.name ?? "?") · Bevölkerung: \(state.colonyPopulation(colony))", table: "MapView")
             let label = Text(title)
                 .font(.system(size: max(7, min(12, tileW * 0.10)), weight: .semibold))
                 .foregroundColor(.white)

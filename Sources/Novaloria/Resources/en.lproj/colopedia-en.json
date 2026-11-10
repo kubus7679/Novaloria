@@ -1,0 +1,5022 @@
+[
+  {
+    "id": "model.goods.food",
+    "category": "goods",
+    "title": "Food",
+    "summary": "Food is necessary to feed your colonists and to breed horses. A new colonist is born whenever a colony has 200 units of food or more.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.food.png"
+  },
+  {
+    "id": "model.goods.grain",
+    "category": "goods",
+    "title": "Grain",
+    "summary": "Grains, such as wheat, rice and maize, are the most important source of food for your colonists.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.grain.png"
+  },
+  {
+    "id": "model.goods.fish",
+    "category": "goods",
+    "title": "Fish",
+    "summary": "Fish is automatically converted to food.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.fish.png"
+  },
+  {
+    "id": "model.goods.sugar",
+    "category": "goods",
+    "title": "Sugar",
+    "summary": "Sugar is an effective sweetener and can also be used to produce rum, which achieves higher prices.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.sugar.png"
+  },
+  {
+    "id": "model.goods.tobacco",
+    "category": "goods",
+    "title": "Tobacco",
+    "summary": "Tobacco can be smoked or used to produce cigars, which achieve higher prices.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.tobacco.png"
+  },
+  {
+    "id": "model.goods.cotton",
+    "category": "goods",
+    "title": "Cotton",
+    "summary": "Cotton can be used to produce cloth, which command higher prices.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.cotton.png"
+  },
+  {
+    "id": "model.goods.furs",
+    "category": "goods",
+    "title": "Furs",
+    "summary": "The Furs of animals can be used to produce fur coats.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.furs.png"
+  },
+  {
+    "id": "model.goods.lumber",
+    "category": "goods",
+    "title": "Lumber",
+    "summary": "Lumber is required for constructing buildings and certain units, such as ships.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.lumber.png"
+  },
+  {
+    "id": "model.goods.ore",
+    "category": "goods",
+    "title": "Ore",
+    "summary": "Ore is necessary to produce tools, which have numerous uses.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.ore.png"
+  },
+  {
+    "id": "model.goods.silver",
+    "category": "goods",
+    "title": "Silver",
+    "summary": "Silver is a valuable metal that commands high prices.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.silver.png"
+  },
+  {
+    "id": "model.goods.horses",
+    "category": "goods",
+    "title": "Horses",
+    "summary": "Horses are necessary to create scout and cavalry units. In order to breed horses in a colony, you need some horses and at least one unit of fodder per turn.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.food"
+    ],
+    "icon": "model.goods.horses.png"
+  },
+  {
+    "id": "model.goods.rum",
+    "category": "goods",
+    "title": "Rum",
+    "summary": "Rum is a spirit made from sugar cane. As a luxury good, it commands high prices.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.sugar"
+    ],
+    "icon": "model.goods.rum.png"
+  },
+  {
+    "id": "model.goods.cigars",
+    "category": "goods",
+    "title": "Cigars",
+    "summary": "Cigars are made from tobacco. As luxury goods, they command high prices.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.tobacco"
+    ],
+    "icon": "model.goods.cigars.png"
+  },
+  {
+    "id": "model.goods.cloth",
+    "category": "goods",
+    "title": "Cloth",
+    "summary": "Cloth is made from cotton.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.cotton"
+    ],
+    "icon": "model.goods.cloth.png"
+  },
+  {
+    "id": "model.goods.coats",
+    "category": "goods",
+    "title": "Coats",
+    "summary": "Coats are made from animal furs.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.furs"
+    ],
+    "icon": "model.goods.coats.png"
+  },
+  {
+    "id": "model.goods.tradeGoods",
+    "category": "goods",
+    "title": "Trade Goods",
+    "summary": "Trade Goods are only produced in Europe and are used for trading with the natives.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.tradeGoods.png"
+  },
+  {
+    "id": "model.goods.tools",
+    "category": "goods",
+    "title": "Tools",
+    "summary": "Tools are necessary to equip pioneer units, as well as to construct advanced buildings and certain units, such as ships. They can also be used to produce muskets.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.ore"
+    ],
+    "icon": "model.goods.tools.png"
+  },
+  {
+    "id": "model.goods.muskets",
+    "category": "goods",
+    "title": "Muskets",
+    "summary": "Muskets are necessary to equip infantry and cavalry units.",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.goods.tools"
+    ],
+    "icon": "model.goods.muskets.png"
+  },
+  {
+    "id": "model.goods.bells",
+    "category": "goods",
+    "title": "Bells",
+    "summary": "Bells represent the colonists' desire for independence.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.bells.png"
+  },
+  {
+    "id": "model.goods.crosses",
+    "category": "goods",
+    "title": "Crosses",
+    "summary": "Crosses represent religious unrest in Europe.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.goods.crosses.png"
+  },
+  {
+    "id": "model.goods.hammers",
+    "category": "goods",
+    "title": "Hammers",
+    "summary": "Hammers represent the construction work carried out in your colonies.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Price in gold",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.goods.lumber"
+    ],
+    "icon": "model.goods.hammers.png"
+  },
+  {
+    "id": "model.resource.game",
+    "category": "resources",
+    "title": "Game",
+    "summary": "The forest is home to many animals, suitable for hunting for furs or food.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.game.png"
+  },
+  {
+    "id": "model.resource.minerals",
+    "category": "resources",
+    "title": "Minerals",
+    "summary": "The ground is rich in minerals, and for those who are patient, ore or even silver may be found.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.minerals.png"
+  },
+  {
+    "id": "model.resource.ore",
+    "category": "resources",
+    "title": "Ore",
+    "summary": "The earth opens up and a large vein of ore is available for mining. They are only found on hilly terrain.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.ore.png"
+  },
+  {
+    "id": "model.resource.silver",
+    "category": "resources",
+    "title": "Silver",
+    "summary": "This mountain is well known to have silver veins, and will make nearby towns prosper.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.silver.png"
+  },
+  {
+    "id": "model.resource.lumber",
+    "category": "resources",
+    "title": "Lumber",
+    "summary": "This forest has good firm trees for harvesting lumber.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.lumber.png"
+  },
+  {
+    "id": "model.resource.furs",
+    "category": "resources",
+    "title": "Furs",
+    "summary": "An abundance of animals in these forests bring many hunters searching for easy kills.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.furs.png"
+  },
+  {
+    "id": "model.resource.tobacco",
+    "category": "resources",
+    "title": "Tobacco",
+    "summary": "The soil of this grassland is exceptionally suitable for the growing of tobacco.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.tobacco.png"
+  },
+  {
+    "id": "model.resource.sugar",
+    "category": "resources",
+    "title": "Sugarcane",
+    "summary": "The soil of this savannah is exceptionally suitable for the growing of sugarcane.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.sugar.png"
+  },
+  {
+    "id": "model.resource.cotton",
+    "category": "resources",
+    "title": "Cotton",
+    "summary": "The soil of this prairie is exceptionally suitable for the growing of cotton.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.cotton.png"
+  },
+  {
+    "id": "model.resource.oasis",
+    "category": "resources",
+    "title": "Oasis",
+    "summary": "The oasis in the desert is a welcome sight for all weary travellers.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.oasis.png"
+  },
+  {
+    "id": "model.resource.grain",
+    "category": "resources",
+    "title": "Grain",
+    "summary": "Crops grow exceptionally well in this fertile plain.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.grain.png"
+  },
+  {
+    "id": "model.resource.fish",
+    "category": "resources",
+    "title": "Fish",
+    "summary": "A high amount of small fish lure many big fish to this spot, which in turn lure the eager fishermen.",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": "model.resource.fish.png"
+  },
+  {
+    "id": "model.tile.plains",
+    "category": "terrain",
+    "title": "Plains",
+    "summary": "Plains are large areas of land with relatively low relief, more suitable for farming. They produce a great deal of Grain, a lesser amount of Cotton, and some Ore. They are found in the temperate regions.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Grain",
+        "value": "3"
+      },
+      {
+        "label": "Production: Cotton",
+        "value": "2"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "5"
+      },
+      {
+        "label": "Production: Cotton",
+        "value": "2"
+      },
+      {
+        "label": "Production: Ore",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.cotton",
+      "model.goods.grain",
+      "model.goods.ore"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.grassland",
+    "category": "terrain",
+    "title": "Grassland",
+    "summary": "Grasslands are open, continuous flat areas of grass. They are often located near temperate forests in high areas or deserts in subtropical areas. Grasslands are ideal for growing tobacco. Food can be grown as well.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Grain",
+        "value": "3"
+      },
+      {
+        "label": "Production: Tobacco",
+        "value": "3"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "3"
+      },
+      {
+        "label": "Production: Tobacco",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.grain",
+      "model.goods.tobacco"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.prairie",
+    "category": "terrain",
+    "title": "Prairie",
+    "summary": "Prairie is an area of land that supports grasses and herbs, with few trees, and having generally a moderate or temperate climate. Prairies are most suitable for cultivating Grain and Cotton.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Grain",
+        "value": "3"
+      },
+      {
+        "label": "Production: Cotton",
+        "value": "3"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "3"
+      },
+      {
+        "label": "Production: Cotton",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.cotton",
+      "model.goods.grain"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.savannah",
+    "category": "terrain",
+    "title": "Savannah",
+    "summary": "In savannahs, grasses and trees are co-dominant vegetation types. Savannahs are frequently seen as a transitional zone, occurring between forest or woodland regions and grassland or desert regions. Savannah produces mainly Grain and Sugar.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Grain",
+        "value": "3"
+      },
+      {
+        "label": "Production: Sugar",
+        "value": "3"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "4"
+      },
+      {
+        "label": "Production: Sugar",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.grain",
+      "model.goods.sugar"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.marsh",
+    "category": "terrain",
+    "title": "Marsh",
+    "summary": "Marsh is a type of wetland, featuring grasses, rushes, reeds, typha, sedges, and other herbaceous plants in a context of shallow water. Marsh produces some Grain and Tobacco, as well as Ore. Marshes are mainly found near the polar regions.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Grain",
+        "value": "3"
+      },
+      {
+        "label": "Production: Tobacco",
+        "value": "2"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "3"
+      },
+      {
+        "label": "Production: Tobacco",
+        "value": "2"
+      },
+      {
+        "label": "Production: Ore",
+        "value": "2"
+      },
+      {
+        "label": "Production: Silver",
+        "value": "0"
+      }
+    ],
+    "related": [
+      "model.goods.grain",
+      "model.goods.ore",
+      "model.goods.silver",
+      "model.goods.tobacco"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.swamp",
+    "category": "terrain",
+    "title": "Swamp",
+    "summary": "Tropical wetlands by shallow bodies of water. Swamps have a greater proportion of open water surface and generally deeper than marshes. Swamp yields some Grain, as well as small amounts of Sugar and Ore.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Grain",
+        "value": "3"
+      },
+      {
+        "label": "Production: Sugar",
+        "value": "2"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "3"
+      },
+      {
+        "label": "Production: Sugar",
+        "value": "2"
+      },
+      {
+        "label": "Production: Ore",
+        "value": "2"
+      },
+      {
+        "label": "Production: Silver",
+        "value": "0"
+      }
+    ],
+    "related": [
+      "model.goods.grain",
+      "model.goods.ore",
+      "model.goods.silver",
+      "model.goods.sugar"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.desert",
+    "category": "terrain",
+    "title": "Desert",
+    "summary": "Deserts are very dry, they receive minimal precipitation. Though scarce, deserts produce Grain, Cotton and Ore.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Grain",
+        "value": "2"
+      },
+      {
+        "label": "Production: Ore",
+        "value": "2"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "1"
+      },
+      {
+        "label": "Production: Ore",
+        "value": "2"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "1"
+      },
+      {
+        "label": "Production: Ore",
+        "value": "2"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "2"
+      },
+      {
+        "label": "Production: Cotton",
+        "value": "1"
+      },
+      {
+        "label": "Production: Ore",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.goods.cotton",
+      "model.goods.grain",
+      "model.goods.ore"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.tundra",
+    "category": "terrain",
+    "title": "Tundra",
+    "summary": "Tundra is an area where the tree growth is hindered by low temperatures and short growing seasons. Tundra produces Grain and some Ore. It is found near the polar regions.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Grain",
+        "value": "3"
+      },
+      {
+        "label": "Production: Ore",
+        "value": "2"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "3"
+      },
+      {
+        "label": "Production: Ore",
+        "value": "2"
+      },
+      {
+        "label": "Production: Silver",
+        "value": "0"
+      }
+    ],
+    "related": [
+      "model.goods.grain",
+      "model.goods.ore",
+      "model.goods.silver"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.mixedForest",
+    "category": "terrain",
+    "title": "Mixed forest",
+    "summary": "Mixed forests, which can be found in the temperate latitudes, produce Grain, Lumber, Furs, and some Cotton. If mixed forests are cleared, they become plains.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Grain",
+        "value": "2"
+      },
+      {
+        "label": "Production: Furs",
+        "value": "3"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "3"
+      },
+      {
+        "label": "Production: Cotton",
+        "value": "1"
+      },
+      {
+        "label": "Production: Furs",
+        "value": "3"
+      },
+      {
+        "label": "Production: Lumber",
+        "value": "6"
+      }
+    ],
+    "related": [
+      "model.goods.cotton",
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.coniferForest",
+    "category": "terrain",
+    "title": "Conifer forest",
+    "summary": "Conifer forests produce Grain, Lumber, Furs, and some Tobacco. They are found mainly in the tropical latitudes and give way to grassland when cleared.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Grain",
+        "value": "2"
+      },
+      {
+        "label": "Production: Furs",
+        "value": "2"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "2"
+      },
+      {
+        "label": "Production: Tobacco",
+        "value": "1"
+      },
+      {
+        "label": "Production: Furs",
+        "value": "2"
+      },
+      {
+        "label": "Production: Lumber",
+        "value": "6"
+      }
+    ],
+    "related": [
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber",
+      "model.goods.tobacco"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.broadleafForest",
+    "category": "terrain",
+    "title": "Broadleaf forest",
+    "summary": "Broadleaf forests produce Grain, Lumber, Furs, and some Cotton. They are found in the temperate latitudes and give way to prairies when cleared.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Grain",
+        "value": "2"
+      },
+      {
+        "label": "Production: Furs",
+        "value": "2"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "2"
+      },
+      {
+        "label": "Production: Cotton",
+        "value": "1"
+      },
+      {
+        "label": "Production: Furs",
+        "value": "2"
+      },
+      {
+        "label": "Production: Lumber",
+        "value": "4"
+      }
+    ],
+    "related": [
+      "model.goods.cotton",
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.tropicalForest",
+    "category": "terrain",
+    "title": "Tropical forest",
+    "summary": "Tropical forests produce Grain, Lumber, Furs, and some Sugar. Clearing tropical forests produces savannah.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Grain",
+        "value": "2"
+      },
+      {
+        "label": "Production: Furs",
+        "value": "2"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "3"
+      },
+      {
+        "label": "Production: Sugar",
+        "value": "1"
+      },
+      {
+        "label": "Production: Furs",
+        "value": "2"
+      },
+      {
+        "label": "Production: Lumber",
+        "value": "4"
+      }
+    ],
+    "related": [
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber",
+      "model.goods.sugar"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.wetlandForest",
+    "category": "terrain",
+    "title": "Wetland forest",
+    "summary": "Wetland forests produce Grain, Lumber, Furs, and some Ore. Wetland forests can be cleared to produce marsh land. They are found near the polar regions.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Grain",
+        "value": "2"
+      },
+      {
+        "label": "Production: Furs",
+        "value": "2"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "2"
+      },
+      {
+        "label": "Production: Tobacco",
+        "value": "1"
+      },
+      {
+        "label": "Production: Furs",
+        "value": "2"
+      },
+      {
+        "label": "Production: Lumber",
+        "value": "4"
+      },
+      {
+        "label": "Production: Ore",
+        "value": "1"
+      },
+      {
+        "label": "Production: Silver",
+        "value": "0"
+      }
+    ],
+    "related": [
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber",
+      "model.goods.ore",
+      "model.goods.silver",
+      "model.goods.tobacco"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.rainForest",
+    "category": "terrain",
+    "title": "Rain forest",
+    "summary": "Rain forests produce Grain, Lumber, Furs, and some Ore and Sugar. They are found in the tropics and can be cleared to produce swamps.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Grain",
+        "value": "2"
+      },
+      {
+        "label": "Production: Sugar",
+        "value": "1"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "2"
+      },
+      {
+        "label": "Production: Sugar",
+        "value": "1"
+      },
+      {
+        "label": "Production: Furs",
+        "value": "1"
+      },
+      {
+        "label": "Production: Lumber",
+        "value": "4"
+      },
+      {
+        "label": "Production: Ore",
+        "value": "1"
+      },
+      {
+        "label": "Production: Silver",
+        "value": "0"
+      }
+    ],
+    "related": [
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber",
+      "model.goods.ore",
+      "model.goods.silver",
+      "model.goods.sugar"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.scrubForest",
+    "category": "terrain",
+    "title": "Scrub forest",
+    "summary": "Scrub forests produce Grain, Lumber, Furs, and some Cotton and Ore. If they are cleared, the land becomes a desert. Scrub forests are found in temperate regions.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Grain",
+        "value": "2"
+      },
+      {
+        "label": "Production: Furs",
+        "value": "2"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "1"
+      },
+      {
+        "label": "Production: Furs",
+        "value": "2"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "1"
+      },
+      {
+        "label": "Production: Furs",
+        "value": "2"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "2"
+      },
+      {
+        "label": "Production: Cotton",
+        "value": "1"
+      },
+      {
+        "label": "Production: Furs",
+        "value": "2"
+      },
+      {
+        "label": "Production: Lumber",
+        "value": "2"
+      },
+      {
+        "label": "Production: Ore",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.cotton",
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber",
+      "model.goods.ore"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.borealForest",
+    "category": "terrain",
+    "title": "Boreal forest",
+    "summary": "Boreal forests produce Grain, Lumber, Furs, and some Ore. They are found near the polar regions and can be cleared to produce tundra.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Grain",
+        "value": "2"
+      },
+      {
+        "label": "Production: Furs",
+        "value": "3"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "2"
+      },
+      {
+        "label": "Production: Furs",
+        "value": "3"
+      },
+      {
+        "label": "Production: Lumber",
+        "value": "4"
+      },
+      {
+        "label": "Production: Ore",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.furs",
+      "model.goods.grain",
+      "model.goods.lumber",
+      "model.goods.ore"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.hills",
+    "category": "terrain",
+    "title": "Hills",
+    "summary": "Hills extend above the surrounding terrain, in a limited area. Hills produce a large amount of Ore, as well as some Grain.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Grain",
+        "value": "2"
+      },
+      {
+        "label": "Production: Ore",
+        "value": "4"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "2"
+      },
+      {
+        "label": "Production: Ore",
+        "value": "4"
+      }
+    ],
+    "related": [
+      "model.goods.grain",
+      "model.goods.ore"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.mountains",
+    "category": "terrain",
+    "title": "Mountains",
+    "summary": "Mountains extend above the surrounding terrain in a limited area. Mountains are generally steeper than hills. They are difficult to travel and colonies cannot be founded here. They provide a high defensive bonus but fortification does not increase this. Mining proves useful for ore and silver extraction.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Ore",
+        "value": "4"
+      },
+      {
+        "label": "Production: Silver",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.ore",
+      "model.goods.silver"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.arctic",
+    "category": "terrain",
+    "title": "Arctic",
+    "summary": "Arctic is mostly a vast, ice-covered ocean surrounded by treeless, frozen ground and produce nothing. They are found near the North and South Pole and can not usually support colonies.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Grain",
+        "value": "2"
+      },
+      {
+        "label": "Production: Grain",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.grain"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.ocean",
+    "category": "terrain",
+    "title": "Ocean",
+    "summary": "Oceans are major bodies of saline water, good for fishing. The amount of fish is increased by the presence of land and especially by river mouths.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Fish",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.goods.fish"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.lake",
+    "category": "terrain",
+    "title": "Lake",
+    "summary": "Lakes are inland bodies of water. Colonies built adjacently profit from the lakes natural resources, but may be inaccessible via ship.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Fish",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.goods.fish"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.highSeas",
+    "category": "terrain",
+    "title": "High seas",
+    "summary": "High seas produce Fish. They also enable your ships to sail to and from Europe.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Fish",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.goods.fish"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.tile.greatRiver",
+    "category": "terrain",
+    "title": "Great river",
+    "summary": "Great rivers are rivers that can be navigated by ships.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Fish",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.goods.fish"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.role.default",
+    "category": "roles",
+    "title": "Default",
+    "summary": "",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.role.scout",
+    "category": "roles",
+    "title": "Scout",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Build cost / equipment: Horses",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.goods.horses",
+      "model.unit.seasonedScout"
+    ],
+    "icon": "model.role.scout.png"
+  },
+  {
+    "id": "model.role.soldier",
+    "category": "roles",
+    "title": "Soldier",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Build cost / equipment: Muskets",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.goods.muskets",
+      "model.unit.veteranSoldier"
+    ],
+    "icon": "model.role.soldier.png"
+  },
+  {
+    "id": "model.role.dragoon",
+    "category": "roles",
+    "title": "Dragoon",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Build cost / equipment: Muskets",
+        "value": "50"
+      },
+      {
+        "label": "Build cost / equipment: Horses",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.goods.horses",
+      "model.goods.muskets",
+      "model.unit.veteranSoldier"
+    ],
+    "icon": "model.role.dragoon.png"
+  },
+  {
+    "id": "model.role.pioneer",
+    "category": "roles",
+    "title": "Pioneer",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Maximum equipment",
+        "value": "5"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.goods.tools",
+      "model.unit.hardyPioneer"
+    ],
+    "icon": "model.role.pioneer.png"
+  },
+  {
+    "id": "model.role.missionary",
+    "category": "roles",
+    "title": "Missionary",
+    "summary": "",
+    "text": "",
+    "facts": [],
+    "related": [
+      "model.unit.jesuitMissionary"
+    ],
+    "icon": "model.role.missionary.png"
+  },
+  {
+    "id": "model.role.infantry",
+    "category": "roles",
+    "title": "Infantry",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Build cost / equipment: Muskets",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.goods.muskets",
+      "model.unit.kingsRegular"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.role.cavalry",
+    "category": "roles",
+    "title": "Cavalry",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Build cost / equipment: Muskets",
+        "value": "50"
+      },
+      {
+        "label": "Build cost / equipment: Horses",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.goods.horses",
+      "model.goods.muskets",
+      "model.unit.kingsRegular"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.role.mountedBrave",
+    "category": "roles",
+    "title": "Mounted Brave",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Build cost / equipment: Horses",
+        "value": "25"
+      }
+    ],
+    "related": [
+      "model.goods.horses"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.role.armedBrave",
+    "category": "roles",
+    "title": "Armed Brave",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Build cost / equipment: Muskets",
+        "value": "25"
+      }
+    ],
+    "related": [
+      "model.goods.muskets"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.role.nativeDragoon",
+    "category": "roles",
+    "title": "Native Dragoon",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Build cost / equipment: Muskets",
+        "value": "25"
+      },
+      {
+        "label": "Build cost / equipment: Horses",
+        "value": "25"
+      }
+    ],
+    "related": [
+      "model.goods.horses",
+      "model.goods.muskets"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.improvement.river",
+    "category": "improvements",
+    "title": "River",
+    "summary": "River",
+    "text": "",
+    "facts": [
+      {
+        "label": "Additional work turns",
+        "value": "0"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.improvement.road",
+    "category": "improvements",
+    "title": "Road",
+    "summary": "Road",
+    "text": "",
+    "facts": [
+      {
+        "label": "Additional work turns",
+        "value": "0"
+      }
+    ],
+    "related": [
+      "model.role.pioneer"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.improvement.plow",
+    "category": "improvements",
+    "title": "Plow",
+    "summary": "Plowed",
+    "text": "",
+    "facts": [
+      {
+        "label": "Additional work turns",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.role.pioneer"
+    ],
+    "icon": "model.improvement.plow.png"
+  },
+  {
+    "id": "model.improvement.clearForest",
+    "category": "improvements",
+    "title": "Clear forest",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Additional work turns",
+        "value": "2"
+      }
+    ],
+    "related": [
+      "model.role.pioneer"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.improvement.fishBonusLand",
+    "category": "improvements",
+    "title": "Fish bonus (coast)",
+    "summary": "Fish bonus due to land nearby",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.improvement.fishBonusRiver",
+    "category": "improvements",
+    "title": "Fish bonus (river)",
+    "summary": "Fish bonus due to a river",
+    "text": "",
+    "facts": [],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.freeColonist",
+    "category": "units",
+    "title": "Free Colonist",
+    "summary": "The Free Colonist is a greenhorn without any particular skills. However, Free Colonists can become skilled units by working on your colony tiles, or by visiting Indian settlements. They can also be promoted to Veteran Soldiers, or educated in colonies that have built a school.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "0"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      },
+      {
+        "label": "Build cost / equipment: Food",
+        "value": "200"
+      }
+    ],
+    "related": [
+      "model.goods.food"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.expertFarmer",
+    "category": "units",
+    "title": "Expert Farmer",
+    "summary": "The Expert Farmer is a specialist at producing food.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "1"
+      },
+      {
+        "label": "Price in gold",
+        "value": "1100"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.grain"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.expertFisherman",
+    "category": "units",
+    "title": "Expert Fisherman",
+    "summary": "The Expert Fisherman is a specialist at catching fish, which are automatically converted to food.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "1"
+      },
+      {
+        "label": "Price in gold",
+        "value": "1000"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.fish"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.expertFurTrapper",
+    "category": "units",
+    "title": "Expert Fur Trapper",
+    "summary": "The Expert Fur Trapper specialises in producing furs.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "1"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.furs"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.expertSilverMiner",
+    "category": "units",
+    "title": "Expert Silver Miner",
+    "summary": "The Expert Silver Miner produces more silver than any other unit.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "1"
+      },
+      {
+        "label": "Price in gold",
+        "value": "900"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.silver"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.expertLumberJack",
+    "category": "units",
+    "title": "Expert Lumberjack",
+    "summary": "The Expert Lumberjack cuts down trees to produce lumber.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "1"
+      },
+      {
+        "label": "Price in gold",
+        "value": "700"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.lumber"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.expertOreMiner",
+    "category": "units",
+    "title": "Expert Ore Miner",
+    "summary": "The Expert Ore Miner excels at mining ore.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "1"
+      },
+      {
+        "label": "Price in gold",
+        "value": "600"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.ore"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterSugarPlanter",
+    "category": "units",
+    "title": "Master Sugar Planter",
+    "summary": "The Master Sugar Planter cultivates sugar.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "2"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.sugar"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterCottonPlanter",
+    "category": "units",
+    "title": "Master Cotton Planter",
+    "summary": "The Master Cotton Planter cultivates cotton.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "2"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.cotton"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterTobaccoPlanter",
+    "category": "units",
+    "title": "Master Tobacco Planter",
+    "summary": "The Master Tobacco Planter cultivates tobacco.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "2"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.tobacco"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.firebrandPreacher",
+    "category": "units",
+    "title": "Firebrand Preacher",
+    "summary": "The Firebrand Preacher increases religious unrest in Europe (symbolised by Crosses), which in turn increases emigration to the New World.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "3"
+      },
+      {
+        "label": "Price in gold",
+        "value": "1500"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.crosses"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.elderStatesman",
+    "category": "units",
+    "title": "Elder Statesman",
+    "summary": "The Elder Statesman increases the colonists' desire for independence (symbolised by Liberty Bells), which increases the Sons of Liberty membership in your colonies.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "3"
+      },
+      {
+        "label": "Price in gold",
+        "value": "1900"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.bells"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterCarpenter",
+    "category": "units",
+    "title": "Master Carpenter",
+    "summary": "The Master Carpenter is particularly skilled at producing buildings and units in your colonies.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "1"
+      },
+      {
+        "label": "Price in gold",
+        "value": "1000"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.hammers"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterDistiller",
+    "category": "units",
+    "title": "Master Distiller",
+    "summary": "The Master Distiller uses sugar to produce rum.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "2"
+      },
+      {
+        "label": "Price in gold",
+        "value": "1100"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.rum"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterWeaver",
+    "category": "units",
+    "title": "Master Weaver",
+    "summary": "The Master Weaver turns cotton into cloth.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "2"
+      },
+      {
+        "label": "Price in gold",
+        "value": "1300"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.cloth"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterTobacconist",
+    "category": "units",
+    "title": "Master Tobacconist",
+    "summary": "The Master Tobacconist makes cigars from tobacco.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "2"
+      },
+      {
+        "label": "Price in gold",
+        "value": "1200"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.cigars"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterFurTrader",
+    "category": "units",
+    "title": "Master Fur Trader",
+    "summary": "The Master Fur Trader turns furs into coats.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "2"
+      },
+      {
+        "label": "Price in gold",
+        "value": "950"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.coats"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterBlacksmith",
+    "category": "units",
+    "title": "Master Blacksmith",
+    "summary": "The Master Blacksmith forges tools from ore.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "2"
+      },
+      {
+        "label": "Price in gold",
+        "value": "1050"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.masterGunsmith",
+    "category": "units",
+    "title": "Master Gunsmith",
+    "summary": "The Master Gunsmith uses tools to produce muskets.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "2"
+      },
+      {
+        "label": "Price in gold",
+        "value": "850"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.muskets"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.seasonedScout",
+    "category": "units",
+    "title": "Seasoned Scout",
+    "summary": "The Seasoned Scout is best at exploring the New World, particularly Indian settlements and Lost City Rumours.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "1"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.hardyPioneer",
+    "category": "units",
+    "title": "Hardy Pioneer",
+    "summary": "The Hardy Pioneer excels at clearing forests, plowing fields and building roads.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "1"
+      },
+      {
+        "label": "Price in gold",
+        "value": "1200"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.veteranSoldier",
+    "category": "units",
+    "title": "Veteran Soldier",
+    "summary": "The Veteran Soldier is an experienced military unit. Any Free Colonist may be promoted to a Veteran Soldier after winning a battle.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "2"
+      },
+      {
+        "label": "Price in gold",
+        "value": "2000"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.jesuitMissionary",
+    "category": "units",
+    "title": "Jesuit Missionary",
+    "summary": "The Jesuit Missionary is able to establish a mission in an Indian settlement and is especially skilled at converting Indians.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "3"
+      },
+      {
+        "label": "Price in gold",
+        "value": "1400"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.indenturedServant",
+    "category": "units",
+    "title": "Indentured Servant",
+    "summary": "The Indentured Servant is well suited for outdoor work, but less suited for indoor work. He may become a Free Colonist through promotion or education.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "-1"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.pettyCriminal",
+    "category": "units",
+    "title": "Petty Criminal",
+    "summary": "The Petty Criminal is suited for outdoor work, but unsuited for indoor work. He may become an Indentured Servant through promotion or education.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "-2"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.indianConvert",
+    "category": "units",
+    "title": "Indian Convert",
+    "summary": "The Indian Convert is a native who has joined one of your colonies. He is skilled at all kinds of outdoor work, but unskilled at indoor work. As soon as Bartolome de las Casas joins the Continental Congress, all Indian Converts become Free Colonists.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "0"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.brave",
+    "category": "units",
+    "title": "Brave",
+    "summary": "The Brave is a native unit able to carry a small amount of goods. He may be armed and mounted. Braves often visit your colonies in order to bring you gifts or make demands.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "1"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Cargo space",
+        "value": "1"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.colonialRegular",
+    "category": "units",
+    "title": "Colonial Regular",
+    "summary": "The Colonial Regular is a crack unit only available after the Declaration of Independence.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "3"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.kingsRegular",
+    "category": "units",
+    "title": "King's Regular",
+    "summary": "The King's Regular is a crack unit only available to the Crown. You will see them only when the Royal Expeditionary Force arrives after the Declaration of Independence.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Skill level",
+        "value": "4"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.caravel",
+    "category": "units",
+    "title": "Caravel",
+    "summary": "The Caravel is a small and not particularly fast merchant ship.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "2"
+      },
+      {
+        "label": "Cargo space",
+        "value": "2"
+      },
+      {
+        "label": "Price in gold",
+        "value": "1000"
+      },
+      {
+        "label": "Movement Points",
+        "value": "4"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "128"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "40"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.frigate",
+    "category": "units",
+    "title": "Frigate",
+    "summary": "The Frigate is a small warship.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "2"
+      },
+      {
+        "label": "Offence",
+        "value": "16"
+      },
+      {
+        "label": "Defence",
+        "value": "16"
+      },
+      {
+        "label": "Cargo space",
+        "value": "4"
+      },
+      {
+        "label": "Price in gold",
+        "value": "5000"
+      },
+      {
+        "label": "Movement Points",
+        "value": "6"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "512"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "200"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.galleon",
+    "category": "units",
+    "title": "Galleon",
+    "summary": "The Galleon is a large merchant ship. It is the only ship able to take a Treasure Train to Europe.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "2"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "10"
+      },
+      {
+        "label": "Cargo space",
+        "value": "6"
+      },
+      {
+        "label": "Price in gold",
+        "value": "3000"
+      },
+      {
+        "label": "Movement Points",
+        "value": "6"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "320"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.manOWar",
+    "category": "units",
+    "title": "Man of War",
+    "summary": "The Man of War is a large warship. It is only available to the Crown and after the Declaration of Independence.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "2"
+      },
+      {
+        "label": "Offence",
+        "value": "24"
+      },
+      {
+        "label": "Defence",
+        "value": "24"
+      },
+      {
+        "label": "Cargo space",
+        "value": "6"
+      },
+      {
+        "label": "Movement Points",
+        "value": "6"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "1024"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "300"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.merchantman",
+    "category": "units",
+    "title": "Merchantman",
+    "summary": "The Merchantman is a medium-sized merchant ship.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "6"
+      },
+      {
+        "label": "Cargo space",
+        "value": "4"
+      },
+      {
+        "label": "Price in gold",
+        "value": "2000"
+      },
+      {
+        "label": "Movement Points",
+        "value": "5"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "192"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "80"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.privateer",
+    "category": "units",
+    "title": "Privateer",
+    "summary": "The Privateer is a small warship that does not fly the flag of the country it hails from. It is the only unit able to attack other units without declaring war.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "2"
+      },
+      {
+        "label": "Offence",
+        "value": "8"
+      },
+      {
+        "label": "Defence",
+        "value": "8"
+      },
+      {
+        "label": "Cargo space",
+        "value": "2"
+      },
+      {
+        "label": "Price in gold",
+        "value": "2000"
+      },
+      {
+        "label": "Movement Points",
+        "value": "8"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "256"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "120"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.artillery",
+    "category": "units",
+    "title": "Artillery",
+    "summary": "Artillery is good at attacking and defending colonies, and very vulnerable in the open.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "7"
+      },
+      {
+        "label": "Defence",
+        "value": "5"
+      },
+      {
+        "label": "Price in gold",
+        "value": "500"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "192"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "40"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.damagedArtillery",
+    "category": "units",
+    "title": "Damaged Artillery",
+    "summary": "Damaged Artillery is like Artillery in every way, only weaker.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "5"
+      },
+      {
+        "label": "Defence",
+        "value": "3"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": "model.unit.damagedArtillery.png"
+  },
+  {
+    "id": "model.unit.treasureTrain",
+    "category": "units",
+    "title": "Treasure Train",
+    "summary": "The sole purpose of the Treasure Train is to transport the gold found in the ruins of a Lost City, or plundered from an Indian settlement. If you move it into one of your colonies, the Crown will offer to transport it to Europe for a reasonable fee. If you have a Galleon, you can move it to Europe yourself.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "0"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": "model.unit.treasureTrain.png"
+  },
+  {
+    "id": "model.unit.wagonTrain",
+    "category": "units",
+    "title": "Wagon Train",
+    "summary": "The Wagon Train is able to carry up to 200 units of goods over land. You can use it to trade with other players, or to move goods between your own colonies.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "0"
+      },
+      {
+        "label": "Defence",
+        "value": "1"
+      },
+      {
+        "label": "Cargo space",
+        "value": "2"
+      },
+      {
+        "label": "Movement Points",
+        "value": "2"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "40"
+      }
+    ],
+    "related": [
+      "model.goods.hammers"
+    ],
+    "icon": null
+  },
+  {
+    "id": "model.unit.revenger",
+    "category": "units",
+    "title": "The Captain",
+    "summary": "The Captain has sold his soul to the Devil.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "3"
+      },
+      {
+        "label": "Offence",
+        "value": "666"
+      },
+      {
+        "label": "Defence",
+        "value": "666"
+      },
+      {
+        "label": "Movement Points",
+        "value": "6"
+      }
+    ],
+    "related": [],
+    "icon": "model.unit.revenger.png"
+  },
+  {
+    "id": "model.unit.flyingDutchman",
+    "category": "units",
+    "title": "The Flying Dutchman",
+    "summary": "The Flying Dutchman is the ship of the damned.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "3"
+      },
+      {
+        "label": "Offence",
+        "value": "666"
+      },
+      {
+        "label": "Defence",
+        "value": "666"
+      },
+      {
+        "label": "Cargo space",
+        "value": "6"
+      },
+      {
+        "label": "Movement Points",
+        "value": "12"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.unit.undead",
+    "category": "units",
+    "title": "Undead",
+    "summary": "The Undead are the crew of the Flying Dutchman.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Line of sight",
+        "value": "1"
+      },
+      {
+        "label": "Offence",
+        "value": "18"
+      },
+      {
+        "label": "Defence",
+        "value": "4"
+      },
+      {
+        "label": "Movement Points",
+        "value": "1"
+      }
+    ],
+    "related": [],
+    "icon": "model.unit.undead.png"
+  },
+  {
+    "id": "model.building.townHall",
+    "category": "buildings",
+    "title": "Town Hall",
+    "summary": "The town Hall, which can not be upgraded, provides workplaces for up to three colonists producing liberty bells. Its effect can be increased by building a printing press and a newspaper.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Production: Bells",
+        "value": "1"
+      },
+      {
+        "label": "Production: Bells",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.bells"
+    ],
+    "icon": "model.building.townHall.png"
+  },
+  {
+    "id": "model.building.carpenterHouse",
+    "category": "buildings",
+    "title": "Carpenter's house",
+    "summary": "The carpenter's house, which can be upgraded to a lumber mill once the colony's population reaches 3, is used to convert lumber to hammers. Hammers are required to construct or upgrade all kinds of buildings.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Consumption: Lumber",
+        "value": "3"
+      },
+      {
+        "label": "Production: Hammers",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.lumber"
+    ],
+    "icon": "model.building.carpenterHouse.png"
+  },
+  {
+    "id": "model.building.lumberMill",
+    "category": "buildings",
+    "title": "Lumber mill",
+    "summary": "The lumber mill, which can not be upgraded, is used to convert lumber to hammers. Hammers are required to construct or upgrade all kinds of buildings. A lumber mill increases hammer production.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Required population",
+        "value": "3"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "10"
+      },
+      {
+        "label": "Consumption: Lumber",
+        "value": "6"
+      },
+      {
+        "label": "Production: Hammers",
+        "value": "6"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "52"
+      }
+    ],
+    "related": [
+      "model.building.carpenterHouse",
+      "model.goods.hammers",
+      "model.goods.lumber"
+    ],
+    "icon": "model.building.lumberMill.png"
+  },
+  {
+    "id": "model.building.blacksmithHouse",
+    "category": "buildings",
+    "title": "Blacksmith's house",
+    "summary": "The blacksmith's house, which can be upgraded to a blacksmith's shop, is used to convert ore to tools. Tools are required to construct certain kinds of buildings and to upgrade all kinds of buildings. Tools are also used by pioneers and to produce muskets. Once the population of the colony has reached 8, the blacksmith's shop can be replaced by an iron works, provided that Adam Smith has joined the Continental Congress.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Consumption: Ore",
+        "value": "3"
+      },
+      {
+        "label": "Production: Tools",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.ore",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.blacksmithHouse.png"
+  },
+  {
+    "id": "model.building.blacksmithShop",
+    "category": "buildings",
+    "title": "Blacksmith's shop",
+    "summary": "The blacksmith's shop, which can be upgraded to an iron works, is used to convert ore to tools. Tools are required to construct certain kinds of buildings and to upgrade all kinds of buildings. Tools are also used by pioneers and to produce muskets. Once the population of the colony has reached 8, the blacksmith's shop can be replaced by an iron works, provided that Adam Smith has joined the Continental Congress. A blacksmith's shop increases tool production.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Upkeep in gold",
+        "value": "5"
+      },
+      {
+        "label": "Consumption: Ore",
+        "value": "6"
+      },
+      {
+        "label": "Production: Tools",
+        "value": "6"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "64"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.building.blacksmithHouse",
+      "model.goods.hammers",
+      "model.goods.ore",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.blacksmithShop.png"
+  },
+  {
+    "id": "model.building.ironWorks",
+    "category": "buildings",
+    "title": "Iron works",
+    "summary": "The iron works, which can not be upgraded, is used to convert ore to tools. Tools are required to construct certain kinds of buildings and to upgrade all kinds of buildings. Tools are also used by pioneers and to produce muskets. An iron works increases tool production.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Required population",
+        "value": "8"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "15"
+      },
+      {
+        "label": "Consumption: Ore",
+        "value": "6"
+      },
+      {
+        "label": "Production: Tools",
+        "value": "9"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "240"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.blacksmithShop",
+      "model.goods.hammers",
+      "model.goods.ore",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.ironWorks.png"
+  },
+  {
+    "id": "model.building.tobacconistHouse",
+    "category": "buildings",
+    "title": "Tobacconist's house",
+    "summary": "The tobacconist's house, which can be upgraded to a tobacconist's shop, is used to produce cigars from tobacco. Once the colony's population has reached 8, it can be further upgraded to a cigar factory, provided that Adam Smith has joined the Continental Congress.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Consumption: Tobacco",
+        "value": "3"
+      },
+      {
+        "label": "Production: Cigars",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.cigars",
+      "model.goods.tobacco"
+    ],
+    "icon": "model.building.tobacconistHouse.png"
+  },
+  {
+    "id": "model.building.tobacconistShop",
+    "category": "buildings",
+    "title": "Tobacconist's shop",
+    "summary": "The tobacconist's shop, which can be upgraded to a cigar factory, is used to produce cigars from tobacco. Once the colony's population has reached 8, it can be further upgraded to a cigar factory, provided that Adam Smith has joined the Continental Congress. A tobacconist's shop increases cigar production.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Upkeep in gold",
+        "value": "5"
+      },
+      {
+        "label": "Consumption: Tobacco",
+        "value": "6"
+      },
+      {
+        "label": "Production: Cigars",
+        "value": "6"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "64"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.building.tobacconistHouse",
+      "model.goods.cigars",
+      "model.goods.hammers",
+      "model.goods.tobacco",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.tobacconistShop.png"
+  },
+  {
+    "id": "model.building.cigarFactory",
+    "category": "buildings",
+    "title": "Cigar factory",
+    "summary": "The cigar factory, which can not be upgraded, is used to produce cigars from tobacco. A cigar factory increases cigar production.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Required population",
+        "value": "8"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "15"
+      },
+      {
+        "label": "Consumption: Tobacco",
+        "value": "6"
+      },
+      {
+        "label": "Production: Cigars",
+        "value": "9"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "160"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.tobacconistShop",
+      "model.goods.cigars",
+      "model.goods.hammers",
+      "model.goods.tobacco",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.cigarFactory.png"
+  },
+  {
+    "id": "model.building.weaverHouse",
+    "category": "buildings",
+    "title": "Weaver's house",
+    "summary": "The weaver's house, which can be upgraded to a weaver's shop, is used to turn cotton into cloth. It can be upgraded to a textile mill as soon as the population of the colony is at least 8 and Adam Smith has joined the Continental Congress.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Consumption: Cotton",
+        "value": "3"
+      },
+      {
+        "label": "Production: Cloth",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.cloth",
+      "model.goods.cotton"
+    ],
+    "icon": "model.building.weaverHouse.png"
+  },
+  {
+    "id": "model.building.weaverShop",
+    "category": "buildings",
+    "title": "Weaver's shop",
+    "summary": "The weaver's shop, which can be upgraded to a textile mill, is used to turn cotton into cloth. It can be upgraded to a textile mill as soon as the population of the colony is at least 8 and Adam Smith has joined the Continental Congress. A weaver's shop increases cloth production.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Upkeep in gold",
+        "value": "5"
+      },
+      {
+        "label": "Consumption: Cotton",
+        "value": "6"
+      },
+      {
+        "label": "Production: Cloth",
+        "value": "6"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "64"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.building.weaverHouse",
+      "model.goods.cloth",
+      "model.goods.cotton",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.weaverShop.png"
+  },
+  {
+    "id": "model.building.textileMill",
+    "category": "buildings",
+    "title": "Textile mill",
+    "summary": "The textile mill, which can not be upgraded, is used to turn cotton into cloth. A textile mill increases cloth production.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Required population",
+        "value": "8"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "15"
+      },
+      {
+        "label": "Consumption: Cotton",
+        "value": "6"
+      },
+      {
+        "label": "Production: Cloth",
+        "value": "9"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "160"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.weaverShop",
+      "model.goods.cloth",
+      "model.goods.cotton",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.textileMill.png"
+  },
+  {
+    "id": "model.building.distillerHouse",
+    "category": "buildings",
+    "title": "Distiller's house",
+    "summary": "The distiller's house, which can be upgraded to a rum distillery, is used to produce rum from sugar. Once Adam Smith has joined the Continental Congress and the colony's population is at least 8, the rum distillery can be replaced by a rum factory.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Consumption: Sugar",
+        "value": "3"
+      },
+      {
+        "label": "Production: Rum",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.rum",
+      "model.goods.sugar"
+    ],
+    "icon": "model.building.distillerHouse.png"
+  },
+  {
+    "id": "model.building.rumDistillery",
+    "category": "buildings",
+    "title": "Rum distillery",
+    "summary": "The rum distillery, which can be upgraded to a rum factory, is used to produce rum from sugar. Once Adam Smith has joined the Continental Congress and the colony's population is at least 8, the rum distillery can be replaced by a rum factory. A rum distillery increases rum production.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Upkeep in gold",
+        "value": "5"
+      },
+      {
+        "label": "Consumption: Sugar",
+        "value": "6"
+      },
+      {
+        "label": "Production: Rum",
+        "value": "6"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "64"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.building.distillerHouse",
+      "model.goods.hammers",
+      "model.goods.rum",
+      "model.goods.sugar",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.rumDistillery.png"
+  },
+  {
+    "id": "model.building.rumFactory",
+    "category": "buildings",
+    "title": "Rum factory",
+    "summary": "The rum factory, which can not be upgraded, is used to produce rum from sugar. A rum factory increases rum production.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Required population",
+        "value": "8"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "15"
+      },
+      {
+        "label": "Consumption: Sugar",
+        "value": "6"
+      },
+      {
+        "label": "Production: Rum",
+        "value": "9"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "160"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.rumDistillery",
+      "model.goods.hammers",
+      "model.goods.rum",
+      "model.goods.sugar",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.rumFactory.png"
+  },
+  {
+    "id": "model.building.furTraderHouse",
+    "category": "buildings",
+    "title": "Fur trader's house",
+    "summary": "The fur trader's house, which can be upgraded to a fur trader's post, is used to produce coats from furs. Once the colony's population has reached 6, it can be further upgraded to a fur factory, provided that Adam Smith has joined the Continental Congress.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Consumption: Furs",
+        "value": "3"
+      },
+      {
+        "label": "Production: Coats",
+        "value": "3"
+      }
+    ],
+    "related": [
+      "model.goods.coats",
+      "model.goods.furs"
+    ],
+    "icon": "model.building.furTraderHouse.png"
+  },
+  {
+    "id": "model.building.furTradingPost",
+    "category": "buildings",
+    "title": "Fur trading post",
+    "summary": "The fur trader's post, which can be upgraded to a fur factory, is used to produce coats from furs. Once the colony's population has reached 6, it can be further upgraded to a fur factory, provided that Adam Smith has joined the Continental Congress. A fur trader's post increases coat production.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Upkeep in gold",
+        "value": "5"
+      },
+      {
+        "label": "Consumption: Furs",
+        "value": "6"
+      },
+      {
+        "label": "Production: Coats",
+        "value": "6"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "56"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.building.furTraderHouse",
+      "model.goods.coats",
+      "model.goods.furs",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.furTradingPost.png"
+  },
+  {
+    "id": "model.building.furFactory",
+    "category": "buildings",
+    "title": "Fur factory",
+    "summary": "The fur factory, which can not be upgraded, is used to produce coats from furs. A fur factory increased coat production.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Required population",
+        "value": "6"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "15"
+      },
+      {
+        "label": "Consumption: Furs",
+        "value": "6"
+      },
+      {
+        "label": "Production: Coats",
+        "value": "9"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "160"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.furTradingPost",
+      "model.goods.coats",
+      "model.goods.furs",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.furFactory.png"
+  },
+  {
+    "id": "model.building.schoolhouse",
+    "category": "buildings",
+    "title": "Schoolhouse",
+    "summary": "A colony with a population of at least 4 may build a schoolhouse, which enables some master craftsman to teach an unskilled colonist their trade. As soon as the population reaches 8, it can be upgraded to a college, in which additional trades can be taught by two colonists. Once the population reaches 10, the college can be replaced by a university, at which all trades can be taught by three colonists.\\n\\nA schoolhouse allows teaching skill faculty 1.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Workplaces",
+        "value": "1"
+      },
+      {
+        "label": "Required population",
+        "value": "4"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "5"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "64"
+      }
+    ],
+    "related": [
+      "model.goods.hammers"
+    ],
+    "icon": "model.building.schoolhouse.png"
+  },
+  {
+    "id": "model.building.college",
+    "category": "buildings",
+    "title": "College",
+    "summary": "A colony with a population of at least 4 may build a schoolhouse, which enables some master craftsman to teach an unskilled colonist their trade. As soon as the population reaches 8, it can be upgraded to a college, in which additional trades can be taught by two colonists. Once the population reaches 10, the college can be replaced by a university, at which all trades can be taught by three colonists.\\n\\nA college allows teaching skill faculty 2.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Workplaces",
+        "value": "2"
+      },
+      {
+        "label": "Required population",
+        "value": "8"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "10"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "160"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.building.schoolhouse",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.college.png"
+  },
+  {
+    "id": "model.building.university",
+    "category": "buildings",
+    "title": "University",
+    "summary": "A colony with a population of at least 4 may build a schoolhouse, which enables some master craftsman to teach an unskilled colonist their trade. As soon as the population reaches 8, it can be upgraded to a college, in which additional trades can be taught by two colonists. Once the population reaches 10, the college can be replaced by a university, at which all trades can be taught by three colonists.\\n\\nA university allows teaching skill faculty 3.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Workplaces",
+        "value": "3"
+      },
+      {
+        "label": "Required population",
+        "value": "10"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "15"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "200"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.college",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.university.png"
+  },
+  {
+    "id": "model.building.armory",
+    "category": "buildings",
+    "title": "Armory",
+    "summary": "The armory is used to produce muskets from tools. As soon as the population reaches 8, the armory can be upgraded to a magazine and then to an arsenal, provided that Adam Smith has joined the Continental Congress.\\n\\nAfter building an armory you are allowed to produce muskets and artillery.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Upkeep in gold",
+        "value": "5"
+      },
+      {
+        "label": "Consumption: Tools",
+        "value": "3"
+      },
+      {
+        "label": "Production: Muskets",
+        "value": "3"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "52"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.muskets",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.armory.png"
+  },
+  {
+    "id": "model.building.magazine",
+    "category": "buildings",
+    "title": "Magazine",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Required population",
+        "value": "8"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "10"
+      },
+      {
+        "label": "Consumption: Tools",
+        "value": "6"
+      },
+      {
+        "label": "Production: Muskets",
+        "value": "6"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "120"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.building.armory",
+      "model.goods.hammers",
+      "model.goods.muskets",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.magazine.png"
+  },
+  {
+    "id": "model.building.arsenal",
+    "category": "buildings",
+    "title": "Arsenal",
+    "summary": "The arsenal is used to produce muskets from tools.\\n\\nAfter building an arsenal muskets only require half the number of tools to be produced.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Required population",
+        "value": "8"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "15"
+      },
+      {
+        "label": "Consumption: Tools",
+        "value": "9"
+      },
+      {
+        "label": "Production: Muskets",
+        "value": "9"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "240"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.magazine",
+      "model.goods.hammers",
+      "model.goods.muskets",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.arsenal.png"
+  },
+  {
+    "id": "model.building.chapel",
+    "category": "buildings",
+    "title": "Chapel",
+    "summary": "The chapel is a place for your colonists to practice their religion. A chapel produces a small amount of crosses by itself, but no preacher may be put to work here. You will need to upgrade your chapel to a church first.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Workplaces",
+        "value": "0"
+      },
+      {
+        "label": "Production: Crosses",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.crosses"
+    ],
+    "icon": "model.building.chapel.png"
+  },
+  {
+    "id": "model.building.church",
+    "category": "buildings",
+    "title": "Church",
+    "summary": "A colony with a population of 3 or more may build a church, which can be upgraded to a cathedral as soon as the population reaches 8. The religious freedom of the New World (symbolised by crosses) causes increased emigration from Europe.\\n\\nAfter building a church cross production increases and you are allowed to commission missionaries.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Workplaces",
+        "value": "3"
+      },
+      {
+        "label": "Required population",
+        "value": "3"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "5"
+      },
+      {
+        "label": "Production: Crosses",
+        "value": "2"
+      },
+      {
+        "label": "Production: Crosses",
+        "value": "3"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "64"
+      }
+    ],
+    "related": [
+      "model.building.chapel",
+      "model.goods.crosses",
+      "model.goods.hammers"
+    ],
+    "icon": "model.building.church.png"
+  },
+  {
+    "id": "model.building.cathedral",
+    "category": "buildings",
+    "title": "Cathedral",
+    "summary": "A colony with a population of 3 or more may build a church, which can be upgraded to a cathedral as soon as the population reaches 8. The religious freedom of the New World (symbolised by crosses) causes increased emigration from Europe.\\n\\nAfter building a cathedral cross production increases.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Workplaces",
+        "value": "3"
+      },
+      {
+        "label": "Required population",
+        "value": "8"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "15"
+      },
+      {
+        "label": "Production: Crosses",
+        "value": "3"
+      },
+      {
+        "label": "Production: Crosses",
+        "value": "6"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "176"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.church",
+      "model.goods.crosses",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.cathedral.png"
+  },
+  {
+    "id": "model.building.stockade",
+    "category": "buildings",
+    "title": "Stockade",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Workplaces",
+        "value": "0"
+      },
+      {
+        "label": "Required population",
+        "value": "3"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "64"
+      }
+    ],
+    "related": [
+      "model.goods.hammers"
+    ],
+    "icon": "model.building.stockade.png"
+  },
+  {
+    "id": "model.building.fort",
+    "category": "buildings",
+    "title": "Fort",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Workplaces",
+        "value": "0"
+      },
+      {
+        "label": "Required population",
+        "value": "3"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "10"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "120"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.stockade",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.fort.png"
+  },
+  {
+    "id": "model.building.fortress",
+    "category": "buildings",
+    "title": "Fortress",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Workplaces",
+        "value": "0"
+      },
+      {
+        "label": "Required population",
+        "value": "8"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "15"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "320"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "200"
+      }
+    ],
+    "related": [
+      "model.building.fort",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.fortress.png"
+  },
+  {
+    "id": "model.building.depot",
+    "category": "buildings",
+    "title": "Depot",
+    "summary": "The depot stores all kinds of goods. Its initial capacity is 100 units of each kind of goods, but it can be upgraded to a warehouse, which holds 200. Building a further warehouse expansion increases storage capacities to 300.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Workplaces",
+        "value": "0"
+      }
+    ],
+    "related": [],
+    "icon": "model.building.depot.png"
+  },
+  {
+    "id": "model.building.warehouse",
+    "category": "buildings",
+    "title": "Warehouse",
+    "summary": "The warehouse stores all kinds of goods. It is the first upgrade of a depot, with a capacity of 200 units for each kind of goods. Building a warehouse expansion increases storage capacities to 300.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Workplaces",
+        "value": "0"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "5"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "80"
+      }
+    ],
+    "related": [
+      "model.building.depot",
+      "model.goods.hammers"
+    ],
+    "icon": "model.building.warehouse.png"
+  },
+  {
+    "id": "model.building.warehouseExpansion",
+    "category": "buildings",
+    "title": "Warehouse expansion",
+    "summary": "The expanded warehouse stores all kinds of goods. It is an upgrade to the simple warehouse, with a capacity of 300 units for each kind of goods.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Workplaces",
+        "value": "0"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "5"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "80"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.building.warehouse",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.warehouseExpansion.png"
+  },
+  {
+    "id": "model.building.country",
+    "category": "buildings",
+    "title": "Pasture",
+    "summary": "The pasture is a place near your colony, where your horses roam freely. Building stables will increase the production of horses.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Workplaces",
+        "value": "0"
+      },
+      {
+        "label": "Consumption: Food",
+        "value": "1"
+      },
+      {
+        "label": "Production: Horses",
+        "value": "1"
+      }
+    ],
+    "related": [
+      "model.goods.food",
+      "model.goods.horses"
+    ],
+    "icon": "model.building.country.png"
+  },
+  {
+    "id": "model.building.stables",
+    "category": "buildings",
+    "title": "Stables",
+    "summary": "The stables increase the maximum production of horses by reducing the size of herds.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Workplaces",
+        "value": "0"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "5"
+      },
+      {
+        "label": "Consumption: Food",
+        "value": "1"
+      },
+      {
+        "label": "Production: Horses",
+        "value": "1"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "64"
+      }
+    ],
+    "related": [
+      "model.building.country",
+      "model.goods.food",
+      "model.goods.hammers",
+      "model.goods.horses"
+    ],
+    "icon": "model.building.stables.png"
+  },
+  {
+    "id": "model.building.docks",
+    "category": "buildings",
+    "title": "Docks",
+    "summary": "The dock allows colonists to produce fish on ocean tiles adjacent to the colony. As soon as the population is at least 4, it can be upgraded to a drydock, which allows the colony to repair damaged ships. When the colony's population reaches 8, it can be further upgraded to a shipyard, which enables the colony to build new ships.\\n\\nBuilding a dock allows fishing.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Workplaces",
+        "value": "0"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "5"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "52"
+      }
+    ],
+    "related": [
+      "model.goods.hammers"
+    ],
+    "icon": "model.building.docks.png"
+  },
+  {
+    "id": "model.building.drydock",
+    "category": "buildings",
+    "title": "Drydock",
+    "summary": "The drydock allows colonists to produce fish on ocean tiles adjacent to the colony, and it allows ship repair. When the colony's population reaches 8, it can be further upgraded to a shipyard, which enables the colony to build new ships.\\n\\nBuilding a drydock allows ship repair.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Workplaces",
+        "value": "0"
+      },
+      {
+        "label": "Required population",
+        "value": "4"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "10"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "80"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.building.docks",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.drydock.png"
+  },
+  {
+    "id": "model.building.shipyard",
+    "category": "buildings",
+    "title": "Shipyard",
+    "summary": "The shipyard allows colonists to produce fish on ocean tiles adjacent to the colony, it allows ship repair, and it allows ship construction.\\n\\nBuilding a shipyard allows ship construction.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Workplaces",
+        "value": "0"
+      },
+      {
+        "label": "Required population",
+        "value": "8"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "15"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "240"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "100"
+      }
+    ],
+    "related": [
+      "model.building.drydock",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.shipyard.png"
+  },
+  {
+    "id": "model.building.printingPress",
+    "category": "buildings",
+    "title": "Printing press",
+    "summary": "The printing press, which can be upgraded to a newspaper as soon as the population reaches 4, increases the colony's production of liberty bells.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Workplaces",
+        "value": "0"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "5"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "52"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "20"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.printingPress.png"
+  },
+  {
+    "id": "model.building.newspaper",
+    "category": "buildings",
+    "title": "Newspaper",
+    "summary": "The newspaper, which can only be built after building a printing press and as soon the population reaches 4, increases liberty bell production.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Workplaces",
+        "value": "0"
+      },
+      {
+        "label": "Required population",
+        "value": "4"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "10"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "120"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.building.printingPress",
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.newspaper.png"
+  },
+  {
+    "id": "model.building.customHouse",
+    "category": "buildings",
+    "title": "Custom house",
+    "summary": "The custom house, which can be built as soon as Peter Stuyvesant has joined the Continental Congress, allows the colony to export goods to Europe directly without the help of ships. Also, it allows trading with foreign powers after the declaration of independence. Optionally, it may also ignore boycotts.",
+    "text": "",
+    "facts": [
+      {
+        "label": "Workplaces",
+        "value": "0"
+      },
+      {
+        "label": "Upkeep in gold",
+        "value": "15"
+      },
+      {
+        "label": "Build cost / equipment: Hammers",
+        "value": "160"
+      },
+      {
+        "label": "Build cost / equipment: Tools",
+        "value": "50"
+      }
+    ],
+    "related": [
+      "model.goods.hammers",
+      "model.goods.tools"
+    ],
+    "icon": "model.building.customHouse.png"
+  },
+  {
+    "id": "model.foundingFather.adamSmith",
+    "category": "fathers",
+    "title": "Adam Smith",
+    "summary": "Enables building of factories.",
+    "text": "Better known as the Father of Modern Economics, Smith penned several texts pertaining to Economic theory, including, The Wealth of Nations his most famous text.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1723-1790"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.adamSmith.jpg"
+  },
+  {
+    "id": "model.foundingFather.jacobFugger",
+    "category": "fathers",
+    "title": "Jacob Fugger II",
+    "summary": "All boycotts currently in effect are dropped.",
+    "text": "Extremely wealthy German merchant and banker. Amassed a fortune with family partnerships and Stock holdings in the mining industries.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1459-1525"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.jacobFugger.jpg"
+  },
+  {
+    "id": "model.foundingFather.peterMinuit",
+    "category": "fathers",
+    "title": "Peter Minuit",
+    "summary": "Indians no longer demand payment for their land.",
+    "text": "Bought what later became known as Manhattan Island from Native Americans for about 60 Dutch guilders. He later would colonise the Delaware Bay area as well.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1580-1638"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.peterMinuit.jpg"
+  },
+  {
+    "id": "model.foundingFather.peterStuyvesant",
+    "category": "fathers",
+    "title": "Peter Stuyvesant",
+    "summary": "The construction of custom houses becomes possible.",
+    "text": "Appointed Governor General of New Netherlands which, after a British invasion he could not stop, became New York.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1592-1672"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.peterStuyvesant.jpg"
+  },
+  {
+    "id": "model.foundingFather.janDeWitt",
+    "category": "fathers",
+    "title": "Jan de Witt",
+    "summary": "Trade with foreign colonies becomes possible and more information about colonial rivals is displayed.",
+    "text": "De Witt was a great Dutch statesmen. He represented the merchants and encouraged industry and commerce. He also negotiated several important treaties for the Dutch to end wars with England.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1625-1672"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.janDeWitt.jpg"
+  },
+  {
+    "id": "model.foundingFather.ferdinandMagellan",
+    "category": "fathers",
+    "title": "Ferdinand Magellan",
+    "summary": "Naval vessels movement is increased by 1 and the time to sail to/from Europe/America is shortened.",
+    "text": "One of the greatest explorers to navigate the globe. Magellan was first to circumnavigate the globe and cross the Pacific Ocean.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1480-1521"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.ferdinandMagellan.jpg"
+  },
+  {
+    "id": "model.foundingFather.franciscoDeCoronado",
+    "category": "fathers",
+    "title": "Francisco de Coronado",
+    "summary": "All existing colonies become visible on the map.",
+    "text": "First European explorer to see the Grand Canyon. Though he never found the golden cities he searched for, his mapping of the area now called the Southwestern U.S. was important to further exploration.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1510-1554"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.franciscoDeCoronado.jpg"
+  },
+  {
+    "id": "model.foundingFather.hernandoDeSoto",
+    "category": "fathers",
+    "title": "Hernando de Soto",
+    "summary": "Exploration of Lost City Rumours never yields a negative result and all land units have an extended sight radius.",
+    "text": "First European to explore Florida and the southeastern U.S. He also held a prominent role in conquests of Central America.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1496-1542"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.hernandoDeSoto.jpg"
+  },
+  {
+    "id": "model.foundingFather.henryHudson",
+    "category": "fathers",
+    "title": "Henry Hudson",
+    "summary": "",
+    "text": "English Navigator who explored and mapped a large area of the northeastern North American continent.  Many waterways in that region are named in his honour.  His original goal was to find the famed Northwest Passage.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1565-1611"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.henryHudson.jpg"
+  },
+  {
+    "id": "model.foundingFather.laSalle",
+    "category": "fathers",
+    "title": "Robert de La Salle",
+    "summary": "Gives all existing and future colonies a stockade when their population reaches 3.",
+    "text": "The first European to travel the length of the Mississippi river, de La Salle was on a mission to set up numerous trading posts along its banks. He later claimed the whole basin as Louisiana in honour of the French King. Later, he explored several of the Great Lakes.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1643-1687"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.laSalle.jpg"
+  },
+  {
+    "id": "model.foundingFather.hernanCortes",
+    "category": "fathers",
+    "title": "Hernan Cortes",
+    "summary": "Conquered native settlements always yield treasure (and in greater abundance) and the monarch's galleons transport it free of charge.",
+    "text": "Famed Spanish conquistador who overthrew the Aztec Empire and claimed Mexico for Spain.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1485-1547"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.hernanCortes.jpg"
+  },
+  {
+    "id": "model.foundingFather.georgeWashington",
+    "category": "fathers",
+    "title": "George Washington",
+    "summary": "Any soldier or dragoon who wins a combat is automatically upgraded to the next possible level.",
+    "text": "General Washington lead the colonial army to victory over the British to gain independence for the colonies. This victory and his leadership led to his being named the new nation's first President.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1732-1799"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.georgeWashington.jpg"
+  },
+  {
+    "id": "model.foundingFather.paulRevere",
+    "category": "fathers",
+    "title": "Paul Revere",
+    "summary": "When a colony with no standing soldiers is attacked, a colonist automatically takes up any stockpiled muskets and defends.",
+    "text": "The famed rider of colonial America mounted his horse and rode through the countryside alerting colonists that British soldiers were coming. He was captured during the ride and later released when his captors believed they were in grave danger and their prisoner might slow them down.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1734-1818"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.paulRevere.jpg"
+  },
+  {
+    "id": "model.foundingFather.francisDrake",
+    "category": "fathers",
+    "title": "Francis Drake",
+    "summary": "",
+    "text": "A great English sea captain, Drake was the first Englishman to circumnavigate the globe and a hero in the fights against the Spanish Armada.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1542-1596"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.francisDrake.jpg"
+  },
+  {
+    "id": "model.foundingFather.johnPaulJones",
+    "category": "fathers",
+    "title": "John Paul Jones",
+    "summary": "A Frigate is added to your colonial navy (free).",
+    "text": "Hailed as a great sea captain in America, Jones uttered the famous words `Sir, I have not yet begun to fight' while fighting the British at sea. He later watched his ship sink to the bottom of the ocean from the deck of a British vessel.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1741-1792"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.johnPaulJones.jpg"
+  },
+  {
+    "id": "model.foundingFather.thomasJefferson",
+    "category": "fathers",
+    "title": "Thomas Jefferson",
+    "summary": "",
+    "text": "A powerful voice of Patriotism, Jefferson was credited with writing the Declaration of Independence. He later became the 3rd President of the U.S.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1743-1826"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.thomasJefferson.jpg"
+  },
+  {
+    "id": "model.foundingFather.pocahontas",
+    "category": "fathers",
+    "title": "Pocahontas",
+    "summary": "All tension levels between you and natives are removed and Indian alarm is generated half as fast.",
+    "text": "A peacemaker between early Jamestown settlers and the Native Americans. She is credited with sending food and other supplies to starving colonists there during harsh times. She later converted to Christianity and married an Englishman.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1595-1617"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.pocahontas.jpg"
+  },
+  {
+    "id": "model.foundingFather.thomasPaine",
+    "category": "fathers",
+    "title": "Thomas Paine",
+    "summary": "Increases Liberty Bell production in colonies by the value of the current tax rate.",
+    "text": "Inspired colonists with his pen at the urging of Benjamin Franklin. Publish a pamphlet, Common Sense, guiding the thoughts of patriots all over the colonies.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1737-1809"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.thomasPaine.jpg"
+  },
+  {
+    "id": "model.foundingFather.simonBolivar",
+    "category": "fathers",
+    "title": "Simon Bolivar",
+    "summary": "",
+    "text": "Remembered as a great leader in the struggle for South American independence from Spain. Bolivar freed what is now Venezuela and later became its first President.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1783-1830"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.simonBolivar.jpg"
+  },
+  {
+    "id": "model.foundingFather.benjaminFranklin",
+    "category": "fathers",
+    "title": "Benjamin Franklin",
+    "summary": "The Crown's foreign wars no longer have effect on relationships in the New World and Europeans in the New World always offer peace in negotiations.",
+    "text": "A heavy contributor to the Declaration of Independence, Franklin was one of the voices of the Revolution. He travelled extensively between Europe and the colonies gainined the support of the French in the war.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1706-1790"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.benjaminFranklin.jpg"
+  },
+  {
+    "id": "model.foundingFather.williamBrewster",
+    "category": "fathers",
+    "title": "William Brewster",
+    "summary": "No more criminals or servants appear on the docks, and you can select which immigrant in the recruitment pool to move to the docks.",
+    "text": "Brewster was the Puritan leader of the Plymouth colony in New England.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1567-1644"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.williamBrewster.jpg"
+  },
+  {
+    "id": "model.foundingFather.williamPenn",
+    "category": "fathers",
+    "title": "William Penn",
+    "summary": "",
+    "text": "As a close friend of the Duke of York, Penn was granted the land that is mostly Pennsylvania, Delaware, and New Jersey. He Governed the Quaker colony for several years to provide a haven to fellow Quakers.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1644-1718"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.williamPenn.jpg"
+  },
+  {
+    "id": "model.foundingFather.fatherJeanDeBrebeuf",
+    "category": "fathers",
+    "title": "Father Jean de Brebeuf",
+    "summary": "All missionaries function as experts.",
+    "text": "Befriended the Huron Indians and converted many to Christianity. Died at the hands of the Iroquois who had finally defeated their enemy, the Hurons.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1593-1649"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.fatherJeanDeBrebeuf.jpg"
+  },
+  {
+    "id": "model.foundingFather.juanDeSepulveda",
+    "category": "fathers",
+    "title": "Juan de Sepulveda",
+    "summary": "",
+    "text": "A Spanish theologian who spoke out for the conquest of Indian lands and forced evangelisation of the natives.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1781-1872"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.juanDeSepulveda.jpg"
+  },
+  {
+    "id": "model.foundingFather.bartolomeDeLasCasas",
+    "category": "fathers",
+    "title": "Bartolome de las Casas",
+    "summary": "All existing Indian converts are converted to free colonists.",
+    "text": "A Catholic Priest who traveled the Indies converting Indians and chastising Spain for their treatment of the Natives.",
+    "facts": [
+      {
+        "label": "Lifespan",
+        "value": "1474-1566"
+      }
+    ],
+    "related": [],
+    "icon": "model.foundingFather.bartolomeDeLasCasas.jpg"
+  },
+  {
+    "id": "model.nation.unknownEnemy",
+    "category": "nations",
+    "title": "Enemy",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Unknown"
+      }
+    ],
+    "related": [],
+    "icon": null
+  },
+  {
+    "id": "model.nation.dutch",
+    "category": "nations",
+    "title": "The Netherlands",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "William I"
+      },
+      {
+        "label": "Name of the New World",
+        "value": "New Holland"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.dutch.png"
+  },
+  {
+    "id": "model.nation.french",
+    "category": "nations",
+    "title": "France",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Louis XIV"
+      },
+      {
+        "label": "Name of the New World",
+        "value": "New France"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.french.png"
+  },
+  {
+    "id": "model.nation.english",
+    "category": "nations",
+    "title": "England",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Elizabeth I"
+      },
+      {
+        "label": "Name of the New World",
+        "value": "New England"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.english.png"
+  },
+  {
+    "id": "model.nation.spanish",
+    "category": "nations",
+    "title": "Spain",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Philip II"
+      },
+      {
+        "label": "Name of the New World",
+        "value": "New Spain"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.spanish.png"
+  },
+  {
+    "id": "model.nation.inca",
+    "category": "nations",
+    "title": "Inca",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Atahualpa"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.inca.png"
+  },
+  {
+    "id": "model.nation.aztec",
+    "category": "nations",
+    "title": "Aztec",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Moctezuma II"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.aztec.png"
+  },
+  {
+    "id": "model.nation.arawak",
+    "category": "nations",
+    "title": "Arawak",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Tamanaco"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.arawak.png"
+  },
+  {
+    "id": "model.nation.cherokee",
+    "category": "nations",
+    "title": "Cherokee",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Moytoy"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.cherokee.png"
+  },
+  {
+    "id": "model.nation.iroquois",
+    "category": "nations",
+    "title": "Iroquois",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Segoyewatha"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.iroquois.png"
+  },
+  {
+    "id": "model.nation.sioux",
+    "category": "nations",
+    "title": "Sioux",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Taoyateduta"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.sioux.png"
+  },
+  {
+    "id": "model.nation.apache",
+    "category": "nations",
+    "title": "Apache",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Geronimo"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.apache.png"
+  },
+  {
+    "id": "model.nation.tupi",
+    "category": "nations",
+    "title": "Tupi",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Guaira"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.tupi.png"
+  },
+  {
+    "id": "model.nation.dutchREF",
+    "category": "nations",
+    "title": "Dutch Royal Expeditionary Force",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "William II"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.dutchREF.png"
+  },
+  {
+    "id": "model.nation.frenchREF",
+    "category": "nations",
+    "title": "French Royal Expeditionary Force",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Louis XV"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.frenchREF.png"
+  },
+  {
+    "id": "model.nation.englishREF",
+    "category": "nations",
+    "title": "English Royal Expeditionary Force",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "George III"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.englishREF.png"
+  },
+  {
+    "id": "model.nation.spanishREF",
+    "category": "nations",
+    "title": "Spanish Royal Expeditionary Force",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Philip III"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.spanishREF.png"
+  },
+  {
+    "id": "model.nation.portuguese",
+    "category": "nations",
+    "title": "Portugal",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Dom Manuel I"
+      },
+      {
+        "label": "Name of the New World",
+        "value": "Land of Holy Cross"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.portuguese.png"
+  },
+  {
+    "id": "model.nation.swedish",
+    "category": "nations",
+    "title": "Sweden",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Charles XI"
+      },
+      {
+        "label": "Name of the New World",
+        "value": "New Sweden"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.swedish.png"
+  },
+  {
+    "id": "model.nation.danish",
+    "category": "nations",
+    "title": "Denmark",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Frederick II"
+      },
+      {
+        "label": "Name of the New World",
+        "value": "New Denmark"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.danish.png"
+  },
+  {
+    "id": "model.nation.russian",
+    "category": "nations",
+    "title": "Russia",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Peter I"
+      },
+      {
+        "label": "Name of the New World",
+        "value": "New Russia"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.russian.png"
+  },
+  {
+    "id": "model.nation.portugueseREF",
+    "category": "nations",
+    "title": "Portuguese Royal Expeditionary Force",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Dom John IV"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.portugueseREF.png"
+  },
+  {
+    "id": "model.nation.swedishREF",
+    "category": "nations",
+    "title": "Swedish Royal Expeditionary Force",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Charles XII"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.swedishREF.png"
+  },
+  {
+    "id": "model.nation.danishREF",
+    "category": "nations",
+    "title": "Danish Royal Expeditionary Force",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Frederick III"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.danishREF.png"
+  },
+  {
+    "id": "model.nation.russianREF",
+    "category": "nations",
+    "title": "Russian Royal Expeditionary Force",
+    "summary": "",
+    "text": "",
+    "facts": [
+      {
+        "label": "Ruler",
+        "value": "Catherine I"
+      }
+    ],
+    "related": [],
+    "icon": "model.nation.russianREF.png"
+  }
+]

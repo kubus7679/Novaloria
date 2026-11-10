@@ -24,16 +24,16 @@ struct DiplomacyView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(state.pendingDiplomacy?.context == "TRIBUTE" ? "Tributverhandlung" : "Diplomatie")
+                Text(state.pendingDiplomacy?.context == "TRIBUTE" ? L10n.text("Tributverhandlung", table: "DiplomacyView") : L10n.text("Diplomatie", table: "DiplomacyView"))
                     .font(.title2.bold())
                 Spacer()
                 if state.pendingDiplomacyIsIncoming {
-                    Button("Ablehnen") { state.rejectDiplomacy() }
+                    Button(L10n.text("Ablehnen", table: "DiplomacyView")) { state.rejectDiplomacy() }
                         .buttonStyle(.bordered)
-                    Button("Akzeptieren") { state.acceptDiplomacy() }
+                    Button(L10n.text("Akzeptieren", table: "DiplomacyView")) { state.acceptDiplomacy() }
                         .buttonStyle(.borderedProminent)
                 }
-                Button("Schließen") {
+                Button(L10n.text("Schließen", table: "DiplomacyView")) {
                     if !state.pendingDiplomacyIsIncoming { state.clearPendingDecision() }
                     if let onClose {
                         onClose()
@@ -54,17 +54,17 @@ struct DiplomacyView: View {
                 VStack(alignment: .leading, spacing: 12) {
             if let proposal = state.pendingDiplomacy {
                 HStack(spacing: 12) {
-                    Text("Kontext: \(contextLabel(proposal.context))")
-                    Text("Von: \(proposal.sender.flatMap { state.game?.players[$0]?.name } ?? "Unbekannt")")
+                    Text(L10n.text("Kontext: \(contextLabel(proposal.context))", table: "DiplomacyView"))
+                    Text(L10n.text("Von: \(proposal.sender.flatMap { state.game?.players[$0]?.name } ?? L10n.text("Unbekannt", table: "DiplomacyView"))", table: "DiplomacyView"))
                         .foregroundColor(.secondary)
-                    Text("Version: \(proposal.version)")
+                    Text(L10n.text("Version: \(proposal.version)", table: "DiplomacyView"))
                         .foregroundColor(.secondary)
                 }
                 .font(.caption)
 
-                GroupBox("Eingehende Klauseln") {
+                GroupBox(L10n.text("Eingehende Klauseln", table: "DiplomacyView")) {
                     if proposal.clauses.isEmpty {
-                        Text("Keine Klauseln.")
+                        Text(L10n.text("Keine Klauseln.", table: "DiplomacyView"))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     } else {
@@ -86,7 +86,7 @@ struct DiplomacyView: View {
 
                 counterProposalEditor
             } else {
-                Text("Kein diplomatischer Vorschlag.")
+                Text(L10n.text("Kein diplomatischer Vorschlag.", table: "DiplomacyView"))
                     .foregroundColor(.secondary)
             }
 
@@ -107,19 +107,19 @@ struct DiplomacyView: View {
 
     private func contextLabel(_ context: String?) -> String {
         switch context?.uppercased() {
-        case "TRIBUTE": return "Tribut"
-        case "DIPLOMATIC": return "Diplomatie"
-        default: return context.map(GameLabels.name) ?? "Unbekannt"
+        case "TRIBUTE": return L10n.text("Tribut", table: "DiplomacyView")
+        case "DIPLOMATIC": return L10n.text("Diplomatie", table: "DiplomacyView")
+        default: return context.map(GameLabels.name) ?? L10n.text("Unbekannt", table: "DiplomacyView")
         }
     }
 
     // MARK: - Counter-proposal
 
     private var counterProposalEditor: some View {
-        GroupBox("Gegenvorschlag") {
+        GroupBox(L10n.text("Gegenvorschlag", table: "DiplomacyView")) {
             VStack(alignment: .leading, spacing: 8) {
                 if drafts.isEmpty {
-                    Text("Keine Klauseln. Füge eine unten hinzu.")
+                    Text(L10n.text("Keine Klauseln. Füge eine unten hinzu.", table: "DiplomacyView"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 } else {
@@ -131,16 +131,16 @@ struct DiplomacyView: View {
                 Divider()
 
                 HStack {
-                    Picker("Typ", selection: $newKind) {
+                    Picker(L10n.text("Typ", table: "DiplomacyView"), selection: $newKind) {
                         ForEach(state.pendingDiplomacyClauseKinds) { kind in
                             Text(kind.title).tag(kind)
                         }
                     }
                     .frame(width: 140)
 
-                    Picker("Richtung", selection: $newWeGive) {
-                        Text("Wir geben").tag(true)
-                        Text("Sie geben").tag(false)
+                    Picker(L10n.text("Richtung", table: "DiplomacyView"), selection: $newWeGive) {
+                        Text(L10n.text("Wir geben", table: "DiplomacyView")).tag(true)
+                        Text(L10n.text("Sie geben", table: "DiplomacyView")).tag(false)
                     }
                     .frame(width: 160)
                 }
@@ -158,10 +158,10 @@ struct DiplomacyView: View {
                 )
 
                 HStack {
-                    Button("Klausel hinzufügen") { addClause() }
+                    Button(L10n.text("Klausel hinzufügen", table: "DiplomacyView")) { addClause() }
                         .buttonStyle(.bordered)
                     Spacer()
-                    Button("Gegenvorschlag senden") {
+                    Button(L10n.text("Gegenvorschlag senden", table: "DiplomacyView")) {
                         state.sendDiplomacyCounterProposal(drafts)
                     }
                     .buttonStyle(.borderedProminent)
@@ -180,8 +180,8 @@ struct DiplomacyView: View {
                 .frame(width: 60, alignment: .leading)
 
             Picker("", selection: draft.weGive) {
-                Text("Wir geben").tag(true)
-                Text("Sie geben").tag(false)
+                Text(L10n.text("Wir geben", table: "DiplomacyView")).tag(true)
+                Text(L10n.text("Sie geben", table: "DiplomacyView")).tag(false)
             }
             .labelsHidden()
             .frame(width: 120)
@@ -223,24 +223,24 @@ struct DiplomacyView: View {
                               victimId: Binding<String>) -> some View {
         switch kind {
         case .gold:
-            TextField("Gold", text: gold)
+            TextField(L10n.text("Gold", table: "DiplomacyView"), text: gold)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 100)
         case .goods:
             Picker("", selection: goodsType) {
-                Text("Ware auswählen").tag("")
+                Text(L10n.text("Ware auswählen", table: "DiplomacyView")).tag("")
                 ForEach(goodsOptions, id: \.id) { option in
                     Text(option.label).tag(option.id)
                 }
             }
             .labelsHidden()
             .frame(width: 160)
-            TextField("Menge", text: goodsAmount)
+            TextField(L10n.text("Menge", table: "DiplomacyView"), text: goodsAmount)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 70)
         case .colony:
             Picker("", selection: colonyId) {
-                Text("Kolonie auswählen").tag("")
+                Text(L10n.text("Kolonie auswählen", table: "DiplomacyView")).tag("")
                 ForEach(colonyOptions, id: \.id) { option in
                     Text(option.label).tag(option.id)
                 }
@@ -257,7 +257,7 @@ struct DiplomacyView: View {
             .frame(width: 140)
         case .unit:
             Picker("", selection: unitId) {
-                Text("Einheit auswählen").tag("")
+                Text(L10n.text("Einheit auswählen", table: "DiplomacyView")).tag("")
                 ForEach(state.diplomacyUnitOptions(weGive: weGive), id: \.id) { option in
                     Text(option.label).tag(option.id)
                 }
@@ -266,7 +266,7 @@ struct DiplomacyView: View {
             .frame(width: 200)
         case .incite:
             Picker("", selection: victimId) {
-                Text("Ziel auswählen").tag("")
+                Text(L10n.text("Ziel auswählen", table: "DiplomacyView")).tag("")
                 ForEach(state.diplomacyVictimOptions(), id: \.id) { option in
                     Text(option.label).tag(option.id)
                 }

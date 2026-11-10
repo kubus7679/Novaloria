@@ -71,14 +71,14 @@ enum ColonyProductionCalculator {
                     modifiers.append(AppliedModifier(
                         value: .init(goodsType: goods, kind: .additive,
                                      value: Double(colony.productionBonus), index: 35),
-                        source: "Koloniebonus"
+                        source: L10n.text("Koloniebonus", table: "ColonyProductionCalculator")
                     ))
                 }
                 let result = apply(base: base, goods: goods, unitTypeId: nil,
                                    tileTypeId: tileTypeId, contextType: nil,
                                    modifiers: modifiers, specification: specification)
                 addProduction(goods, amount: result.amount,
-                              explanation: "Koloniezentrum: \(result.explanation)")
+                              explanation: L10n.text("Koloniezentrum: \(result.explanation)", table: "ColonyProductionCalculator"))
             }
         }
 
@@ -107,7 +107,7 @@ enum ColonyProductionCalculator {
                                    tileTypeId: tileTypeId, contextType: nil,
                                    modifiers: modifiers, specification: specification)
                 addProduction(goods, amount: result.amount,
-                              explanation: "Feldarbeit (\(workerName(worker, specification: specification))): \(result.explanation)")
+                              explanation: L10n.text("Feldarbeit (\(workerName(worker, specification: specification))): \(result.explanation)", table: "ColonyProductionCalculator"))
             }
         }
 
@@ -139,12 +139,12 @@ enum ColonyProductionCalculator {
                                    specification: specification)
                 plan.outputs[goods, default: 0] += result.amount
                 plan.outputDetails[goods, default: []].append(
-                    "\(workerName(worker, specification: specification)): \(result.explanation)"
+                    L10n.text("\(workerName(worker, specification: specification)): \(result.explanation)", table: "ColonyProductionCalculator")
                 )
                 for (input, amount) in attendedInputs where amount > 0 {
                     plan.inputs[input, default: 0] += amount
                     plan.inputDetails[input, default: []].append(
-                        "\(workerName(worker, specification: specification)): \(amount)"
+                        L10n.text("\(workerName(worker, specification: specification)): \(amount)", table: "ColonyProductionCalculator")
                     )
                 }
             }
@@ -158,11 +158,13 @@ enum ColonyProductionCalculator {
                                    modifiers: modifiers, specification: specification)
                 plan.outputs[goods, default: 0] += result.amount
                 plan.outputDetails[goods, default: []].append(
-                    "Ohne Arbeiter: \(result.explanation)"
+                    L10n.text("Ohne Arbeiter: \(result.explanation)", table: "ColonyProductionCalculator")
                 )
                 for (input, amount) in unattendedInputs where amount > 0 {
                     plan.inputs[input, default: 0] += amount
-                    plan.inputDetails[input, default: []].append("Unbeaufsichtigt: \(amount)")
+                    plan.inputDetails[input, default: []].append(
+                        L10n.text("Unbeaufsichtigt: \(amount)", table: "ColonyProductionCalculator")
+                    )
                 }
             }
             if !plan.outputs.isEmpty || !plan.inputs.isEmpty { buildingPlans.append(plan) }
@@ -181,14 +183,23 @@ enum ColonyProductionCalculator {
                     consumption[goods, default: 0] += actual
                     available[goods, default: 0] = max(0, stock - actual)
                 }
+                let stockLimit = boundedRatio < 1
+                    ? " (" + L10n.text("durch Vorrat begrenzt", table: "ColonyProductionCalculator") + ")"
+                    : ""
                 details[goods, default: []].append(
-                    "\(plan.name): Bedarf \(plan.inputDetails[goods, default: []].joined(separator: " + ")) = \(amount) \(goodsLabel(goods)); Vorrat \(stock), Verbrauch \(actual)\(boundedRatio < 1 ? " (durch Vorrat begrenzt)" : "")"
+                    L10n.text(
+                        "\(plan.name): Bedarf \(plan.inputDetails[goods, default: []].joined(separator: " + ")) = \(amount) \(goodsLabel(goods)); Vorrat \(stock), Verbrauch \(actual)\(stockLimit)",
+                        table: "ColonyProductionCalculator"
+                    )
                 )
             }
             for (goods, amount) in plan.outputs {
                 let actual = Int(floor(Double(amount) * boundedRatio))
                 let breakdown = plan.outputDetails[goods, default: []].joined(separator: "; ")
-                let explanation = "\(plan.name): \(breakdown)\(boundedRatio < 1 ? "; wegen fehlender Inputs auf \(Int((boundedRatio * 100).rounded())) % begrenzt" : "")"
+                let inputLimit = boundedRatio < 1
+                    ? "; \(L10n.text("wegen fehlender Inputs", table: "ColonyProductionCalculator")) \(Int((boundedRatio * 100).rounded())) %"
+                    : ""
+                let explanation = L10n.text("\(plan.name): \(breakdown)\(inputLimit)", table: "ColonyProductionCalculator")
                 if actual > 0 {
                     addProduction(goods, amount: actual, explanation: explanation)
                 } else if amount > 0 {
@@ -203,7 +214,7 @@ enum ColonyProductionCalculator {
             guard let unitType = worker.unitType else { continue }
             for (goods, amount) in specification.consumes(forUnitType: unitType) where amount > 0 {
                 addConsumption(goods, amount: amount,
-                               explanation: "\(workerName(worker, specification: specification)): \(amount) \(goodsLabel(goods))")
+                               explanation: L10n.text("\(workerName(worker, specification: specification)): \(amount) \(goodsLabel(goods))", table: "ColonyProductionCalculator"))
             }
         }
 
@@ -212,9 +223,9 @@ enum ColonyProductionCalculator {
             let produced = production[goods, default: 0]
             let consumed = consumption[goods, default: 0]
             let lines = details[goods, default: []]
-        let tooltip = (["Produktion: +\(produced) \(goodsLabel(goods))"]
+        let tooltip = ([L10n.text("Produktion: +\(produced) \(goodsLabel(goods))", table: "ColonyProductionCalculator")]
                 + lines
-                + ["Verbrauch: −\(consumed) \(goodsLabel(goods))"])
+                + [L10n.text("Verbrauch: −\(consumed) \(goodsLabel(goods))", table: "ColonyProductionCalculator")])
                 .joined(separator: "\n")
             return ColonyGoodsFlow(id: goods, label: goodsLabel(goods),
                                    produced: produced, consumed: consumed,
@@ -245,13 +256,13 @@ enum ColonyProductionCalculator {
                                       tileTypeId: String,
                                       specification: Specification) -> [AppliedModifier] {
         var result = specification.tileTypes[tileTypeId]?.productionModifiers.map {
-            AppliedModifier(value: $0, source: "Geländebonus")
+            AppliedModifier(value: $0, source: L10n.text("Geländebonus", table: "ColonyProductionCalculator"))
         } ?? []
         for resource in tile.resources {
             guard let resourceType = resource.type else { continue }
             result += (specification.resourceTypes[resourceType]?.productionModifiers ?? []).map {
                 AppliedModifier(value: $0,
-                                source: "Ressource \(GameLabels.name(resourceType))",
+                                source: L10n.text("Ressource \(GameLabels.name(resourceType))", table: "ColonyProductionCalculator"),
                                 resourceQuantity: resource.quantity)
             }
         }
@@ -305,7 +316,7 @@ enum ColonyProductionCalculator {
                 result.append(AppliedModifier(
                     value: .init(goodsType: goods, kind: .additive,
                                  value: Double(rebelBonus), index: 20),
-                    source: "Koloniebonus"
+                    source: L10n.text("Koloniebonus", table: "ColonyProductionCalculator")
                 ))
             }
         } else if colony.productionBonus != 0 {
@@ -313,7 +324,7 @@ enum ColonyProductionCalculator {
                 value: .init(goodsType: goods, kind: .additive,
                              value: Double(Int(floor(Double(colony.productionBonus)
                                                     * (building?.rebelFactor ?? 1)))), index: 20),
-                source: "Koloniebonus"
+                source: L10n.text("Koloniebonus", table: "ColonyProductionCalculator")
             ))
         }
         result += playerModifiers(player: player, specification: specification)
@@ -335,7 +346,7 @@ enum ColonyProductionCalculator {
         let bonus = max(colony.productionBonus, Int(floor(Double(colony.productionBonus) * factor)))
         return [AppliedModifier(value: .init(goodsType: goods, kind: .additive,
                                              value: Double(bonus), index: 35),
-                                source: "Koloniebonus")]
+                                source: L10n.text("Koloniebonus", table: "ColonyProductionCalculator"))]
     }
 
     private static func playerModifiers(player: Player?,
@@ -344,12 +355,12 @@ enum ColonyProductionCalculator {
         var result: [AppliedModifier] = []
         if let nationType = player.nationType {
             result += (specification.nationTypeModifiers[nationType] ?? []).map {
-                AppliedModifier(value: $0, source: "Nationale Eigenschaft")
+                AppliedModifier(value: $0, source: L10n.text("Nationale Eigenschaft", table: "ColonyProductionCalculator"))
             }
         }
         for father in player.foundingFathers {
             result += (specification.foundingFatherModifiers[father] ?? []).map {
-                AppliedModifier(value: $0, source: "Gründervater \(GameLabels.name(father))")
+                AppliedModifier(value: $0, source: L10n.text("Gründervater \(GameLabels.name(father))", table: "ColonyProductionCalculator"))
             }
         }
         return result
@@ -364,7 +375,7 @@ enum ColonyProductionCalculator {
                               specification: Specification) -> (amount: Int, explanation: String) {
         let unitAbilities = unitTypeId.map { specification.effectiveAbilities(forUnitType: $0) } ?? []
         var value = Double(base)
-        var lines = ["Grundwert: \(base)"]
+        var lines = [L10n.text("Grundwert: \(base)", table: "ColonyProductionCalculator")]
         let applicable = modifiers
             .filter({ !$0.value.isDelete && modifierApplies($0.value, goods: goods,
                                       unitTypeId: unitTypeId,
@@ -393,7 +404,7 @@ enum ColonyProductionCalculator {
                 case .percentage: value += value * effectiveValue / 100
                 }
                 if value != oldValue {
-                    lines.append("\(applied.source): \(format(oldValue)) → \(format(value))")
+                    lines.append(L10n.text("\(applied.source): \(format(oldValue)) → \(format(value))", table: "ColonyProductionCalculator"))
                 }
             }
             if let quantity = group.compactMap(\.resourceQuantity).first, quantity >= 0 {
@@ -401,13 +412,13 @@ enum ColonyProductionCalculator {
                 let capped = min(Double(quantity), gained)
                 if capped < gained {
                     value = beforeGroup + capped
-                    lines.append("Ressourcenmenge begrenzt Bonus auf \(format(capped))")
+                    lines.append(L10n.text("Ressourcenmenge begrenzt Bonus auf \(format(capped))", table: "ColonyProductionCalculator"))
                 }
             }
             offset = end
         }
         let amount = max(0, Int(floor(value)))
-        if Double(amount) != value { lines.append("Abgerundet: \(amount)") }
+        if Double(amount) != value { lines.append(L10n.text("Abgerundet: \(amount)", table: "ColonyProductionCalculator")) }
         return (amount, lines.joined(separator: "; "))
     }
 
@@ -446,7 +457,7 @@ enum ColonyProductionCalculator {
 
     private static func workerName(_ worker: FreeColGame.Unit,
                                    specification: Specification) -> String {
-        worker.unitType.map { GameLabels.name($0) } ?? "Arbeiter"
+        worker.unitType.map { GameLabels.name($0) } ?? L10n.text("Arbeiter", table: "ColonyProductionCalculator")
     }
 
     private static func format(_ value: Double) -> String {

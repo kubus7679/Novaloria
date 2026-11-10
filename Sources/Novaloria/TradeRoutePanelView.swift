@@ -27,7 +27,7 @@ struct TradeRoutePanelView: View {
                     editor
                 }
             } else {
-                Text("Handelsrouten können nur im eigenen Zug verwaltet werden.")
+                Text(L10n.text("Handelsrouten können nur im eigenen Zug verwaltet werden.", table: "TradeRoutePanelView"))
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -42,7 +42,7 @@ struct TradeRoutePanelView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Handelsrouten")
+                Text(L10n.text("Handelsrouten", table: "TradeRoutePanelView"))
                     .font(.headline)
                 Spacer()
                 if let message = state.errorMessage {
@@ -51,25 +51,25 @@ struct TradeRoutePanelView: View {
                         .foregroundColor(.red)
                         .lineLimit(1)
                 }
-                Button("Neue Route") {
+                Button(L10n.text("Neue Route", table: "TradeRoutePanelView")) {
                     knownRouteIds = Set(routes.map(\.id))
                     awaitingNewRoute = true
                     state.createTradeRoute()
                 }
                 .disabled(!state.canManageTradeRoutes)
-                Button("Schließen") { dismiss() }
+                Button(L10n.text("Schließen", table: "TradeRoutePanelView")) { dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
             
             HStack {
-                Toggle("Routen beim Zugende automatisch ausführen", isOn: Binding(
+                Toggle(L10n.text("Routen beim Zugende automatisch ausführen", table: "TradeRoutePanelView"), isOn: Binding(
                     get: { state.autoExecuteTradeRoutes },
                     set: { state.autoExecuteTradeRoutes = $0 }
                 ))
                 .toggleStyle(.checkbox)
                 .font(.caption)
                 
-                Button("Jetzt ausführen") {
+                Button(L10n.text("Jetzt ausführen", table: "TradeRoutePanelView")) {
                     state.executeTradeRoutes()
                 }
                 .buttonStyle(.bordered)
@@ -114,7 +114,7 @@ struct TradeRoutePanelView: View {
                 }
             }
             if routes.isEmpty {
-                Text("Noch keine Handelsrouten.")
+                Text(L10n.text("Noch keine Handelsrouten.", table: "TradeRoutePanelView"))
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 8)
@@ -133,8 +133,8 @@ struct TradeRoutePanelView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Text("Name")
-                        TextField("Routenname", text: Binding(
+                        Text(L10n.text("Name", table: "TradeRoutePanelView"))
+                        TextField(L10n.text("Routenname", table: "TradeRoutePanelView"), text: Binding(
                             get: { draft.name ?? "" },
                             set: { self.draft?.name = $0 }
                         ))
@@ -149,9 +149,9 @@ struct TradeRoutePanelView: View {
 
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
-                            Text("Haltepunkte").font(.subheadline.weight(.semibold))
+                            Text(L10n.text("Haltepunkte", table: "TradeRoutePanelView")).font(.subheadline.weight(.semibold))
                             Spacer()
-                            Button("Halt hinzufügen") {
+                            Button(L10n.text("Halt hinzufügen", table: "TradeRoutePanelView")) {
                                 var updated = draft
                                 let defaultLocation = candidates.first?.id
                                 updated.stops.append(TradeRouteStop(locationId: defaultLocation))
@@ -161,7 +161,7 @@ struct TradeRoutePanelView: View {
                         }
 
                         if draft.stops.isEmpty {
-                            Text("Mindestens zwei Haltepunkte hinzufügen.")
+                            Text(L10n.text("Mindestens zwei Haltepunkte hinzufügen.", table: "TradeRoutePanelView"))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         } else {
@@ -174,17 +174,17 @@ struct TradeRoutePanelView: View {
                     Divider()
 
                     FlowLayout(spacing: 8) {
-                        Button("Speichern") { state.saveTradeRoute(draft) }
+                        Button(L10n.text("Speichern", table: "TradeRoutePanelView")) { state.saveTradeRoute(draft) }
                             .buttonStyle(.borderedProminent)
                             .disabled(state.tradeRouteValidationError(for: draft) != nil)
 
-                        Button("Einheit zuweisen") {
+                        Button(L10n.text("Einheit zuweisen", table: "TradeRoutePanelView")) {
                             state.assignSelectedUnitTradeRoute(draft.id)
                         }
                         .buttonStyle(.bordered)
                         .disabled(!state.canAssignSelectedUnitTradeRoute(draft.id))
 
-                        Button("Zuweisung entfernen") { state.clearSelectedUnitTradeRoute() }
+                        Button(L10n.text("Zuweisung entfernen", table: "TradeRoutePanelView")) { state.clearSelectedUnitTradeRoute() }
                             .buttonStyle(.bordered)
                             .disabled(!state.canClearSelectedUnitTradeRoute)
 
@@ -192,9 +192,9 @@ struct TradeRoutePanelView: View {
 
                     if let unit = state.selectedUnit, unit.tradeRoute == draft.id {
                         HStack {
-                            Text("Aktueller Halt")
+                            Text(L10n.text("Aktueller Halt", table: "TradeRoutePanelView"))
                                 .font(.caption)
-                            Stepper("Halt \(unit.currentStop + 1) von \(state.game?.tradeRoutes[draft.id]?.stops.count ?? 0)",
+                            Stepper(L10n.text("Halt \(unit.currentStop + 1) von \(state.game?.tradeRoutes[draft.id]?.stops.count ?? 0)", table: "TradeRoutePanelView"),
                                     value: Binding(
                                         get: { unit.currentStop },
                                         set: { state.setSelectedUnitCurrentStop(String($0)) }
@@ -210,7 +210,7 @@ struct TradeRoutePanelView: View {
             }
             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
         } else {
-            Text("Eine Handelsroute auswählen oder erstellen.")
+            Text(L10n.text("Eine Handelsroute auswählen oder erstellen.", table: "TradeRoutePanelView"))
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -220,13 +220,13 @@ struct TradeRoutePanelView: View {
     private func stopEditor(index: Int, stop: TradeRouteStop) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text("Halt \(index + 1)")
+                Text(L10n.text("Halt \(index + 1)", table: "TradeRoutePanelView"))
                     .font(.caption.weight(.semibold))
                 Picker("", selection: Binding(
                     get: { self.draft?.stops[index].locationId ?? "" },
                     set: { self.draft?.stops[index].locationId = $0.isEmpty ? nil : $0 }
                 )) {
-                    Text("Ort auswählen").tag("")
+                    Text(L10n.text("Ort auswählen", table: "TradeRoutePanelView")).tag("")
                     ForEach(candidates, id: \.id) { candidate in
                         Text(candidate.label).tag(candidate.id)
                     }
@@ -266,7 +266,7 @@ struct TradeRoutePanelView: View {
             }
 
             if goodsTypes.isEmpty {
-                Text("Keine Warenarten verfügbar.")
+                Text(L10n.text("Keine Warenarten verfügbar.", table: "TradeRoutePanelView"))
                     .font(.caption2)
                     .foregroundColor(.secondary)
             } else {

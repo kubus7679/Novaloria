@@ -6,13 +6,13 @@ struct GameCommands: Commands {
     let state: GameState
 
     var body: some Commands {
-        CommandMenu("Spiel") { gameMenu.disabled(state.phase != .inGame) }
+        CommandMenu(L10n.text("Spiel", table: "GameCommands")) { gameMenu.disabled(state.phase != .inGame) }
         CommandGroup(after: .sidebar) {
             viewMenu.disabled(state.phase != .inGame)
         }
-        CommandMenu("Befehle") { ordersMenu.disabled(state.phase != .inGame) }
-        CommandMenu("Berichte") { reportMenu.disabled(state.phase != .inGame) }
-        CommandMenu("Colopädie") { colopediaMenu.disabled(state.phase != .inGame) }
+        CommandMenu(L10n.text("Befehle", table: "GameCommands")) { ordersMenu.disabled(state.phase != .inGame) }
+        CommandMenu(L10n.text("Berichte", table: "GameCommands")) { reportMenu.disabled(state.phase != .inGame) }
+        CommandMenu(L10n.text("Colopädie", table: "GameCommands")) { colopediaMenu.disabled(state.phase != .inGame) }
         CommandGroup(after: .help) {
             helpMenu.disabled(state.phase != .inGame)
         }
@@ -22,30 +22,35 @@ struct GameCommands: Commands {
 
     private var gameMenu: some View {
         Group {
-            Button(state.isSavingGame ? "Wird gespeichert…" : "Spiel speichern…") {
+            Button(state.isSavingGame
+                   ? L10n.text("Wird gespeichert…", table: "GameCommands")
+                   : L10n.text("Spiel speichern…", table: "GameCommands")) {
                 state.showSaveGamePanel()
             }
             .keyboardShortcut("s", modifiers: .command)
             .disabled(!state.canSaveGame)
-            .help("Vollständigen Spielstand speichern. Erfordert die Java-Speichererweiterung und Administratorrechte im eigenen Zug.")
+            .help(L10n.text(
+                "Vollständigen Spielstand speichern. Erfordert die Java-Speichererweiterung und Administratorrechte im eigenen Zug.",
+                table: "GameCommands"
+            ))
             Divider()
-            Button("Zug beenden") { state.requestEndTurn() }
+            Button(L10n.text("Zug beenden", table: "GameCommands")) { state.requestEndTurn() }
                 .disabled(!state.canEndTurn)
             Divider()
-            Button("Chat…") { state.showChatPanel = true }
-            Button("Unabhängigkeit erklären…") { state.showIndependencePanel = true }
+            Button(L10n.text("Chat…", table: "GameCommands")) { state.showChatPanel = true }
+            Button(L10n.text("Unabhängigkeit erklären…", table: "GameCommands")) { state.showIndependencePanel = true }
                 .disabled(!state.isLocalPlayersTurn)
-            Button("Aufgeben…") { state.retireGame() }
+            Button(L10n.text("Aufgeben…", table: "GameCommands")) { state.retireGame() }
                 .disabled(!state.isGameEnded && !state.isLocalPlayersTurn)
             Divider()
-            Button("Bestenliste") {
+            Button(L10n.text("Bestenliste", table: "GameCommands")) {
                 state.requestedReport = .highScores
                 state.showReportsPanel = true
             }
-            Button("Status…") { state.showStatusPanel = true }
-            Button("Einstellungen…") { state.showPreferencesPanel = true }
+            Button(L10n.text("Status…", table: "GameCommands")) { state.showStatusPanel = true }
+            Button(L10n.text("Einstellungen…", table: "GameCommands")) { state.showPreferencesPanel = true }
             Divider()
-            Button("Verbindung trennen") { state.disconnect() }
+            Button(L10n.text("Verbindung trennen", table: "GameCommands")) { state.disconnect() }
         }
     }
 
@@ -53,16 +58,16 @@ struct GameCommands: Commands {
 
     private var viewMenu: some View {
         Group {
-            Button("Hineinzoomen") { state.zoomMap(in: true) }
+            Button(L10n.text("Hineinzoomen", table: "GameCommands")) { state.zoomMap(in: true) }
                 .disabled(!state.canZoomMapIn)
-            Button("Herauszoomen") { state.zoomMap(in: false) }
+            Button(L10n.text("Herauszoomen", table: "GameCommands")) { state.zoomMap(in: false) }
                 .disabled(!state.canZoomMapOut)
-            Button("Zoom zurücksetzen") {
+            Button(L10n.text("Zoom zurücksetzen", table: "GameCommands")) {
                 state.resetMapZoom()
             }
             .disabled(state.mapZoomScale == 2.0)
             Divider()
-            Menu("Kartenüberlagerung") {
+            Menu(L10n.text("Kartenüberlagerung", table: "GameCommands")) {
                 ForEach(GameState.MapOverlay.allCases) { overlay in
                     Button {
                         state.mapOverlay = overlay
@@ -76,29 +81,29 @@ struct GameCommands: Commands {
                 }
             }
             Divider()
-            Toggle("Kartenraster", isOn: Binding(
+            Toggle(L10n.text("Kartenraster", table: "GameCommands"), isOn: Binding(
                 get: { state.showMapGrid },
                 set: { _ in state.toggleMapGrid() }
             ))
-            Toggle("Grenzen", isOn: Binding(
+            Toggle(L10n.text("Grenzen", table: "GameCommands"), isOn: Binding(
                 get: { state.showBorders },
                 set: { _ in state.toggleBorders() }
             ))
-            Toggle("Siedlungsnamen", isOn: Binding(
+            Toggle(L10n.text("Siedlungsnamen", table: "GameCommands"), isOn: Binding(
                 get: { state.showSettlementLabels },
                 set: { state.showSettlementLabels = $0 }
             ))
-            Toggle("Nebel des Krieges", isOn: Binding(
+            Toggle(L10n.text("Nebel des Krieges", table: "GameCommands"), isOn: Binding(
                 get: { state.showFogOfWar },
                 set: { _ in state.toggleFogOfWar() }
             ))
             Divider()
-            Button("Europa…") { state.openEuropePanel() }
+            Button(L10n.text("Europa…", table: "GameCommands")) { state.openEuropePanel() }
                 .disabled(state.localPlayer?.europe == nil)
-            Button("Kolonie öffnen…") { state.openColonyPanel() }
+            Button(L10n.text("Kolonie öffnen…", table: "GameCommands")) { state.openColonyPanel() }
                 .disabled(state.selectedColony == nil)
-            Button("Siedlung suchen…") { state.showFindSettlementPanel = true }
-            Button("Auswahl zentrieren") {
+            Button(L10n.text("Siedlung suchen…", table: "GameCommands")) { state.showFindSettlementPanel = true }
+            Button(L10n.text("Auswahl zentrieren", table: "GameCommands")) {
                 if let tileId = state.selectedUnitTileId ?? state.selectedTileId {
                     state.requestMapScroll(to: tileId)
                 }
@@ -111,40 +116,46 @@ struct GameCommands: Commands {
 
     private var ordersMenu: some View {
         Group {
-            Button("Bewegen…") { state.beginChoosingMoveDestination() }
+            Button(L10n.text("Bewegen…", table: "GameCommands")) { state.beginChoosingMoveDestination() }
                 .disabled(!state.canChooseMoveDestination)
             Divider()
-            commandButton("Warten", shortcutDescription: "Warten / Überspringen") {
+            commandButton(
+                L10n.text("Warten", table: "GameCommands"),
+                shortcutDescription: "Warten / Überspringen"
+            ) {
                 state.setSelectedUnitState(.skipped)
             }
                 .disabled(!state.canChangeSelectedUnitState(to: .skipped))
-            commandButton("Wache", shortcutDescription: "Wache halten") {
+            commandButton(L10n.text("Wache", table: "GameCommands"), shortcutDescription: "Wache halten") {
                 state.setSelectedUnitState(.sentry)
             }
                 .disabled(!state.canChangeSelectedUnitState(to: .sentry))
-            commandButton("Befestigen", shortcutDescription: "Befestigen") {
+            commandButton(L10n.text("Befestigen", table: "GameCommands"), shortcutDescription: "Befestigen") {
                 state.setSelectedUnitState(.fortifying)
             }
                 .disabled(!state.canChangeSelectedUnitState(to: .fortifying))
             Divider()
-            commandButton("Kolonie gründen", shortcutDescription: "Kolonie bauen") {
+            commandButton(L10n.text("Kolonie gründen", table: "GameCommands"), shortcutDescription: "Kolonie bauen") {
                 state.buildColony(name: state.suggestedColonyName)
             }
                 .disabled(!state.canBuildSelectedColony)
             if state.showsColonyWorkOrder {
-                commandButton("In der Kolonie arbeiten", shortcutDescription: "In der Kolonie arbeiten") {
+                commandButton(
+                    L10n.text("In der Kolonie arbeiten", table: "GameCommands"),
+                    shortcutDescription: "In der Kolonie arbeiten"
+                ) {
                     state.joinSelectedColony()
                 }
                     .disabled(!state.canJoinSelectedColony)
             }
             if state.selectedUnit?.role == "model.role.pioneer" {
-                Menu("Pionierarbeit") {
+                Menu(L10n.text("Pionierarbeit", table: "GameCommands")) {
                     if state.selectedUnitImprovementCandidates.isEmpty {
-                        Button("Keine passende Verbesserung verfügbar") {}
+                        Button(L10n.text("Keine passende Verbesserung verfügbar", table: "GameCommands")) {}
                             .disabled(true)
                     } else {
                         ForEach(state.selectedUnitImprovementCandidates, id: \.id) { candidate in
-                            Button("\(candidate.label) bauen") {
+                            Button(L10n.text("\(candidate.label) bauen", table: "GameCommands")) {
                                 state.changeSelectedUnitWorkImprovement(candidate.id)
                             }
                             .disabled(!state.canChangeSelectedUnitWorkImprovement)
@@ -152,9 +163,9 @@ struct GameCommands: Commands {
                     }
                 }
             }
-            Menu("Verwalten") {
+            Menu(L10n.text("Verwalten", table: "GameCommands")) {
                 commandButton(
-                    "Einheit auflösen…",
+                    L10n.text("Einheit auflösen…", table: "GameCommands"),
                     shortcutDescription: "Einheit auflösen",
                     role: .destructive
                 ) {
@@ -163,37 +174,46 @@ struct GameCommands: Commands {
                     .disabled(!state.canDisbandSelectedUnit)
             }
             Divider()
-            Button("Ausgewähltes Feld als Ziel") {
+            Button(L10n.text("Ausgewähltes Feld als Ziel", table: "GameCommands")) {
                 if let tileId = state.selectedTileId {
                     state.setSelectedUnitDestination(to: tileId)
                 }
             }
             .disabled(!state.canSetDestinationToSelectedTile)
-            Button("Ziel löschen") { state.clearSelectedUnitDestination() }
+            Button(L10n.text("Ziel löschen", table: "GameCommands")) { state.clearSelectedUnitDestination() }
                 .disabled(!state.canClearSelectedUnitDestination)
-            commandButton("Befehle löschen", shortcutDescription: "Befehle löschen") {
+            commandButton(
+                L10n.text("Befehle löschen", table: "GameCommands"),
+                shortcutDescription: "Befehle löschen"
+            ) {
                 state.clearSelectedUnitOrders()
             }
                 .disabled(!state.canClearSelectedUnitOrders)
             if state.showsEuropeTravelOrder {
-                Button("Gehe nach Europa") { state.goSelectedShipToEurope() }
+                Button(L10n.text("Gehe nach Europa", table: "GameCommands")) { state.goSelectedShipToEurope() }
                     .disabled(!state.canGoSelectedShipToEurope)
             }
             Divider()
-            commandButton("Nächste Einheit", shortcutDescription: "Nächste Einheit auswählen") {
+            commandButton(
+                L10n.text("Nächste Einheit", table: "GameCommands"),
+                shortcutDescription: "Nächste Einheit auswählen"
+            ) {
                 state.selectNextUnit()
             }
                 .disabled(state.cyclingLocalUnits.isEmpty)
-            commandButton("Vorherige Einheit", shortcutDescription: "Vorherige Einheit auswählen") {
+            commandButton(
+                L10n.text("Vorherige Einheit", table: "GameCommands"),
+                shortcutDescription: "Vorherige Einheit auswählen"
+            ) {
                 state.selectPreviousUnit()
             }
                 .disabled(state.cyclingLocalUnits.isEmpty)
-            Button("Nächste Einheit ohne Befehl") {
+            Button(L10n.text("Nächste Einheit ohne Befehl", table: "GameCommands")) {
                 state.selectAdjacentUnit(forward: true, onlyAwaitingOrders: true)
             }
             .disabled(state.unitsAwaitingOrders.isEmpty)
             Divider()
-            Button("Handelsrouten…") { state.showTradeRoutesPanel = true }
+            Button(L10n.text("Handelsrouten…", table: "GameCommands")) { state.showTradeRoutesPanel = true }
                 .disabled(!state.canManageTradeRoutes)
         }
     }
@@ -240,9 +260,9 @@ struct GameCommands: Commands {
     // MARK: - Help
 
     private var helpMenu: some View {
-        Button("Tastaturkürzel…") {
+        Button(L10n.text("Tastaturkürzel…", table: "GameCommands")) {
             state.showShortcutsHelp = true
         }
-        .help("Zeigt alle verfügbaren Tastaturkürzel an")
+        .help(L10n.text("Zeigt alle verfügbaren Tastaturkürzel an", table: "GameCommands"))
     }
 }

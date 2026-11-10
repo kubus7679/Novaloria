@@ -3,6 +3,7 @@ import AppKit
 
 struct NewGameView: View {
     @Environment(GameState.self) private var state
+    @Environment(LocalizationSettings.self) private var localizationSettings
     @Environment(\.dismiss) private var dismiss
     @AppStorage("freecol.javaInstallation") private var installationPath = ""
     @AppStorage("freecol.javaExecutable") private var javaPath = "/usr/bin/java"
@@ -10,7 +11,7 @@ struct NewGameView: View {
     @State private var configuration: NewGameConfiguration?
     @State private var selectedSection: String?
     @State private var port = "3541"
-    @State private var serverName = "Neue Welt"
+    @State private var serverName = ""
     @State private var seed = ""
     @State private var error: String?
     @State private var confirmDisconnect = false
@@ -18,39 +19,39 @@ struct NewGameView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Neues Spiel erstellen").font(.title2.bold())
-            GroupBox("Java-Server") {
+            Text(L10n.text("Neues Spiel erstellen", table: "NewGameView")).font(.title2.bold())
+            GroupBox(L10n.text("Java-Server", table: "NewGameView")) {
                 Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
                     GridRow {
-                        Text("FreeCol-Installation:")
-                        TextField("Ordner mit FreeCol.jar und data", text: $installationPath)
-                        Button("Wählen…") { choosePath(directory: true) { installationPath = $0 } }
+                        Text(L10n.text("FreeCol-Installation:", table: "NewGameView"))
+                        TextField(L10n.text("Ordner mit FreeCol.jar und data", table: "NewGameView"), text: $installationPath)
+                        Button(L10n.text("Wählen…", table: "NewGameView")) { choosePath(directory: true) { installationPath = $0 } }
                     }
                     GridRow {
-                        Text("Java-Programm:")
-                        TextField("/Pfad/zu/bin/java", text: $javaPath)
-                        Button("Wählen…") { choosePath(directory: false) { javaPath = $0 } }
+                        Text(L10n.text("Java-Programm:", table: "NewGameView"))
+                        TextField(L10n.text("/Pfad/zu/bin/java", table: "NewGameView"), text: $javaPath)
+                        Button(L10n.text("Wählen…", table: "NewGameView")) { choosePath(directory: false) { javaPath = $0 } }
                     }
                     GridRow {
-                        Text("Partie:")
+                        Text(L10n.text("Partie:", table: "NewGameView"))
                         HStack {
-                            TextField("Servername", text: $serverName)
-                            Text("Port:")
-                            TextField("3541", text: $port).frame(width: 70)
-                            Text("Zufallsstartwert:")
-                            TextField("Zufällig", text: $seed).frame(width: 140)
+                            TextField(L10n.text("Neue Welt", table: "NewGameView"), text: $serverName)
+                            Text(L10n.text("Port:", table: "NewGameView"))
+                            TextField(L10n.text("3541", table: "NewGameView"), text: $port).frame(width: 70)
+                            Text(L10n.text("Zufallsstartwert:", table: "NewGameView"))
+                            TextField(L10n.text("Zufällig", table: "NewGameView"), text: $seed).frame(width: 140)
                         }
                     }
                     GridRow {
-                        Text("Schwierigkeit:")
+                        Text(L10n.text("Schwierigkeit:", table: "NewGameView"))
                         HStack {
-                            Picker("Schwierigkeit", selection: $difficulty) {
+                            Picker(L10n.text("Schwierigkeit", table: "NewGameView"), selection: $difficulty) {
                                 ForEach(GameDifficulty.allCases) { Text($0.title).tag($0) }
                             }
                             .labelsHidden()
                             .frame(width: 160)
-                            Button("Optionen laden") { loadOptions() }
-                            Text("Vorlagenwechsel setzt alle Optionen zurück.")
+                            Button(L10n.text("Optionen laden", table: "NewGameView")) { loadOptions() }
+                            Text(L10n.text("Vorlagenwechsel setzt alle Optionen zurück.", table: "NewGameView"))
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }
@@ -79,25 +80,25 @@ struct NewGameView: View {
                     }
                     .frame(minWidth: 420)
                 }
-                Text("\(configuration.values.count) Optionen aus der Java-Installation, einschließlich Karte und Schwierigkeit. Einheitenlisten sind als XML bearbeitbar.")
+                Text(L10n.text("\(configuration.values.count) Optionen aus der Java-Installation, einschließlich Karte und Schwierigkeit. Einheitenlisten sind als XML bearbeitbar.", table: "NewGameView"))
                     .font(.caption).foregroundStyle(.secondary)
             } else {
-                ContentUnavailableView("Spieloptionen laden", systemImage: "slider.horizontal.3",
-                                       description: Text("Wähle die FreeCol-Installation und lade ihre vollständigen Spieloptionen."))
+                ContentUnavailableView(L10n.text("Spieloptionen laden", table: "NewGameView"), systemImage: "slider.horizontal.3",
+                                       description: Text(L10n.text("Wähle die FreeCol-Installation und lade ihre vollständigen Spieloptionen.", table: "NewGameView")))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             if let error {
                 Text(error).foregroundStyle(.red).textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Text("Der Server ist privat und nur auf diesem Mac erreichbar. Beim Trennen oder Beenden wird er gestoppt. Optionen und Protokolle bleiben pro Partie gespeichert.")
+            Text(L10n.text("Der Server ist privat und nur auf diesem Mac erreichbar. Beim Trennen oder Beenden wird er gestoppt. Optionen und Protokolle bleiben pro Partie gespeichert.", table: "NewGameView"))
                 .font(.caption).foregroundStyle(.secondary)
             HStack {
-                Button("Abbrechen") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(L10n.text("Abbrechen", table: "NewGameView")) { dismiss() }.keyboardShortcut(.cancelAction)
                 Spacer()
-                Button("Optionsdatei exportieren…") { exportOptions() }
+                Button(L10n.text("Optionsdatei exportieren…", table: "NewGameView")) { exportOptions() }
                     .disabled(configuration == nil)
-                Button("Spiel erstellen") {
+                Button(L10n.text("Spiel erstellen", table: "NewGameView")) {
                     if state.phase == .lobby { confirmDisconnect = true }
                     else { createGame() }
                 }
@@ -134,11 +135,20 @@ struct NewGameView: View {
         .onChange(of: difficulty) { _, _ in
             if configuration != nil { loadOptions() }
         }
-        .alert("Bisherige Lobby verlassen?", isPresented: $confirmDisconnect) {
-            Button("Abbrechen", role: .cancel) {}
-            Button("Neue Partie erstellen", role: .destructive) { createGame() }
+        .onChange(of: localizationSettings.language) { _, language in
+            guard var updatedConfiguration = configuration else { return }
+            do {
+                try updatedConfiguration.reloadLabels(for: language)
+                configuration = updatedConfiguration
+            } catch {
+                self.error = error.localizedDescription
+            }
+        }
+        .alert(L10n.text("Bisherige Lobby verlassen?", table: "NewGameView"), isPresented: $confirmDisconnect) {
+            Button(L10n.text("Abbrechen", table: "NewGameView"), role: .cancel) {}
+            Button(L10n.text("Neue Partie erstellen", table: "NewGameView"), role: .destructive) { createGame() }
         } message: {
-            Text("Die aktuelle Verbindung wird getrennt. Ein von dieser App gestarteter Server wird dabei beendet.")
+            Text(L10n.text("Die aktuelle Verbindung wird getrennt. Ein von dieser App gestarteter Server wird dabei beendet.", table: "NewGameView"))
         }
     }
 
@@ -171,7 +181,7 @@ struct NewGameView: View {
                     HStack {
                         TextField("", text: binding).textFieldStyle(.roundedBorder)
                         if option.node.tag == "fileOption" {
-                            Button("Wählen…") { choosePath(directory: false) { binding.wrappedValue = $0 } }
+                            Button(L10n.text("Wählen…", table: "NewGameView")) { choosePath(directory: false) { binding.wrappedValue = $0 } }
                         }
                     }
                 }
@@ -182,7 +192,7 @@ struct NewGameView: View {
             Text(option.id).font(.caption2).foregroundStyle(.secondary).textSelection(.enabled)
             if let minimum = option.node.attributes["minimumValue"],
                let maximum = option.node.attributes["maximumValue"] {
-                Text("Bereich: \(minimum) bis \(maximum)").font(.caption2).foregroundStyle(.secondary)
+                Text(L10n.text("Bereich: \(minimum) bis \(maximum)", table: "NewGameView")).font(.caption2).foregroundStyle(.secondary)
             }
         }
     }
@@ -198,7 +208,7 @@ struct NewGameView: View {
     private func loadOptions() {
         do {
             let loaded = try NewGameConfiguration.load(installation: URL(fileURLWithPath: NSString(string: installationPath).expandingTildeInPath),
-                                                       difficulty: difficulty)
+                                                       difficulty: difficulty, language: localizationSettings.language)
             configuration = loaded
             selectedSection = loaded.sections.first?.id
             error = nil
@@ -225,10 +235,10 @@ struct NewGameView: View {
         guard let configuration else { return }
         do {
             guard let port = Int(port), (1...65535).contains(port) else {
-                throw NewGameError.invalid("Bitte einen Port zwischen 1 und 65535 eingeben.")
+                throw NewGameError.invalid(L10n.text("Bitte einen Port zwischen 1 und 65535 eingeben.", table: "NewGameView"))
             }
             try state.createJavaGame(configuration: configuration, java: URL(fileURLWithPath: NSString(string: javaPath).expandingTildeInPath),
-                                     port: port, name: serverName, seed: seed)
+                                     port: port, name: serverName.isEmpty ? L10n.text("Neue Welt", table: "NewGameView") : serverName, seed: seed)
             onCreated(port)
             dismiss()
         } catch { self.error = error.localizedDescription }
