@@ -239,7 +239,7 @@ final class MapInteractionTests: XCTestCase {
         XCTAssertTrue(pioneerImage === roleImage)
         for section in [EuropePanelView.EuropeSection.harbor, .recruitment] {
             try checkPanel(EuropePanelView(section: section).environment(state),
-                           name: "europe-return-\(section)", width: 600, height: 480)
+                           name: "europe-return-\(section)", width: 600, height: 760)
         }
     }
 
@@ -315,7 +315,7 @@ final class MapInteractionTests: XCTestCase {
         state.gameUpdateID += 1
         XCTAssertTrue(state.canDisembarkSelectedUnit)
         try checkPanel(EuropePanelView(section: .harbor).environment(state),
-                       name: "disembark-europe-no-moves", width: 600, height: 480)
+                       name: "disembark-europe-no-moves", width: 600, height: 760)
     }
 
     @MainActor
@@ -386,9 +386,9 @@ final class MapInteractionTests: XCTestCase {
                            width: 360, height: 220)
         }
         try checkPanel(EuropePanelView(section: .harbor).environment(state),
-                       name: "europe-transit-600", width: 600, height: 480)
+                       name: "europe-transit-600", width: 600, height: 760)
         try checkPanel(EuropePanelView(section: .recruitment).environment(state),
-                       name: "europe-specification-prices-600", width: 600, height: 480)
+                       name: "europe-specification-prices-600", width: 600, height: 760)
         try game.applyPartial(try XMLDecoder.decode("""
         <partial id="ship-transit" location="europe-1" state="ACTIVE" workLeft="0"/>
         """))
@@ -398,7 +398,7 @@ final class MapInteractionTests: XCTestCase {
         try checkPanel(InfoPanelView().environment(state).frame(width: 360, height: 220),
                        name: "ship-arrived", width: 360, height: 220)
         try checkPanel(EuropePanelView(section: .harbor).environment(state),
-                       name: "europe-arrived-600", width: 600, height: 480)
+                       name: "europe-arrived-600", width: 600, height: 760)
     }
 
     func testResizePreservesCameraCenterAndClampsAtMapEdges() {
@@ -1072,9 +1072,9 @@ final class MapInteractionTests: XCTestCase {
         let colony = try XCTUnwrap(state.game?.colonies["colony-1"])
         for section in EuropePanelView.EuropeSection.allCases {
             try checkPanel(EuropePanelView(section: section).environment(state),
-                           name: "europe-\(section)", width: 760, height: 480)
+                           name: "europe-\(section)", width: 760, height: 760)
             try checkPanel(EuropePanelView(section: section).environment(state),
-                           name: "europe-\(section)-600", width: 600, height: 480)
+                           name: "europe-\(section)-600", width: 600, height: 760)
         }
         for size in [CGSize(width: 1200, height: 760), CGSize(width: 1000, height: 680),
                      CGSize(width: 640, height: 480)] {
