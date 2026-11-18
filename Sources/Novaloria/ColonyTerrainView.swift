@@ -178,6 +178,7 @@ struct ColonyTerrainView: View {
                             .buttonStyle(.plain)
                             .disabled(!canManage)
                             .draggable(worker.id)
+                            .help(worker.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyTerrainView"))
                             .contextMenu {
                                 if worker.id == selectedWorkerId, let workerContextMenu {
                                     workerContextMenu(worker.id)
@@ -217,7 +218,7 @@ struct ColonyTerrainView: View {
                 }
             }
             .aspectRatio(2, contentMode: .fit)
-            .frame(maxWidth: 540)
+            .frame(maxWidth: 760)
         }
     }
 
@@ -228,15 +229,15 @@ struct ColonyTerrainView: View {
             ForEach(outputs) { output in
                 HStack(spacing: 2) {
                     if let image = TileImageCache.shared.goodsImage(for: output.goodsType) {
-                        Image(nsImage: image).resizable().scaledToFit().frame(width: 20, height: 20)
+                        Image(nsImage: image).resizable().scaledToFit().frame(width: 27, height: 27)
                     } else {
                         Image(systemName: "shippingbox.fill")
                     }
                     if let amount = output.estimatedAmount ?? output.baseAmount {
-                        Text("\(amount)").font(.caption2.bold())
+                        Text("\(amount)").font(.caption.bold())
                     }
                 }
-                .padding(2)
+                .padding(3)
                 .background(.black.opacity(0.8), in: RoundedRectangle(cornerRadius: 3))
                 .help(output.explanation ?? output.label)
                 .accessibilityLabel(output.label)
