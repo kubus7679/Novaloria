@@ -28,6 +28,37 @@ final class GameState {
         let style: Style
     }
 
+    struct CombatPreviewModifier: Identifiable {
+        let id: String
+        let name: String
+        let value: String
+    }
+
+    struct CombatPreviewSide: Identifiable {
+        let id: String
+        let name: String
+        let baseStrength: Int?
+        let modifiers: [CombatPreviewModifier]
+        let estimatedStrength: Double?
+        let note: String?
+    }
+
+    struct CombatPreview {
+        let kind: String
+        let location: String
+        let attacker: CombatPreviewSide
+        let defender: CombatPreviewSide
+        let warning: String
+    }
+
+    private struct AppliedCombatModifier {
+        let id: String
+        let name: String
+        let value: Double
+        let kind: ProductionModifierInfo.Kind
+        let index: Int
+    }
+
     enum Phase: CustomStringConvertible {
         case disconnected
         case connecting
@@ -722,6 +753,8 @@ final class GameState {
     var mapAnimationCue: MapAnimationCue?
     private var mapAnimationCueToken: Int = 0
     private var didAutoFocusInitialUnit: Bool = false
+    private var didAutoSelectAwaitingUnitThisTurn: Bool = false
+    private var lastObservedTurnNumber: Int?
 
     // MARK: - UI state (Java-client parity)
 
@@ -1088,7 +1121,10 @@ final class GameState {
 
     func modelMessageText(_ message: ModelMessage) -> String {
         func replacement(_ key: String) -> String? {
-            message.replacements[key].map(modelMessageReplacement)
+            if let template = message.replacementTemplates[key] {
+                return modelMessageTemplateValue(template)
+            }
+            return message.replacements[key].map(modelMessageReplacement)
         }
 
         let colony = replacement("%colony%")
@@ -1151,10 +1187,54 @@ final class GameState {
             }
         }
 
-        if let template = GameLabels.modelMessageText(messageId) {
-            return formatModelMessage(template, replacements: message.replacements)
+        if let template = localizedModelMessageTemplate(messageId) {
+            var replacements = message.replacements.mapValues(modelMessageReplacement)
+            for (key, value) in message.replacementTemplates {
+                replacements[key] = modelMessageTemplateValue(value)
+            }
+            return formatModelMessage(template, replacements: replacements)
         }
         return modelMessageFallback(message)
+    }
+
+    private func localizedModelMessageTemplate(_ identifier: String) -> String? {
+        var candidate = identifier
+        while true {
+            if let template = GameLabels.modelMessageText(candidate) {
+                return template
+            }
+            guard candidate.hasPrefix("combat."),
+                  let separator = candidate.lastIndex(of: ".") else {
+                return nil
+            }
+            candidate = String(candidate[..<separator])
+        }
+    }
+
+    private func modelMessageTemplateValue(_ template: ParsedMessage) -> String {
+        let id = template.attributes["id"] ?? ""
+        switch template.attributes["templateType"]?.uppercased() {
+        case "NAME":
+            return id
+        case "LABEL":
+            return template.children
+                .filter { $0.tag == "pair" }
+                .compactMap { $0.children.first(where: { $0.tag == "stringTemplate" }) }
+                .map(modelMessageTemplateValue)
+                .joined()
+        case "KEY":
+            return modelMessageReplacement(id)
+        default:
+            var value = GameLabels.modelMessageText(id) ?? GameLabels.name(id)
+            for pair in template.children where pair.tag == "pair" {
+                guard let key = pair.attributes["value"],
+                      let child = pair.children.first(where: { $0.tag == "stringTemplate" }) else {
+                    continue
+                }
+                value = value.replacingOccurrences(of: key, with: modelMessageTemplateValue(child))
+            }
+            return value
+        }
     }
 
     private func formatModelMessage(_ template: String, replacements: [String: String]) -> String {
@@ -1840,15 +1920,18 @@ final class GameState {
     /// building present). Approximation of the Java `BuildQueuePanel`.
     var selectedColonyBuildableCandidates: [(id: String, label: String)] {
         guard let colony = selectedColony,
-              let specification = cachedGame?.specification else {
+              let game = cachedGame,
+              let specification = game.specification else {
             return []
         }
         let population = colonyPopulation(colony)
-        let playerAbilities = colony.owner.flatMap { cachedGame?.players[$0]?.abilities } ?? [:]
+        let playerAbilities = colony.owner.flatMap { game.players[$0]?.abilities } ?? [:]
+        let colonyAbilities = Self.colonyBuildAbilities(for: colony, in: game)
         return Self.buildableBuildingCandidates(colony: colony,
                                                 specification: specification,
                                                 population: population,
-                                                playerAbilities: playerAbilities)
+                                                playerAbilities: playerAbilities,
+                                                colonyAbilities: colonyAbilities)
     }
 
     /// Building types a colony may start building: spec-known, not yet built,
@@ -1856,7 +1939,8 @@ final class GameState {
     nonisolated static func buildableBuildingCandidates(colony: Colony,
                                                         specification: Specification,
                                                         population: Int,
-                                                        playerAbilities: [String: Bool] = [:]) -> [(id: String, label: String)] {
+                                                        playerAbilities: [String: Bool] = [:],
+                                                        colonyAbilities: [String: Bool] = [:]) -> [(id: String, label: String)] {
         let built = Set(colony.buildings.compactMap { $0.buildingType })
         var superseded = Set<String>()
         for buildingId in built {
@@ -1873,6 +1957,7 @@ final class GameState {
                 }
                 guard info.requiredAbilities.allSatisfy({ ability, requiredValue in
                     (playerAbilities[ability] ?? false) == requiredValue
+                        || (colonyAbilities[ability] ?? false) == requiredValue
                 }) else {
                     return false
                 }
@@ -1912,6 +1997,27 @@ final class GameState {
             }
 
         return (buildings + units).sorted { $0.label < $1.label }
+    }
+
+    /// Abilities supplied by the colony's location rather than its owner.
+    /// FreeCol grants `hasPort` to colonies that are not landlocked, allowing
+    /// them to build Docks. This is based on water directly adjacent to the
+    /// colony tile (including lakes and rivers), not water elsewhere in its
+    /// work radius.
+    nonisolated static func colonyBuildAbilities(for colony: Colony, in game: Game) -> [String: Bool] {
+        guard let tileId = colony.tileId,
+              let tile = game.tiles[tileId],
+              let tileType = tile.type,
+              game.specification?.tileTypes[tileType]?.isWater == false else {
+            return [:]
+        }
+        let hasAdjacentWater = game.neighborTileIds(of: tileId).contains { neighborId in
+            guard let neighbor = game.tiles[neighborId],
+                  let type = neighbor.type else { return false }
+            return game.specification?.tileTypes[type]?.isWater
+                ?? ["model.tile.ocean", "model.tile.highSeas", "model.tile.lake", "model.tile.greatRiver"].contains(type)
+        }
+        return ["model.ability.hasPort": hasAdjacentWater]
     }
 
     /// Buildings present in the selected colony with display names.
@@ -2175,9 +2281,50 @@ final class GameState {
             do {
                 let result = try await client.login(userName: userName, nationId: nationId)
                 cachedGame = await client.game
+                localPlayerName = result.playerName
+                localNationId = result.nationId
+
+                // FreeCol assigns the first vacant nation during login and ignores
+                // the requested nationId. Apply the player's choice before exposing
+                // the lobby: the server creates nation-specific starting units when
+                // the game launches, and a fire-and-forget change can race requestLaunch.
+                let shouldSetRequestedNation = result.serverState == .preGame && result.nationId != nationId
+                let requestedNationType = nationType(forNationId: nationId)
+                if shouldSetRequestedNation {
+                    guard let playerId = resolveLocalPlayerId() else {
+                        throw FreeColProtocolError.invalidState("Could not resolve the logged-in player to set the requested nation")
+                    }
+                    guard let requestedNationType else {
+                        throw FreeColProtocolError.invalidState("Could not resolve the selected nation's type")
+                    }
+                    let nationChange = ParsedMessage(
+                        tag: "setNation",
+                        attributes: ["player": playerId, "value": nationId],
+                        children: []
+                    )
+                    try await client.send(message: nationChange)
+                    let nationTypeChange = ParsedMessage(
+                        tag: "setNationType",
+                        attributes: ["player": playerId, "value": requestedNationType],
+                        children: []
+                    )
+                    try await client.send(message: nationTypeChange)
+                }
+
                 applyLoginResult(result)
-                // The server ignores the nationId of the login and assigns the first vacant nation.
-                if result.nationId != nationId { setLocalPlayerNation(nationId) }
+                if shouldSetRequestedNation, let requestedNationType {
+                    localNationId = nationId
+                    if let playerId = resolveLocalPlayerId() {
+                        try? cachedGame?.applyPlayerChange(
+                            tag: "setNation", attributes: ["player": playerId, "value": nationId]
+                        )
+                        try? cachedGame?.applyPlayerChange(
+                            tag: "setNationType", attributes: ["player": playerId, "value": requestedNationType]
+                        )
+                    }
+                    localNationTypeId = requestedNationType
+                    gameUpdateID += 1
+                }
                 statusMessage = ""
                 startMessageLoop(client: client, server: nil)
             } catch {
@@ -2720,12 +2867,26 @@ final class GameState {
     private func applyMissionaryMessage(_ parsed: ParsedMessage) {
         let unitId = parsed.attributes["unit"] ?? ""
         let unit = cachedGame?.units[unitId].map(unitDisplayLabel) ?? L10n.text("Einheit", table: "GameState")
-        let direction = parsed.attributes["direction"] ?? "unknown"
+        let direction = missionaryDirectionLabel(parsed.attributes["direction"])
         let denounce = (parsed.attributes["denounce"] ?? "false").lowercased() == "true"
         errorMessage = nil
         statusMessage = denounce
-            ? L10n.text("Missionarsaktion mit \(unit), Richtung \(direction), anprangern: ja.", table: "GameState")
-            : L10n.text("Missionarsaktion mit \(unit), Richtung \(direction), anprangern: nein.", table: "GameState")
+            ? L10n.text("\(unit) prangert den Missionar in der Siedlung \(direction) an.", table: "GameState")
+            : L10n.text("\(unit) versucht, in der Siedlung \(direction) eine Mission zu gründen.", table: "GameState")
+    }
+
+    private func missionaryDirectionLabel(_ direction: String?) -> String {
+        switch direction?.uppercased() {
+        case "N": return L10n.text("im Norden", table: "GameState")
+        case "NE": return L10n.text("im Nordosten", table: "GameState")
+        case "E": return L10n.text("im Osten", table: "GameState")
+        case "SE": return L10n.text("im Südosten", table: "GameState")
+        case "S": return L10n.text("im Süden", table: "GameState")
+        case "SW": return L10n.text("im Südwesten", table: "GameState")
+        case "W": return L10n.text("im Westen", table: "GameState")
+        case "NW": return L10n.text("im Nordwesten", table: "GameState")
+        default: return L10n.text("in der benachbarten Siedlung", table: "GameState")
+        }
     }
 
     private func showMapAnimationCue(sourceTileId: String, targetTileId: String, style: MapAnimationCue.Style) {
@@ -3433,6 +3594,9 @@ final class GameState {
         seenModelMessageSignatures = []
         isEndingTurn = false
         pendingEndTurnTurn = nil
+        didAutoFocusInitialUnit = false
+        didAutoSelectAwaitingUnitThisTurn = false
+        lastObservedTurnNumber = nil
         incomingChatLog = []
         marketPriceHistory = [:]
         marketBuyPriceHistory = [:]
@@ -3498,32 +3662,65 @@ final class GameState {
             errorMessage = L10n.text("Lokaler Spieler konnte nicht bestimmt werden.", table: "GameState")
             return
         }
+        guard let nationTypeId = nationType(forNationId: trimmedNationId) else {
+            errorMessage = L10n.text("Der Nationentyp konnte nicht ermittelt werden.", table: "GameState")
+            return
+        }
 
         errorMessage = nil
         let previousNationId = localNationId
-        let previousPlayerNationId = cachedGame?.players[playerId]?.nationId
+        let previousPlayer = cachedGame?.players[playerId]
+        let previousPlayerNationId = previousPlayer?.nationId
+        let previousNationTypeId = localNationTypeId ?? previousPlayer?.nationType
         localNationId = trimmedNationId
-        // The server does not echo setNation to its sender, so the local model is updated here.
         try? cachedGame?.applyPlayerChange(tag: "setNation", attributes: ["player": playerId, "value": trimmedNationId])
+        try? cachedGame?.applyPlayerChange(tag: "setNationType", attributes: ["player": playerId, "value": nationTypeId])
+        localNationTypeId = nationTypeId
         gameUpdateID += 1
 
         Task {
             do {
-                let msg = ParsedMessage(
+                let nationMessage = ParsedMessage(
                     tag: "setNation",
                     attributes: ["player": playerId, "value": trimmedNationId],
                     children: []
                 )
-                try await client?.send(message: msg)
+                try await client?.send(message: nationMessage)
+                let nationTypeMessage = ParsedMessage(
+                    tag: "setNationType",
+                    attributes: ["player": playerId, "value": nationTypeId],
+                    children: []
+                )
+                try await client?.send(message: nationTypeMessage)
             } catch {
                 localNationId = previousNationId
+                localNationTypeId = previousNationTypeId
                 if let previousPlayerNationId {
                     try? cachedGame?.applyPlayerChange(tag: "setNation", attributes: ["player": playerId, "value": previousPlayerNationId])
+                }
+                if let previousNationTypeId {
+                    try? cachedGame?.applyPlayerChange(tag: "setNationType", attributes: ["player": playerId, "value": previousNationTypeId])
                 }
                 gameUpdateID += 1
                 errorMessage = ServerErrorMessage.description(for: error)
             }
         }
+    }
+
+    private static let classicNationTypeByNationId: [String: String] = [
+        "model.nation.dutch": "model.nationType.trade",
+        "model.nation.french": "model.nationType.cooperation",
+        "model.nation.english": "model.nationType.immigration",
+        "model.nation.spanish": "model.nationType.conquest",
+        "model.nation.portuguese": "model.nationType.naval",
+        "model.nation.swedish": "model.nationType.building",
+        "model.nation.danish": "model.nationType.agriculture",
+        "model.nation.russian": "model.nationType.furTrapping",
+    ]
+
+    private func nationType(forNationId nationId: String) -> String? {
+        cachedGame?.specification?.nationType(forNationId: nationId)
+            ?? Self.classicNationTypeByNationId[nationId]
     }
 
     func setLocalPlayerNationType(_ nationTypeId: String) {
@@ -4098,18 +4295,271 @@ final class GameState {
         pendingAttackRanged = false
     }
 
-    /// Short summary of the pending attack for the dialog.
-    var pendingAttackSummary: String {
+    /// Combat preview for the pending attack. Final combat resolution remains server-authoritative.
+    var pendingCombatPreview: CombatPreview? {
         guard let tileId = pendingAttackTileId,
               let game = cachedGame,
-              let unit = selectedUnit else { return "" }
-        let defender = game.units.values.first {
-            game.resolvedTileId(for: $0) == tileId && $0.owner != unit.owner
+              let unit = selectedUnit,
+              let specification = game.specification else { return nil }
+        let defender = game.units.values
+            .filter { game.resolvedTileId(for: $0) == tileId && $0.owner != unit.owner }
+            .max { lhs, rhs in
+                let lhsStrength = combatPreviewSide(
+                    for: lhs,
+                    game: game,
+                    specification: specification,
+                    isAttacker: false,
+                    targetTile: game.tiles[tileId],
+                    targetColony: game.colonies.values.first(where: { $0.tileId == tileId })
+                ).estimatedStrength ?? -.infinity
+                let rhsStrength = combatPreviewSide(
+                    for: rhs,
+                    game: game,
+                    specification: specification,
+                    isAttacker: false,
+                    targetTile: game.tiles[tileId],
+                    targetColony: game.colonies.values.first(where: { $0.tileId == tileId })
+                ).estimatedStrength ?? -.infinity
+                return lhsStrength < rhsStrength
         }
-        let attacker = unit.unitType.flatMap { $0.split(separator: ".").last.map(String.init) } ?? unit.id
-        let target = defender?.unitType.flatMap { $0.split(separator: ".").last.map(String.init) } ?? tileId
-        let kind = pendingAttackRanged ? "Ranged" : "Melee"
-        return L10n.text("\(kind): \(attacker) → \(target)", table: "GameState")
+        let tile = game.tiles[tileId]
+        let colony = tile?.settlement.flatMap { game.colonies[$0] }
+            ?? game.colonies.values.first(where: { $0.tileId == tileId })
+        let location = colony?.name
+            ?? tile?.type.map { GameLabels.name($0) }
+            ?? tileId
+        let attackerSide = combatPreviewSide(
+            for: unit,
+            game: game,
+            specification: specification,
+            isAttacker: true,
+            targetTile: tile,
+            targetColony: colony
+        )
+        let defenderSide: CombatPreviewSide
+        if let defender {
+            defenderSide = combatPreviewSide(
+                for: defender,
+                game: game,
+                specification: specification,
+                isAttacker: false,
+                targetTile: tile,
+                targetColony: colony
+            )
+        } else {
+            defenderSide = CombatPreviewSide(
+                id: tileId,
+                name: colony?.name ?? L10n.text("Verteidigung", table: "GameView"),
+                baseStrength: nil,
+                modifiers: [],
+                estimatedStrength: nil,
+                note: L10n.text("Keine verteidigende Einheit sichtbar; die Stärke der Siedlungsverteidigung ist nicht bekannt.", table: "GameView")
+            )
+        }
+        let warning = pendingAttackRanged
+            ? L10n.text("Bombardements folgen eigenen Kampfregeln. Angezeigt werden nur bekannte Werte; der Server entscheidet den tatsächlichen Ausgang.", table: "GameView")
+            : L10n.text("Die Vorschau umfasst bekannte Basis-, Rollen-, Gelände-, Bewegungs- und Befestigungswerte. Der Server entscheidet den Kampf; weitere Modifikatoren und Zufall können das Ergebnis verändern.", table: "GameView")
+        return CombatPreview(
+            kind: L10n.text(pendingAttackRanged ? "Fernkampf" : "Nahkampf", table: "GameView"),
+            location: location,
+            attacker: attackerSide,
+            defender: defenderSide,
+            warning: warning
+        )
+    }
+
+    private func combatPreviewSide(
+        for unit: FreeColGame.Unit,
+        game: Game,
+        specification: Specification,
+        isAttacker: Bool,
+        targetTile: Tile?,
+        targetColony: Colony?
+    ) -> CombatPreviewSide {
+        let modifierId = isAttacker ? "model.modifier.offence" : "model.modifier.defence"
+        let base = specification.baseCombatStrength(forUnitType: unit.unitType, offence: isAttacker)
+        var applied: [AppliedCombatModifier] = []
+
+        for modifier in specification.combatModifiers(forUnitType: unit.unitType, modifierId: modifierId) {
+            applied.append(AppliedCombatModifier(
+                id: "\(unit.id)-type-\(modifier.id)-\(modifier.index)",
+                name: combatModifierName(modifier.id),
+                value: modifier.value,
+                kind: modifier.kind,
+                index: modifier.index
+            ))
+        }
+        if let role = unit.role,
+           role != "model.role.default",
+           let roleInfo = specification.roleTypes[role] {
+            for (offset, modifier) in roleInfo.combatModifiers.filter({ $0.id == modifierId }).enumerated() {
+                applied.append(AppliedCombatModifier(
+                    id: "\(unit.id)-role-\(role)-\(offset)",
+                    name: L10n.text("Rolle: \(GameLabels.name(role))", table: "GameView"),
+                    value: modifier.value,
+                    kind: modifier.kind,
+                    index: modifier.index
+                ))
+            }
+        }
+
+        if isAttacker {
+            if let attackBonus = specification.combatModifiers["model.modifier.attackBonus"] {
+                applied.append(AppliedCombatModifier(
+                    id: "\(unit.id)-attack-bonus",
+                    name: L10n.text("Angriffsbonus", table: "GameView"),
+                    value: attackBonus.value,
+                    kind: attackBonus.kind,
+                    index: attackBonus.index
+                ))
+            }
+            if unit.movesLeft == 1 || unit.movesLeft == 2 {
+                let penaltyId = unit.movesLeft == 1
+                    ? "model.modifier.bigMovementPenalty"
+                    : "model.modifier.smallMovementPenalty"
+                if let penalty = specification.combatModifiers[penaltyId] {
+                    applied.append(AppliedCombatModifier(
+                        id: "\(unit.id)-movement-penalty",
+                        name: L10n.text("Bewegungsmalus", table: "GameView"),
+                        value: penalty.value,
+                        kind: penalty.kind,
+                        index: penalty.index
+                    ))
+                }
+            }
+            if targetColony == nil,
+               specification.hasAbility("model.ability.bombard", unitType: unit.unitType, role: unit.role),
+               unit.state != .fortified,
+               let artilleryPenalty = specification.combatModifiers["model.modifier.artilleryInTheOpen"] {
+                applied.append(AppliedCombatModifier(
+                    id: "\(unit.id)-artillery-open",
+                    name: L10n.text("Artillerie im offenen Feld", table: "GameView"),
+                    value: artilleryPenalty.value,
+                    kind: artilleryPenalty.kind,
+                    index: artilleryPenalty.index
+                ))
+            }
+        } else if let targetTile {
+            if targetColony == nil {
+                for (offset, modifier) in (specification.tileTypes[targetTile.type ?? ""]?.combatModifiers ?? [])
+                    .filter({ $0.id == modifierId }).enumerated() {
+                    applied.append(AppliedCombatModifier(
+                        id: "\(unit.id)-terrain-\(offset)",
+                        name: L10n.text("Gelände: \(targetTile.type.map(GameLabels.name) ?? "")", table: "GameView"),
+                        value: modifier.value,
+                        kind: modifier.kind,
+                        index: modifier.index
+                    ))
+                }
+            } else if let targetColony {
+                for building in targetColony.buildings {
+                    for (offset, modifier) in (specification.buildingTypes[building.buildingType ?? ""]?.combatModifiers ?? [])
+                        .filter({ $0.id == modifierId }).enumerated() {
+                        applied.append(AppliedCombatModifier(
+                            id: "\(unit.id)-building-\(building.id)-\(offset)",
+                            name: L10n.text("Befestigung: \(building.buildingType.map(GameLabels.name) ?? "")", table: "GameView"),
+                            value: modifier.value,
+                            kind: modifier.kind,
+                            index: modifier.index
+                        ))
+                    }
+                }
+            }
+            if unit.state == .fortified,
+               !hasStrongCombatDefence(on: targetTile, colony: targetColony, specification: specification),
+               let fortified = specification.combatModifiers["model.modifier.fortified"] {
+                applied.append(AppliedCombatModifier(
+                    id: "\(unit.id)-fortified",
+                    name: L10n.text("Befestigte Stellung", table: "GameView"),
+                    value: fortified.value,
+                    kind: fortified.kind,
+                    index: fortified.index
+                ))
+            }
+            if targetColony == nil,
+               specification.hasAbility("model.ability.bombard", unitType: unit.unitType, role: unit.role),
+               unit.state != .fortified,
+               let artilleryPenalty = specification.combatModifiers["model.modifier.artilleryInTheOpen"] {
+                applied.append(AppliedCombatModifier(
+                    id: "\(unit.id)-artillery-open-defence",
+                    name: L10n.text("Artillerie im offenen Feld", table: "GameView"),
+                    value: artilleryPenalty.value,
+                    kind: artilleryPenalty.kind,
+                    index: artilleryPenalty.index
+                ))
+            }
+        }
+
+        if pendingAttackRanged {
+            // Bombardment has separate server-side rules; do not present melee
+            // bonuses as if they were an accurate ranged-combat calculation.
+            applied.removeAll()
+        }
+        applied.sort { $0.index == $1.index ? $0.id < $1.id : $0.index < $1.index }
+        var strength = Double(base)
+        let displayModifiers = applied.map { modifier -> CombatPreviewModifier in
+            switch modifier.kind {
+            case .additive:
+                strength += modifier.value
+            case .percentage:
+                strength *= 1 + modifier.value / 100
+            case .multiplicative:
+                strength *= modifier.value
+            }
+            return CombatPreviewModifier(
+                id: modifier.id,
+                name: modifier.name,
+                value: combatModifierValue(modifier)
+            )
+        }
+
+        let name = unitDisplayLabel(unit)
+        return CombatPreviewSide(
+            id: unit.id,
+            name: name,
+            baseStrength: base,
+            modifiers: displayModifiers,
+            estimatedStrength: strength,
+            note: pendingAttackRanged
+                ? L10n.text("Bei Bombardement werden hier nur Grundwerte angezeigt.", table: "GameView")
+                : nil
+        )
+    }
+
+    private func combatModifierValue(_ modifier: AppliedCombatModifier) -> String {
+        switch modifier.kind {
+        case .additive:
+            return String(format: "%+.1f", modifier.value)
+        case .percentage:
+            return String(format: "%+.0f%%", modifier.value)
+        case .multiplicative:
+            return String(format: "×%.2f", modifier.value)
+        }
+    }
+
+    private func combatModifierName(_ modifierId: String) -> String {
+        switch modifierId {
+        case "model.modifier.offence":
+            return L10n.text("Einheitenbonus: Angriff", table: "GameView")
+        case "model.modifier.defence":
+            return L10n.text("Einheitenbonus: Verteidigung", table: "GameView")
+        default:
+            return GameLabels.name(modifierId)
+        }
+    }
+
+    private func hasStrongCombatDefence(
+        on tile: Tile,
+        colony: Colony?,
+        specification: Specification
+    ) -> Bool {
+        let tileHasStrongDefence = (specification.tileTypes[tile.type ?? ""]?.combatModifiers ?? [])
+            .contains { $0.id == "model.modifier.defence" && $0.kind == .percentage && $0.value >= 50 }
+        let colonyHasStrongDefence = colony?.buildings.contains { building in
+            (specification.buildingTypes[building.buildingType ?? ""]?.combatModifiers ?? [])
+                .contains { $0.id == "model.modifier.defence" && $0.kind == .percentage && $0.value >= 50 }
+        } ?? false
+        return tileHasStrongDefence || colonyHasStrongDefence
     }
 
     /// End the turn, prompting first when units still have orders left.
@@ -5945,6 +6395,20 @@ final class GameState {
     }
 
     func playerColor(for playerId: String) -> Color {
+        if cachedGame?.players[playerId]?.playerType == .indian {
+            let nativeColors: [Color] = [
+                Color(red: 0.72, green: 0.28, blue: 0.56),
+                Color(red: 0.12, green: 0.58, blue: 0.58),
+                Color(red: 0.62, green: 0.38, blue: 0.16),
+                Color(red: 0.42, green: 0.34, blue: 0.68),
+                Color(red: 0.68, green: 0.34, blue: 0.28),
+                Color(red: 0.28, green: 0.52, blue: 0.32),
+            ]
+            let key = cachedGame?.players[playerId]?.nationId ?? playerId
+            let value = key.utf8.reduce(UInt64(0)) { ($0 &* 31) &+ UInt64($1) }
+            return nativeColors[Int(value % UInt64(nativeColors.count))]
+        }
+
         switch cachedGame?.players[playerId]?.nationId {
         case "model.nation.french": return .blue
         case "model.nation.english": return .red
@@ -7248,7 +7712,43 @@ final class GameState {
               let _ = attackDirection(fromTileId: sourceTileId, toTileId: targetTileId, in: game) else {
             return false
         }
-        return hasHostileUnit(onTile: targetTileId, in: game, friendlyOwner: localPlayerId)
+        return hasHostileTarget(onTile: targetTileId, in: game, friendlyOwner: localPlayerId)
+    }
+
+    /// Adjacent enemy units that can be targeted directly from the action panel.
+    var adjacentHostileUnitTargetsForSelectedUnit: [(id: String, tileId: String, label: String)] {
+        guard phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let unit = selectedUnit,
+              let localPlayerId = resolveLocalPlayerId(),
+              unit.owner == localPlayerId,
+              unit.movesLeft > 0,
+              unit.state == .active,
+              let sourceTileId = resolveUnitTileId(unit, in: game) else {
+            return []
+        }
+
+        let neighborTileIds = Set(game.neighborTileIds(of: sourceTileId))
+        return game.units.values.compactMap { target in
+            guard let ownerId = target.owner,
+                  ownerId != localPlayerId,
+                  let tileId = game.resolvedTileId(for: target),
+                  neighborTileIds.contains(tileId) else {
+                return nil
+            }
+            let typeName = target.unitType.map(unitDisplayName) ?? target.id
+            let label: String
+            if let name = target.name, !name.isEmpty {
+                label = name
+            } else if let role = target.role, role != "model.role.default" {
+                label = "\(GameLabels.name(role)) (\(typeName))"
+            } else {
+                label = typeName
+            }
+            return (id: target.id, tileId: tileId, label: label)
+        }
+        .sorted { $0.label.localizedStandardCompare($1.label) == .orderedAscending }
     }
 
     func canAttackSelectedUnitRanged(onTile targetTileId: String) -> Bool {
@@ -7265,7 +7765,7 @@ final class GameState {
               sourceTileId != targetTileId else {
             return false
         }
-        guard hasHostileUnit(onTile: targetTileId, in: game, friendlyOwner: localPlayerId) else {
+        guard hasHostileTarget(onTile: targetTileId, in: game, friendlyOwner: localPlayerId) else {
             return false
         }
         // MVP heuristic: treat artillery/cannon-like units as ranged-capable.
@@ -7354,15 +7854,38 @@ final class GameState {
         reconcileSelectionWithGame()
         reconcileSelectedUnitOrderWithGame()
         reconcilePendingEndTurnWithGame()
+        if let turnNumber = cachedGame?.turn.number,
+           turnNumber != lastObservedTurnNumber {
+            lastObservedTurnNumber = turnNumber
+            didAutoSelectAwaitingUnitThisTurn = false
+        }
         // Saved movement orders are attempted once per local turn, not once
         // per calendar turn. Clear the guard as soon as control passes away so
         // orders can resume when this player's next turn begins, even if the
         // server has not advanced the global turn number yet.
         if !isLocalPlayersTurn {
             movementAttempts.removeAll()
+            didAutoSelectAwaitingUnitThisTurn = false
+        } else {
+            autoSelectAwaitingUnitAtTurnStartIfNeeded()
         }
         autoFocusInitialUnitIfNeeded()
         continueSavedMovementOrders()
+    }
+
+    private func autoSelectAwaitingUnitAtTurnStartIfNeeded() {
+        guard !didAutoSelectAwaitingUnitThisTurn,
+              !showColonyPanel,
+              phase == .inGame,
+              isLocalPlayersTurn,
+              let game = cachedGame,
+              let unit = unitsAwaitingOrders.first else {
+            return
+        }
+
+        selectUnit(unit.id, onTile: game.resolvedTileId(for: unit))
+        didAutoSelectAwaitingUnitThisTurn = true
+        didAutoFocusInitialUnit = true
     }
 
     private func continueSavedMovementOrders() {
@@ -7556,8 +8079,16 @@ final class GameState {
 
     private func hasHostileUnit(onTile tileId: String, in game: Game, friendlyOwner: String) -> Bool {
         game.units.values.contains {
-            $0.location == tileId && $0.owner != nil && $0.owner != friendlyOwner
+            $0.owner != nil && $0.owner != friendlyOwner
+                && game.resolvedTileId(for: $0) == tileId
         }
+    }
+
+    private func hasHostileTarget(onTile tileId: String, in game: Game, friendlyOwner: String) -> Bool {
+        hasHostileUnit(onTile: tileId, in: game, friendlyOwner: friendlyOwner)
+            || game.colonies.values.contains {
+                $0.tileId == tileId && $0.owner != nil && $0.owner != friendlyOwner
+            }
     }
 
     func attackDirection(fromTileId sourceTileId: String, toTileId targetTileId: String, in game: Game) -> String? {
@@ -7642,6 +8173,7 @@ final class GameState {
               !showColonyPanel,
               selectedUnitId == nil,
               phase == .inGame,
+              isLocalPlayersTurn,
               let game = cachedGame,
               let localPlayerId = resolveLocalPlayerId() else {
             return

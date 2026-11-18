@@ -8,6 +8,219 @@ import FreeColProtocol
 
 final class MapInteractionTests: XCTestCase {
     @MainActor
+    func testCombatPromotionMessageExplainsTheUnitUpgrade() throws {
+        let state = try makeState()
+        let previousLanguage = LocalizationSettings.shared.language
+        defer { LocalizationSettings.shared.language = previousLanguage }
+        let message = ModelMessage(
+            id: "combat.unitPromoted",
+            source: "unit-1",
+            display: "unit-1",
+            messageType: "COMBAT_RESULT",
+            hasBeenDisplayed: false,
+            replacements: [
+                "%oldName%": "model.unit.freeColonist",
+                "%unit%": "model.unit.veteranSoldier",
+            ]
+        )
+
+        LocalizationSettings.shared.language = .german
+        XCTAssertEqual(
+            state.modelMessageText(message),
+            "Kampfsieg: Die Einheit wurde von „Freier Kolonist“ zu „Altgedienter Soldat“ befördert."
+        )
+
+        LocalizationSettings.shared.language = .english
+        XCTAssertEqual(
+            state.modelMessageText(message),
+            "Combat victory: the unit was promoted from “Free Colonist” to “Veteran Soldier”."
+        )
+    }
+
+    @MainActor
+    func testCombatDemotionMessageShowsThatRoleChangedButTypeDidNot() throws {
+        let state = try makeState()
+        let previousLanguage = LocalizationSettings.shared.language
+        defer { LocalizationSettings.shared.language = previousLanguage }
+
+        func unitLabel(role: String) -> ParsedMessage {
+            ParsedMessage(
+                tag: "stringTemplate",
+                attributes: ["id": "", "templateType": "LABEL"],
+                children: [
+                    ParsedMessage(tag: "pair", attributes: [:], children: [
+                        ParsedMessage(tag: "stringTemplate",
+                                      attributes: ["id": "model.role.\(role)", "templateType": "KEY"],
+                                      children: [])
+                    ]),
+                    ParsedMessage(tag: "pair", attributes: [:], children: [
+                        ParsedMessage(tag: "stringTemplate",
+                                      attributes: ["id": " (", "templateType": "NAME"],
+                                      children: [])
+                    ]),
+                    ParsedMessage(tag: "pair", attributes: [:], children: [
+                        ParsedMessage(tag: "stringTemplate",
+                                      attributes: ["id": "model.unit.veteranSoldier", "templateType": "TEMPLATE"],
+                                      children: [])
+                    ]),
+                    ParsedMessage(tag: "pair", attributes: [:], children: [
+                        ParsedMessage(tag: "stringTemplate",
+                                      attributes: ["id": ")", "templateType": "NAME"],
+                                      children: [])
+                    ]),
+                ]
+            )
+        }
+        let message = ModelMessage(
+            id: "combat.unitDemoted.ours.veteranSoldier",
+            source: "unit-1",
+            display: "unit-1",
+            messageType: "COMBAT_RESULT",
+            hasBeenDisplayed: false,
+            replacements: ["%location%": "Pavlovskaya"],
+            replacementTemplates: [
+                "%oldName%": unitLabel(role: "dragoon"),
+                "%unit%": unitLabel(role: "soldier"),
+            ]
+        )
+
+        LocalizationSettings.shared.language = .german
+        XCTAssertEqual(
+            state.modelMessageText(message),
+            "Niederlage bei Pavlovskaya: „Dragoner (Altgedienter Soldat)“ wurde nach dem verlorenen Kampf zu „Soldat (Altgedienter Soldat)“ zurückgestuft."
+        )
+
+        LocalizationSettings.shared.language = .english
+        XCTAssertEqual(
+            state.modelMessageText(message),
+            "Defeat at Pavlovskaya: “Dragoon (Veteran Soldier)” was downgraded to “Soldier (Veteran Soldier)” after losing the battle."
+        )
+    }
+
+    @MainActor
+    func testCombatUnitLossMessageNamesTheDestroyedUnitAndOutcome() throws {
+        let state = try makeState()
+        let previousLanguage = LocalizationSettings.shared.language
+        defer { LocalizationSettings.shared.language = previousLanguage }
+        LocalizationSettings.shared.language = .english
+        let message = ModelMessage(
+            id: "combat.unitSlaughtered.ours.veteranSoldier",
+            source: "tile-3-2",
+            display: "unit:removed",
+            messageType: "COMBAT_RESULT",
+            hasBeenDisplayed: false,
+            replacements: [
+                "%location%": "open field",
+                "%unit%": "Dragoon (Veteran Soldier)",
+                "%enemyNation%": "Russia",
+                "%enemyUnit%": "Free Colonist",
+            ]
+        )
+
+        XCTAssertEqual(
+            state.modelMessageText(message),
+            "Defeat at open field: “Dragoon (Veteran Soldier)” was destroyed by Russia's Free Colonist."
+        )
+    }
+
+    @MainActor
+    func testPendingCombatPreviewShowsBaseStrengthAndKnownModifiers() throws {
+        let state = try makeState()
+        let game = try XCTUnwrap(state.game)
+        game.specification = Specification(parsed: try XMLDecoder.decode("""
+        <freecol-specification id="spec">
+          <modifiers>
+            <modifier id="model.modifier.attackBonus" type="percentage" value="50" index="50"/>
+            <modifier id="model.modifier.fortified" type="percentage" value="50" index="50"/>
+          </modifiers>
+          <unit-types>
+            <unit-type id="colonist" offence="1" defence="1"/>
+            <unit-type id="model.unit.freeColonist" extends="colonist"/>
+          </unit-types>
+          <tile-types>
+            <tile-type id="model.tile.plains">
+              <modifier id="model.modifier.defence" type="percentage" value="20" index="50"/>
+            </tile-type>
+          </tile-types>
+        </freecol-specification>
+        """))
+        XCTAssertNotNil(game.specification)
+        try game.applyUpdate(XMLDecoder.decode("""
+        <update>
+          <unit id="enemy" owner="player-2" unitType="model.unit.freeColonist"
+                location="tile-3-2" movesLeft="0" state="ACTIVE"/>
+        </update>
+        """))
+        state.gameUpdateID += 1
+        state.selectUnit("unit-1", onTile: "tile-2-2")
+        XCTAssertTrue(state.canAttackSelectedUnitMelee(onTile: "tile-3-2"))
+        state.requestAttack(onTile: "tile-3-2", ranged: false)
+        XCTAssertTrue(state.showAttackConfirmation)
+
+        let preview = try XCTUnwrap(state.pendingCombatPreview)
+        XCTAssertEqual(preview.attacker.baseStrength, 1)
+        XCTAssertEqual(preview.attacker.modifiers.count, 1)
+        XCTAssertEqual(preview.attacker.estimatedStrength ?? 0, 1.5, accuracy: 0.001)
+        XCTAssertEqual(preview.defender.baseStrength, 1)
+        XCTAssertEqual(preview.defender.modifiers.count, 1)
+        XCTAssertEqual(preview.defender.estimatedStrength ?? 0, 1.2, accuracy: 0.001)
+        XCTAssertFalse(preview.warning.isEmpty)
+    }
+
+    @MainActor
+    func testAdjacentEnemyColonyIsAValidMeleeTarget() throws {
+        let state = try makeState()
+        let game = try XCTUnwrap(state.game)
+        try game.applyUpdate(XMLDecoder.decode("""
+        <update><colony id="colony-russia" name="Novgorod" owner="player-2"
+                        tile="tile-3-2" settlementType="model.settlement.colony"/></update>
+        """))
+        state.gameUpdateID += 1
+        state.selectUnit("unit-1", onTile: "tile-2-2")
+        state.selectedTileId = "tile-3-2"
+
+        XCTAssertTrue(state.canAttackSelectedUnitMelee(onTile: "tile-3-2"))
+        XCTAssertFalse(state.canAttackSelectedUnitRanged(onTile: "tile-3-2"))
+    }
+
+    @MainActor
+    func testEnemyColonistInsideAdjacentColonyIsDirectlyAttackable() throws {
+        let state = try makeState()
+        let game = try XCTUnwrap(state.game)
+        try game.applyUpdate(XMLDecoder.decode("""
+        <update>
+          <colony id="colony-russia" name="Aleksandrovsk" owner="player-2"
+                  tile="tile-3-2" settlementType="model.settlement.colony"/>
+          <unit id="russian-colonist" owner="player-2" unitType="model.unit.freeColonist"
+                location="colony-russia" movesLeft="0" state="ACTIVE"/>
+        </update>
+        """))
+        state.gameUpdateID += 1
+        state.selectUnit("unit-1", onTile: "tile-2-2")
+
+        XCTAssertTrue(state.canAttackSelectedUnitMelee(onTile: "tile-3-2"))
+        XCTAssertEqual(state.adjacentHostileUnitTargetsForSelectedUnit.first?.tileId, "tile-3-2")
+        XCTAssertEqual(state.adjacentHostileUnitTargetsForSelectedUnit.first?.label, "Freier Kolonist")
+    }
+
+    @MainActor
+    func testAdjacentEnemyUnitOnOpenTileIsDirectlyAttackable() throws {
+        let state = try makeState()
+        let game = try XCTUnwrap(state.game)
+        try game.applyUpdate(XMLDecoder.decode("""
+        <update>
+          <unit id="russian-colonist" owner="player-2" unitType="model.unit.freeColonist"
+                location="tile-3-2" movesLeft="0" state="ACTIVE"/>
+        </update>
+        """))
+        state.gameUpdateID += 1
+        state.selectUnit("unit-1", onTile: "tile-2-2")
+
+        XCTAssertTrue(state.canAttackSelectedUnitMelee(onTile: "tile-3-2"))
+        XCTAssertEqual(state.adjacentHostileUnitTargetsForSelectedUnit.first?.tileId, "tile-3-2")
+    }
+
+    @MainActor
     func testGermanTradeRouteEditorFitsNativeWindow() throws {
         let state = try makeState()
         state.game?.specification = Specification(parsed: try XMLDecoder.decode("""
@@ -130,6 +343,25 @@ final class MapInteractionTests: XCTestCase {
             let roleImage = try XCTUnwrap(cache.loadImage(named: imageName, folder: "units"))
             XCTAssertTrue(image === roleImage, "Expected \(unitType) with \(role) to use \(imageName).png")
         }
+    }
+
+    func testVeteranSoldierUsesCorrectArmedAndUnarmedGraphics() throws {
+        let cache = TileImageCache.shared
+        let unarmedImage = try XCTUnwrap(cache.unitImage(
+            forUnitType: "model.unit.veteranSoldier", role: "model.role.default"
+        ))
+        let civilianImage = try XCTUnwrap(cache.loadImage(named: "veteranSoldier", folder: "units"))
+        XCTAssertTrue(unarmedImage === civilianImage)
+
+        let armedImage = try XCTUnwrap(cache.unitImage(
+            forUnitType: "model.unit.veteranSoldier", role: "model.role.soldier"
+        ))
+        let soldierImage = try XCTUnwrap(cache.loadImage(
+            named: "veteranSoldier.soldier", folder: "units"
+        ))
+        XCTAssertTrue(armedImage === soldierImage)
+        XCTAssertNotEqual(try XCTUnwrap(unarmedImage.tiffRepresentation),
+                          try XCTUnwrap(armedImage.tiffRepresentation))
     }
 
     func testOriginalTileImprovementGraphicsCoverRiverStylesAndPlowing() throws {
@@ -862,8 +1094,9 @@ final class MapInteractionTests: XCTestCase {
         state.selectUnit("carpenter-worker", onTile: "tile-2-2")
         XCTAssertEqual(state.localPlayerId, "player-1")
         let colony = try XCTUnwrap(state.selectedColony)
-        let efficiencyProgress = try XCTUnwrap(state.colonyEfficiencyProgress(colony))
-        XCTAssertEqual(efficiencyProgress.currentProductionBonus, colony.productionBonus)
+        let rebelProgress = try XCTUnwrap(state.colonyRebelProgress(colony))
+        XCTAssertEqual(rebelProgress.population, state.colonyPopulation(colony))
+        XCTAssertEqual(rebelProgress.rebels + rebelProgress.royalists, rebelProgress.population)
         let workplaces = state.selectedColonyBuildingWorkplaces
         XCTAssertEqual(workplaces.count, 6)
         XCTAssertEqual(workplaces.first { $0.id == "carpenter" }?.productionPerTurn, 4)
@@ -901,7 +1134,7 @@ final class MapInteractionTests: XCTestCase {
             buildETATurns: state.selectedColonyEstimatedBuildTurns,
             estimatedBuildPerTurn: state.selectedColonyEstimatedBuildPerTurn,
             estimatedProduction: state.selectedColonyEstimatedProduction,
-            efficiencyProgress: efficiencyProgress,
+            rebelProgress: rebelProgress,
             growthETATurns: state.selectedColonyEstimatedGrowthTurns,
             foodGoodsIds: state.selectedColonyFoodGoodsIds
         )
@@ -1229,7 +1462,7 @@ final class MapInteractionTests: XCTestCase {
         let shortcuts = try XCTUnwrap(state.keyboardShortcutsManager).shortcuts
         XCTAssertEqual(shortcuts.first(where: { $0.description == "Kolonie bauen" })?.fullDisplay, "b")
         XCTAssertEqual(shortcuts.first(where: { $0.description == "Warten / Überspringen" })?.fullDisplay, "w")
-        XCTAssertEqual(shortcuts.first(where: { $0.description == "Nächste Einheit auswählen" })?.fullDisplay, "n")
+        XCTAssertEqual(shortcuts.first(where: { $0.description == "Nächste Einheit ohne Befehl" })?.fullDisplay, "n")
         XCTAssertEqual(shortcuts.first(where: { $0.description == "Fernkampf" })?.fullDisplay, "⇧t")
         XCTAssertFalse(shortcuts.contains(where: { $0.description == "Bewegen" }),
                        "Das Einheitenpanel darf kein nicht registriertes Bewegungskürzel anzeigen")

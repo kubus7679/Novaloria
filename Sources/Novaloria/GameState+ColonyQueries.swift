@@ -506,9 +506,9 @@ extension GameState {
         )
     }
 
-    /// Colony government efficiency at the current liberty stock, including
-    /// the next production-bonus threshold and population outlook.
-    func colonyEfficiencyProgress(_ colony: Colony) -> ColonyEfficiencyProgress? {
+    /// Data for the native-style rebel tooltip, based on current assignments
+    /// and projected bell production at each government transition.
+    func colonyRebelProgress(_ colony: Colony) -> ColonyRebelProgress? {
         guard let game = cachedGame,
               let specification = game.specification else { return nil }
 
@@ -529,17 +529,29 @@ extension GameState {
             foundingFathers: player?.foundingFathers ?? []
         )
         let libertyGoods = specification.libertyGoodsTypes
-        let bellsPerTurn = colonyProductionSummary(colony).reduce(0) { total, flow in
-            total + (libertyGoods.contains(flow.id) ? flow.net : 0)
+        func libertyProduction(for colony: Colony) -> Int {
+            colonyProductionSummary(colony).reduce(0) { total, flow in
+                total + (libertyGoods.contains(flow.id) ? flow.net : 0)
+            }
         }
+        let bellsPerTurn = libertyProduction(for: colony)
+        let bellAccumulationCapped = game.optionValues["model.option.bellAccumulationCapped"]
+            .map { $0.lowercased() == "true" }
+            ?? specification.bellAccumulationCapped
 
-        return ColonyEfficiencyProgress.calculate(
+        return ColonyRebelProgress.calculate(
             population: colonyPopulation(colony),
             liberty: colony.liberty,
-            currentProductionBonus: colony.productionBonus,
-            bellsPerTurn: bellsPerTurn,
+            sonsOfLiberty: colony.sonsOfLiberty,
+            libertyProductionPerTurn: bellsPerTurn,
+            bellAccumulationCapped: bellAccumulationCapped,
             rules: rules,
-            modifiers: modifiers
+            modifiers: modifiers,
+            productionForBonus: { projectedBonus in
+                var projectedColony = colony
+                projectedColony.productionBonus = projectedBonus
+                return libertyProduction(for: projectedColony)
+            }
         )
     }
 

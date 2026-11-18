@@ -1,6 +1,6 @@
 import Foundation
 
-public struct ParsedMessage {
+public struct ParsedMessage: Sendable {
     public let tag: String
     public let attributes: Attributes
     public let children: [ParsedMessage]

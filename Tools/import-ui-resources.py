@@ -160,14 +160,16 @@ def main():
         value = resources[key]
         return resolve(value[9:]) if value.startswith("resource:") else value
 
-    unit_role_images = {
+    unit_images = {
+        "image.unit.model.unit.veteranSoldier": "veteranSoldier.png",
+        "image.unit.model.unit.veteranSoldier.soldier": "veteranSoldier.soldier.png",
         "image.unit.model.unit.hardyPioneer.pioneer": "hardyPioneer.pioneer.png",
         "image.unit.model.unit.seasonedScout.scout": "seasonedScout.scout.png",
         "image.unit.model.unit.veteranSoldier.dragoon": "veteranSoldier.dragoon.png",
         "image.unit.model.unit.colonialRegular.dragoon": "colonialRegular.dragoon.png",
     }
     units = target / "units"
-    for key, filename in unit_role_images.items():
+    for key, filename in unit_images.items():
         shutil.copyfile(source / "data/default" / resolve(key), units / filename)
 
     for key in resources:

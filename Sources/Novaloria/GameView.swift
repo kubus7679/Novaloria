@@ -16,6 +16,7 @@ struct GameView: View {
     @State private var findSettlementQuery = ""
     @State private var queuedActionToConfirm: GameState.QueuedGameplayAction?
     @State private var showQueuedActionConfirmation = false
+    @State private var showsSelectedTileInfo = false
 
     var body: some View {
         KeyboardShortcutHandlerView {
@@ -82,6 +83,16 @@ struct GameView: View {
                         MiniMapView(viewport: mapViewport, minimapWidth: 244, maxMiniHeight: 112)
                             .frame(height: 112)
                             .padding(8)
+                        Button {
+                            state.showReports()
+                        } label: {
+                            Label(L10n.text("Zugbericht", table: "GameView"), systemImage: "doc.text")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .padding(.horizontal, 8)
+                        .padding(.bottom, 8)
+                        .accessibilityIdentifier("turn-report-button")
                         Divider()
                         Group {
                             if state.selectedUnit != nil {
@@ -286,7 +297,7 @@ struct GameView: View {
                         buildETATurns: state.selectedColonyEstimatedBuildTurns,
                         estimatedBuildPerTurn: state.selectedColonyEstimatedBuildPerTurn,
                         estimatedProduction: state.selectedColonyEstimatedProduction,
-                        efficiencyProgress: state.colonyEfficiencyProgress(selectedColony),
+                        rebelProgress: state.colonyRebelProgress(selectedColony),
                         growthETATurns: state.selectedColonyEstimatedGrowthTurns,
                         foodGoodsIds: state.selectedColonyFoodGoodsIds,
                         availableGold: state.localPlayer?.gold ?? 0,
@@ -389,18 +400,13 @@ struct GameView: View {
         )) {
             endTurnDialog
         }
-        .confirmationDialog(
-            L10n.text("Angriff bestätigen", table: "GameView"),
+        .sheet(
             isPresented: Binding(
                 get: { state.showAttackConfirmation },
                 set: { if !$0 { state.dismissPendingAttack() } }
-            ),
-            titleVisibility: .visible
+            )
         ) {
-            Button(L10n.text("Angreifen", table: "GameView"), role: .destructive) { state.confirmPendingAttack() }
-            Button(L10n.text("Abbrechen", table: "GameView"), role: .cancel) { state.dismissPendingAttack() }
-        } message: {
-            Text(state.pendingAttackSummary)
+            combatPreviewSheet
         }
         .onChange(of: state.pendingServerDecision?.id, initial: true) { _, _ in
             let type = state.pendingServerDecision?.type
@@ -546,6 +552,133 @@ struct GameView: View {
         }
         .padding(16)
         .frame(width: 360)
+    }
+
+    private var combatPreviewSheet: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(L10n.text("Kampfübersicht", table: "GameView"))
+                    .font(.title2.bold())
+                if let preview = state.pendingCombatPreview {
+                    Text(L10n.text("\(preview.kind) bei \(preview.location)", table: "GameView"))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if let preview = state.pendingCombatPreview {
+                HStack(alignment: .top, spacing: 12) {
+                    combatPreviewSide(preview.attacker, title: L10n.text("Angreifer", table: "GameView"))
+                    Image(systemName: "arrow.right")
+                        .font(.title2.bold())
+                        .foregroundStyle(.secondary)
+                        .frame(maxHeight: .infinity)
+                        .accessibilityHidden(true)
+                    combatPreviewSide(preview.defender, title: L10n.text("Verteidiger", table: "GameView"))
+                }
+
+                Text(preview.warning)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack {
+                    Spacer()
+                    Button(L10n.text("Abbrechen", table: "GameView"), role: .cancel) {
+                        state.dismissPendingAttack()
+                    }
+                    Button(L10n.text("Angreifen", table: "GameView"), role: .destructive) {
+                        state.confirmPendingAttack()
+                    }
+                    .keyboardShortcut(.defaultAction)
+                }
+            } else {
+                Text(L10n.text("Kampfdaten sind nicht mehr verfügbar.", table: "GameView"))
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Spacer()
+                    Button(L10n.text("Schließen", table: "GameView")) {
+                        state.dismissPendingAttack()
+                    }
+                }
+            }
+        }
+        .padding(20)
+        .frame(minWidth: 620, idealWidth: 700, minHeight: 360)
+    }
+
+    private func combatPreviewSide(
+        _ side: GameState.CombatPreviewSide,
+        title: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title.uppercased())
+                .font(.caption.bold())
+                .foregroundStyle(.secondary)
+            Text(side.name)
+                .font(.headline)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Divider()
+
+            if let base = side.baseStrength {
+                HStack {
+                    Text(L10n.text("Grundstärke", table: "GameView"))
+                    Spacer()
+                    Text("\(base)")
+                        .monospacedDigit()
+                }
+                .font(.subheadline)
+
+                if side.modifiers.isEmpty {
+                    Text(L10n.text("Keine erfassten Modifikatoren", table: "GameView"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ScrollView {
+                        VStack(spacing: 6) {
+                            ForEach(side.modifiers) { modifier in
+                                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                    Text(modifier.name)
+                                        .lineLimit(2)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    Text(modifier.value)
+                                        .monospacedDigit()
+                                        .foregroundStyle(modifier.value.hasPrefix("-") ? .red : .secondary)
+                                }
+                                .font(.caption)
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 118)
+                }
+
+                Divider()
+                HStack {
+                    Text(L10n.text("Effektive Stärke (Schätzwert)", table: "GameView"))
+                        .font(.caption.bold())
+                    Spacer(minLength: 6)
+                    Text(side.estimatedStrength.map { String(format: "%.2f", $0) } ?? "—")
+                        .font(.title3.bold().monospacedDigit())
+                }
+            } else {
+                Text("—")
+                    .font(.title2.bold())
+                Text(side.note ?? L10n.text("Stärke unbekannt", table: "GameView"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let note = side.note, side.baseStrength != nil {
+                Text(note)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 250, alignment: .topLeading)
+        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
     }
 
     private var defeatOverlay: some View {
@@ -986,7 +1119,22 @@ struct GameView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 6) {
                 if state.selectedUnit != nil {
-                    InfoPanelView()
+                    Button {
+                        showsSelectedTileInfo.toggle()
+                    } label: {
+                        Label(
+                            L10n.text(
+                                showsSelectedTileInfo ? "Einheitenaktionen anzeigen" : "Feldinfo anzeigen",
+                                table: "GameView"
+                            ),
+                            systemImage: showsSelectedTileInfo ? "person.fill" : "mountain.2.fill"
+                        )
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(state.selectedTileId.flatMap { state.game?.tiles[$0] } == nil)
+
+                    InfoPanelView(showsSelectedTileInfo: showsSelectedTileInfo)
                     Divider()
 
                     Button(L10n.text("Bewegen…", table: "GameView")) { state.beginChoosingMoveDestination() }
@@ -1220,7 +1368,7 @@ struct GameView: View {
                     if !state.nativeTradeTargetsForSelectedUnit.isEmpty {
                         actionSectionTitle(L10n.text("Ureinwohner-Siedlung", table: "GameView"))
                         ForEach(state.nativeTradeTargetsForSelectedUnit) { target in
-                            Menu(target.name) {
+                            Menu {
                                 Button(L10n.text("Handeln…", table: "GameView")) {
                                     state.openNativeTradeWithSelectedUnit(settlementId: target.settlementId)
                                 }
@@ -1286,22 +1434,63 @@ struct GameView: View {
                                     }
                                 }
                                 .disabled(!state.canInciteSelectedUnit)
+                            } label: {
+                                Text(target.name)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                             }
-                            .font(.caption)
-                            .fixedSize()
+                            .buttonStyle(GameActionButtonStyle(
+                                fillsAvailableWidth: true,
+                                backgroundColor: .teal
+                            ))
                         }
                     }
 
-                    if !state.diplomacyInitiationTargetsForSelectedUnit.isEmpty {
-                        Menu(state.diplomacyContextForSelectedUnit == "TRIBUTE" ? L10n.text("Tribut verhandeln…", table: "GameView") : L10n.text("Diplomatie…", table: "GameView")) {
-                            ForEach(state.diplomacyInitiationTargetsForSelectedUnit, id: \.id) { target in
-                                Button(target.label) {
-                                    state.beginDiplomacy(otherColonyId: target.id)
+                    if !state.adjacentHostileUnitTargetsForSelectedUnit.isEmpty
+                        || !state.diplomacyInitiationTargetsForSelectedUnit.isEmpty
+                    {
+                        actionSectionTitle(L10n.text("Angriff", table: "GameView"))
+                        ForEach(state.adjacentHostileUnitTargetsForSelectedUnit, id: \.id) { target in
+                            Button(L10n.text("Nahkampf: \(target.label)", table: "GameView")) {
+                                state.requestAttack(onTile: target.tileId, ranged: false)
+                            }
+                            .disabled(!state.canAttackSelectedUnitMelee(onTile: target.tileId))
+                            .help(state.canAttackSelectedUnitMelee(onTile: target.tileId)
+                                  ? L10n.text("Die angrenzende feindliche Einheit im Nahkampf angreifen.", table: "GameView")
+                                  : state.selectedUnitActionUnavailableReason)
+                        }
+
+                        ForEach(state.diplomacyInitiationTargetsForSelectedUnit, id: \.id) { target in
+                            if let tileId = state.game?.colonies[target.id]?.tileId {
+                                Button(L10n.text("Nahkampf: \(target.label)", table: "GameView")) {
+                                    state.requestAttack(onTile: tileId, ranged: false)
                                 }
+                                .disabled(!state.canAttackSelectedUnitMelee(onTile: tileId))
+                                .help(state.canAttackSelectedUnitMelee(onTile: tileId)
+                                      ? L10n.text("Die angrenzende Kolonie im Nahkampf angreifen.", table: "GameView")
+                                      : state.selectedUnitActionUnavailableReason)
                             }
                         }
-                        .font(.caption)
-                        .fixedSize()
+
+                        if !state.diplomacyInitiationTargetsForSelectedUnit.isEmpty {
+                            Menu {
+                                ForEach(state.diplomacyInitiationTargetsForSelectedUnit, id: \.id) { target in
+                                    Button(target.label) {
+                                        state.beginDiplomacy(otherColonyId: target.id)
+                                    }
+                                }
+                            } label: {
+                                Text(
+                                    state.diplomacyContextForSelectedUnit == "TRIBUTE"
+                                        ? L10n.text("Tribut verhandeln…", table: "GameView")
+                                        : L10n.text("Diplomatie…", table: "GameView")
+                                )
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .buttonStyle(GameActionButtonStyle(
+                                fillsAvailableWidth: true,
+                                backgroundColor: .purple
+                            ))
+                        }
                     }
                 }
             }
@@ -1329,9 +1518,11 @@ struct GameView: View {
 private struct GameActionButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     private let fillsAvailableWidth: Bool
+    private let backgroundColor: Color
 
-    init(fillsAvailableWidth: Bool = false) {
+    init(fillsAvailableWidth: Bool = false, backgroundColor: Color = .blue) {
         self.fillsAvailableWidth = fillsAvailableWidth
+        self.backgroundColor = backgroundColor
     }
 
     func makeBody(configuration: Configuration) -> some View {
@@ -1346,7 +1537,7 @@ private struct GameActionButtonStyle: ButtonStyle {
             .foregroundStyle(isEnabled ? Color.white : Color.secondary)
             .background(
                 isEnabled
-                    ? Color.blue.opacity(configuration.isPressed ? 0.7 : 1)
+                    ? backgroundColor.opacity(configuration.isPressed ? 0.7 : 1)
                     : Color.secondary.opacity(0.15), in: RoundedRectangle(cornerRadius: 6)
             )
             .overlay {

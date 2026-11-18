@@ -10,6 +10,9 @@ final class TileImageCache {
 
     func terrainImage(forType tileType: String?) -> NSImage? {
         guard let tileType else { return nil }
+        if let image = modImage(for: ["image.tile.\(tileType).center", "image.tile.\(tileType)"]) {
+            return image
+        }
         let name = tileType.components(separatedBy: ".").last ?? tileType
         return loadImage(named: "\(name)_base", folder: "terrain")
             ?? loadImage(named: name, folder: "terrain")
@@ -37,6 +40,7 @@ final class TileImageCache {
 
     func improvementImage(forType improvementType: String?) -> NSImage? {
         guard let improvementType else { return nil }
+        if let image = modImage(for: ["image.tile.\(improvementType)"]) { return image }
         switch improvementType {
         case "model.improvement.plow":
             return loadImage(named: "plowed", folder: "terrain")
@@ -63,11 +67,13 @@ final class TileImageCache {
 
     func lostCityRumourImage(for tile: Tile) -> NSImage? {
         guard tile.type != nil, tile.hasLostCityRumour else { return nil }
+        if let image = modImage(for: ["image.tileitem.lostCityRumour"]) { return image }
         return loadImage(named: "lostCityRumour", folder: "terrain")
     }
 
     func resourceImage(for type: String?) -> NSImage? {
         guard let type, type.hasPrefix("model.resource.") else { return nil }
+        if let image = modImage(for: ["image.tileitem.\(type)"]) { return image }
         let name = type.components(separatedBy: ".").last ?? type
         return loadImage(named: "resource_\(name)", folder: "terrain")
     }
@@ -90,6 +96,12 @@ final class TileImageCache {
 
     func unitImage(forUnitType unitType: String?, role: String? = nil) -> NSImage? {
         guard let unitType else { return nil }
+        var modKeys: [String] = []
+        if let role, let roleName = role.split(separator: ".").last {
+            modKeys.append("image.unit.\(unitType).\(roleName)")
+        }
+        modKeys.append("image.unit.\(unitType)")
+        if let image = modImage(for: modKeys) { return image }
         if unitType == "model.unit.treasureTrain",
            let treasureTrainImage = loadImage(named: "model.unit.treasureTrain", folder: "colopedia") {
             return treasureTrainImage
@@ -100,6 +112,8 @@ final class TileImageCache {
             roleSpecificImageName = "hardyPioneer.pioneer"
         case ("model.unit.seasonedScout", "model.role.scout"):
             roleSpecificImageName = "seasonedScout.scout"
+        case ("model.unit.veteranSoldier", "model.role.soldier"):
+            roleSpecificImageName = "veteranSoldier.soldier"
         case ("model.unit.veteranSoldier", "model.role.dragoon"):
             roleSpecificImageName = "veteranSoldier.dragoon"
         case ("model.unit.colonialRegular", "model.role.dragoon"):
@@ -128,6 +142,7 @@ final class TileImageCache {
     }
 
     func settlementImage(for settlement: SettlementKind) -> NSImage? {
+        if let image = modImage(for: settlement.modResourceKeys) { return image }
         return loadImage(named: settlement.imageName, folder: "settlements")
     }
 
@@ -137,6 +152,7 @@ final class TileImageCache {
     }
 
     func goodsImage(for goodsType: String) -> NSImage? {
+        if let image = modImage(for: ["image.icon.\(goodsType)"]) { return image }
         guard let entry = ColopediaCatalog.classicEntries.first(where: { $0.id == goodsType }) else { return nil }
         return colopediaImage(for: entry)
     }
@@ -167,6 +183,17 @@ final class TileImageCache {
         cache[key] = image
         return image
     }
+
+    private func modImage(for resourceKeys: [String]) -> NSImage? {
+        let catalog = ModImageCatalog.shared
+        let signature = catalog.currentSignature()
+        let key = "mod[\(signature)]/\(resourceKeys.joined(separator: "|"))"
+        if let image = cache[key] { return image }
+        guard let data = catalog.data(forResourceKeys: resourceKeys),
+              let image = NSImage(data: data) else { return nil }
+        cache[key] = image
+        return image
+    }
 }
 
 enum SettlementKind {
@@ -188,6 +215,23 @@ enum SettlementKind {
         case .nativeVillage: return "indian_village"
         case .aztecCity:     return "aztec_city"
         case .incaCity:      return "inca_city"
+        }
+    }
+
+    var modResourceKeys: [String] {
+        switch self {
+        case .colony(let size):
+            let sizeName = size == 1 ? "small" : (size == 2 ? "medium" : "large")
+            return ["image.tileitem.model.settlement.colony.\(sizeName)",
+                    "image.tileitem.model.settlement.colony"]
+        case .nativeCamp:
+            return ["image.tileitem.model.settlement.camp"]
+        case .nativeVillage:
+            return ["image.tileitem.model.settlement.village"]
+        case .aztecCity:
+            return ["image.tileitem.model.settlement.aztec"]
+        case .incaCity:
+            return ["image.tileitem.model.settlement.inca"]
         }
     }
 }

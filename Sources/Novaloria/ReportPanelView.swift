@@ -3,6 +3,13 @@ import FreeColGame
 import FreeColProtocol
 import AppKit
 
+private struct TurnEventGroup: Identifiable {
+    let id: String
+    let title: String
+    let colonyId: String?
+    let messages: [ModelMessage]
+}
+
 private struct ReportTableSnapshot: Equatable {
     let headers: [String]
     let rows: [[String]]
@@ -123,9 +130,16 @@ struct ReportPanelView: View {
                     Button(L10n.text("Schließen", table: "ReportPanelView")) { dismiss() }
                         .keyboardShortcut(.cancelAction)
                 }
-                ScrollView([.horizontal, .vertical]) {
-                    reportBody
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                if selected == .turn {
+                    ScrollView(.vertical) {
+                        reportBody
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                    }
+                } else {
+                    ScrollView([.horizontal, .vertical]) {
+                        reportBody
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                    }
                 }
             }
             .padding(16)
@@ -465,29 +479,112 @@ struct ReportPanelView: View {
         GroupBox {
             if let game {
                 VStack(alignment: .leading, spacing: 6) {
-                    row(L10n.text("Runde", table: "ReportPanelView"), "\(game.turn.number)")
-                    row(L10n.text("Aktueller Spieler", table: "ReportPanelView"), game.players[game.currentPlayerId ?? ""]?.name ?? "-")
+                    turnRow(L10n.text("Runde", table: "ReportPanelView"), "\(game.turn.number)")
+                    turnRow(L10n.text("Aktueller Spieler", table: "ReportPanelView"), game.players[game.currentPlayerId ?? ""]?.name ?? "-")
                     if let local = state.localPlayer {
-                        row(L10n.text("Dein Gold", table: "ReportPanelView"), "\(local.gold)")
-                        row(L10n.text("Deine Steuer", table: "ReportPanelView"), "\(local.tax)%")
-                        row(L10n.text("Deine Punkte", table: "ReportPanelView"), "\(local.score)")
+                        turnRow(L10n.text("Dein Gold", table: "ReportPanelView"), "\(local.gold)")
+                        turnRow(L10n.text("Deine Steuer", table: "ReportPanelView"), "\(local.tax)%")
+                        turnRow(L10n.text("Deine Punkte", table: "ReportPanelView"), "\(local.score)")
                     }
-                    let messages = state.localPlayerModelMessages
-                    if !messages.isEmpty {
-                        Divider()
-                        Text(L10n.text("Ereignisse", table: "ReportPanelView"))
-                            .font(.caption.bold())
-                        ForEach(Array(messages.suffix(8).reversed().enumerated()),
-                                id: \.offset) { _, message in
-                            Text("• \(state.modelMessageText(message))")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                    turnEventsSection
+                }
+            } else {
+                turnEmpty(L10n.text("Kein Spiel.", table: "ReportPanelView"))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var turnEventsSection: some View {
+        let groups = turnEventGroups
+        Divider()
+        Text(L10n.text("Ereignisse", table: "ReportPanelView"))
+            .font(.system(size: 13, weight: .bold))
+
+        if groups.isEmpty {
+            turnEmpty(L10n.text("Keine Ereignisse aufgezeichnet.", table: "ReportPanelView"))
+        } else {
+            ForEach(groups) { group in
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(group.title)
+                        .font(.system(size: 13, weight: .bold))
+                        .padding(.top, 4)
+
+                    ForEach(Array(group.messages.enumerated()), id: \.offset) { _, message in
+                        if let colonyId = group.colonyId {
+                            Button {
+                                if let tileId = game?.colonies[colonyId]?.tileId {
+                                    state.selectedTileId = tileId
+                                    state.requestMapScroll(to: tileId)
+                                }
+                                dismiss()
+                            } label: {
+                                HStack(alignment: .top, spacing: 5) {
+                                    Text("•")
+                                    Text(state.modelMessageText(message))
+                                        .font(.system(size: 13))
+                                        .multilineTextAlignment(.leading)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    Spacer(minLength: 0)
+                                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                        .font(.caption2)
+                                        .foregroundStyle(.tertiary)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .buttonStyle(.plain)
+                            .help(L10n.text("Zur Kolonie springen", table: "ReportPanelView"))
+                        } else {
+                            HStack(alignment: .top, spacing: 5) {
+                                Text("•")
+                                Text(state.modelMessageText(message))
+                                    .font(.system(size: 13))
+                                    .multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
                 }
-            } else {
-                empty(L10n.text("Kein Spiel.", table: "ReportPanelView"))
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
             }
+        }
+    }
+
+    private var turnEventGroups: [TurnEventGroup] {
+        let messages = state.localPlayerModelMessages.reversed()
+        guard let game else { return [] }
+
+        var grouped: [String: (colony: Colony?, messages: [ModelMessage])] = [:]
+        for message in messages {
+            let colony = message.source.flatMap { game.colonies[$0] }
+                ?? message.replacements["%colony%"].flatMap { value in
+                    let identifier = value.hasSuffix(".name")
+                        ? String(value.dropLast(".name".count))
+                        : value
+                    return game.colonies[identifier]
+                        ?? game.colonies.values.first(where: { $0.name == value })
+                }
+            let key = colony?.id ?? "__other__"
+            var entry = grouped[key] ?? (colony, [])
+            entry.messages.append(message)
+            grouped[key] = entry
+        }
+
+        return grouped.map { key, value in
+            TurnEventGroup(
+                id: key,
+                title: value.colony?.name ?? L10n.text("Weitere Ereignisse", table: "ReportPanelView"),
+                colonyId: value.colony?.id,
+                messages: value.messages
+            )
+        }
+        .sorted { lhs, rhs in
+            if lhs.colonyId == nil { return false }
+            if rhs.colonyId == nil { return true }
+            return lhs.title.localizedStandardCompare(rhs.title) == .orderedAscending
         }
     }
 
@@ -799,6 +896,24 @@ struct ReportPanelView: View {
             Text(value)
                 .font(.caption)
         }
+    }
+
+    private func turnRow(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+            Spacer()
+            Text(value)
+                .font(.system(size: 13))
+        }
+    }
+
+    private func turnEmpty(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 13))
+            .foregroundColor(.secondary)
+            .padding(.vertical, 4)
     }
 
     private func empty(_ text: String) -> some View {

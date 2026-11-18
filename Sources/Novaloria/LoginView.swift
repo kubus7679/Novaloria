@@ -17,11 +17,14 @@ struct LoginView: View {
     // Fallback-Völker für den Fall, dass keine Serverdaten verfügbar sind
     private static var fallbackNations: [(id: String, name: String, description: String)] {
         [
-            (id: "model.nation.dutch", name: L10n.text("Niederländer", table: "LoginView"), description: L10n.text("+10% Handel, ideal für Kaufleute", table: "LoginView")),
-            (id: "model.nation.english", name: L10n.text("Engländer", table: "LoginView"), description: L10n.text("Ausgewogen, gut für Anfänger", table: "LoginView")),
-            (id: "model.nation.french", name: L10n.text("Franzosen", table: "LoginView"), description: L10n.text("+Kultur, bessere Beziehungen zu Eingeborenen", table: "LoginView")),
-            (id: "model.nation.spanish", name: L10n.text("Spanier", table: "LoginView"), description: L10n.text("+Militär, aber langsamer Bau", table: "LoginView")),
-            (id: "model.nation.portuguese", name: L10n.text("Portugiesen", table: "LoginView"), description: L10n.text("+Erkundung, schnellere Schiffe", table: "LoginView"))
+            (id: "model.nation.dutch", name: L10n.text("Niederländer", table: "LoginView"), description: L10n.text("Günstigere Handelspreise; startet mit einem Handelsschiff.", table: "LoginView")),
+            (id: "model.nation.english", name: L10n.text("Engländer", table: "LoginView"), description: L10n.text("Fördert die Einwanderung.", table: "LoginView")),
+            (id: "model.nation.french", name: L10n.text("Franzosen", table: "LoginView"), description: L10n.text("Ureinwohner sind weniger alarmiert; startet mit einem erfahrenen Pionier.", table: "LoginView")),
+            (id: "model.nation.spanish", name: L10n.text("Spanier", table: "LoginView"), description: L10n.text("Höhere Bekehrungs- und Angriffschance gegen Ureinwohner; startet mit berittenen Soldaten.", table: "LoginView")),
+            (id: "model.nation.portuguese", name: L10n.text("Portugiesen", table: "LoginView"), description: L10n.text("Marineeinheiten haben 3 zusätzliche Bewegungspunkte; startet mit einem Handelsschiff.", table: "LoginView")),
+            (id: "model.nation.swedish", name: L10n.text("Schweden", table: "LoginView"), description: L10n.text("Mehr Baumaterial (+2 Holz und Hämmer); startet mit erfahrenen Handwerkern.", table: "LoginView")),
+            (id: "model.nation.danish", name: L10n.text("Dänen", table: "LoginView"), description: L10n.text("Mehr Getreide (+2); startet mit einem erfahrenen Bauern.", table: "LoginView")),
+            (id: "model.nation.russian", name: L10n.text("Russen", table: "LoginView"), description: L10n.text("Mehr Pelze und Mäntel (+2); startet mit erfahrenen Pelzjägern.", table: "LoginView"))
         ]
     }
 
@@ -63,6 +66,7 @@ struct LoginView: View {
     @State private var startingMoneyValue: String = "3000"
     @State private var showNewGame = false
     @State private var showLoadSavegame = false
+    @State private var showMods = false
 
     // Berechnete Eigenschaften
     private var availableNations: [(id: String, name: String, description: String)] {
@@ -221,6 +225,9 @@ struct LoginView: View {
                 portString = String(port)
             }
             .environment(state)
+        }
+        .sheet(isPresented: $showMods) {
+            ModsView()
         }
         .onChange(of: availableNationIds) { _, _ in
             syncSelectedNation()
@@ -390,6 +397,10 @@ struct LoginView: View {
                 }
                 .buttonStyle(.bordered)
                 .tint(Color(red: 0.88, green: 0.71, blue: 0.39))
+                Button(L10n.text("Mods…", table: "LoginView"), systemImage: "puzzlepiece.extension") {
+                    showMods = true
+                }
+                .buttonStyle(.bordered)
             }
         }
     }
@@ -491,6 +502,7 @@ struct LoginView: View {
                 Picker("", selection: $selectedNation) {
                     ForEach(availableNations, id: \.id) { nation in
                         Text(nation.name).tag(nation.id)
+                            .help(nation.description)
                     }
                 }
                 .pickerStyle(.menu)

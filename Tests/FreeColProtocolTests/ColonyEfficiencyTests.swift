@@ -4,58 +4,82 @@ import FreeColProtocol
 @testable import Novaloria
 
 final class ColonyEfficiencyTests: XCTestCase {
-    func testNextProductionBonusReportsExactAdditionalLiberty() throws {
-        let progress = try XCTUnwrap(ColonyEfficiencyProgress.calculate(
+    func testTooltipShowsRebelsRoyalistsAndLibertyBarProgress() throws {
+        let progress = try XCTUnwrap(ColonyRebelProgress.calculate(
             population: 5,
-            liberty: 0,
-            currentProductionBonus: 0,
-            bellsPerTurn: 4,
+            liberty: 400,
+            sonsOfLiberty: 40,
+            libertyProductionPerTurn: 20,
             rules: .classic,
-            modifiers: []
+            modifiers: [],
+            productionForBonus: { _ in 20 }
         ))
 
-        XCTAssertEqual(progress.nextProductionBonus, 1)
-        XCTAssertEqual(progress.libertyUntilNextBonus, 500)
-        XCTAssertEqual(progress.bellsPerTurn, 4)
+        XCTAssertEqual(progress.rebels, 2)
+        XCTAssertEqual(progress.rebelPercentage, 40)
+        XCTAssertEqual(progress.royalists, 3)
+        XCTAssertEqual(progress.royalistPercentage, 60)
+        XCTAssertEqual(progress.libertyRemainder, 0)
+        XCTAssertEqual(progress.libertyProductionPerTurn, 20)
+        XCTAssertEqual(progress.progressBarTurns, 10)
     }
 
-    func testLibertyModifiersAffectNextBonusThreshold() throws {
-        let progress = try XCTUnwrap(ColonyEfficiencyProgress.calculate(
+    func testTurnForecastRecalculatesBellProductionAfterGovernmentChanges() throws {
+        let progress = try XCTUnwrap(ColonyRebelProgress.calculate(
             population: 5,
-            liberty: 300,
-            currentProductionBonus: 1,
-            bellsPerTurn: 2,
+            liberty: 400,
+            sonsOfLiberty: 40,
+            libertyProductionPerTurn: 20,
             rules: .classic,
-            modifiers: [ColonyLibertyModifier(kind: .additive, value: 20, index: 100)]
+            modifiers: [],
+            productionForBonus: { bonus in bonus == 1 ? 10 : 20 }
         ))
 
-        XCTAssertEqual(progress.nextProductionBonus, 2)
-        XCTAssertEqual(progress.libertyUntilNextBonus, 500)
+        XCTAssertEqual(progress.turnsTo50Percent, 5)
+        XCTAssertEqual(progress.turnsUntilRebelGrowth, 15)
+        XCTAssertEqual(progress.turnsTo100Percent, 55)
     }
 
-    func testPopulationBandsShowEfficiencyAtCurrentLiberty() throws {
-        let progress = try XCTUnwrap(ColonyEfficiencyProgress.calculate(
+    func testTooltipReportsColonistsThatCanBeAddedWithoutLosingEfficiency() throws {
+        let progress = try XCTUnwrap(ColonyRebelProgress.calculate(
+            population: 5,
+            liberty: 900,
+            sonsOfLiberty: 90,
+            libertyProductionPerTurn: 20,
+            rules: .classic,
+            modifiers: [],
+            productionForBonus: { _ in 20 }
+        ))
+
+        XCTAssertEqual(progress.colonistsToAdd, 4)
+    }
+
+    func testCappedBellAccumulationHidesProgressForecastAtOneHundredPercent() throws {
+        let progress = try XCTUnwrap(ColonyRebelProgress.calculate(
             population: 5,
             liberty: 1_000,
-            currentProductionBonus: 2,
-            bellsPerTurn: 0,
+            sonsOfLiberty: 100,
+            libertyProductionPerTurn: 20,
+            bellAccumulationCapped: true,
             rules: .classic,
-            modifiers: []
+            modifiers: [],
+            productionForBonus: { _ in 20 }
         ))
 
-        XCTAssertEqual(progress.populationBands, [
-            ColonyEfficiencyPopulationBand(minimumPopulation: 5, maximumPopulation: 5, productionBonus: 2),
-            ColonyEfficiencyPopulationBand(minimumPopulation: 6, maximumPopulation: 10, productionBonus: 1),
-            ColonyEfficiencyPopulationBand(minimumPopulation: 11, maximumPopulation: 12, productionBonus: 0),
-            ColonyEfficiencyPopulationBand(minimumPopulation: 13, maximumPopulation: 15, productionBonus: -1),
-        ])
-        XCTAssertNil(progress.nextProductionBonus)
-        XCTAssertNil(progress.libertyUntilNextBonus)
+        XCTAssertEqual(progress.libertyProductionPerTurn, 20)
+        XCTAssertEqual(progress.progressRatePerTurn, 0)
+        XCTAssertNil(progress.progressBarTurns)
+        XCTAssertNil(progress.turnsUntilRebelGrowth)
+        XCTAssertNil(progress.turnsTo50Percent)
+        XCTAssertNil(progress.turnsTo100Percent)
     }
 
     func testSpecificationReadsActiveGovernmentRulesAndSoLModifiers() throws {
         let specification = Specification(parsed: try XMLDecoder.decode("""
         <freecol-specification difficulty-level="model.difficulty.medium">
+          <optionGroup id="gameOptions.colony">
+            <booleanOption id="model.option.bellAccumulationCapped" defaultValue="false"/>
+          </optionGroup>
           <optionGroup id="model.difficulty.medium">
             <optionGroup id="model.difficulty.government">
               <integerOption id="model.option.badGovernmentLimit" value="6"/>
@@ -82,6 +106,7 @@ final class ColonyEfficiencyTests: XCTestCase {
         XCTAssertEqual(specification.colonyGovernmentRules.veryBadGovernmentLimit, 10)
         XCTAssertEqual(specification.colonyGovernmentRules.goodGovernmentLimit, 55)
         XCTAssertEqual(specification.colonyGovernmentRules.veryGoodGovernmentLimit, 95)
+        XCTAssertFalse(specification.bellAccumulationCapped)
         XCTAssertEqual(
             specification.colonyLibertyModifiers(
                 nationTypeId: "model.nationType.child",

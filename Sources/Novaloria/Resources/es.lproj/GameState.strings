@@ -234,6 +234,7 @@
 "Lokaler Server wird gestartet …" = "Iniciando servidor local …";
 "Lokaler Spieler konnte nicht bestimmt werden." = "No se pudo determinar el jugador local.";
 "Marktpreis" = "Precio de mercado";
+"Der Nationentyp konnte nicht ermittelt werden." = "No se pudo determinar el tipo de nación.";
 "Marschziel löschen" = "Borrar destino";
 "Menge muss groesser als 0 sein." = "La cantidad debe ser mayor que 0.";
 "Missfallen" = "Descontento";
@@ -241,6 +242,17 @@
 "Missionarsaktion mit %@, Richtung %@, anprangern: ja." = "Acción del misionero con %@, dirección %@, denunciar: sí.";
 "Missionarsaktion mit %@, Richtung %@, anprangern: nein." = "Acción del misionero con %@, dirección %@, denunciar: no.";
 "Missionarsaktion nicht möglich." = "La acción del misionero no es posible.";
+"%@ prangert den Missionar in der Siedlung %@ an." = "%@ denuncia al misionero del asentamiento %@.";
+"%@ versucht, in der Siedlung %@ eine Mission zu gründen." = "%@ intenta fundar una misión en el asentamiento %@.";
+"im Norden" = "al norte";
+"im Nordosten" = "al noreste";
+"im Osten" = "al este";
+"im Südosten" = "al sureste";
+"im Süden" = "al sur";
+"im Südwesten" = "al suroeste";
+"im Westen" = "al oeste";
+"im Nordwesten" = "al noroeste";
+"in der benachbarten Siedlung" = "en un asentamiento cercano";
 "Monarch" = "Monarca";
 "Monarch – %@" = "Monarca — %@";
 "Monarch – %@ (%@)" = "Monarca — %@ (%@)";

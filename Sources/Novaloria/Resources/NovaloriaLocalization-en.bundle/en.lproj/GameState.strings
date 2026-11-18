@@ -234,6 +234,7 @@
 "Lokaler Server wird gestartet …" = "Starting local server …";
 "Lokaler Spieler konnte nicht bestimmt werden." = "Could not determine the local player.";
 "Marktpreis" = "Market price";
+"Der Nationentyp konnte nicht ermittelt werden." = "Could not determine the nation type.";
 "Marschziel löschen" = "Clear destination";
 "Menge muss groesser als 0 sein." = "The amount must be greater than 0.";
 "Missfallen" = "Displeasure";
@@ -241,6 +242,17 @@
 "Missionarsaktion mit %@, Richtung %@, anprangern: ja." = "Missionary action with %@, direction %@, denounce: yes.";
 "Missionarsaktion mit %@, Richtung %@, anprangern: nein." = "Missionary action with %@, direction %@, denounce: no.";
 "Missionarsaktion nicht möglich." = "Missionary action is not possible.";
+"%@ prangert den Missionar in der Siedlung %@ an." = "%@ denounces the missionary at the settlement %@.";
+"%@ versucht, in der Siedlung %@ eine Mission zu gründen." = "%@ attempts to establish a mission at the settlement %@.";
+"im Norden" = "to the north";
+"im Nordosten" = "to the northeast";
+"im Osten" = "to the east";
+"im Südosten" = "to the southeast";
+"im Süden" = "to the south";
+"im Südwesten" = "to the southwest";
+"im Westen" = "to the west";
+"im Nordwesten" = "to the northwest";
+"in der benachbarten Siedlung" = "at a neighboring settlement";
 "Monarch" = "Monarch";
 "Monarch – %@" = "Monarch — %@";
 "Monarch – %@ (%@)" = "Monarch — %@ (%@)";

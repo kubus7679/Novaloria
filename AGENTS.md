@@ -80,3 +80,7 @@ python3 Tools/codegen.py <path-to-freecol-src> Sources/FreeColProtocol/Messages/
 - **GameStateManager** processes updates sequentially; out-of-order server messages can cause inconsistencies
 - Always check `String?` attributes before use — missing XML attributes are nil, not empty strings
 - Typos in `static let tag` break deserialization silently (message falls through to unknown-message handler)
+
+## Kommunikation
+
+- Bei Unklarheiten oder wenn weitere Informationen benötigt werden, stelle bitte Rückfragen und gib mir Hinweise, welche Angaben fehlen.

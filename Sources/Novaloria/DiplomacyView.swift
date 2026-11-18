@@ -55,7 +55,7 @@ struct DiplomacyView: View {
             if let proposal = state.pendingDiplomacy {
                 HStack(spacing: 12) {
                     Text(L10n.text("Kontext: \(contextLabel(proposal.context))", table: "DiplomacyView"))
-                    Text(L10n.text("Von: \(proposal.sender.flatMap { state.game?.players[$0]?.name } ?? L10n.text("Unbekannt", table: "DiplomacyView"))", table: "DiplomacyView"))
+                    Text(L10n.text("Von: \(playerDisplayName(proposal.sender))", table: "DiplomacyView"))
                         .foregroundColor(.secondary)
                     Text(L10n.text("Version: \(proposal.version)", table: "DiplomacyView"))
                         .foregroundColor(.secondary)
@@ -74,7 +74,7 @@ struct DiplomacyView: View {
                                     Text(clause.tag)
                                         .font(.caption.bold())
                                         .frame(width: 130, alignment: .leading)
-                                    Text(clause.summary)
+                                     Text(clauseSummary(clause))
                                         .font(.caption)
                                     Spacer()
                                 }
@@ -111,6 +111,34 @@ struct DiplomacyView: View {
         case "DIPLOMATIC": return L10n.text("Diplomatie", table: "DiplomacyView")
         default: return context.map(GameLabels.name) ?? L10n.text("Unbekannt", table: "DiplomacyView")
         }
+    }
+
+    private func playerDisplayName(_ playerId: String?) -> String {
+        guard let playerId, let player = state.game?.players[playerId] else {
+            return playerId ?? L10n.text("Unbekannt", table: "DiplomacyView")
+        }
+        if let nationId = player.nationId {
+            return GameLabels.name(nationId)
+        }
+        return player.name ?? playerId
+    }
+
+    private func clauseSummary(_ clause: DiplomaticTradeClause) -> String {
+        let source = clause.attributes["source"]
+        let destination = clause.attributes["destination"]
+        let originalRoute = (source != nil || destination != nil)
+            ? " [\(source ?? "?") → \(destination ?? "?")]"
+            : ""
+        let localizedRoute = (source != nil || destination != nil)
+            ? " [\(source.map { playerDisplayName($0) } ?? "?") → \(destination.map { playerDisplayName($0) } ?? "?")]"
+            : ""
+        var summary = clause.summary.replacingOccurrences(of: originalRoute, with: localizedRoute)
+
+        if clause.tag == "inciteTradeItem",
+           let victim = clause.attributes["victim"] {
+            summary = summary.replacingOccurrences(of: "Incite \(victim)", with: "Incite \(playerDisplayName(victim))")
+        }
+        return summary
     }
 
     // MARK: - Counter-proposal

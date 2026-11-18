@@ -52,7 +52,7 @@ struct ColonyPanelView: View {
     let buildETATurns: Int?
     let estimatedBuildPerTurn: Int
     let estimatedProduction: [ColonyGoodsFlow]
-    let efficiencyProgress: ColonyEfficiencyProgress?
+    let rebelProgress: ColonyRebelProgress?
     let growthETATurns: Int?
     let foodGoodsIds: Set<String>
     let availableGold: Int
@@ -72,7 +72,7 @@ struct ColonyPanelView: View {
     @State private var pendingWorkField: ColonyTerrainField?
     @State private var showBuildQueue = false
     @State private var showProductionDetails = false
-    @State private var showEfficiencyDetails = false
+    @State private var showRebelDetails = false
     @State private var showWorkerActions = false
     @State private var pendingLandPurchaseTile: FreeColGame.Tile?
 
@@ -127,7 +127,7 @@ struct ColonyPanelView: View {
         buildETATurns: Int? = nil,
         estimatedBuildPerTurn: Int = 0,
         estimatedProduction: [ColonyGoodsFlow] = [],
-        efficiencyProgress: ColonyEfficiencyProgress? = nil,
+        rebelProgress: ColonyRebelProgress? = nil,
         growthETATurns: Int? = nil,
         foodGoodsIds: Set<String> = ["model.goods.food", "model.goods.grain", "model.goods.fish"],
         availableGold: Int = 0,
@@ -183,7 +183,7 @@ struct ColonyPanelView: View {
         self.buildETATurns = buildETATurns
         self.estimatedBuildPerTurn = estimatedBuildPerTurn
         self.estimatedProduction = estimatedProduction
-        self.efficiencyProgress = efficiencyProgress
+        self.rebelProgress = rebelProgress
         self.growthETATurns = growthETATurns
         self.foodGoodsIds = foodGoodsIds
         self.availableGold = availableGold
@@ -292,11 +292,9 @@ struct ColonyPanelView: View {
             HStack(spacing: 8) {
                 metricBadge(L10n.text("Bevölkerung", table: "ColonyPanelView"), value: "\(population)", systemImage: "person.2")
                     .help(L10n.text("Einwohner der Kolonie: \(population). Serverstand: \(colony.unitCount). Bekannte Innenarbeitsplätze werden mitgezählt; Einheiten vor der Kolonie und an Bord zählen nicht dazu.", table: "ColonyPanelView"))
-                metricBadge(L10n.text("Freiheitsstreben", table: "ColonyPanelView"), value: "\(colony.sonsOfLiberty)%", systemImage: "flag")
-                    .help(L10n.text("Vom Server berechneter Anteil der Freiheitsanhänger. Gespeicherte Freiheit: \(colony.liberty). Dieser Anteil ist kein direkter Prozentbonus auf die Produktion.", table: "ColonyPanelView"))
                 metricBadge(L10n.text("Produktionsbonus", table: "ColonyPanelView"), value: signed(colony.productionBonus), systemImage: "plusminus")
                     .help(L10n.text("Vom Server bestimmter additiver Koloniebonus, kein Prozentwert. Seine Wirkung hängt vom Arbeitsplatz und den Regeln der Spezifikation ab; der Produktionstooltip zeigt die tatsächlich angewandten Boni.", table: "ColonyPanelView"))
-                efficiencyBadge
+                rebelProgressBadge
                 administrationDetails
             }
         }
@@ -333,89 +331,138 @@ struct ColonyPanelView: View {
         .accessibilityIdentifier("colony-administration")
     }
 
-    private var efficiencyBadge: some View {
-        let badgeValue: String
-        if let progress = efficiencyProgress {
-            if let bonus = progress.nextProductionBonus,
-               let liberty = progress.libertyUntilNextBonus {
-                badgeValue = L10n.text("\(signed(bonus)) · \(liberty) 🔔", table: "ColonyPanelView")
-            } else if progress.currentProductionBonus >= 2 {
-                badgeValue = L10n.text("Maximal", table: "ColonyPanelView")
-            } else {
-                badgeValue = "—"
-            }
-        } else {
-            badgeValue = "—"
-        }
-
+    private var rebelProgressBadge: some View {
+        let value = rebelProgress.map { "\($0.rebels) · \($0.rebelPercentage)%" } ?? "—"
         return Button {
-            showEfficiencyDetails = true
+            showRebelDetails = true
         } label: {
-            metricBadge(L10n.text("Nächster Bonus", table: "ColonyPanelView"),
-                        value: badgeValue, systemImage: "bell")
+            metricBadge(L10n.text("Rebellen", table: "ColonyPanelView"),
+                        value: value, systemImage: "flag.fill")
         }
         .buttonStyle(.plain)
-        .popover(isPresented: $showEfficiencyDetails) {
-            efficiencyDetails.padding(12).frame(width: 340)
+        .popover(isPresented: $showRebelDetails) {
+            rebelTooltip.padding(14).frame(width: 430)
         }
-        .help(L10n.text("Effizienz und Glockenbedarf bis zur nächsten Stufe anzeigen.", table: "ColonyPanelView"))
-        .accessibilityIdentifier("colony-efficiency-progress")
+        .help(L10n.text("Rebellenübersicht öffnen.", table: "ColonyPanelView"))
+        .accessibilityIdentifier("colony-rebel-progress")
     }
 
     @ViewBuilder
-    private var efficiencyDetails: some View {
-        if let progress = efficiencyProgress {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(L10n.text("Effizienz nach Kolonistenzahl", table: "ColonyPanelView"))
-                    .font(.headline)
-                ForEach(progress.populationBands) { band in
-                    HStack {
-                        Text(populationBandLabel(band))
-                        Spacer(minLength: 12)
-                        Text(signed(band.productionBonus))
-                            .fontWeight(.semibold)
+    private var rebelTooltip: some View {
+        if let progress = rebelProgress {
+            VStack(alignment: .leading, spacing: 11) {
+                VStack(spacing: 7) {
+                    rebelCountRow(
+                        L10n.text("Rebellen:", table: "ColonyPanelView"),
+                        count: progress.rebels,
+                        percentage: progress.rebelPercentage
+                    )
+                    rebelCountRow(
+                        L10n.text("Royalisten:", table: "ColonyPanelView"),
+                        count: progress.royalists,
+                        percentage: progress.royalistPercentage
+                    )
+                }
+
+                HStack(spacing: 8) {
+                    Text(L10n.text("Glocken", table: "ColonyPanelView"))
+                        .font(.headline)
+                    Spacer()
+                    goodsIcon("model.goods.bells", size: 31)
+                    Text("\(progress.libertyProductionPerTurn)")
+                        .font(.title3.weight(.semibold).monospacedDigit())
+                }
+
+                ZStack {
+                    ProgressView(
+                        value: Double(min(
+                            ColonyRebelProgress.libertyPerRebel,
+                            progress.libertyRemainder + progress.progressRatePerTurn
+                        )),
+                        total: Double(ColonyRebelProgress.libertyPerRebel)
+                    )
+                    .tint(Color.brown.opacity(0.75))
+                    .padding(.horizontal, 10)
+
+                    HStack(spacing: 7) {
+                        goodsIcon("model.goods.bells", size: 25)
+                        Spacer(minLength: 2)
+                        Text(libertyProgressLabel(progress))
+                            .font(.callout.weight(.semibold).monospacedDigit())
                     }
-                    .font(.callout.monospacedDigit())
+                    .padding(.horizontal, 14)
                 }
-                Divider()
-                if let nextBonus = progress.nextProductionBonus,
-                   let bellsNeeded = progress.libertyUntilNextBonus {
-                    Text(L10n.text("Nächste Stufe: Produktionsbonus \(signed(nextBonus))", table: "ColonyPanelView"))
-                        .font(.callout.weight(.semibold))
-                    Text(L10n.text(
-                        "Noch \(bellsNeeded) Glocken bis zur nächsten Stufe (Freiheit \(progress.currentLiberty) → \(progress.currentLiberty + bellsNeeded)).",
-                        table: "ColonyPanelView"
-                    ))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(L10n.text("Glockenproduktion pro Runde: \(progress.bellsPerTurn)", table: "ColonyPanelView"))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text(L10n.text("Keine weitere Effizienzstufe.", table: "ColonyPanelView"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                .frame(height: 38)
+                .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 5))
+
+                VStack(spacing: 8) {
+                    rebelTurnsRow(
+                        L10n.text("Züge bis Rebellenzuwachs", table: "ColonyPanelView"),
+                        turns: progress.turnsUntilRebelGrowth
+                    )
+                    if let turns = progress.turnsTo50Percent {
+                        rebelTurnsRow(
+                            L10n.text("Züge, um 50% zu erreichen", table: "ColonyPanelView"),
+                            turns: turns
+                        )
+                    }
+                    if let turns = progress.turnsTo100Percent {
+                        rebelTurnsRow(
+                            L10n.text("Züge, um 100% zu erreichen", table: "ColonyPanelView"),
+                            turns: turns
+                        )
+                    }
+                    rebelValueRow(
+                        L10n.text("Kolonisten mit dem jetzigen Bonus hinzufügen", table: "ColonyPanelView"),
+                        value: progress.colonistsToAdd >= 10
+                            ? L10n.text("Viele", table: "ColonyPanelView")
+                            : "\(progress.colonistsToAdd)"
+                    )
                 }
-                Text(L10n.text(
-                    "Der Kolonistenvergleich hält die aktuelle Glockenzahl konstant. Der Produktionsbonus ist additiv und wird je Arbeitsplatz unterschiedlich angewandt.",
-                    table: "ColonyPanelView"
-                ))
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
             }
+            .font(.callout)
             .monospacedDigit()
+            .accessibilityIdentifier("colony-rebel-tooltip")
         } else {
-            Text(L10n.text("Keine Effizienzprognose verfügbar.", table: "ColonyPanelView"))
+            Text(L10n.text("Keine Rebellenübersicht verfügbar.", table: "ColonyPanelView"))
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
     }
 
-    private func populationBandLabel(_ band: ColonyEfficiencyPopulationBand) -> String {
-        if band.minimumPopulation == band.maximumPopulation {
-            return L10n.text("Bei \(band.minimumPopulation) Kolonisten", table: "ColonyPanelView")
+    private func rebelCountRow(_ label: String, count: Int, percentage: Int) -> some View {
+        HStack(spacing: 8) {
+            Text(label)
+            Spacer(minLength: 8)
+            Text("\(count)")
+                .frame(width: 38, alignment: .trailing)
+            Text("\(percentage)%")
+                .frame(width: 54, alignment: .trailing)
         }
-        return L10n.text("Bei \(band.minimumPopulation)–\(band.maximumPopulation) Kolonisten", table: "ColonyPanelView")
+        .font(.headline)
+    }
+
+    private func rebelTurnsRow(_ label: String, turns: Int?) -> some View {
+        rebelValueRow(
+            label,
+            value: turns.map(String.init) ?? L10n.text("Nicht verfügbar", table: "ColonyPanelView")
+        )
+    }
+
+    private func rebelValueRow(_ label: String, value: String) -> some View {
+        HStack(spacing: 8) {
+            Text(label)
+            Spacer(minLength: 8)
+            Text(value)
+                .fontWeight(.medium)
+        }
+    }
+
+    private func libertyProgressLabel(_ progress: ColonyRebelProgress) -> String {
+        let turnsLabel = progress.progressBarTurns.map {
+            L10n.text("Züge: \($0)", table: "ColonyPanelView")
+        } ?? L10n.text("Nicht verfügbar", table: "ColonyPanelView")
+        return "\(progress.libertyRemainder)+\(progress.progressRatePerTurn)/\(ColonyRebelProgress.libertyPerRebel) (\(turnsLabel))"
     }
 
     private var foodFlows: [ColonyGoodsFlow] {
@@ -820,11 +867,13 @@ struct ColonyPanelView: View {
                     Text(L10n.text("Ohne sichtbaren Arbeitsplatz", table: "ColonyPanelView"))
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 6) {
-                            ForEach(unassignedWorkers) { worker in
-                                workerSelectionChip(worker)
-                            }
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: 132), alignment: .leading)],
+                        alignment: .leading,
+                        spacing: 6
+                    ) {
+                        ForEach(unassignedWorkers) { worker in
+                            workerSelectionChip(worker)
                         }
                     }
                 }
@@ -845,16 +894,18 @@ struct ColonyPanelView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 25, height: 30)
-                        .accessibilityHidden(true)
+                    .accessibilityHidden(true)
                 } else {
                     Image(systemName: "person.fill")
                 }
                 Text(worker.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyPanelView"))
                     .font(.caption)
                     .lineLimit(1)
+                    .truncationMode(.tail)
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 worker.id == selectedWorkerUnitId
                     ? Color.accentColor.opacity(0.2)

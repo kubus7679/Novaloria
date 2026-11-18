@@ -96,6 +96,73 @@ final class NewGameTests: XCTestCase {
         XCTAssertEqual(find("model.option.immigrants", in: root)?.children.count, 1)
     }
 
+    func testActivatingInstalledModAddsItsSpecificationToLocalGame() throws {
+        let directory = try fixture()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let modDirectory = directory.appendingPathComponent("data/mods/test-mod")
+        try FileManager.default.createDirectory(at: modDirectory, withIntermediateDirectories: true)
+        try #"<mod id="test-mod"/>"#
+            .write(to: modDirectory.appendingPathComponent("mod.xml"), atomically: true, encoding: .utf8)
+        try """
+        <freecol-specification id="test-mod">
+          <unit-types><unit-type id="model.unit.modColonist"/></unit-types>
+        </freecol-specification>
+        """.write(to: modDirectory.appendingPathComponent("specification.xml"), atomically: true, encoding: .utf8)
+        try "mod.test-mod.name=Test-Mod\n"
+            .write(to: modDirectory.appendingPathComponent("FreeColMessages.properties"), atomically: true, encoding: .utf8)
+
+        let found = try XCTUnwrap(FreeColMod.discover(installation: directory).first { $0.id == "test-mod" })
+        XCTAssertEqual(found.name, "Test-Mod")
+        XCTAssertTrue(found.hasSpecification)
+
+        let config = try NewGameConfiguration.load(
+            installation: directory, difficulty: .medium, activeModIDs: ["test-mod"]
+        )
+        XCTAssertEqual(config.activeMods.map(\.id), ["test-mod"])
+        let root = try XMLDecoder.decode(config.specificationXML())
+        XCTAssertNotNil(find("model.unit.modColonist", in: root))
+        let launch = try JavaServerLaunch.prepare(
+            configuration: config, java: URL(fileURLWithPath: "/usr/bin/false"), port: 34569,
+            name: "Mod test", seed: "", root: directory.appendingPathComponent("games")
+        )
+        let stagedMod = launch.directory.appendingPathComponent("freecol-data/mods/test-mod")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: stagedMod.appendingPathComponent("mod.xml").path))
+
+        let withoutMod = try NewGameConfiguration.load(installation: directory, difficulty: .medium)
+        XCTAssertNil(find("model.unit.modColonist", in: try XMLDecoder.decode(withoutMod.specificationXML())))
+    }
+
+    func testActiveGraphicModResolvesImageFromItsResourcesProperties() throws {
+        let directory = try fixture()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let modDirectory = directory.appendingPathComponent("data/mods/graphic-test")
+        let imageDirectory = modDirectory.appendingPathComponent("images")
+        try FileManager.default.createDirectory(at: imageDirectory, withIntermediateDirectories: true)
+        try #"<mod id="graphic-test"/>"#
+            .write(to: modDirectory.appendingPathComponent("mod.xml"), atomically: true, encoding: .utf8)
+        try "image.unit.model.unit.modColonist=images/mod-colonist.png\n"
+            .write(to: modDirectory.appendingPathComponent("resources.properties"), atomically: true, encoding: .utf8)
+        let imageData = Data([0x4D, 0x4F, 0x44])
+        try imageData.write(to: imageDirectory.appendingPathComponent("mod-colonist.png"))
+
+        let defaults = UserDefaults.standard
+        let oldInstallation = defaults.object(forKey: "freecol.javaInstallation")
+        let oldMods = defaults.object(forKey: FreeColModSelection.storageKey)
+        defer {
+            if let oldInstallation { defaults.set(oldInstallation, forKey: "freecol.javaInstallation") }
+            else { defaults.removeObject(forKey: "freecol.javaInstallation") }
+            if let oldMods { defaults.set(oldMods, forKey: FreeColModSelection.storageKey) }
+            else { defaults.removeObject(forKey: FreeColModSelection.storageKey) }
+        }
+        defaults.set(directory.path, forKey: "freecol.javaInstallation")
+        defaults.set(#"["graphic-test"]"#, forKey: FreeColModSelection.storageKey)
+
+        XCTAssertEqual(
+            ModImageCatalog.shared.data(forResourceKeys: ["image.unit.model.unit.modColonist"]),
+            imageData
+        )
+    }
+
     func testExportsAllValuesAndEscapesXML() throws {
         let directory = try fixture()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -219,6 +286,8 @@ final class NewGameTests: XCTestCase {
         XCTAssertEqual(launch.arguments[try XCTUnwrap(launch.arguments.firstIndex(of: "--server-name")) + 1], "A & B; $(false)")
         XCTAssertTrue(launch.arguments.contains("--private"))
         XCTAssertTrue(launch.arguments.contains("127.0.0.1"))
+        let europeanCountIndex = try XCTUnwrap(launch.arguments.firstIndex(of: "--europeans"))
+        XCTAssertEqual(launch.arguments[europeanCountIndex + 1], "8")
         let spec = launch.directory.appendingPathComponent("freecol-data/rules/\(NewGameConfiguration.rulesID)/specification.xml")
         XCTAssertEqual(spec.resolvingSymlinksInPath(), launch.optionsFile)
         let savegame = directory.appendingPathComponent("autosave.fsg")
@@ -349,6 +418,71 @@ final class NewGameTests: XCTestCase {
         } catch {
             await client.disconnect()
             throw error
+        }
+    }
+
+    @MainActor
+    func testSwedishSelectionIsAppliedBeforeStartingUnitsAreGenerated() async throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let path = environment["FREECOL_NEW_GAME_E2E_DIR"],
+              let java = environment["FREECOL_JAVA_BIN"] else {
+            throw XCTSkip("Set FREECOL_NEW_GAME_E2E_DIR and FREECOL_JAVA_BIN to test the installed Java server.")
+        }
+
+        let config = try NewGameConfiguration.load(installation: URL(fileURLWithPath: path), difficulty: .easy)
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer {
+            if FileManager.default.fileExists(atPath: root.path) {
+                try? FileManager.default.removeItem(at: root)
+            }
+        }
+        let reserved = try reservePort()
+        close(reserved.fd)
+        let launch = try JavaServerLaunch.prepare(configuration: config, java: URL(fileURLWithPath: java),
+                                                  port: reserved.port, name: "Swedish nation test", seed: "12345", root: root)
+        let server = LocalJavaServer()
+        let state = GameState()
+        defer {
+            state.disconnect()
+            server.stop()
+        }
+
+        try await server.start(launch)
+        state.connect(host: "127.0.0.1", port: reserved.port)
+        try await waitUntil { state.phase == .login }
+
+        state.login(userName: "SwedishTest", nationId: "model.nation.swedish")
+        try await waitUntil { state.phase == .lobby || state.errorMessage != nil }
+        XCTAssertNil(state.errorMessage)
+        XCTAssertEqual(state.localPlayer?.nationId, "model.nation.swedish")
+        XCTAssertTrue(state.isLocalPlayerAdmin)
+
+        state.setReady(true)
+        try await Task.sleep(for: .milliseconds(200))
+        state.requestLaunch()
+        try await waitUntil { state.phase == .inGame || state.errorMessage != nil }
+        XCTAssertNil(state.errorMessage)
+
+        let playerId = try XCTUnwrap(state.localPlayerId)
+        let startingUnits = state.game?.units.values.filter { $0.owner == playerId } ?? []
+        let startingUnitTypes = Set(startingUnits.compactMap(\.unitType))
+        XCTAssertEqual(state.localPlayer?.nationId, "model.nation.swedish")
+        XCTAssertEqual(state.localPlayer?.nationType, "model.nationType.building")
+        XCTAssertEqual(state.game?.specification?.nationType(forNationId: "model.nation.swedish"), "model.nationType.building")
+        XCTAssertTrue(startingUnitTypes.contains("model.unit.masterCarpenter"), "Starting units: \(startingUnitTypes)")
+        XCTAssertTrue(startingUnitTypes.contains("model.unit.caravel"), "Starting units: \(startingUnitTypes)")
+        XCTAssertFalse(startingUnitTypes.contains("model.unit.merchantman"), "Starting units: \(startingUnitTypes)")
+    }
+
+    @MainActor
+    private func waitUntil(_ condition: () -> Bool) async throws {
+        let deadline = Date().addingTimeInterval(30)
+        while !condition(), Date() < deadline {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        guard condition() else {
+            XCTFail("Timed out waiting for the expected game state.")
+            throw FreeColProtocolError.timeout
         }
     }
 }

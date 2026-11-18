@@ -40,6 +40,21 @@ public struct ProductionModifierInfo: Sendable {
     }
 }
 
+/// A combat modifier parsed from the active FreeCol specification.
+public struct CombatModifierInfo: Sendable {
+    public var id: String
+    public var kind: ProductionModifierInfo.Kind
+    public var value: Double
+    public var index: Int
+
+    public init(id: String, kind: ProductionModifierInfo.Kind, value: Double, index: Int) {
+        self.id = id
+        self.kind = kind
+        self.value = value
+        self.index = index
+    }
+}
+
 /// A player modifier that changes the colony's Sons of Liberty percentage.
 public struct ColonyLibertyModifier: Sendable {
     public var kind: ProductionModifierInfo.Kind
@@ -86,6 +101,8 @@ public struct UnitTypeInfo: @unchecked Sendable {
     public var carriesUnits: Bool
     public var offence: Int
     public var defence: Int
+    public var declaredOffence: Int?
+    public var declaredDefence: Int?
     public var movement: Int
     /// Cargo slots this unit type can carry (`space` in the Java specification).
     public var cargoSpace: Int?
@@ -105,6 +122,7 @@ public struct UnitTypeInfo: @unchecked Sendable {
     /// Goods required to construct this unit in a colony.
     public var requiredGoods: [String: Int]
     public var productionModifiers: [ProductionModifierInfo]
+    public var combatModifiers: [CombatModifierInfo]
     public var consumes: [String: Int]
 
     public init(id: String,
@@ -114,6 +132,8 @@ public struct UnitTypeInfo: @unchecked Sendable {
                 offence: Int,
                 defence: Int,
                 movement: Int,
+                declaredOffence: Int? = nil,
+                declaredDefence: Int? = nil,
                 cargoSpace: Int? = nil,
                 spaceTaken: Int? = nil,
                 extendsId: String? = nil,
@@ -124,13 +144,16 @@ public struct UnitTypeInfo: @unchecked Sendable {
                  expertProduction: String? = nil,
                  requiredGoods: [String: Int] = [:],
                  productionModifiers: [ProductionModifierInfo] = [],
-                consumes: [String: Int] = [:]) {
+                 combatModifiers: [CombatModifierInfo] = [],
+                 consumes: [String: Int] = [:]) {
         self.id = id
         self.lineOfSight = lineOfSight
         self.isNaval = isNaval
         self.carriesUnits = carriesUnits
         self.offence = offence
         self.defence = defence
+        self.declaredOffence = declaredOffence
+        self.declaredDefence = declaredDefence
         self.movement = movement
         self.cargoSpace = cargoSpace
         self.spaceTaken = spaceTaken
@@ -142,6 +165,7 @@ public struct UnitTypeInfo: @unchecked Sendable {
         self.expertProduction = expertProduction
         self.requiredGoods = requiredGoods
         self.productionModifiers = productionModifiers
+        self.combatModifiers = combatModifiers
         self.consumes = consumes
     }
 
@@ -254,19 +278,22 @@ public struct RoleTypeInfo: @unchecked Sendable {
     /// Required unit abilities and their expected values.
     public var requiredAbilities: [String: Bool]
     public var productionModifiers: [ProductionModifierInfo]
+    public var combatModifiers: [CombatModifierInfo]
 
     public init(id: String,
                 maximumCount: Int = 1,
                 abilities: [String: Bool] = [:],
                 requiredGoods: [String: Int] = [:],
                 requiredAbilities: [String: Bool] = [:],
-                productionModifiers: [ProductionModifierInfo] = []) {
+                 productionModifiers: [ProductionModifierInfo] = [],
+                 combatModifiers: [CombatModifierInfo] = []) {
         self.id = id
         self.maximumCount = maximumCount
         self.abilities = abilities
         self.requiredGoods = requiredGoods
         self.requiredAbilities = requiredAbilities
         self.productionModifiers = productionModifiers
+        self.combatModifiers = combatModifiers
     }
 }
 
@@ -305,6 +332,7 @@ public struct BuildingTypeInfo: @unchecked Sendable {
     public var competenceFactor: Double
     public var rebelFactor: Double
     public var productionModifiers: [ProductionModifierInfo]
+    public var combatModifiers: [CombatModifierInfo]
 
     public init(id: String,
                 upkeep: Int,
@@ -327,7 +355,8 @@ public struct BuildingTypeInfo: @unchecked Sendable {
                 unattendedProductionInputs: [String: Int] = [:],
                 competenceFactor: Double = 1,
                 rebelFactor: Double = 1,
-                productionModifiers: [ProductionModifierInfo] = []) {
+                 productionModifiers: [ProductionModifierInfo] = [],
+                 combatModifiers: [CombatModifierInfo] = []) {
         self.id = id
         self.upkeep = upkeep
         self.requiredPopulation = requiredPopulation
@@ -350,6 +379,7 @@ public struct BuildingTypeInfo: @unchecked Sendable {
         self.competenceFactor = competenceFactor
         self.rebelFactor = rebelFactor
         self.productionModifiers = productionModifiers
+        self.combatModifiers = combatModifiers
     }
 
     /// Display name derived from the id (`model.building.townHall` → `townHall`).
@@ -371,6 +401,7 @@ public struct TileTypeInfo: @unchecked Sendable {
     public var centerInputs: [String: Int]
     public var workerOutputs: [String: Int]
     public var productionModifiers: [ProductionModifierInfo]
+    public var combatModifiers: [CombatModifierInfo]
 
     public init(id: String,
                 isWater: Bool = false,
@@ -379,7 +410,8 @@ public struct TileTypeInfo: @unchecked Sendable {
                 centerOutputs: [String: Int] = [:],
                 centerInputs: [String: Int] = [:],
                 workerOutputs: [String: Int] = [:],
-                productionModifiers: [ProductionModifierInfo] = []) {
+                 productionModifiers: [ProductionModifierInfo] = [],
+                 combatModifiers: [CombatModifierInfo] = []) {
         self.id = id
         self.isWater = isWater
         self.canSettle = canSettle
@@ -388,6 +420,7 @@ public struct TileTypeInfo: @unchecked Sendable {
         self.centerInputs = centerInputs
         self.workerOutputs = workerOutputs
         self.productionModifiers = productionModifiers
+        self.combatModifiers = combatModifiers
     }
 }
 
@@ -415,11 +448,15 @@ public final class Specification: @unchecked Sendable {
     public private(set) var buildingTypes: [String: BuildingTypeInfo] = [:]
     /// Tile type definitions keyed by id (`model.tile.*`).
     public private(set) var tileTypes: [String: TileTypeInfo] = [:]
+    /// Global combat modifiers (attack bonus, movement penalties, fortification, ...).
+    public private(set) var combatModifiers: [String: CombatModifierInfo] = [:]
     /// Pioneer improvement definitions keyed by id (`model.improvement.*`).
     public private(set) var improvementTypes: [String: ImprovementTypeInfo] = [:]
     /// Unit equipment roles keyed by id (`model.role.*`).
     public private(set) var roleTypes: [String: RoleTypeInfo] = [:]
     public private(set) var resourceTypes: [String: ResourceTypeInfo] = [:]
+    /// Nation type selected by each nation in the loaded ruleset.
+    public private(set) var nationTypeByNationId: [String: String] = [:]
     public private(set) var foundingFatherModifiers: [String: [ProductionModifierInfo]] = [:]
     public private(set) var nationTypeModifiers: [String: [ProductionModifierInfo]] = [:]
     public private(set) var foundingFatherIds: Set<String> = []
@@ -427,6 +464,8 @@ public final class Specification: @unchecked Sendable {
     public private(set) var foundingFatherFactor: Int?
     /// Active difficulty's government-efficiency thresholds.
     public private(set) var colonyGovernmentRules: ColonyGovernmentRules = .classic
+    /// Whether liberty accumulation stops at 100% Sons of Liberty by default.
+    public private(set) var bellAccumulationCapped = true
     private var foundingFatherLibertyModifiers: [String: [ColonyLibertyModifier]] = [:]
     private var nationTypeLibertyModifiers: [String: [ColonyLibertyModifier]] = [:]
     private var nationTypeParents: [String: String] = [:]
@@ -466,6 +505,10 @@ public final class Specification: @unchecked Sendable {
             veryGoodGovernmentLimit: Self.integerOption("model.option.veryGoodGovernmentLimit", in: governmentOptions)
                 ?? ColonyGovernmentRules.classic.veryGoodGovernmentLimit
         )
+        bellAccumulationCapped = Self.booleanOption(
+            "model.option.bellAccumulationCapped",
+            in: parsed
+        ) ?? true
         collectUnitTypes(from: parsed)
         collectEducationChanges(from: parsed)
         collectGoodsTypes(from: parsed)
@@ -474,8 +517,41 @@ public final class Specification: @unchecked Sendable {
         collectImprovementTypes(from: parsed)
         collectRoleTypes(from: parsed)
         collectResourceTypes(from: parsed)
+        collectNationTypes(from: parsed)
         collectFeatureProductionModifiers(from: parsed)
+        collectGlobalCombatModifiers(from: parsed)
         resolveUnitTypeTraits()
+    }
+
+    /// Resolve a unit's base combat value through its unit-type inheritance chain.
+    public func baseCombatStrength(forUnitType unitTypeId: String?, offence: Bool) -> Int {
+        guard let unitTypeId else { return 0 }
+        var visited: Set<String> = []
+        var current: String? = unitTypeId
+        while let id = current, visited.insert(id).inserted, let info = unitTypes[id] {
+            let value = offence ? info.declaredOffence : info.declaredDefence
+            if let value { return value }
+            current = info.extendsId
+        }
+        return 0
+    }
+
+    /// Unit combat modifiers inherited through the unit-type hierarchy.
+    public func combatModifiers(forUnitType unitTypeId: String?, modifierId: String) -> [CombatModifierInfo] {
+        guard let unitTypeId else { return [] }
+        var result: [CombatModifierInfo] = []
+        var visited: Set<String> = []
+        var current: String? = unitTypeId
+        while let id = current, visited.insert(id).inserted, let info = unitTypes[id] {
+            result.append(contentsOf: info.combatModifiers.filter { $0.id == modifierId })
+            current = info.extendsId
+        }
+        return result.sorted { $0.index < $1.index }
+    }
+
+    /// Nation-type definition associated with a nation in this ruleset.
+    public func nationType(forNationId nationId: String) -> String? {
+        nationTypeByNationId[nationId]
     }
 
     /// Goods that contribute to the liberty/founding-father total.
@@ -567,6 +643,8 @@ public final class Specification: @unchecked Sendable {
                     offence: child.attributes.int("offence"),
                     defence: child.attributes.int("defence"),
                     movement: child.attributes.int("movement"),
+                    declaredOffence: child.attributes["offence"].flatMap(Int.init),
+                    declaredDefence: child.attributes["defence"].flatMap(Int.init),
                     cargoSpace: child.attributes["space"].flatMap { Int($0) },
                     spaceTaken: child.attributes["spaceTaken"].flatMap { Int($0) },
                     extendsId: child.attributes["extends"],
@@ -577,6 +655,7 @@ public final class Specification: @unchecked Sendable {
                     expertProduction: child.attributes["expert-production"],
                     requiredGoods: requiredGoods,
                     productionModifiers: Self.productionModifiers(in: child.children),
+                    combatModifiers: Self.combatModifiers(in: child.children),
                     consumes: consumes
                 )
             }
@@ -897,7 +976,8 @@ public final class Specification: @unchecked Sendable {
                                              centerOutputs: outputs,
                                              centerInputs: inputs,
                                              workerOutputs: workerOutputs,
-                                             productionModifiers: Self.productionModifiers(in: child.children))
+                                             productionModifiers: Self.productionModifiers(in: child.children),
+                                             combatModifiers: Self.combatModifiers(in: child.children))
             collectTileTypes(from: child)
         }
     }
@@ -938,6 +1018,21 @@ public final class Specification: @unchecked Sendable {
         }
         for child in node.children {
             if let value = integerOption(optionId, in: child) { return value }
+        }
+        return nil
+    }
+
+    private static func booleanOption(_ optionId: String, in node: ParsedMessage) -> Bool? {
+        if node.attributes["id"] == optionId {
+            if let value = node.attributes["value"] {
+                return value.lowercased() == "true"
+            }
+            if let value = node.attributes["defaultValue"] {
+                return value.lowercased() == "true"
+            }
+        }
+        for child in node.children {
+            if let value = booleanOption(optionId, in: child) { return value }
         }
         return nil
     }
@@ -998,7 +1093,8 @@ public final class Specification: @unchecked Sendable {
                     abilities: abilities,
                     requiredGoods: requiredGoods,
                     requiredAbilities: requiredAbilities,
-                    productionModifiers: Self.productionModifiers(in: child.children)
+                    productionModifiers: Self.productionModifiers(in: child.children),
+                    combatModifiers: Self.combatModifiers(in: child.children)
                 )
             }
             collectRoleTypes(from: child)
@@ -1096,7 +1192,8 @@ public final class Specification: @unchecked Sendable {
                     unattendedProductionInputs: unattendedInputs,
                     competenceFactor: Double(child.attributes["competence-factor"] ?? "1") ?? 1,
                     rebelFactor: Double(child.attributes["rebel-factor"] ?? "1") ?? 1,
-                    productionModifiers: Self.productionModifiers(in: child.children)
+                    productionModifiers: Self.productionModifiers(in: child.children),
+                    combatModifiers: Self.combatModifiers(in: child.children)
                 )
             }
             collectBuildingTypes(from: child)
@@ -1112,6 +1209,43 @@ public final class Specification: @unchecked Sendable {
                 )
             }
             collectResourceTypes(from: child)
+        }
+    }
+
+    private func collectGlobalCombatModifiers(from node: ParsedMessage) {
+        guard let container = Self.firstNode(tag: "modifiers", in: node) else { return }
+        for modifier in container.children where modifier.tag == "modifier" {
+            guard let id = modifier.attributes["id"],
+                  let value = Double(modifier.attributes["value"] ?? ""),
+                  value.isFinite else { continue }
+            let kind = ProductionModifierInfo.Kind(
+                rawValue: modifier.attributes["type"]?.lowercased() ?? "additive"
+            ) ?? .additive
+            combatModifiers[id] = CombatModifierInfo(
+                id: id,
+                kind: kind,
+                value: value,
+                index: modifier.attributes.int("index", default: 100)
+            )
+        }
+    }
+
+    private static func firstNode(tag: String, in node: ParsedMessage) -> ParsedMessage? {
+        if node.tag == tag { return node }
+        for child in node.children {
+            if let match = firstNode(tag: tag, in: child) { return match }
+        }
+        return nil
+    }
+
+    private func collectNationTypes(from node: ParsedMessage) {
+        for child in node.children {
+            if child.tag == "nation",
+               let id = child.attributes["id"],
+               let nationType = child.attributes["nation-type"] {
+                nationTypeByNationId[id] = nationType
+            }
+            collectNationTypes(from: child)
         }
     }
 
@@ -1164,6 +1298,26 @@ public final class Specification: @unchecked Sendable {
                     .compactMap { $0.attributes["type"] },
                 negatedScopeAbilities: scopes.filter { $0.attributes.bool("match-negated") }
                     .compactMap { $0.attributes["ability-id"] }
+            )
+        }
+    }
+
+    private static func combatModifiers(in children: [ParsedMessage]) -> [CombatModifierInfo] {
+        children.compactMap { child in
+            guard child.tag == "modifier",
+                  let id = child.attributes["id"],
+                  ["model.modifier.offence", "model.modifier.defence"].contains(id),
+                  child.children.allSatisfy({ $0.tag != "scope" }),
+                  let value = Double(child.attributes["value"] ?? ""),
+                  value.isFinite else { return nil }
+            let kind = ProductionModifierInfo.Kind(
+                rawValue: child.attributes["type"]?.lowercased() ?? "additive"
+            ) ?? .additive
+            return CombatModifierInfo(
+                id: id,
+                kind: kind,
+                value: value,
+                index: child.attributes.int("index", default: 100)
             )
         }
     }

@@ -253,6 +253,8 @@ struct EuropePanelView: View {
     private func marketSection(_ local: Player) -> some View {
         GroupBox(L10n.text("Markt", table: "EuropePanelView")) {
             VStack(alignment: .leading, spacing: 6) {
+                marketCarrierCargoSection
+
                 let marketData = state.localPlayerMarketData
                 if marketData.isEmpty {
                     Text(L10n.text("Keine Marktdaten verfügbar.", table: "EuropePanelView"))
@@ -391,6 +393,44 @@ struct EuropePanelView: View {
                 }
             }
             .padding(.vertical, 4)
+        }
+    }
+
+    private var marketCarrierCargoSection: some View {
+        GroupBox(L10n.text("Fracht des ausgewählten Schiffs", table: "EuropePanelView")) {
+            if let carrier = state.europeCarrierUnits.first(where: { $0.id == selectedCarrierId }) {
+                let goods = carrier.goods
+                    .filter { $0.value > 0 }
+                    .sorted { goodsLabel($0.key) < goodsLabel($1.key) }
+                if goods.isEmpty {
+                    Text(L10n.text("Keine Waren geladen.", table: "EuropePanelView"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(goods, id: \.key) { item in
+                            HStack(spacing: 8) {
+                                if let image = TileImageCache.shared.goodsImage(for: item.key) {
+                                    Image(nsImage: image)
+                                        .resizable()
+                                        .interpolation(.high)
+                                        .scaledToFit()
+                                        .frame(width: 22, height: 22)
+                                }
+                                Text(goodsLabel(item.key))
+                                    .font(.caption)
+                                Spacer()
+                                Text(L10n.text("\(item.value)", table: "EuropePanelView"))
+                                    .font(.caption.monospacedDigit())
+                            }
+                        }
+                    }
+                }
+            } else {
+                Text(L10n.text("Wähle oben ein Schiff aus, um seine Fracht zu sehen.", table: "EuropePanelView"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 

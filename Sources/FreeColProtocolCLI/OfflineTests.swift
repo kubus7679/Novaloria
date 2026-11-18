@@ -593,6 +593,24 @@ test("Game.applyUpdate registers a settlement nested in a tile update") {
     try assertEqual(game.colonies["colony-1"]?.tileId, "tile-1")
 }
 
+test("Game.applyUpdate records an established native mission") {
+    let game = Game()
+    let update = try XMLDecoder.decode("""
+    <update>
+      <tile id="tile-native" x="3" y="4" type="model.tile.plains">
+        <indianSettlement id="settlement-1" name="Arapaho" settlementType="model.settlement.aztec">
+          <missionary>
+            <unit id="missionary-1" owner="player-1" unitType="model.unit.jesuitMissionary"/>
+          </missionary>
+        </indianSettlement>
+      </tile>
+    </update>
+    """)
+    try game.applyUpdate(update)
+    try assertEqual(game.colonies["settlement-1"]?.hasMission, true)
+    try assertEqual(game.colonies["settlement-1"]?.missionaryOwner, "player-1")
+}
+
 test("Game.applyUpdate updates a unit nested in a tile update") {
     let game = Game()
     try game.load(from: XMLDecoder.decode("""

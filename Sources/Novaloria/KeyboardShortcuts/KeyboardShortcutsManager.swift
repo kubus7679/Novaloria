@@ -176,12 +176,12 @@ final class KeyboardShortcutsManager {
             category: .unit
         ))
         
-        // Next unit - n
+        // Next unit without orders - n
         shortcuts.append(KeyboardShortcut(
             key: "n",
             modifier: .none,
-            action: { state.selectNextUnit() },
-            description: "Nächste Einheit auswählen",
+            action: { state.selectAdjacentUnit(forward: true, onlyAwaitingOrders: true) },
+            description: "Nächste Einheit ohne Befehl",
             category: .unit
         ))
         
@@ -359,11 +359,10 @@ final class KeyboardShortcutsManager {
     private func registerGameShortcuts() {
         guard let state = gameState else { return }
         
-        // End turn - t (but t is used for attack, so use T or other)
-        // Using Ctrl+Enter for end turn to avoid conflicts
+        // End turn - Enter
         shortcuts.append(KeyboardShortcut(
             key: "enter",
-            modifier: .control,
+            modifier: .none,
             action: { state.requestEndTurn() },
             description: "Zug beenden",
             category: .game
@@ -523,6 +522,9 @@ final class KeyboardShortcutsManager {
         
         // Check based on shortcut description/action type
         switch (shortcut.category, shortcut.description) {
+        case (.unit, _) where shortcut.description == "Nächste Einheit ohne Befehl":
+            return state.phase == .inGame && state.isLocalPlayersTurn && !state.unitsAwaitingOrders.isEmpty
+
         case (.unit, _):
             // Unit shortcuts need a selected unit
             return state.selectedUnit != nil

@@ -1,4 +1,5 @@
 import XCTest
+import AppKit
 import NovaloriaClient
 import FreeColGame
 import FreeColProtocol
@@ -143,6 +144,50 @@ final class InteractionRepairTests: XCTestCase {
             hasBeenDisplayed: false
         )
         XCTAssertEqual(state.modelMessageText(independenceMessage), "Die Unabhängigkeit wurde erklärt.")
+    }
+
+    @MainActor
+    func testDiplomacyStanceMessagesShowTheFullChangeAndNations() throws {
+        let previousLanguage = LocalizationSettings.shared.language
+        LocalizationSettings.shared.language = .german
+        defer { LocalizationSettings.shared.language = previousLanguage }
+
+        let state = GameState()
+        let warDeclared = ModelMessage(
+            id: "model.player.stance.war.declared",
+            source: nil,
+            display: nil,
+            messageType: "FOREIGN_DIPLOMACY",
+            hasBeenDisplayed: false,
+            replacements: ["%nation%": "model.nation.spanish"]
+        )
+        let warBetweenOthers = ModelMessage(
+            id: "model.player.stance.war.others",
+            source: nil,
+            display: nil,
+            messageType: "FOREIGN_DIPLOMACY",
+            hasBeenDisplayed: false,
+            replacements: [
+                "%attacker%": "model.nation.english",
+                "%defender%": "model.nation.french",
+            ]
+        )
+
+        let declaredText = state.modelMessageText(warDeclared)
+        XCTAssertTrue(declaredText.contains("Spanisch"))
+        XCTAssertTrue(declaredText.contains("Krieg erklärt"))
+        XCTAssertFalse(declaredText.contains("Diplomatie."))
+
+        let othersText = state.modelMessageText(warBetweenOthers)
+        XCTAssertTrue(othersText.contains("Englisch"))
+        XCTAssertTrue(othersText.contains("Französisch"))
+        XCTAssertTrue(othersText.contains("Krieg erklärt"))
+        XCTAssertFalse(othersText.contains("Diplomatie."))
+
+        LocalizationSettings.shared.language = .english
+        let englishText = state.modelMessageText(warDeclared)
+        XCTAssertTrue(englishText.contains("declared war on us"))
+        XCTAssertFalse(englishText.contains("Diplomacy."))
     }
 
     @MainActor
@@ -1437,6 +1482,73 @@ final class InteractionRepairTests: XCTestCase {
         XCTAssertNil(state.selectedUnitTileId)
         XCTAssertNil(state.selectedTileId)
         XCTAssertNil(state.requestedMapScrollTileId)
+    }
+
+    @MainActor
+    func testNextWithoutOrdersShortcutWorksWithoutSelectionAndCyclesAwaitingUnits() throws {
+        let state = try makeState()
+        let manager = try XCTUnwrap(state.keyboardShortcutsManager)
+
+        state.selectedUnitId = nil
+        XCTAssertTrue(manager.isShortcutEnabled(try XCTUnwrap(
+            manager.shortcuts.first { $0.description == "Nächste Einheit ohne Befehl" }
+        )))
+        XCTAssertTrue(manager.handleKeyPress("n", modifierFlags: []))
+        XCTAssertEqual(state.selectedUnitId, "outside-worker")
+
+        XCTAssertTrue(manager.handleKeyPress("n", modifierFlags: []))
+        XCTAssertEqual(state.selectedUnitId, "ship")
+        XCTAssertTrue(manager.handleKeyPress("n", modifierFlags: []))
+        XCTAssertEqual(state.selectedUnitId, "wagon")
+    }
+
+    @MainActor
+    func testEndTurnShortcutIsEnterWithoutModifiers() throws {
+        let state = try makeState()
+        let manager = try XCTUnwrap(state.keyboardShortcutsManager)
+        let shortcut = try XCTUnwrap(manager.shortcuts.first { $0.description == "Zug beenden" })
+
+        XCTAssertEqual(shortcut.key, "enter")
+        XCTAssertEqual(shortcut.modifier, .none)
+    }
+
+    @MainActor
+    func testFirstAwaitingUnitIsSelectedAtInitialAndSubsequentLocalTurnStarts() throws {
+        let state = try makeState()
+        let game = try XCTUnwrap(state.game)
+
+        state.syncAfterModelUpdate()
+        XCTAssertEqual(state.selectedUnitId, "outside-worker")
+
+        state.selectedUnitId = "wagon"
+        game.currentPlayerId = "player-2"
+        for unitId in ["outside-worker", "ship", "wagon"] {
+            try game.applyPartial(XMLDecoder.decode("<partial id=\"\(unitId)\" movesLeft=\"0\"/>"))
+        }
+        state.syncAfterModelUpdate()
+
+        game.currentPlayerId = "player-1"
+        state.syncAfterModelUpdate()
+        XCTAssertEqual(state.selectedUnitId, "wagon", "No unit should be changed before refreshed movement points arrive")
+
+        try game.applyPartial(XMLDecoder.decode(#"<partial id="outside-worker" movesLeft="3" state="ACTIVE"/>"#))
+        state.gameUpdateID += 1
+        state.syncAfterModelUpdate()
+        XCTAssertEqual(state.selectedUnitId, "outside-worker")
+        XCTAssertEqual(state.selectedUnitTileId, "tile-2-2")
+
+        for unitId in ["outside-worker", "ship", "wagon"] {
+            try game.applyPartial(XMLDecoder.decode("<partial id=\"\(unitId)\" movesLeft=\"0\"/>"))
+        }
+        state.selectedUnitId = "wagon"
+        game.turn = Turn(game.turn.number + 1)
+        state.syncAfterModelUpdate()
+        XCTAssertEqual(state.selectedUnitId, "wagon", "Wait until the new turn's movement points arrive")
+
+        try game.applyPartial(XMLDecoder.decode(#"<partial id="outside-worker" movesLeft="3" state="ACTIVE"/>"#))
+        state.gameUpdateID += 1
+        state.syncAfterModelUpdate()
+        XCTAssertEqual(state.selectedUnitId, "outside-worker", "A new local round must be detected even if turn ownership did not change")
     }
 
     @MainActor

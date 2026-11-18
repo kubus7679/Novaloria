@@ -1077,6 +1077,59 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertTrue(withAdamSmith.contains { $0.id == "model.building.furFactory" })
     }
 
+    func testDocksRequireTheColonyPortAbilityAndAppearAtTheShore() throws {
+        func makeColony(adjacentWater: Bool) throws -> (Game, Colony) {
+            let tileXML = (0..<3).flatMap { y in
+                (0..<3).map { x in
+                    let isWater = adjacentWater && x == 2 && y == 1
+                    let type = isWater ? "model.tile.ocean" : "model.tile.plains"
+                    return #"<tile id="tile-\#(x)-\#(y)" x="\#(x)" y="\#(y)" type="\#(type)"/>"#
+                }
+            }.joined(separator: "\n")
+            let game = Game()
+            try game.load(from: XMLDecoder.decode("""
+            <game id="game-1">
+              <freecol-specification>
+                <tile-type id="model.tile.plains" is-water="false"/>
+                <tile-type id="model.tile.ocean" is-water="true"/>
+                <building-type id="model.building.docks">
+                  <required-ability id="model.ability.hasPort" value="true"/>
+                  <required-goods id="model.goods.hammers" value="52"/>
+                </building-type>
+              </freecol-specification>
+              <map id="map-1" width="3" height="3">\(tileXML)</map>
+            </game>
+            """))
+            let colony = try Colony(
+                id: "colony-1",
+                attributes: ["name": "Unalashka", "tile": "tile-1-1", "unitCount": "5"],
+                children: [],
+                game: game
+            )
+            return (game, colony)
+        }
+
+        let (coastalGame, coastalColony) = try makeColony(adjacentWater: true)
+        let coastalAbilities = GameState.colonyBuildAbilities(for: coastalColony, in: coastalGame)
+        XCTAssertEqual(coastalAbilities["model.ability.hasPort"], true)
+        XCTAssertTrue(GameState.buildableBuildingCandidates(
+            colony: coastalColony,
+            specification: try XCTUnwrap(coastalGame.specification),
+            population: 5,
+            colonyAbilities: coastalAbilities
+        ).contains { $0.id == "model.building.docks" })
+
+        let (inlandGame, inlandColony) = try makeColony(adjacentWater: false)
+        let inlandAbilities = GameState.colonyBuildAbilities(for: inlandColony, in: inlandGame)
+        XCTAssertEqual(inlandAbilities["model.ability.hasPort"], false)
+        XCTAssertFalse(GameState.buildableBuildingCandidates(
+            colony: inlandColony,
+            specification: try XCTUnwrap(inlandGame.specification),
+            population: 5,
+            colonyAbilities: inlandAbilities
+        ).contains { $0.id == "model.building.docks" })
+    }
+
     func testBuildableCandidatesIncludeUnitsEnabledByColonyBuildings() throws {
         let specification = Specification(parsed: try XMLDecoder.decode("""
         <freecol-specification id="spec">
@@ -1328,6 +1381,42 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(source.amount, 3)
         XCTAssertTrue(source.explanation.contains("3 + 25 % = 3,75"))
         XCTAssertTrue(source.explanation.contains("Abgerundet: 3"))
+    }
+
+    func testSpecificationResolvesNationTypeForNation() throws {
+        let specification = Specification(parsed: try XMLDecoder.decode("""
+        <freecol-specification>
+          <nations>
+            <nation id="model.nation.swedish" nation-type="model.nationType.building"/>
+          </nations>
+        </freecol-specification>
+        """))
+
+        XCTAssertEqual(specification.nationType(forNationId: "model.nation.swedish"), "model.nationType.building")
+        XCTAssertNil(specification.nationType(forNationId: "model.nation.unknown"))
+    }
+
+    func testSpecificationParsesInheritedCombatStrengthAndRoleModifiers() throws {
+        let specification = Specification(parsed: try XMLDecoder.decode("""
+        <freecol-specification>
+          <unit-types>
+            <unit-type id="colonist" offence="1" defence="1"/>
+            <unit-type id="model.unit.freeColonist" extends="colonist"/>
+          </unit-types>
+          <roles>
+            <role id="model.role.soldier">
+              <modifier id="model.modifier.offence" type="additive" value="2" index="30"/>
+            </role>
+          </roles>
+        </freecol-specification>
+        """))
+
+        XCTAssertEqual(specification.baseCombatStrength(forUnitType: "model.unit.freeColonist", offence: true), 1)
+        XCTAssertEqual(specification.baseCombatStrength(forUnitType: "model.unit.freeColonist", offence: false), 1)
+        XCTAssertEqual(
+            specification.roleTypes["model.role.soldier"]?.combatModifiers.first?.value,
+            2
+        )
     }
 
     func testColonyGrowthEstimateCombinesFoodSourcesAndConsumption() throws {
@@ -2776,6 +2865,16 @@ final class FreeColProtocolTests: XCTestCase {
                 location="tile-0-0" movesLeft="3" state="ACTIVE"/>
           <unit id="unit-2" owner="player-2" unitType="model.unit.freeColonist"
                 location="tile-1-0" movesLeft="3" state="ACTIVE"/>
+          <freecol-specification id="spec">
+            <modifiers>
+              <modifier id="model.modifier.attackBonus" type="percentage" value="50" index="50"/>
+              <modifier id="model.modifier.fortified" type="percentage" value="50" index="50"/>
+            </modifiers>
+            <unit-types>
+              <unit-type id="model.unit.soldier" offence="3" defence="2"/>
+              <unit-type id="model.unit.freeColonist" offence="0" defence="1"/>
+            </unit-types>
+          </freecol-specification>
         </game>
         """)
         try game.load(from: parsed)
@@ -2790,7 +2889,9 @@ final class FreeColProtocolTests: XCTestCase {
         }
         state.requestAttack(onTile: "tile-1-0", ranged: false)
         XCTAssertTrue(state.showAttackConfirmation)
-        XCTAssertTrue(state.pendingAttackSummary.contains("Melee"))
+        XCTAssertEqual(state.pendingCombatPreview?.kind, "Nahkampf")
+        XCTAssertEqual(state.pendingCombatPreview?.attacker.baseStrength, 3)
+        XCTAssertEqual(state.pendingCombatPreview?.defender.baseStrength, 1)
         state.dismissPendingAttack()
         XCTAssertFalse(state.showAttackConfirmation)
     }

@@ -215,6 +215,15 @@ struct MapView: View {
             guard let tileId = colony.tileId, colonyByTile[tileId] == nil else { continue }
             colonyByTile[tileId] = colony
         }
+        // A settlement can be present as a nested tile object without a tile
+        // location on its own model object (notably in partial server updates).
+        // Use the tile's settlement reference as a fallback so its label and
+        // other tile-based UI remain available.
+        for tile in tiles where colonyByTile[tile.id] == nil {
+            guard let settlementId = tile.settlement,
+                  let colony = game.colonies[settlementId] else { continue }
+            colonyByTile[tile.id] = colony
+        }
 
         return RenderData(
             tiles: tiles,
@@ -312,9 +321,11 @@ struct MapView: View {
                                     width: width, height: height
                                 ))
                             }
-                            // Explored but not currently visible: dim like the Java RescaleOp(0.8).
+                            // Explored but not currently visible: keep the terrain
+                            // recognizable, but make fog clearly visible over the
+                            // detailed land textures as well as over water.
                             if isDimmed {
-                                ctx.fill(path, with: .color(.black.opacity(0.2)))
+                                ctx.fill(path, with: .color(.black.opacity(0.4)))
                             }
 
                             if state.showMapGrid {
@@ -348,6 +359,16 @@ struct MapView: View {
                                     ctx.fill(marker, with: .color(.white))
                                     ctx.stroke(marker, with: .color(.black), lineWidth: 1)
                                 }
+                            }
+
+                            if let settlement = data.colonyByTile[tile.id],
+                               settlement.hasMission,
+                               (data.visibleTileIds.contains(tile.id) || !state.showFogOfWar) {
+                                drawMissionMarker(
+                                    at: origin,
+                                    ownerColor: settlement.missionaryOwner.flatMap { data.playerColorById[$0] } ?? .white,
+                                    context: &ctx
+                                )
                             }
 
                             // --- Units ---
@@ -426,7 +447,10 @@ struct MapView: View {
 
                         // Labels follow all sprites, prioritize the selection,
                         // and respect visibility and collisions.
-                        drawSettlementLabels(on: visibleTiles, data: data, context: &ctx)
+                        drawSettlementLabels(on: visibleTiles,
+                                             viewport: CGRect(origin: camera, size: size),
+                                             data: data,
+                                             context: &ctx)
 
                         if state.mapOverlay == .tradeRoutes {
                             let routeColors: [Color] = [.cyan, .orange, .pink, .green, .purple]
@@ -661,6 +685,7 @@ struct MapView: View {
     }
 
     private func drawSettlementLabels(on visibleTiles: [Tile],
+                                      viewport: CGRect,
                                       data: RenderData,
                                       context: inout GraphicsContext) {
         guard state.showSettlementLabels else { return }
@@ -671,7 +696,6 @@ struct MapView: View {
 
         let candidates = visibleTiles.compactMap { tile -> (Tile, Colony, Bool)? in
             guard tile.type != nil,
-                  !state.showFogOfWar || data.visibleTileIds.contains(tile.id),
                   let colony = data.colonyByTile[tile.id] else { return nil }
             let isPriority = priorityTileIds.contains(tile.id)
             return (tile, colony, isPriority)
@@ -703,17 +727,33 @@ struct MapView: View {
             let nameWidth = max(titleSize.width, constructionSize.width) + padding * 2
             let nameHeight = titleSize.height + padding * 2
                 + (construction == nil ? 0 : constructionSize.height + gap)
-            let rect = CGRect(x: origin.x - (badgeWidth + gap + nameWidth) / 2,
-                              y: origin.y + tileH * 0.3,
-                              width: badgeWidth + gap + nameWidth, height: nameHeight)
-            guard !occupiedRects.contains(where: { $0.insetBy(dx: -4, dy: -2).intersects(rect) }) else {
-                continue
+            let labelWidth = badgeWidth + gap + nameWidth
+            let rect = CGRect(x: min(max(origin.x - labelWidth / 2, viewport.minX),
+                                     max(viewport.minX, viewport.maxX - labelWidth)),
+                              y: min(max(origin.y + tileH * 0.3, viewport.minY),
+                                     max(viewport.minY, viewport.maxY - nameHeight)),
+                              width: labelWidth, height: nameHeight)
+            let alternatives = [
+                rect.offsetBy(dx: 0, dy: -(nameHeight + gap)),
+                rect.offsetBy(dx: 0, dy: nameHeight + tileH * 0.3),
+                rect.offsetBy(dx: labelWidth / 2 + gap, dy: 0),
+                rect.offsetBy(dx: -(labelWidth / 2 + gap), dy: 0),
+            ].map { candidate in
+                CGRect(x: min(max(candidate.minX, viewport.minX), max(viewport.minX, viewport.maxX - labelWidth)),
+                       y: min(max(candidate.minY, viewport.minY), max(viewport.minY, viewport.maxY - nameHeight)),
+                       width: labelWidth, height: nameHeight)
             }
-            occupiedRects.append(rect)
+            let placements = [rect] + alternatives
+            let labelRect = placements.first { candidate in
+                !occupiedRects.contains(where: { $0.insetBy(dx: -4, dy: -2).intersects(candidate) })
+            } ?? rect
+            // Prefer a collision-free nearby position, but never hide a
+            // settlement name just because the map is crowded.
+            occupiedRects.append(labelRect)
             let background = colony.owner.flatMap { data.playerColorById[$0] } ?? .gray
-            let badge = CGRect(x: rect.minX, y: rect.minY, width: badgeWidth,
+            let badge = CGRect(x: labelRect.minX, y: labelRect.minY, width: badgeWidth,
                                height: titleSize.height + padding * 2)
-            let nameRect = CGRect(x: badge.maxX + gap, y: rect.minY, width: nameWidth, height: nameHeight)
+            let nameRect = CGRect(x: badge.maxX + gap, y: labelRect.minY, width: nameWidth, height: nameHeight)
             context.fill(Path(roundedRect: badge, cornerRadius: 3), with: .color(background.opacity(0.7)))
             context.fill(Path(roundedRect: nameRect, cornerRadius: 3), with: .color(background.opacity(0.7)))
             context.draw(population, at: CGPoint(x: badge.midX, y: badge.midY))
@@ -758,6 +798,31 @@ struct MapView: View {
                           width: tileW, height: tileH)
         TileImprovementRenderer.draw(tile.improvements, in: &context, rect: rect,
                                      zoomScale: CGFloat(state.mapZoomScale))
+    }
+
+    private func drawMissionMarker(at origin: CGPoint, ownerColor: Color, context: inout GraphicsContext) {
+        let diameter = max(12, tileW * 0.22)
+        let center = CGPoint(x: origin.x + tileW * 0.2, y: origin.y - tileH * 0.34)
+        let badge = CGRect(x: center.x - diameter / 2, y: center.y - diameter / 2,
+                           width: diameter, height: diameter)
+        context.fill(Path(ellipseIn: badge), with: .color(ownerColor))
+        context.stroke(Path(ellipseIn: badge), with: .color(.white), lineWidth: max(1, tileW * 0.018))
+
+        let arm = diameter * 0.28
+        let stem = diameter * 0.11
+        let cross = Path { path in
+            path.addRoundedRect(
+                in: CGRect(x: center.x - stem / 2, y: center.y - arm,
+                           width: stem, height: arm * 2),
+                cornerSize: CGSize(width: stem / 2, height: stem / 2)
+            )
+            path.addRoundedRect(
+                in: CGRect(x: center.x - arm, y: center.y - arm * 0.42,
+                           width: arm * 2, height: stem),
+                cornerSize: CGSize(width: stem / 2, height: stem / 2)
+            )
+        }
+        context.fill(cross, with: .color(.white))
     }
 
     private func fitSize(_ size: CGSize, into maxSize: CGSize) -> CGSize {

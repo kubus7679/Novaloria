@@ -132,6 +132,8 @@ struct NewGameConfiguration {
     let installation: URL
     let difficulty: GameDifficulty
     let groups: [ParsedMessage]
+    var modContent: [ParsedMessage] = []
+    var activeMods: [FreeColMod] = []
     var labels: [String: String]
     let unitTypeIDs: Set<String>
     let roleIDs: Set<String>
@@ -161,7 +163,8 @@ struct NewGameConfiguration {
     static func load(
         installation: URL,
         difficulty: GameDifficulty,
-        language: InterfaceLanguage = .german
+        language: InterfaceLanguage = .german,
+        activeModIDs: Set<String> = []
     ) throws -> Self {
         let installation = installation.standardizedFileURL.resolvingSymlinksInPath()
         guard FileManager.default.isReadableFile(atPath: installation.appendingPathComponent("FreeCol.jar").path) else {
@@ -209,9 +212,35 @@ struct NewGameConfiguration {
         let template = levels.children.first { $0.attributes["id"] == "model.difficulty.custom" }
         let difficultyGroup = template.map { merge($0, selected) } ?? selected
         let labels = try loadLabels(installation: installation, language: language)
+        let availableMods = Dictionary(
+            uniqueKeysWithValues: FreeColMod.discover(installation: installation).map { ($0.id, $0) }
+        )
+        var modContent: [ParsedMessage] = []
+        var selectedMods: [FreeColMod] = []
+        var modUnitTypeIDs = Set<String>()
+        var modRoleIDs = Set<String>()
+        for id in activeModIDs.sorted() {
+            guard let mod = availableMods[id], mod.hasSpecification else { continue }
+            let xml = try mod.readSpecification()
+            let specification = try XMLDecoder.decode(xml)
+            guard specification.tag == "freecol-specification" else {
+                throw NewGameError.invalid(L10n.text("Ungültige Mod-Spezifikation: \(id)", table: "NewGameConfiguration"))
+            }
+            selectedMods.append(mod)
+            modContent += specification.children
+            for group in specification.children {
+                for child in group.children {
+                    guard let objectID = child.attributes["id"] else { continue }
+                    if child.tag == "unit-type" { modUnitTypeIDs.insert(objectID) }
+                    if child.tag == "role" { modRoleIDs.insert(objectID) }
+                }
+            }
+        }
         var result = Self(installation: installation, difficulty: difficulty,
-                          groups: [game, map, difficultyGroup], labels: labels,
-                          unitTypeIDs: unitTypeIDs, roleIDs: roleIDs, values: [:])
+                          groups: [game, map, difficultyGroup], modContent: modContent,
+                          activeMods: selectedMods, labels: labels,
+                          unitTypeIDs: unitTypeIDs.union(modUnitTypeIDs),
+                          roleIDs: roleIDs.union(modRoleIDs), values: [:])
         func validateIDs(_ node: ParsedMessage) throws {
             guard let id = node.attributes["id"], !id.isEmpty else {
                 throw NewGameError.invalid(L10n.text("Optionsdefinition ohne ID: \(node.tag)", table: "NewGameConfiguration"))
@@ -318,6 +347,6 @@ struct NewGameConfiguration {
         return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             XMLEncoder.encode(tag: "freecol-specification",
                               attributes: ["id": Self.rulesID, "extends": "freecol", "version": "0.120"],
-                              children: [options]) + "\n"
+                              children: modContent + [options]) + "\n"
     }
 }

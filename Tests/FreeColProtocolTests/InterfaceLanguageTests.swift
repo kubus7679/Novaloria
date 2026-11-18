@@ -63,18 +63,19 @@ final class InterfaceLanguageTests: XCTestCase {
         }
     }
 
-    func testColonyEfficiencyLabelsFollowSelectedLanguage() {
+    func testColonyRebelTooltipLabelsFollowSelectedLanguage() {
         let previousLanguage = LocalizationSettings.shared.language
         defer { LocalizationSettings.shared.language = previousLanguage }
 
-        for (language, nextBonus, populationBand) in [
-            (InterfaceLanguage.english, "Next bonus", "At 3–5 colonists"),
-            (.spanish, "Siguiente bonificación", "Con 3–5 colonos"),
-            (.german, "Nächster Bonus", "Bei 3–5 Kolonisten"),
+        for (language, rebels, royalists, turns) in [
+            (InterfaceLanguage.english, "Rebels:", "Royalists:", "Turns: 6"),
+            (.spanish, "Rebeldes:", "Realistas:", "Turnos: 6"),
+            (.german, "Rebellen:", "Royalisten:", "Züge: 6"),
         ] {
             LocalizationSettings.shared.language = language
-            XCTAssertEqual(L10n.text("Nächster Bonus", table: "ColonyPanelView"), nextBonus)
-            XCTAssertEqual(L10n.text("Bei \(3)–\(5) Kolonisten", table: "ColonyPanelView"), populationBand)
+            XCTAssertEqual(L10n.text("Rebellen:", table: "ColonyPanelView"), rebels)
+            XCTAssertEqual(L10n.text("Royalisten:", table: "ColonyPanelView"), royalists)
+            XCTAssertEqual(L10n.text("Züge: \(6)", table: "ColonyPanelView"), turns)
         }
     }
 
@@ -150,6 +151,8 @@ final class InterfaceLanguageTests: XCTestCase {
             ("Warten", "Warten", "Wait", "Esperar"),
             ("Wache", "Wache", "Sentry", "Centinela"),
             ("Einheitenbefehle", "Einheitenbefehle", "Unit orders", "Órdenes de la unidad"),
+            ("Feldinfo anzeigen", "Feldinfo anzeigen", "Show tile info", "Mostrar información de la casilla"),
+            ("Einheitenaktionen anzeigen", "Einheitenaktionen anzeigen", "Show unit actions", "Mostrar acciones de unidad"),
             ("Marschziel", "Marschziel", "Destination", "Destino"),
             ("Pionierarbeit", "Pionierarbeit", "Pioneer work", "Trabajo de pionero"),
             ("Angriff", "Angriff", "Attack", "Ataque"),

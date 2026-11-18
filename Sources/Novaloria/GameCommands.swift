@@ -208,7 +208,10 @@ struct GameCommands: Commands {
                 state.selectPreviousUnit()
             }
                 .disabled(state.cyclingLocalUnits.isEmpty)
-            Button(L10n.text("Nächste Einheit ohne Befehl", table: "GameCommands")) {
+            commandButton(
+                L10n.text("Nächste Einheit ohne Befehl", table: "GameCommands"),
+                shortcutDescription: "Nächste Einheit ohne Befehl"
+            ) {
                 state.selectAdjacentUnit(forward: true, onlyAwaitingOrders: true)
             }
             .disabled(state.unitsAwaitingOrders.isEmpty)

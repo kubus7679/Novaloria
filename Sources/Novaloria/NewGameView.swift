@@ -7,6 +7,7 @@ struct NewGameView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("freecol.javaInstallation") private var installationPath = ""
     @AppStorage("freecol.javaExecutable") private var javaPath = "/usr/bin/java"
+    @AppStorage(FreeColModSelection.storageKey) private var activeModIDsData = "[]"
     @State private var difficulty: GameDifficulty = .medium
     @State private var configuration: NewGameConfiguration?
     @State private var selectedSection: String?
@@ -15,6 +16,7 @@ struct NewGameView: View {
     @State private var seed = ""
     @State private var error: String?
     @State private var confirmDisconnect = false
+    @State private var showMods = false
     let onCreated: (Int) -> Void
 
     var body: some View {
@@ -53,6 +55,19 @@ struct NewGameView: View {
                             Button(L10n.text("Optionen laden", table: "NewGameView")) { loadOptions() }
                             Text(L10n.text("Vorlagenwechsel setzt alle Optionen zurück.", table: "NewGameView"))
                                 .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    GridRow {
+                        Text(L10n.text("Mods:", table: "NewGameView"))
+                        HStack {
+                            Button(L10n.text("Mods verwalten…", table: "NewGameView"), systemImage: "puzzlepiece.extension") {
+                                showMods = true
+                            }
+                            .buttonStyle(.bordered)
+                            Text(activeModSummary)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
                         }
                     }
                 }
@@ -132,6 +147,9 @@ struct NewGameView: View {
             if configuration?.installation != selected { configuration = nil }
             error = nil
         }
+        .onChange(of: activeModIDsData) { _, _ in
+            if !installationPath.isEmpty { loadOptions() }
+        }
         .onChange(of: difficulty) { _, _ in
             if configuration != nil { loadOptions() }
         }
@@ -149,6 +167,9 @@ struct NewGameView: View {
             Button(L10n.text("Neue Partie erstellen", table: "NewGameView"), role: .destructive) { createGame() }
         } message: {
             Text(L10n.text("Die aktuelle Verbindung wird getrennt. Ein von dieser App gestarteter Server wird dabei beendet.", table: "NewGameView"))
+        }
+        .sheet(isPresented: $showMods) {
+            ModsView()
         }
     }
 
@@ -208,7 +229,8 @@ struct NewGameView: View {
     private func loadOptions() {
         do {
             let loaded = try NewGameConfiguration.load(installation: URL(fileURLWithPath: NSString(string: installationPath).expandingTildeInPath),
-                                                       difficulty: difficulty, language: localizationSettings.language)
+                                                       difficulty: difficulty, language: localizationSettings.language,
+                                                       activeModIDs: selectedModIDs)
             configuration = loaded
             selectedSection = loaded.sections.first?.id
             error = nil
@@ -216,6 +238,21 @@ struct NewGameView: View {
             configuration = nil
             self.error = error.localizedDescription
         }
+    }
+
+    private var selectedModIDs: Set<String> {
+        Set((try? JSONDecoder().decode([String].self, from: Data(activeModIDsData.utf8))) ?? [])
+    }
+
+    private var activeModSummary: String {
+        let path = NSString(string: installationPath).expandingTildeInPath
+        let installation = path.isEmpty ? nil : URL(fileURLWithPath: path)
+        let names = FreeColMod.discover(installation: installation)
+            .filter { selectedModIDs.contains($0.id) && $0.hasSpecification }
+            .map(\.name)
+        return names.isEmpty
+            ? L10n.text("Keine Regel-Mods ausgewählt", table: "NewGameView")
+            : names.joined(separator: ", ")
     }
 
     private func exportOptions() {

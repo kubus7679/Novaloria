@@ -18,7 +18,8 @@ struct JavaServerLaunch {
         let xml = try configuration.specificationXML()
         let fm = FileManager.default
         let directory = try makeRunDirectory(root: root)
-        let data = try makeDataDirectory(installation: configuration.installation, in: directory)
+        let data = try makeDataDirectory(installation: configuration.installation, in: directory,
+                                         activeMods: configuration.activeMods)
         let rules = data.appendingPathComponent("rules")
         let customRules = rules.appendingPathComponent(NewGameConfiguration.rulesID)
         try fm.createDirectory(at: customRules, withIntermediateDirectories: true)
@@ -31,6 +32,9 @@ struct JavaServerLaunch {
                                         name: name, port: port,
                                         rules: ["--rules", NewGameConfiguration.rulesID,
                                                 "--difficulty", configuration.difficulty.argument])
+        // FreeCol defaults to only four available European nations, which
+        // leaves Sweden, Denmark, Portugal, and Russia unavailable in a new game.
+        arguments += ["--europeans", "8"]
         if !seed.isEmpty { arguments += ["--seed", seed] }
         return try finish(directory: directory, optionsFile: optionsFile, java: java, port: port, arguments: arguments)
     }
@@ -81,15 +85,30 @@ struct JavaServerLaunch {
         return directory
     }
 
-    private static func makeDataDirectory(installation: URL, in directory: URL) throws -> URL {
+    private static func makeDataDirectory(installation: URL, in directory: URL,
+                                          activeMods: [FreeColMod] = []) throws -> URL {
         let fm = FileManager.default
         let data = directory.appendingPathComponent("freecol-data")
         let rules = data.appendingPathComponent("rules")
         try fm.createDirectory(at: rules, withIntermediateDirectories: true)
+        let mods = data.appendingPathComponent("mods", isDirectory: true)
+        try fm.createDirectory(at: mods, withIntermediateDirectories: true)
         let originalData = installation.appendingPathComponent("data")
         for entry in try fm.contentsOfDirectory(at: originalData, includingPropertiesForKeys: nil)
-            where entry.lastPathComponent != "rules" {
+            where entry.lastPathComponent != "rules" && entry.lastPathComponent != "mods" {
             try fm.createSymbolicLink(at: data.appendingPathComponent(entry.lastPathComponent), withDestinationURL: entry)
+        }
+        let originalMods = originalData.appendingPathComponent("mods", isDirectory: true)
+        if let installedMods = try? fm.contentsOfDirectory(at: originalMods, includingPropertiesForKeys: nil) {
+            for mod in installedMods {
+                try fm.createSymbolicLink(at: mods.appendingPathComponent(mod.lastPathComponent), withDestinationURL: mod)
+            }
+        }
+        for mod in activeMods {
+            let name = mod.isArchive ? mod.location.lastPathComponent : mod.id
+            let destination = mods.appendingPathComponent(name)
+            guard !fm.fileExists(atPath: destination.path) else { continue }
+            try fm.createSymbolicLink(at: destination, withDestinationURL: mod.location)
         }
         for entry in try fm.contentsOfDirectory(at: originalData.appendingPathComponent("rules"),
                                                includingPropertiesForKeys: nil) {

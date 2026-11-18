@@ -109,6 +109,10 @@ public struct Colony: GameObject, PartiallyUpdatable, Identifiable {
     public var mostHated: String?
     /// Alarm level per player id.
     public var alarm: [String: Int] = [:]
+    /// Whether a European missionary has established a mission at this native settlement.
+    public var hasMission: Bool = false
+    /// Owner of the missionary, when the server includes it in the settlement update.
+    public var missionaryOwner: String?
 
     public init(id: String, attributes: Attributes, children: [ParsedMessage], game: Game) throws {
         self.id = id
@@ -155,6 +159,11 @@ public struct Colony: GameObject, PartiallyUpdatable, Identifiable {
             case "alarm":
                 if let playerId = child.attributes["player"] {
                     alarm[playerId] = child.attributes.int("value")
+                }
+            case "missionary":
+                if let missionary = child.children.first(where: { $0.tag == "unit" }) {
+                    hasMission = true
+                    missionaryOwner = missionary.attributes["owner"]
                 }
             default:
                 break

@@ -4,13 +4,16 @@ import FreeColGame
 /// Bottom-right unit/tile/end-of-turn info panel, modelled on the Java client's InfoPanel.
 struct InfoPanelView: View {
     @Environment(GameState.self) private var state
+    var showsSelectedTileInfo = false
     @State private var showUnitDetails = false
     @State private var showLandPurchaseSheet = false
     @State private var landPurchaseTileId: String?
 
     var body: some View {
         Group {
-            if let unit = state.selectedUnit {
+            if showsSelectedTileInfo, let tile = selectedTile {
+                tileContent(tile)
+            } else if let unit = state.selectedUnit {
                 unitContent(unit)
             } else if let tile = selectedTile {
                 tileContent(tile)

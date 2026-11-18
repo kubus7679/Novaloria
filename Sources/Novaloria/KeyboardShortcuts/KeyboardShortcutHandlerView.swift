@@ -32,7 +32,7 @@ struct KeyboardShortcutHandlerView<Content: View>: View {
 
         guard let key = keyString(for: event) else { return false }
 
-        let handled = handleSpecialKeys(key, modifierFlags: event.modifierFlags)
+        let handled = handleSpecialKeys(key)
         if handled {
             return true
         }
@@ -52,7 +52,7 @@ struct KeyboardShortcutHandlerView<Content: View>: View {
         }
     }
     
-    private func handleSpecialKeys(_ key: String, modifierFlags: NSEvent.ModifierFlags) -> Bool {
+    private func handleSpecialKeys(_ key: String) -> Bool {
         switch key.lowercased() {
         case "escape":
             // Close panels
@@ -63,15 +63,6 @@ struct KeyboardShortcutHandlerView<Content: View>: View {
             if gameState.isChoosingMoveDestination {
                 gameState.cancelChoosingMoveDestination()
                 return true
-            }
-            
-        case "enter":
-            if modifierFlags.contains(.control) {
-                // Ctrl+Enter = End turn
-                if gameState.canEndTurn {
-                    gameState.requestEndTurn()
-                    return true
-                }
             }
             
         default:
