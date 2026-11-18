@@ -159,6 +159,7 @@ struct GameView: View {
             )
         ) {
             if let selectedColony = state.selectedColony, let game = state.game {
+                let screenSize = NSScreen.main?.visibleFrame.size ?? NSSize(width: 1600, height: 900)
                 VStack(spacing: 0) {
                     HStack {
                         Menu {
@@ -312,8 +313,8 @@ struct GameView: View {
                     .id(selectedColony.id)
                 }
                 .frame(
-                    minWidth: 1000, idealWidth: 1280, maxWidth: 1600,
-                    minHeight: 640, idealHeight: 800, maxHeight: 1000)
+                    minWidth: 1000, idealWidth: screenSize.width, maxWidth: .infinity,
+                    minHeight: 640, idealHeight: screenSize.height, maxHeight: .infinity)
             }
         }
         .sheet(

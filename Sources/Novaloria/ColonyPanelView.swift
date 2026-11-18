@@ -197,6 +197,7 @@ struct ColonyPanelView: View {
 
     var body: some View {
         GeometryReader { geometry in
+            let leftColumnWidth = min(max(geometry.size.width * 0.42, 400), 760)
             VStack(alignment: .leading, spacing: 10) {
                 statusBar
                 if geometry.size.width >= 980 && geometry.size.height >= 560 {
@@ -208,13 +209,13 @@ struct ColonyPanelView: View {
                                 constructionCard
                             }
                         }
-                        .frame(width: 320)
+                        .frame(width: leftColumnWidth)
                         ScrollView { buildingWorkplacesCard }
                             .frame(maxWidth: .infinity)
                     }
                     .frame(maxHeight: .infinity)
                     .accessibilityIdentifier("colony-workspace")
-                    alignedTransportRow
+                    alignedTransportRow(leftColumnWidth: leftColumnWidth)
                     warehouseCard
                 } else {
                     ScrollView {
@@ -543,11 +544,12 @@ struct ColonyPanelView: View {
         }
     }
 
-    private var alignedTransportRow: some View {
+    private func alignedTransportRow(leftColumnWidth: CGFloat) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            unassignedWorkersRow.frame(width: 320, alignment: .leading)
-            freightCard.frame(minWidth: 480)
+            unassignedWorkersRow.frame(width: leftColumnWidth, alignment: .leading)
+            freightCard.frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(maxWidth: .infinity)
     }
 
     private var transportRow: some View {
@@ -712,7 +714,7 @@ struct ColonyPanelView: View {
     private func warehouseGoods(_ item: (id: String, label: String, amount: Int)) -> some View {
         let flow = item.id == "model.goods.food" ? foodBalance : estimatedProduction.first { $0.id == item.id }
         return HStack(spacing: 6) {
-            goodsIcon(item.id, size: 25)
+            goodsIcon(item.id, size: 29)
             VStack(alignment: .leading, spacing: 3) {
                 Text(item.label).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                 HStack(spacing: 5) {
@@ -883,7 +885,8 @@ struct ColonyPanelView: View {
     }
 
     private func workerSelectionChip(_ worker: FreeColGame.Unit) -> some View {
-        Button {
+        let workerName = worker.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyPanelView")
+        return Button {
             onSelectWorker(worker.id)
         } label: {
             HStack(spacing: 6) {
@@ -893,13 +896,14 @@ struct ColonyPanelView: View {
                     Image(nsImage: image)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 25, height: 30)
-                    .accessibilityHidden(true)
+                        .frame(width: 38, height: 46)
+                        .accessibilityHidden(true)
                 } else {
                     Image(systemName: "person.fill")
+                        .font(.title2)
                 }
-                Text(worker.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyPanelView"))
-                    .font(.caption)
+                Text(workerName)
+                    .font(.callout)
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
@@ -921,9 +925,7 @@ struct ColonyPanelView: View {
                 selectedWorkerContextMenu
             }
         }
-        .help(worker.id == selectedWorkerUnitId
-            ? L10n.text("Rechtsklick für Ausbildungsaktionen", table: "ColonyPanelView")
-            : L10n.text("\(worker.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyPanelView")) auswählen", table: "ColonyPanelView"))
+        .help(workerName)
         .accessibilityIdentifier("colony-unassigned-worker-\(worker.id)")
     }
 
@@ -1009,7 +1011,7 @@ struct ColonyPanelView: View {
                 .foregroundStyle(.secondary)
 
                 LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 160), alignment: .top)],
+                    columns: [GridItem(.adaptive(minimum: 220), alignment: .top)],
                     alignment: .leading,
                     spacing: 8
                 ) {
@@ -1042,19 +1044,20 @@ struct ColonyPanelView: View {
                     Image(nsImage: image)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 44, height: 44)
+                        .frame(width: 64, height: 64)
                         .accessibilityHidden(true)
                 } else {
                     Image(systemName: "building.2.crop.circle")
                         .font(.title2)
                         .foregroundStyle(.secondary)
-                        .frame(width: 44, height: 44)
+                        .frame(width: 64, height: 64)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(workplace.label)
                         .font(.callout.weight(.semibold))
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(L10n.text("\(workplace.workers.count)/\(workplace.capacity) Arbeiter", table: "ColonyPanelView"))
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
@@ -1062,7 +1065,7 @@ struct ColonyPanelView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .frame(height: 44, alignment: .leading)
+            .frame(minHeight: 68, alignment: .leading)
             .help(workplace.label)
 
             Group {
@@ -1072,7 +1075,7 @@ struct ColonyPanelView: View {
                             Image(nsImage: image)
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 22, height: 22)
+                                .frame(width: 42, height: 42)
                                 .accessibilityHidden(true)
                         } else {
                             Image(systemName: "shippingbox.fill")
@@ -1080,7 +1083,7 @@ struct ColonyPanelView: View {
                         }
                         Spacer(minLength: 2)
                         Text(L10n.text("+\(workplace.productionPerTurn) / Runde", table: "ColonyPanelView"))
-                            .font(.caption.monospacedDigit())
+                            .font(.callout.monospacedDigit())
                             .foregroundStyle(workplace.productionPerTurn > 0 ? .green : .secondary)
                             .fixedSize()
                     }
@@ -1100,7 +1103,7 @@ struct ColonyPanelView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .frame(height: 26, alignment: .leading)
+            .frame(height: 44, alignment: .leading)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 5) {
@@ -1115,22 +1118,23 @@ struct ColonyPanelView: View {
                                     Image(nsImage: image)
                                         .resizable()
                                         .scaledToFit()
-                                        .frame(width: 25, height: 30)
+                                        .frame(width: 46, height: 58)
                                         .accessibilityHidden(true)
                                 } else {
                                     Image(systemName: "person.fill")
-                                        .frame(width: 25, height: 25)
+                                        .font(.title2)
+                                        .frame(width: 46, height: 46)
                                 }
                                 if let progress = workplace.educationProgress.first(where: {
                                     $0.id == worker.id
                                 }) {
                                     Text("\(progress.remainingTurns)")
-                                        .font(.system(size: 9).monospacedDigit())
+                                        .font(.caption.monospacedDigit())
                                         .foregroundStyle(.secondary)
                                 }
                             }
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
                             .background(
                                 worker.id == selectedWorkerUnitId
                                     ? Color.accentColor.opacity(0.2)
@@ -1173,13 +1177,13 @@ struct ColonyPanelView: View {
                             .foregroundStyle(.tertiary)
                     }
                 }
-                .frame(height: 34, alignment: .leading)
+                .frame(minHeight: 66, alignment: .leading)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(9)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .frame(height: 142, alignment: .topLeading)
+        .frame(minHeight: 206, alignment: .topLeading)
         .background(
             Color(NSColor.controlBackgroundColor).opacity(0.48),
             in: RoundedRectangle(cornerRadius: 8)
