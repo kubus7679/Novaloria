@@ -1,4 +1,8 @@
 .build/
+build/art/
+Tools/art/.venv/
+Tools/art/.pytest_cache/
+Tools/art/.ruff_cache/
 .swiftpm/xcode/xcuserdata/
 .swiftpm/xcode/package.xcworkspace/xcuserdata/
 *.xcuserstate

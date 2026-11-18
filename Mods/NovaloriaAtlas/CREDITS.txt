@@ -1,0 +1,10 @@
+Novaloria Atlas
+===============
+
+All images were rendered with Blender from procedurally generated models and materials
+created for this mod. The look is inspired by the Civilization IV: Colonization mod
+"We the People"; the mod contains no files from it or from Civilization IV.
+
+Some layouts (tile footprints, sprite anchoring) follow the original FreeCol graphics,
+which are licensed under the GNU General Public License. This mod is distributed under
+the same license (see COPYING).

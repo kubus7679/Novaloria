@@ -15,6 +15,7 @@
 "Neues Spiel erstellen" = "Crear una partida nueva";
 "Optionen laden" = "Cargar opciones";
 "Optionsdatei exportieren…" = "Exportar archivo de opciones…";
+"Optionsdatei importieren…" = "Importar archivo de opciones…";
 "Ordner mit FreeCol.jar und data" = "Carpeta que contiene FreeCol.jar y data";
 "Partie:" = "Partida:";
 "Port:" = "Puerto:";

@@ -4,7 +4,7 @@
     "category": "concepts",
     "title": "Impuestos",
     "summary": "",
-    "text": "Al comienzo del juego, el monarca no impondrá impuestos sobre nuestros ingresos. Con el tiempo, sin embargo, el monarca irá aumentando los impuestos sobre las ventas por una serie de razones que pueden resultar más o menos convincentes. Cada vez que el monarca se proponga aumentar los impuestos, podremos rechazarlo. En ese caso, un determinado tipo de bienes va ser boicoteado, lo que significa que ya no podremos comprar o vender ese tipo de bienes en Europa, y hasta cien elementos de ese tipo de bienes serán destruidos por colonos furiosos en una de nuestras colonias.\n\nPodemos levantar el boicot pagando nuestros atrasos de impuestos (una empresa costosa) o mediante la elección de Jacob Fugger para el Congreso Continental.",
+    "text": "El monarca puede establecer impuestos sobre el comercio y aumentarlos con el tiempo. Rechazar un aumento puede provocar el boicot de ciertos bienes: según esas reglas, ya no se podrán comprar ni vender en Europa.\n\nEl boicot puede terminar al pagar los atrasos de impuestos o mediante otra opción prevista por las reglas. Las tasas y consecuencias dependen del reglamento activo.",
     "facts": [],
     "related": [
       "model.foundingFather.jacobFugger"
@@ -16,7 +16,7 @@
     "category": "concepts",
     "title": "Eficiencia",
     "summary": "",
-    "text": "La eficiencia de nuestras colonias depende de nuestro apoyo a la idea de independencia. Si el 50% de los colonos están a favor de la causa rebelde, a la colonia se le concederá un bono de producción +1. Tan pronto como el 100% de los colonos se vuelven rebeldes, el bono de producción aumentara a +2.\n\nPor otro lado, si el número de leales al rey supera el límite de mal gobierno, la colonia incurre en una pena de producción -1. Si el número de leales al rey excede el límite de muy mal gobierno, la pena de producción aumentara hasta -2. Estos dos límites dependen del nivel de dificultad y se pueden comprobar en el informe de nivel de dificultad.\n\nA fin de aumentar la eficiencia de una colonia, necesitaremos reducir su población, o producir más campanas de la libertad.",
+    "text": "La situación política de una colonia afecta a su producción. El apoyo a la independencia puede otorgar bonificaciones, mientras que una población mayoritariamente leal al rey puede reducirla. Los umbrales exactos dependen de la dificultad y del reglamento activo; se muestran en los datos siguientes.\n\nLas campanas de la libertad cambian el apoyo político según las reglas, y la población de la colonia también afecta a su eficiencia.",
     "facts": [],
     "related": [
       "model.goods.bells"
@@ -28,7 +28,7 @@
     "category": "concepts",
     "title": "Educación",
     "summary": "",
-    "text": "La forma más eficaz para educar a nuestros colonos es la construcción de una escuela y asignar una unidad experta como un maestro. El maestro va a convertir un colono libre en un experto del mismo tipo. Los maestros también son capaces de actualizar criminales menores en siervos aprendices, y a los sirvientes en colonos libres.\n\nAlgunas habilidades también se pueden aprender de los nativos, mediante el envío de un colono libre o sirviente aprendiz para vivir en un poblado nativo por un turno. Y algunas habilidades también pueden ser aprendidas por la experiencia, al poner un colono libre para trabajar en una casilla de la colonia. Los colonos libres que trabajan en los campos y bosques de los alrededores de nuestras colonias acumularan hasta 200 puntos de experiencia, lo que supone un cuarto porcentaje en la probabilidad de ser ascendidos.",
+    "text": "Las escuelas permiten asignar colonos experimentados como maestros. Los tipos de unidad que pueden formar y la duración de la formación dependen de las reglas activas y de la escuela disponible.\n\nTambién se pueden aprender habilidades trabajando o en asentamientos indígenas. Los requisitos, la experiencia y los ascensos posibles varían según la unidad y el reglamento.",
     "facts": [],
     "related": [
       "model.building.schoolhouse",
@@ -43,7 +43,7 @@
     "category": "concepts",
     "title": "Fortificación",
     "summary": "",
-    "text": "Las unidades pueden fortificarse ellas mismas en un casilla (construyendo trincheras y empalizadas temporales) para incrementar su capacidad de defensa. Fortificar una posición completamente lleva un turno. Además, una unidad fortificada no puede ser emboscada, y la artillería fortificada que lo esté no se considera \"en terreno abierto\" aunque atacar provocará daños en las fortificaciones. Esta acción sólo da una bonificación defensiva de combate cuando no hay otras características defensivas del terreno, así que no proporcionara ninguna cuando se realice en montañas o en una colonia que tenga un fuerte o fortaleza.",
+    "text": "Las unidades pueden usar la orden de fortificarse para asegurar su posición. La duración, la protección y las bonificaciones de combate dependen de la unidad, el terreno y el reglamento activo. Otras defensas del terreno o de la colonia pueden cambiar el beneficio adicional.",
     "facts": [],
     "related": [],
     "icon": null
@@ -53,7 +53,7 @@
     "category": "concepts",
     "title": "Independencia",
     "summary": "",
-    "text": "Inicias el juego como un explorador con un puñado de unidades a tu disposición. El monarca espera establecer una colonia en el Nuevo Mundo y llevarse tesoros y bienes exóticos a su puerto de origen. Sin embargo, nosotros tenemos planes diferentes: deseos de establecer una nación independiente.\n\nA fin de declarar la independencia, debemos convencer al menos al 50% de la población de nuestras colonias. Pudiendo hacerlo mediante la producción de campanas de la libertad, que también aumentan la eficiencia de nuestras colonias.\n\nComo podemos imaginar, el monarca no permitirá que eso ocurra fácilmente. Después de declarar la independencia, tendremos que luchar y destruir la Fuerza Real Expedicionaria (FRE). Si la Fuerza Real Expedicionaria controla en alguna ocasión todas nuestras colonias costeras, o al menos el 90% de nuestra población, nuestra apuesta por la independencia fracasará.",
+    "text": "Un objetivo posible es independizar las colonias de la metrópoli. Las campanas de la libertad y el apoyo político de la población influyen; las reglas activas establecen las condiciones necesarias.\n\nLa declaración de independencia puede iniciar una guerra contra la Fuerza Expedicionaria Real. Las condiciones de victoria, la fuerza del ejército y las condiciones de derrota dependen de las reglas del juego.",
     "facts": [],
     "related": [
       "model.goods.bells",
@@ -67,7 +67,7 @@
     "category": "concepts",
     "title": "Fuerza Real Expedicionaria",
     "summary": "",
-    "text": "El monarca sabe mejor que no debe confiar en un montón de conquistadores harapientos y religiosos descontentos poco dispuestos a pagar impuestos y a ceder a las demandas justas de la corona. Por esta razón, el monarca mantiene una especial Fuerza Real Expedicionaria (FRE) lista para sofocar cualquier intento de declarar la independencia y de separarse de su país de origen.\n\nLa Fuerza Real Expedicionaria está parcialmente equilibrada con la Fuerza de Intervención, que será enviada por una potencia extranjera simpatizante con nuestra causa, siempre que podamos producir un número suficiente de campanas de la libertad. Cada cierto tiempo, se agregarán más unidades a la Fuerza Real Expedicionaria y a la Fuerza de Intervención.",
+    "text": "En las reglas clásicas, el monarca puede enviar una Fuerza Expedicionaria Real para oponerse a una declaración de independencia. Su composición y sus refuerzos dependen de la partida y de las reglas activas.\n\nLas fichas de unidad muestran los atributos vigentes de las fuerzas.",
     "facts": [],
     "related": [
       "colopedia.concepts.independence",
@@ -81,13 +81,63 @@
     "category": "concepts",
     "title": "Fuerza de Intervención",
     "summary": "",
-    "text": "Cualquier intento de nuestras colonias de declarar la independencia debilitará inevitablemente nuestro país de origen. Esto resulta de interés para los enemigos de nuestro país de origen. Por esta razón, uno de ellos enviará una Fuerza de Intervención de apoyo contra la Fuerza Real Expedicionaria en la Guerra de Independencia, siempre que podamos producir un número suficiente de campanas de la libertad.\n\nEn el transcurso del juego, la Fuerza de Intervención y la Fuerza Real Expedicionaria se reforzarán con unidades adicionales.",
+    "text": "Algunas reglas clásicas incluyen una Fuerza de Intervención que puede apoyar a los rebeldes durante la Guerra de Independencia. Su aparición, llegada y composición dependen de las reglas y del desarrollo de la partida.",
     "facts": [],
     "related": [
       "colopedia.concepts.independence",
       "colopedia.concepts.ref",
       "model.goods.bells"
     ],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.colonyDevelopment",
+    "category": "concepts",
+    "title": "Desarrollo de colonias",
+    "summary": "",
+    "text": "Una colonia conecta su centro, los terrenos cercanos y los edificios para formar una economía. Asigna colonos a puestos adecuados y compara los insumos y productos de los edificios con los datos del terreno y las mercancías.\n\nLos alimentos, los trabajadores disponibles, el almacén y los materiales de construcción influyen en el desarrollo. El reglamento activo determina los rendimientos y requisitos.",
+    "facts": [],
+    "related": ["model.goods.food", "model.goods.hammers", "model.unit.freeColonist"],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.productionChains",
+    "category": "concepts",
+    "title": "Cadenas de producción",
+    "summary": "",
+    "text": "Muchas mercancías se producen por etapas: se obtienen materias primas y se transforman en edificios adecuados. Cada centro de producción puede consumir unas mercancías y crear otras.\n\nConsulta los insumos, productos y modificadores del edificio, además del equipo y las habilidades de los trabajadores. Las cantidades mostradas proceden de la especificación activa.",
+    "facts": [],
+    "related": ["model.goods.sugar", "model.goods.rum", "model.goods.tobacco", "model.goods.cigars", "model.goods.cotton", "model.goods.cloth"],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.tradeAndMarket",
+    "category": "concepts",
+    "title": "Comercio y mercado",
+    "summary": "",
+    "text": "Las mercancías pueden trasladarse entre colonias, Europa y otros socios comerciales. Los precios del mercado responden a la oferta y la demanda; las importaciones, exportaciones, los impuestos y los boicots pueden afectar al comercio.\n\nLos datos de las mercancías muestran el precio y la cantidad de referencia del reglamento. El precio actual puede cambiar según las existencias reales del mercado.",
+    "facts": [],
+    "related": ["model.goods.rum", "model.goods.cigars", "colopedia.concepts.taxes"],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.exploration",
+    "category": "concepts",
+    "title": "Exploración",
+    "summary": "",
+    "text": "Las unidades exploradoras revelan zonas desconocidas y pueden descubrir terrenos, recursos y asentamientos. El movimiento, el alcance visual y las habilidades especiales varían según la unidad.\n\nUsa los datos de unidades y recursos para elegir un equipo de exploración. Los encuentros con asentamientos pueden dar lugar a comercio, conocimientos o consecuencias políticas.",
+    "facts": [],
+    "related": ["model.unit.seasonedScout", "model.resource.minerals", "model.resource.game"],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.indigenousRelations",
+    "category": "concepts",
+    "title": "Relaciones con los pueblos indígenas",
+    "summary": "",
+    "text": "Los asentamientos indígenas son actores independientes. Los encuentros pueden permitir comercio, intercambio de conocimientos, actividad misionera o conflictos; las acciones disponibles dependen de la unidad, las relaciones y el reglamento.\n\nConsulta las fichas de las unidades, funciones y naciones implicadas antes de acercarte a un asentamiento.",
+    "facts": [],
+    "related": ["model.role.missionary", "model.nation.iroquois", "colopedia.concepts.exploration"],
     "icon": null
   }
 ]

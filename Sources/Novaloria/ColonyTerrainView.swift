@@ -70,14 +70,18 @@ struct ColonyTerrainView: View {
                             }
                         } label: {
                             ZStack {
-                                if let image = TileImageCache.shared.terrainImage(forType: field.tile.type) {
+                                if let image = TileImageCache.shared.terrainImage(
+                                    forType: field.tile.type, x: field.tile.x, y: field.tile.y
+                                ) {
                                     Image(nsImage: image)
                                         .resizable()
                                         .frame(width: width, height: height)
                                 } else {
                                     Diamond().fill(.gray)
                                 }
-                                if let image = TileImageCache.shared.terrainOverlay(forType: field.tile.type) {
+                                if let image = TileImageCache.shared.terrainOverlay(
+                                    forType: field.tile.type, x: field.tile.x, y: field.tile.y
+                                ) {
                                     Image(nsImage: image)
                                         .resizable()
                                         .scaledToFit()

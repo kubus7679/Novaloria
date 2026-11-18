@@ -283,7 +283,9 @@ struct MapView: View {
                                 }
                                 continue
                             }
-                            if let nsImg = TileImageCache.shared.terrainImage(forType: tile.type) {
+                            if let nsImg = TileImageCache.shared.terrainImage(
+                                forType: tile.type, x: tile.x, y: tile.y
+                            ) {
                                 var clipped = ctx
                                 clipped.clip(to: path)
                                 clipped.draw(Image(nsImage: nsImg), in: tileRect)
@@ -292,11 +294,15 @@ struct MapView: View {
                             }
                             if ["model.tile.ocean", "model.tile.lake", "model.tile.highSeas", "model.tile.greatRiver"]
                                 .contains(tile.type ?? "") {
-                                for beach in TileImageCache.shared.beachImages(style: tile.style) {
+                                for beach in TileImageCache.shared.beachImages(
+                                    style: tile.style, x: tile.x, y: tile.y
+                                ) {
                                     ctx.draw(Image(nsImage: beach), in: tileRect)
                                 }
                             }
-                            if let overlay = TileImageCache.shared.terrainOverlay(forType: tile.type) {
+                            if let overlay = TileImageCache.shared.terrainOverlay(
+                                forType: tile.type, x: tile.x, y: tile.y
+                            ) {
                                 let height = tileW * overlay.size.height / max(1, overlay.size.width)
                                 ctx.draw(Image(nsImage: overlay), in: CGRect(
                                     x: tileRect.minX, y: tileRect.maxY - height, width: tileW, height: height
@@ -332,8 +338,17 @@ struct MapView: View {
                                 ctx.stroke(path, with: .color(.black.opacity(0.25)), lineWidth: 0.5)
                             }
                             if tile.id == state.selectedTileId {
-                                ctx.stroke(path, with: .color(.white), lineWidth: 3)
-                                ctx.stroke(path, with: .color(.yellow), lineWidth: 1)
+                                let selectionScale = min(2, max(0.75, state.mapZoomScale))
+                                ctx.stroke(
+                                    path,
+                                    with: .color(AtlasPalette.ink.opacity(0.9)),
+                                    lineWidth: max(2.5, 4 * selectionScale)
+                                )
+                                ctx.stroke(
+                                    path,
+                                    with: .color(AtlasPalette.brass),
+                                    lineWidth: max(1.25, 1.75 * selectionScale)
+                                )
                             }
 
                             let hasSettlement = tile.settlement != nil || data.colonyByTile[tile.id] != nil
@@ -385,7 +400,10 @@ struct MapView: View {
                                     // Always draw a colored dot so units are visible even without sprites
                                     let dotRect = CGRect(x: ux - r, y: uy - r, width: r * 2, height: r * 2)
                                     if isSelected {
-                                        ctx.fill(Path(ellipseIn: dotRect.insetBy(dx: -4, dy: -4)), with: .color(.yellow.opacity(0.8)))
+                                        let halo = Path(ellipseIn: dotRect.insetBy(dx: -5, dy: -5))
+                                        ctx.fill(halo, with: .color(AtlasPalette.brass.opacity(0.28)))
+                                        ctx.stroke(halo, with: .color(AtlasPalette.ink.opacity(0.9)), lineWidth: 3)
+                                        ctx.stroke(halo, with: .color(AtlasPalette.brass), lineWidth: 1)
                                     }
                                     ctx.fill(Path(ellipseIn: dotRect), with: .color(ownerColor))
                                     ctx.stroke(Path(ellipseIn: dotRect), with: .color(.black), lineWidth: 1.5)
@@ -712,12 +730,12 @@ struct MapView: View {
             let padding = max(3, fontSize * 0.3)
             let gap = max(2, fontSize * 0.2)
             let title = context.resolve(Text(colony.name ?? "?")
-                .font(.system(size: fontSize, weight: .bold)).foregroundColor(.black))
+                .font(.system(size: fontSize, weight: .bold)).foregroundColor(AtlasPalette.paper))
             let population = context.resolve(Text("\(state.colonyPopulation(colony))")
-                .font(.system(size: fontSize, weight: .bold)).foregroundColor(.black))
+                .font(.system(size: fontSize, weight: .bold)).foregroundColor(AtlasPalette.paper))
             let construction = state.colonyMapBuildLabel(colony).map {
                 context.resolve(Text($0).font(.system(size: fontSize * 0.85, weight: .semibold))
-                    .foregroundColor(.black))
+                    .foregroundColor(AtlasPalette.muted))
             }
             let unconstrained = CGSize(width: CGFloat.infinity, height: CGFloat.infinity)
             let titleSize = title.measure(in: unconstrained)
@@ -750,12 +768,17 @@ struct MapView: View {
             // Prefer a collision-free nearby position, but never hide a
             // settlement name just because the map is crowded.
             occupiedRects.append(labelRect)
-            let background = colony.owner.flatMap { data.playerColorById[$0] } ?? .gray
+            let ownerColor = colony.owner.flatMap { data.playerColorById[$0] } ?? .gray
             let badge = CGRect(x: labelRect.minX, y: labelRect.minY, width: badgeWidth,
                                height: titleSize.height + padding * 2)
             let nameRect = CGRect(x: badge.maxX + gap, y: labelRect.minY, width: nameWidth, height: nameHeight)
-            context.fill(Path(roundedRect: badge, cornerRadius: 3), with: .color(background.opacity(0.7)))
-            context.fill(Path(roundedRect: nameRect, cornerRadius: 3), with: .color(background.opacity(0.7)))
+            let badgePath = Path(roundedRect: badge, cornerRadius: 3)
+            let namePath = Path(roundedRect: nameRect, cornerRadius: 3)
+            let labelBorder = max(1, min(2, state.mapZoomScale))
+            context.fill(badgePath, with: .color(AtlasPalette.ink.opacity(0.92)))
+            context.fill(namePath, with: .color(AtlasPalette.ink.opacity(0.92)))
+            context.stroke(badgePath, with: .color(ownerColor), lineWidth: labelBorder)
+            context.stroke(namePath, with: .color(ownerColor), lineWidth: labelBorder)
             context.draw(population, at: CGPoint(x: badge.midX, y: badge.midY))
             context.draw(title, at: CGPoint(x: nameRect.midX, y: nameRect.minY + padding + titleSize.height / 2))
             if let construction {

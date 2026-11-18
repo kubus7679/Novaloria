@@ -59,6 +59,11 @@ struct EventMessagesOverlay: View {
     }
     
     private func eventMessageImage(for message: ModelMessage) -> NSImage? {
+        if message.id == "model.unit.arriveInEurope",
+           let unit = message.source.flatMap({ state.game?.units[$0] }) {
+            return TileImageCache.shared.unitImage(forUnitType: unit.unitType)
+        }
+
         let imageName: String?
         if let type = message.messageType?.lowercased() {
             if type.contains("gold") { imageName = "gold" }

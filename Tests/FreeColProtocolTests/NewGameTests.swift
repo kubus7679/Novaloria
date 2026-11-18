@@ -1,4 +1,5 @@
 import Darwin
+import AppKit
 import XCTest
 import FreeColProtocol
 import NovaloriaClient
@@ -163,6 +164,228 @@ final class NewGameTests: XCTestCase {
         )
     }
 
+    func testActiveGraphicArchiveResolvesImageFromZip() throws {
+        let directory = try fixture()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let modDirectory = directory.appendingPathComponent("archive-source")
+        let imageDirectory = modDirectory.appendingPathComponent("images")
+        try FileManager.default.createDirectory(at: imageDirectory, withIntermediateDirectories: true)
+        try #"<mod id="graphic-archive-test"/>"#
+            .write(to: modDirectory.appendingPathComponent("mod.xml"), atomically: true, encoding: .utf8)
+        try "image.tile.model.tile.plains.center=images/plains.png\n"
+            .write(to: modDirectory.appendingPathComponent("resources.properties"), atomically: true, encoding: .utf8)
+        let bitmap = NSBitmapImageRep(
+            bitmapDataPlanes: nil, pixelsWide: 3, pixelsHigh: 2,
+            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
+        )!
+        bitmap.setColor(NSColor(deviceRed: 0.2, green: 0.6, blue: 0.4, alpha: 1), atX: 0, y: 0)
+        let imageData = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+        try imageData.write(to: imageDirectory.appendingPathComponent("plains.png"))
+
+        let modsDirectory = directory.appendingPathComponent("data/mods")
+        try FileManager.default.createDirectory(at: modsDirectory, withIntermediateDirectories: true)
+        let archive = modsDirectory.appendingPathComponent("graphic-archive-test.zip")
+        let zip = Process()
+        zip.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
+        zip.arguments = ["-q", "-r", archive.path, "mod.xml", "resources.properties", "images"]
+        zip.currentDirectoryURL = modDirectory
+        try zip.run()
+        zip.waitUntilExit()
+        XCTAssertEqual(zip.terminationStatus, 0)
+
+        let defaults = UserDefaults.standard
+        let oldInstallation = defaults.object(forKey: "freecol.javaInstallation")
+        let oldMods = defaults.object(forKey: FreeColModSelection.storageKey)
+        defer {
+            if let oldInstallation { defaults.set(oldInstallation, forKey: "freecol.javaInstallation") }
+            else { defaults.removeObject(forKey: "freecol.javaInstallation") }
+            if let oldMods { defaults.set(oldMods, forKey: FreeColModSelection.storageKey) }
+            else { defaults.removeObject(forKey: FreeColModSelection.storageKey) }
+        }
+        defaults.set(directory.path, forKey: "freecol.javaInstallation")
+        defaults.set(#"["graphic-archive-test"]"#, forKey: FreeColModSelection.storageKey)
+
+        let asset = try XCTUnwrap(ModImageCatalog.shared.image(
+            forResourceKeys: ["image.tile.model.tile.plains.center"]
+        ))
+        XCTAssertEqual(asset.data, imageData)
+        XCTAssertEqual(asset.logicalSize, CGSize(width: 3, height: 2))
+    }
+
+    func testModImageCatalogPrefersLargestHiResAndSelectsVariationsDeterministically() throws {
+        let directory = try fixture()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let modDirectory = directory.appendingPathComponent("data/mods/hires-test")
+        let images = modDirectory.appendingPathComponent("images/terrain")
+        try FileManager.default.createDirectory(at: images, withIntermediateDirectories: true)
+        try #"<mod id="hires-test"/>"#
+            .write(to: modDirectory.appendingPathComponent("mod.xml"), atomically: true, encoding: .utf8)
+        try "image.tile.model.tile.plains.center=images/terrain/center0.png\n"
+            .write(to: modDirectory.appendingPathComponent("resources.properties"), atomically: true, encoding: .utf8)
+
+        func png(width: Int, height: Int, color: NSColor) throws -> Data {
+            let bitmap = NSBitmapImageRep(
+                bitmapDataPlanes: nil, pixelsWide: width, pixelsHigh: height,
+                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
+            )!
+            for y in 0..<height {
+                for x in 0..<width { bitmap.setColor(color, atX: x, y: y) }
+            }
+            return try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+        }
+
+        let base = try png(width: 8, height: 4, color: .red)
+        let second = try png(width: 8, height: 4, color: .green)
+        let hires = try png(width: 16, height: 8, color: .blue)
+        try base.write(to: images.appendingPathComponent("center0.png"))
+        try second.write(to: images.appendingPathComponent("center1.png"))
+        try hires.write(to: images.appendingPathComponent("center0.size2.png"))
+
+        let defaults = UserDefaults.standard
+        let oldInstallation = defaults.object(forKey: "freecol.javaInstallation")
+        let oldMods = defaults.object(forKey: FreeColModSelection.storageKey)
+        defer {
+            if let oldInstallation { defaults.set(oldInstallation, forKey: "freecol.javaInstallation") }
+            else { defaults.removeObject(forKey: "freecol.javaInstallation") }
+            if let oldMods { defaults.set(oldMods, forKey: FreeColModSelection.storageKey) }
+            else { defaults.removeObject(forKey: FreeColModSelection.storageKey) }
+        }
+        defaults.set(directory.path, forKey: "freecol.javaInstallation")
+        defaults.set(#"["hires-test"]"#, forKey: FreeColModSelection.storageKey)
+
+        let baseAsset = try XCTUnwrap(ModImageCatalog.shared.image(
+            forResourceKeys: ["image.tile.model.tile.plains.center"]
+        ))
+        XCTAssertEqual(baseAsset.data, hires)
+        XCTAssertEqual(baseAsset.logicalSize, CGSize(width: 8, height: 4))
+        let variation = try XCTUnwrap(ModImageCatalog.shared.image(
+            forResourceKeys: ["image.tile.model.tile.plains.center"], variationSeed: 1
+        ))
+        XCTAssertEqual(variation.data, second)
+        XCTAssertEqual(variation.logicalSize, CGSize(width: 8, height: 4))
+    }
+
+    func testActiveGraphicModResolvesMapLayersAndColopediaCategories() throws {
+        let directory = try fixture()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let modDirectory = directory.appendingPathComponent("data/mods/atlas-test")
+        let imageDirectory = modDirectory.appendingPathComponent("images")
+        try FileManager.default.createDirectory(at: imageDirectory, withIntermediateDirectories: true)
+        try #"<mod id="atlas-test"/>"#
+            .write(to: modDirectory.appendingPathComponent("mod.xml"), atomically: true, encoding: .utf8)
+        let properties = """
+        image.tile.model.tile.plains.center=images/terrain.png
+        image.tileforest.model.tile.mixedForest=images/forest.png
+        image.tileoverlay.model.tile.hills=images/hills.png
+        image.tile.model.tile.beach.edge1=images/beach.png
+        image.tile.model.improvement.river.s1000=images/river.png
+        image.abovetile.model.tile.highSeas=images/cloud.png
+        image.icon.model.goods.food=images/food.png
+        image.tileitem.model.resource.fish=images/fish.png
+        image.tile.model.improvement.plow=images/plow.png
+        image.unit.model.unit.freeColonist.pioneer=images/pioneer.png
+        """
+        try properties.write(to: modDirectory.appendingPathComponent("resources.properties"),
+                             atomically: true, encoding: .utf8)
+
+        func png(width: Int, height: Int, color: NSColor) throws -> Data {
+            let bitmap = NSBitmapImageRep(
+                bitmapDataPlanes: nil, pixelsWide: width, pixelsHigh: height,
+                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
+            )!
+            for y in 0..<height {
+                for x in 0..<width { bitmap.setColor(color, atX: x, y: y) }
+            }
+            return try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+        }
+
+        let files = [
+            "terrain.png": (8, 4), "terrain.size2.png": (16, 8), "forest.png": (12, 8),
+            "hills.png": (14, 10), "beach.png": (10, 5), "river.png": (16, 8),
+            "cloud.png": (20, 15), "food.png": (7, 7), "fish.png": (9, 6),
+            "plow.png": (11, 6), "pioneer.png": (13, 20),
+        ]
+        for (index, (name, size)) in files.enumerated() {
+            let data = try png(width: size.0, height: size.1,
+                               color: NSColor(deviceRed: CGFloat(index + 1) / 12, green: 0.4, blue: 0.2, alpha: 1))
+            try data.write(to: imageDirectory.appendingPathComponent(name))
+        }
+
+        let defaults = UserDefaults.standard
+        let oldInstallation = defaults.object(forKey: "freecol.javaInstallation")
+        let oldMods = defaults.object(forKey: FreeColModSelection.storageKey)
+        defer {
+            if let oldInstallation { defaults.set(oldInstallation, forKey: "freecol.javaInstallation") }
+            else { defaults.removeObject(forKey: "freecol.javaInstallation") }
+            if let oldMods { defaults.set(oldMods, forKey: FreeColModSelection.storageKey) }
+            else { defaults.removeObject(forKey: FreeColModSelection.storageKey) }
+        }
+        defaults.set(directory.path, forKey: "freecol.javaInstallation")
+        defaults.set(#"["atlas-test"]"#, forKey: FreeColModSelection.storageKey)
+
+        let cache = TileImageCache.shared
+        XCTAssertEqual(cache.terrainImage(forType: "model.tile.plains", x: 2, y: 3)?.size, CGSize(width: 8, height: 4))
+        XCTAssertEqual(cache.terrainOverlay(forType: "model.tile.mixedForest", x: 2, y: 3)?.size,
+                       CGSize(width: 12, height: 8))
+        XCTAssertEqual(cache.terrainOverlay(forType: "model.tile.hills", x: 1, y: 1)?.size,
+                       CGSize(width: 14, height: 10))
+        XCTAssertEqual(cache.beachImages(style: 16, x: 1, y: 2).first?.size, CGSize(width: 10, height: 5))
+        XCTAssertEqual(cache.riverImage(forStyle: "1000")?.size, CGSize(width: 16, height: 8))
+        XCTAssertEqual(cache.cloudImage(forX: 1, y: 2)?.size, CGSize(width: 20, height: 15))
+        XCTAssertEqual(cache.goodsImage(for: "model.goods.food")?.size, CGSize(width: 7, height: 7))
+
+        let resource = ColopediaEntry(id: "model.resource.fish", category: .resources, title: "Fish",
+                                      summary: "", text: "", facts: [], related: [], icon: nil)
+        let improvement = ColopediaEntry(id: "model.improvement.plow", category: .improvements, title: "Plow",
+                                         summary: "", text: "", facts: [], related: [], icon: nil)
+        let role = ColopediaEntry(id: "model.role.pioneer", category: .roles, title: "Pioneer",
+                                  summary: "", text: "", facts: [], related: [], icon: nil)
+        XCTAssertEqual(cache.colopediaImage(for: resource)?.size, CGSize(width: 9, height: 6))
+        XCTAssertEqual(cache.colopediaImage(for: improvement)?.size, CGSize(width: 11, height: 6))
+        XCTAssertEqual(cache.colopediaImage(for: role)?.size, CGSize(width: 13, height: 20))
+    }
+
+    func testBuildingColopediaImageUsesActiveGraphicMod() throws {
+        let directory = try fixture()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let modDirectory = directory.appendingPathComponent("data/mods/building-graphic-test")
+        let imageDirectory = modDirectory.appendingPathComponent("images")
+        try FileManager.default.createDirectory(at: imageDirectory, withIntermediateDirectories: true)
+        try #"<mod id="building-graphic-test"/>"#
+            .write(to: modDirectory.appendingPathComponent("mod.xml"), atomically: true, encoding: .utf8)
+        try "image.buildingicon.model.building.townHall=images/town-hall.png\n"
+            .write(to: modDirectory.appendingPathComponent("resources.properties"), atomically: true, encoding: .utf8)
+        let bitmap = NSBitmapImageRep(
+            bitmapDataPlanes: nil, pixelsWide: 2, pixelsHigh: 2,
+            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
+        )!
+        bitmap.setColor(NSColor(deviceRed: 0.1, green: 0.7, blue: 0.4, alpha: 1), atX: 0, y: 0)
+        let imageData = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+        try imageData.write(to: imageDirectory.appendingPathComponent("town-hall.png"))
+
+        let defaults = UserDefaults.standard
+        let oldInstallation = defaults.object(forKey: "freecol.javaInstallation")
+        let oldMods = defaults.object(forKey: FreeColModSelection.storageKey)
+        defer {
+            if let oldInstallation { defaults.set(oldInstallation, forKey: "freecol.javaInstallation") }
+            else { defaults.removeObject(forKey: "freecol.javaInstallation") }
+            if let oldMods { defaults.set(oldMods, forKey: FreeColModSelection.storageKey) }
+            else { defaults.removeObject(forKey: FreeColModSelection.storageKey) }
+        }
+        defaults.set(directory.path, forKey: "freecol.javaInstallation")
+        defaults.set(#"["building-graphic-test"]"#, forKey: FreeColModSelection.storageKey)
+
+        let entry = ColopediaEntry(
+            id: "model.building.townHall", category: .buildings, title: "Town Hall",
+            summary: "", text: "", facts: [], related: [], icon: "model.building.townHall.png"
+        )
+        XCTAssertNotNil(TileImageCache.shared.colopediaImage(for: entry))
+    }
+
     func testExportsAllValuesAndEscapesXML() throws {
         let directory = try fixture()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -179,6 +402,60 @@ final class NewGameTests: XCTestCase {
             }
         }
     }
+
+    func testImportsExportedOptionsAndRejectsInvalidValuesWithoutPartialChanges() throws {
+        let directory = try fixture()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        var source = try NewGameConfiguration.load(installation: directory, difficulty: .medium)
+        source.values["model.option.mapWidth"] = "80"
+        source.values["model.option.fogOfWar"] = "false"
+        let xml = try source.specificationXML().replacingOccurrences(
+            of: "<integerOption id=\"model.option.mapWidth\"",
+            with: "<rangeOption id=\"model.option.mapWidth\""
+        ).replacingOccurrences(
+            of: "<unitListOption id=\"model.option.immigrants\"",
+            with: "<customListOption id=\"model.option.immigrants\""
+        ).replacingOccurrences(of: "</unitListOption>", with: "</customListOption>")
+
+        var imported = try NewGameConfiguration.load(installation: directory, difficulty: .medium)
+        try imported.importOptions(from: xml)
+        XCTAssertEqual(imported.values["model.option.mapWidth"], "80")
+        XCTAssertEqual(imported.values["model.option.fogOfWar"], "false")
+        XCTAssertEqual(imported.values["model.option.immigrants"], source.values["model.option.immigrants"])
+
+        let invalidXML = xml.replacingOccurrences(of: "value=\"80\"", with: "value=\"999\"")
+        let originalValues = imported.values
+        XCTAssertThrowsError(try imported.importOptions(from: invalidXML))
+        XCTAssertEqual(imported.values, originalValues)
+    }
+
+        func testImportsMainOptionsWhenModOptionsAppearFirst() throws {
+                let directory = try fixture()
+                defer { try? FileManager.default.removeItem(at: directory) }
+                let modDirectory = directory.appendingPathComponent("data/mods/options-test")
+                try FileManager.default.createDirectory(at: modDirectory, withIntermediateDirectories: true)
+                try #"<mod id="options-test"/>"#
+                        .write(to: modDirectory.appendingPathComponent("mod.xml"), atomically: true, encoding: .utf8)
+                try """
+                <freecol-specification id="options-test">
+                    <options><optionGroup id="gameOptions">
+                        <booleanOption id="model.option.fogOfWar" value="true"/>
+                    </optionGroup></options>
+                </freecol-specification>
+                """.write(to: modDirectory.appendingPathComponent("specification.xml"), atomically: true, encoding: .utf8)
+
+                var source = try NewGameConfiguration.load(installation: directory, difficulty: .medium,
+                                                                                                     activeModIDs: ["options-test"])
+                source.values["model.option.fogOfWar"] = "false"
+                source.values["model.option.mapWidth"] = "80"
+                let xml = try source.specificationXML()
+                var imported = try NewGameConfiguration.load(installation: directory, difficulty: .medium,
+                                                                                                         activeModIDs: ["options-test"])
+
+                try imported.importOptions(from: xml)
+                XCTAssertEqual(imported.values["model.option.fogOfWar"], "false")
+                XCTAssertEqual(imported.values["model.option.mapWidth"], "80")
+        }
 
     func testRejectsInvalidValuesRatherThanClampingOrDroppingThem() throws {
         let directory = try fixture()

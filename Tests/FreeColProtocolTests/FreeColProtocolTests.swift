@@ -2,6 +2,7 @@ import XCTest
 import SwiftUI
 @testable import FreeColProtocol
 import FreeColGame
+import NovaloriaClient
 @testable import Novaloria
 
 final class FreeColProtocolTests: XCTestCase {
@@ -95,6 +96,47 @@ final class FreeColProtocolTests: XCTestCase {
         let openTags = String(repeating: "<node>", count: ProtocolLimits.maximumXMLDepth + 1)
         let closeTags = String(repeating: "</node>", count: ProtocolLimits.maximumXMLDepth + 1)
         XCTAssertThrowsError(try XMLDecoder.decode(openTags + closeTags))
+    }
+
+    func testXMLDecoderRejectsExcessiveElementCount() {
+        let children = String(repeating: "<node/>", count: ProtocolLimits.maximumXMLNodes)
+        let xml = "<root>\(children)</root>"
+
+        XCTAssertThrowsError(try XMLDecoder.decode(xml)) { error in
+          guard case FreeColProtocolError.resourceLimitExceeded(let message) = error else {
+            return XCTFail("Expected XML element limit error, got \(error)")
+          }
+          XCTAssertEqual(
+            message,
+            "XML message exceeds \(ProtocolLimits.maximumXMLNodes) elements"
+          )
+        }
+    }
+
+    func testConnectionRejectsIncomingFrameQueueOverflow() async throws {
+        let server = MockServer()
+        let connection = Connection(host: "127.0.0.1", port: server.port)
+        defer { Task { await connection.disconnect(); await server.stop() } }
+
+        try await connection.connect()
+        try await server.waitForConnection()
+        for index in 0..<(ProtocolLimits.maximumQueuedFrames + 32) {
+          await server.send(#"<frame id="\#(index)"/>"#)
+        }
+        await server.flush()
+
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        for index in 0..<ProtocolLimits.maximumQueuedFrames {
+          let line = try await connection.nextLine()
+          XCTAssertEqual(line, #"<frame id="\#(index)"/>"#)
+        }
+        do {
+          _ = try await connection.nextLine()
+          XCTFail("An overflowing frame queue must end with a resource limit error")
+        } catch FreeColProtocolError.resourceLimitExceeded(let message) {
+          XCTAssertEqual(message, "too many queued protocol frames")
+        }
     }
 
     func testConnectionRejectsInvalidPortBeforeConnecting() async {
