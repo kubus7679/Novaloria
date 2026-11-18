@@ -160,6 +160,55 @@ struct NewGameConfiguration {
         labels = try Self.loadLabels(installation: installation, language: language)
     }
 
+    mutating func importOptions(from xml: String) throws {
+        let root = try XMLDecoder.decode(xml)
+        let requiredOptionGroups: Set<String> = ["gameOptions", "mapGeneratorOptions", "difficultyLevels"]
+        guard root.tag == "freecol-specification",
+              let options = root.children.first(where: { node in
+                  node.tag == "options" && requiredOptionGroups.isSubset(
+                      of: Set(node.children.compactMap { $0.attributes["id"] })
+                  )
+              }) else {
+            throw NewGameError.invalid(L10n.text("Spiel-, Karten- oder Schwierigkeitsoptionen fehlen im Regelset.", table: "NewGameConfiguration"))
+        }
+
+        var imported: [String: ParsedMessage] = [:]
+        func collect(_ group: ParsedMessage) throws {
+            for node in group.children {
+                if node.tag == "optionGroup" {
+                    try collect(node)
+                } else if let id = node.attributes["id"] {
+                    guard imported[id] == nil else {
+                        throw NewGameError.invalid(L10n.text("Doppelte Optionsdefinition: \(id)", table: "NewGameConfiguration"))
+                    }
+                    imported[id] = node
+                }
+            }
+        }
+        try collect(options)
+
+        let localOptions = Dictionary(uniqueKeysWithValues: sections.flatMap(\.options).map { ($0.id, $0) })
+        var updatedValues = values
+        var matchedOptions = 0
+        for (id, importedNode) in imported {
+            guard let option = localOptions[id] else { continue }
+            let importedValue: String
+            if option.isXML {
+                importedValue = XMLEncoder.encode(tag: option.node.tag, attributes: importedNode.attributes,
+                                                  children: importedNode.children)
+            } else {
+                importedValue = importedNode.attributes["value"] ?? importedNode.attributes["defaultValue"] ?? ""
+            }
+            let validated = try option.validatedNode(value: importedValue, unitTypeIDs: unitTypeIDs, roleIDs: roleIDs)
+            updatedValues[id] = GameSetupOption(node: validated).initialValue
+            matchedOptions += 1
+        }
+        guard matchedOptions > 0 else {
+            throw NewGameError.invalid(L10n.text("Spiel-, Karten- oder Schwierigkeitsoptionen fehlen im Regelset.", table: "NewGameConfiguration"))
+        }
+        values = updatedValues
+    }
+
     static func load(
         installation: URL,
         difficulty: GameDifficulty,

@@ -4436,7 +4436,7 @@
     "id": "model.foundingFather.francisDrake",
     "category": "fathers",
     "title": "Francis Drake",
-    "summary": "",
+    "summary": "Erhöht die Kampfkraft aller Kaperschiffe um 50%.",
     "text": "Als großartiger englischer Schiffskapitän war Drake der erste Engländer, der die Welt umsegelte und ein Held im Kampf gegen die spanische Armee.",
     "facts": [
       {
@@ -4466,7 +4466,7 @@
     "id": "model.foundingFather.thomasJefferson",
     "category": "fathers",
     "title": "Thomas Jefferson",
-    "summary": "",
+    "summary": "Erhöht die Produktion der Freiheitsglocken in den Kolonien um 50%.",
     "text": "Als mächtige Stimme des Patriotismus wurde Jefferson mit dem Verfassen der Unabhängigkeitserklärung betraut. Er wurde später der dritte Präsident der Vereinigten Staaten.",
     "facts": [
       {
@@ -4511,7 +4511,7 @@
     "id": "model.foundingFather.simonBolivar",
     "category": "fathers",
     "title": "Simon Bolivar",
-    "summary": "",
+    "summary": "Die Mitgliederzahl der Söhne der Freiheit in allen bestehenden Kolonien wird um 20% erhöht.",
     "text": "Bekannt als großer Führer im Kampf um die Unabhängigkeit Südamerikas von Spanien. Bolivar befreite das heutige Venezuela und wurde später dessen erster Präsident.",
     "facts": [
       {
@@ -4556,7 +4556,7 @@
     "id": "model.foundingFather.williamPenn",
     "category": "fathers",
     "title": "William Penn",
-    "summary": "",
+    "summary": "Die Produktion von Kreuzen wird in allen Kolonien um 50% erhöht.",
     "text": "Als Sohn eines einflussreichen Admirals und enger Freund des Duke of York erhielt Penn das Gebiet der heutigen Bundesstaaten von Pennsylvania, Delaware und New Jersey. Er richtete ein Regierungssystem ein, das auf Brüderlichkeit und persönlicher Freiheit für Siedler und Ureinwohner beruhte.",
     "facts": [
       {
@@ -4586,7 +4586,7 @@
     "id": "model.foundingFather.juanDeSepulveda",
     "category": "fathers",
     "title": "Juan de Sepulveda",
-    "summary": "",
+    "summary": "Erhöht die Chance, dass die Bewohner einer unterworfenen indigenen Siedlung konvertieren und sich Euren Kolonien anschließen, um 20%.",
     "text": "Ein spanischer Theologe, der sich für die Eroberung der indianischen Länder und die Zwangsbekehrung der Ureinwohner aussprach.",
     "facts": [
       {

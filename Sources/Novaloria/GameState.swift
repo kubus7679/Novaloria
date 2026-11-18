@@ -2051,7 +2051,7 @@ final class GameState {
         self.bridge = bridge
 
         Task {
-            let actualPort = await server.port
+            let actualPort = server.port
             FreeColLogger.shared.info("MockServer on port \(actualPort)")
             let client = NovaloriaClient(host: "127.0.0.1", port: actualPort)
             self.client = client
@@ -7247,7 +7247,7 @@ final class GameState {
         }
         guard canNameNewLandWithSelectedUnit,
               let unitId = selectedUnitId,
-              let game = cachedGame else {
+              cachedGame != nil else {
             errorMessage = L10n.text("Neues Land kann nicht benannt werden.", table: "GameState")
             return
         }
@@ -7296,7 +7296,7 @@ final class GameState {
         }
         guard canNameNewRegionWithSelectedUnit,
               let unitId = selectedUnitId,
-              let game = cachedGame else {
+              cachedGame != nil else {
             errorMessage = L10n.text("Neue Region kann nicht benannt werden.", table: "GameState")
             return
         }

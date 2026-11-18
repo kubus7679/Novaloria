@@ -4361,7 +4361,7 @@
     "id": "model.foundingFather.henryHudson",
     "category": "fathers",
     "title": "Henry Hudson",
-    "summary": "",
+    "summary": "Doubles the production of all Fur Trappers.",
     "text": "English Navigator who explored and mapped a large area of the northeastern North American continent.  Many waterways in that region are named in his honour.  His original goal was to find the famed Northwest Passage.",
     "facts": [
       {
@@ -4436,7 +4436,7 @@
     "id": "model.foundingFather.francisDrake",
     "category": "fathers",
     "title": "Francis Drake",
-    "summary": "",
+    "summary": "Increases the combat strength of all Privateers by 50%.",
     "text": "A great English sea captain, Drake was the first Englishman to circumnavigate the globe and a hero in the fights against the Spanish Armada.",
     "facts": [
       {
@@ -4466,7 +4466,7 @@
     "id": "model.foundingFather.thomasJefferson",
     "category": "fathers",
     "title": "Thomas Jefferson",
-    "summary": "",
+    "summary": "Increases Liberty Bell production in colonies by 50%.",
     "text": "A powerful voice of Patriotism, Jefferson was credited with writing the Declaration of Independence. He later became the 3rd President of the U.S.",
     "facts": [
       {
@@ -4511,7 +4511,7 @@
     "id": "model.foundingFather.simonBolivar",
     "category": "fathers",
     "title": "Simon Bolivar",
-    "summary": "",
+    "summary": "Increases Sons of Liberty membership in all existing colonies by 20%.",
     "text": "Remembered as a great leader in the struggle for South American independence from Spain. Bolivar freed what is now Venezuela and later became its first President.",
     "facts": [
       {
@@ -4556,7 +4556,7 @@
     "id": "model.foundingFather.williamPenn",
     "category": "fathers",
     "title": "William Penn",
-    "summary": "",
+    "summary": "Increases Cross production in all colonies by 50%.",
     "text": "As a close friend of the Duke of York, Penn was granted the land that is mostly Pennsylvania, Delaware, and New Jersey. He Governed the Quaker colony for several years to provide a haven to fellow Quakers.",
     "facts": [
       {
@@ -4586,7 +4586,7 @@
     "id": "model.foundingFather.juanDeSepulveda",
     "category": "fathers",
     "title": "Juan de Sepulveda",
-    "summary": "",
+    "summary": "Increases the chance that the population of a subjugated indigenous settlement will convert and join your colonies by 20%.",
     "text": "A Spanish theologian who spoke out for the conquest of Indian lands and forced evangelisation of the natives.",
     "facts": [
       {

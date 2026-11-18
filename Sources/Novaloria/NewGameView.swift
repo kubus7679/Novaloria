@@ -111,6 +111,8 @@ struct NewGameView: View {
             HStack {
                 Button(L10n.text("Abbrechen", table: "NewGameView")) { dismiss() }.keyboardShortcut(.cancelAction)
                 Spacer()
+                Button(L10n.text("Optionsdatei importieren…", table: "NewGameView")) { importOptions() }
+                    .disabled(configuration == nil)
                 Button(L10n.text("Optionsdatei exportieren…", table: "NewGameView")) { exportOptions() }
                     .disabled(configuration == nil)
                 Button(L10n.text("Spiel erstellen", table: "NewGameView")) {
@@ -265,6 +267,21 @@ struct NewGameView: View {
                 try xml.write(to: url, atomically: true, encoding: .utf8)
                 error = nil
             }
+        } catch { self.error = error.localizedDescription }
+    }
+
+    private func importOptions() {
+        guard var updatedConfiguration = configuration else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            let xml = try String(contentsOf: url, encoding: .utf8)
+            try updatedConfiguration.importOptions(from: xml)
+            configuration = updatedConfiguration
+            error = nil
         } catch { self.error = error.localizedDescription }
     }
 

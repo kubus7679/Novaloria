@@ -500,6 +500,65 @@ final class MapInteractionTests: XCTestCase {
     }
 
     @MainActor
+    func testZipGraphicModCloudLookupIsSafeDuringCanvasUpdate() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let modDirectory = directory.appendingPathComponent("archive-source")
+        let imageDirectory = modDirectory.appendingPathComponent("images")
+        try FileManager.default.createDirectory(at: imageDirectory, withIntermediateDirectories: true)
+        try #"<mod id="canvas-archive-test"/>"#
+            .write(to: modDirectory.appendingPathComponent("mod.xml"), atomically: true, encoding: .utf8)
+        try "image.abovetile.model.tile.highSeas=images/clouds0.png\n"
+            .write(to: modDirectory.appendingPathComponent("resources.properties"), atomically: true, encoding: .utf8)
+        let bitmap = NSBitmapImageRep(
+            bitmapDataPlanes: nil, pixelsWide: 8, pixelsHigh: 6,
+            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
+        )!
+        bitmap.setColor(NSColor(deviceRed: 0.3, green: 0.6, blue: 0.9, alpha: 1), atX: 0, y: 0)
+        let imageData = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+        try imageData.write(to: imageDirectory.appendingPathComponent("clouds0.png"))
+
+        let modsDirectory = directory.appendingPathComponent("data/mods")
+        try FileManager.default.createDirectory(at: modsDirectory, withIntermediateDirectories: true)
+        let archive = modsDirectory.appendingPathComponent("canvas-archive-test.zip")
+        let zip = Process()
+        zip.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
+        zip.arguments = ["-q", "-r", archive.path, "mod.xml", "resources.properties", "images"]
+        zip.currentDirectoryURL = modDirectory
+        try zip.run()
+        zip.waitUntilExit()
+        XCTAssertEqual(zip.terminationStatus, 0)
+
+        let defaults = UserDefaults.standard
+        let oldInstallation = defaults.object(forKey: "freecol.javaInstallation")
+        let oldMods = defaults.object(forKey: FreeColModSelection.storageKey)
+        defer {
+            if let oldInstallation { defaults.set(oldInstallation, forKey: "freecol.javaInstallation") }
+            else { defaults.removeObject(forKey: "freecol.javaInstallation") }
+            if let oldMods { defaults.set(oldMods, forKey: FreeColModSelection.storageKey) }
+            else { defaults.removeObject(forKey: FreeColModSelection.storageKey) }
+        }
+        defaults.set(directory.path, forKey: "freecol.javaInstallation")
+        defaults.set(#"["canvas-archive-test"]"#, forKey: FreeColModSelection.storageKey)
+
+        let state = try makeState()
+        try state.game?.applyUpdate(XMLDecoder.decode("""
+        <update><tile id="tile-0-0" x="0" y="0"/></update>
+        """))
+        state.gameUpdateID += 1
+        let size = CGSize(width: 1000, height: 720)
+        let host = NSHostingView(rootView: GameView().environment(state))
+        host.frame = CGRect(origin: .zero, size: size)
+        host.layoutSubtreeIfNeeded()
+        host.displayIfNeeded()
+        let canvasBitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: canvasBitmap)
+
+        XCTAssertEqual(TileImageCache.shared.cloudImage(forX: 0, y: 0)?.size, CGSize(width: 8, height: 6))
+    }
+
+    @MainActor
     func testHighSeasExitMapAndInspectorFitNativeWindow() throws {
         let state = try makeState()
         try state.game?.applyUpdate(XMLDecoder.decode("""
@@ -787,6 +846,9 @@ final class MapInteractionTests: XCTestCase {
         XCTAssertGreaterThan(entries.count, 200)
         XCTAssertEqual(Set(entries.map(\.id)).count, entries.count)
         XCTAssertEqual(Set(entries.map(\.category)), Set(ColopediaCategory.allCases))
+        for father in entries where father.category == .fathers {
+            XCTAssertFalse(father.summary.isEmpty, father.id)
+        }
         for goods in ["model.goods.grain", "model.goods.cotton", "model.goods.food"] {
             XCTAssertNotNil(TileImageCache.shared.goodsImage(for: goods), goods)
         }
@@ -796,16 +858,20 @@ final class MapInteractionTests: XCTestCase {
         let father = try XCTUnwrap(entries.first { $0.id == "model.foundingFather.adamSmith" })
         XCTAssertEqual(father.title, "Adam Smith")
         XCTAssertFalse(father.text.isEmpty)
+        let drake = try XCTUnwrap(entries.first { $0.id == "model.foundingFather.francisDrake" })
+        XCTAssertTrue(drake.facts(using: nil).contains { $0.label == "Bonus" && $0.value.contains("50%") })
+        let sepulveda = try XCTUnwrap(entries.first { $0.id == "model.foundingFather.juanDeSepulveda" })
+        XCTAssertTrue(sepulveda.facts(using: nil).contains { $0.label == "Bonus" && $0.value.contains("20%") })
         let concept = try XCTUnwrap(entries.first { $0.id == "colopedia.concepts.taxes" })
         XCTAssertEqual(concept.category, .concepts)
         XCTAssertEqual(concept.title, "Steuern")
-        XCTAssertTrue(concept.text.contains("Boykotte können aufgehoben werden"))
-        XCTAssertEqual(entries.filter { $0.category == .concepts }.count, 7)
+        XCTAssertTrue(concept.text.contains("Boykott kann durch das Begleichen von Steuerrückständen"))
+        XCTAssertEqual(entries.filter { $0.category == .concepts }.count, 12)
         XCTAssertFalse(ColopediaCatalog.search(entries, query: "Lagerhaus").isEmpty)
         XCTAssertTrue(ColopediaCatalog.search(entries, query: "nichtvorhanden123").isEmpty)
         for entry in entries {
             XCTAssertFalse(entry.title.contains("{{"), entry.id)
-            XCTAssertFalse(entry.summary.contains("%"), entry.id)
+            XCTAssertNil(entry.summary.range(of: #"%[A-Za-z{]"#, options: .regularExpression), entry.id)
             if entry.icon != nil || entry.category == .units || entry.category == .terrain {
                 XCTAssertNotNil(TileImageCache.shared.colopediaImage(for: entry), entry.id)
             }
@@ -813,6 +879,101 @@ final class MapInteractionTests: XCTestCase {
         let warehouse = try XCTUnwrap(entries.first { $0.id == "model.building.warehouse" })
         XCTAssertTrue(warehouse.related.contains("model.goods.hammers"))
     }
+
+        @MainActor
+        func testColopediaUsesActiveRulesForDynamicGoodsRolesAndResources() throws {
+                let parsed = try XMLDecoder.decode("""
+                <freecol-specification id="mod-spec">
+                    <goods-type id="model.goods.modTools" storable="true">
+                        <market initial-amount="90" initial-price="7" price-difference="3"/>
+                    </goods-type>
+                    <roles>
+                        <role id="model.role.modCartographer" maximum-count="3">
+                            <required-goods id="model.goods.modTools" value="12"/>
+                        </role>
+                    </roles>
+                    <resource-type id="model.resource.modSilver"/>
+                </freecol-specification>
+                """)
+                let specification = Specification(parsed: parsed)
+                let entries = ColopediaCatalog.entries(specification: specification)
+
+                let goods = try XCTUnwrap(entries.first { $0.id == "model.goods.modTools" })
+                XCTAssertTrue(goods.facts(using: specification).contains { $0.value == "7" })
+
+                let role = try XCTUnwrap(entries.first { $0.id == "model.role.modCartographer" })
+                XCTAssertEqual(role.category, .roles)
+                XCTAssertTrue(role.facts(using: specification).contains { $0.value == "3" })
+                XCTAssertTrue(role.facts(using: specification).contains { $0.value == "12" })
+
+                let resource = try XCTUnwrap(entries.first { $0.id == "model.resource.modSilver" })
+                XCTAssertEqual(resource.category, .resources)
+        }
+
+        @MainActor
+        func testFoundingFatherEntriesShowStaticAndActiveBonuses() throws {
+                let previousLanguage = LocalizationSettings.shared.language
+                defer { LocalizationSettings.shared.language = previousLanguage }
+                LocalizationSettings.shared.language = .german
+
+                let parsed = try XMLDecoder.decode("""
+                <freecol-specification id="father-spec">
+                    <founding-fathers>
+                        <founding-father id="model.foundingFather.adamSmith">
+                            <modifier id="model.goods.tools" type="percentage" value="25"/>
+                            <modifier id="model.modifier.SoL" type="additive" value="10"/>
+                        </founding-father>
+                        <founding-father id="model.foundingFather.modCartographer">
+                            <modifier id="model.goods.tools" type="additive" value="2"/>
+                        </founding-father>
+                    </founding-fathers>
+                </freecol-specification>
+                """)
+                let specification = Specification(parsed: parsed)
+                let entries = ColopediaCatalog.entries(specification: specification)
+
+                let adamSmith = try XCTUnwrap(entries.first { $0.id == "model.foundingFather.adamSmith" })
+                let adamSmithFacts = adamSmith.facts(using: specification)
+                XCTAssertTrue(adamSmithFacts.contains { $0.label == "Bonus" && $0.value == adamSmith.summary })
+                XCTAssertTrue(adamSmithFacts.contains { $0.label == "Produktionsmodifikator" })
+                XCTAssertTrue(adamSmithFacts.contains { $0.label == "Freiheitsmodifikator" })
+
+                let modFather = try XCTUnwrap(entries.first { $0.id == "model.foundingFather.modCartographer" })
+                XCTAssertEqual(modFather.category, .fathers)
+                XCTAssertTrue(modFather.facts(using: specification).contains { $0.label == "Produktionsmodifikator" })
+        }
+
+            @MainActor
+            func testColopediaConceptsAreLocalizedAndRelatedLinksResolve() throws {
+                let previousLanguage = LocalizationSettings.shared.language
+                defer { LocalizationSettings.shared.language = previousLanguage }
+                let expectedTitles: [(InterfaceLanguage, String)] = [
+                    (.german, "Kolonien entwickeln"),
+                    (.english, "Developing Colonies"),
+                    (.spanish, "Desarrollo de colonias"),
+                ]
+                let newConceptIds: Set<String> = [
+                    "colopedia.concepts.colonyDevelopment",
+                    "colopedia.concepts.productionChains",
+                    "colopedia.concepts.tradeAndMarket",
+                    "colopedia.concepts.exploration",
+                    "colopedia.concepts.indigenousRelations",
+                ]
+
+                for (language, expectedTitle) in expectedTitles {
+                    LocalizationSettings.shared.language = language
+                    let entries = ColopediaCatalog.entries(specification: nil)
+                    let concepts = entries.filter { $0.category == .concepts }
+                    let ids = Set(entries.map(\.id))
+                    XCTAssertEqual(concepts.count, 12)
+                    XCTAssertEqual(entries.first { $0.id == "colopedia.concepts.colonyDevelopment" }?.title,
+                                   expectedTitle)
+                    for concept in concepts where newConceptIds.contains(concept.id) {
+                        XCTAssertFalse(concept.text.isEmpty, concept.id)
+                        XCTAssertTrue(concept.related.allSatisfy(ids.contains), concept.id)
+                    }
+                }
+            }
 
     @MainActor
     func testColopediaAndTerrainFitSmallPanelsWithPopulatedContents() throws {
@@ -1741,6 +1902,7 @@ final class MapInteractionTests: XCTestCase {
         for width in [900.0, 1453.0] {
             let panel = FoundingFatherSelectionView(
                 options: state.pendingFoundingFathers,
+                specification: state.game?.specification,
                 canChoose: state.canRespondToPendingDecision(),
                 onChoose: { _ in XCTFail("Layout must not choose a candidate.") }
             ).frame(width: width, height: 588)

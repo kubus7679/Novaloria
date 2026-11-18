@@ -23,9 +23,12 @@ struct InfoPanelView: View {
         }
         .frame(maxWidth: .infinity)
         .frame(minHeight: 90)
-        .background(Color.black.opacity(0.7))
+        .background(AtlasPalette.inspectorSurface)
         .clipShape(RoundedRectangle(cornerRadius: 8))
-        .shadow(radius: 3)
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+        }
         .sheet(isPresented: $showLandPurchaseSheet) {
             if let landPurchaseTileId,
                let tile = state.game?.tiles[landPurchaseTileId] {
@@ -69,22 +72,22 @@ struct InfoPanelView: View {
                 Text(state.unitDisplayLabel(unit))
                     .font(.headline)
                     .lineLimit(2)
-                    .foregroundColor(.white)
+                    .foregroundColor(AtlasPalette.paper)
                 Text(GameLabels.state(unit.state))
                     .font(.caption)
-                    .foregroundColor(.yellow)
+                    .foregroundColor(AtlasPalette.brass)
                 Text(unitLocationLabel(unit))
                     .font(.caption)
-                    .foregroundColor(.white)
+                    .foregroundColor(AtlasPalette.paper)
                     .lineLimit(2)
                 Text(L10n.text("Bewegungspunkte: \(unit.displayMovesLeft)", table: "InfoPanelView"))
                     .font(.caption)
-                    .foregroundColor(.white)
+                    .foregroundColor(AtlasPalette.paper)
                 Button {
                     showUnitDetails.toggle()
                 } label: {
                     Image(systemName: "info.circle")
-                        .foregroundColor(.white)
+                        .foregroundColor(AtlasPalette.paper)
                 }
                 .buttonStyle(.plain)
                 .popover(isPresented: $showUnitDetails) {
@@ -129,13 +132,13 @@ struct InfoPanelView: View {
                         } else {
                             Image(systemName: "person.circle")
                                 .font(.system(size: 16))
-                                .foregroundColor(.white)
+                                .foregroundColor(AtlasPalette.paper)
                         }
                     }
                     if state.selectedUnitCargoUnits.count > 6 {
                         Text("+\(state.selectedUnitCargoUnits.count - 6)")
                             .font(.caption2)
-                            .foregroundColor(.white)
+                            .foregroundColor(AtlasPalette.paper)
                     }
                 }
                 .padding(.bottom, 4)
@@ -261,7 +264,7 @@ struct InfoPanelView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(typeLabel(tile.type))
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(AtlasPalette.paper)
                     if tile.type != nil, tile.moveToEurope {
                         Text(L10n.text("Hochsee-Ausfahrt nach Europa", table: "InfoPanelView"))
                             .font(.caption2)
@@ -423,7 +426,7 @@ struct InfoPanelView: View {
         VStack(spacing: 8) {
             Text(state.isLocalPlayersTurn ? L10n.text("Alle Einheiten fertig?", table: "InfoPanelView") : L10n.text("Warten auf Gegner…", table: "InfoPanelView"))
                 .font(.caption)
-                .foregroundColor(.white)
+                .foregroundColor(AtlasPalette.paper)
             Text(L10n.text("Einheit oder Feld auf der Karte auswählen.\nKolonie oder Dorf: Doppelklick · Feldaktionen: Rechtsklick", table: "InfoPanelView"))
                 .font(.caption)
                 .foregroundStyle(.secondary)

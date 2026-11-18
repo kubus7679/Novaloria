@@ -4,7 +4,7 @@
     "category": "concepts",
     "title": "Taxes",
     "summary": "",
-    "text": "Early in the game, the Monarch does not levy any taxes on your income. Over time, however, the Monarch will be sure to increase sales taxes for a number of reasons that you may find more or less convincing. Every time the Monarch proposes to increase taxes, you may refuse. In that case, a particular type of goods will be boycotted, which means that you will no longer be able to buy or sell that type of goods in Europe, and up to one hundred items of that type of goods will be destroyed by enraged colonists in one of your colonies.\n\nBoycotts can be lifted by paying your tax arrears (a costly business), or by the election of Jacob Fugger to the Continental Congress.",
+    "text": "The Monarch can levy taxes on trade and may raise them over time. Refusing an increase can lead to a boycott: the affected goods can no longer be bought or sold in Europe under those rules.\n\nA boycott may be ended by paying tax arrears or through another remedy defined by the rules. Tax rates and consequences depend on the active ruleset.",
     "facts": [],
     "related": [
       "model.foundingFather.jacobFugger"
@@ -16,7 +16,7 @@
     "category": "concepts",
     "title": "Efficiency",
     "summary": "",
-    "text": "The efficiency of your colonies depends on their support for the idea of independence. If 50 percent of the colonists favour the rebel cause, the colony is granted a +1 production bonus. As soon as 100 percent of the colonists become rebels, the production bonus increases to +2.\n\nOn the other hand, if the number of royalists exceeds the bad government limit, the colony incurs a production penalty of -1. Should the number of royalists exceed the very bad government limit, the production penalty is increased to -2. These two limits depend on the difficulty level and can be checked in the difficulty level report.\n\nIn order to increase the efficiency of a colony, you need to reduce its population, or produce more liberty bells.",
+    "text": "A colony's political mood affects its production. Support for independence can grant production bonuses, while a large royalist population can reduce production. The exact thresholds depend on difficulty and the active ruleset; the current rules are listed in the facts below.\n\nLiberty bells change political support according to the rules, and colony population also affects efficiency.",
     "facts": [],
     "related": [
       "model.goods.bells"
@@ -28,7 +28,7 @@
     "category": "concepts",
     "title": "Education",
     "summary": "",
-    "text": "The most efficient way to educate your colonists is to build a schoolhouse and assign an expert unit as a teacher. The teacher will then turn a free colonist into an expert of the same type. Teachers are also able to upgrade petty criminals to indentured servants, and indentured servants to free colonists.\n\nSome skills can also be learned from the natives, by sending a free colonist or indentured servant to live in a native settlement for a turn. And some skills can also be learned by experience, by putting a free colonist to work a colony tile. Free colonists working in the fields and forests surrounding your colonies accumulate up to 200 points of experience, which amounts to a four percent chance of being upgraded.",
+    "text": "Schools let experienced colonists teach others. Which unit types can be trained and how long training takes depend on the active rules and the available school.\n\nSkills can also be learned through work or in Indigenous settlements. Requirements, experience and possible promotions vary by unit and ruleset.",
     "facts": [],
     "related": [
       "model.building.schoolhouse",
@@ -43,7 +43,7 @@
     "category": "concepts",
     "title": "Fortification",
     "summary": "",
-    "text": "Units can fortify themselves on a tile (by building temporary trenches and barriers) to increase their ability to defend. To fully fortify takes one turn. Fortification also prevents units from being ambushed, and fortified artillery are no longer considered to be \"in the open\" although attacking will damage the fortifications. Fortification only provides a defensive combat bonus in the absence of other favourable defensive features, thus no bonus is available when fortifying on mountains or in a colony with a fort or fortress.",
+    "text": "Units can use the fortify order to secure their position. Its duration, protection and combat bonuses depend on the unit, terrain and active ruleset. Other defensive features of a tile or colony may change the additional benefit.",
     "facts": [],
     "related": [],
     "icon": null
@@ -53,7 +53,7 @@
     "category": "concepts",
     "title": "Independence",
     "summary": "",
-    "text": "You start the game as an explorer with a handful of units at your disposal. The Monarch expects you to establish a colony in the New World and to bring treasures and exotic goods to your Home Port. You, however, have different plans: you wish to establish an independent nation.\n\nIn order to declare independence, you need to convince at least 50% of the population of your colonies. You can do this by producing liberty bells, which also increase the efficiency of your colonies.\n\nAs you can imagine, the Monarch will not just let you go. After declaring independence, you will have to fight and destroy the Royal Expeditionary Force (REF). If the REF ever controls all your coastal colonies, or at least 90% of your population, your bid for independence will fail.",
+    "text": "One possible goal is to make the colonies independent from the home country. Liberty bells and the population's political support play a part; the active rules define the required conditions.\n\nA declaration of independence can trigger a war with the Royal Expeditionary Force. Victory conditions, army strength and defeat conditions depend on the game rules.",
     "facts": [],
     "related": [
       "model.goods.bells",
@@ -67,7 +67,7 @@
     "category": "concepts",
     "title": "Royal Expeditionary Force",
     "summary": "",
-    "text": "The Monarch knows better than to trust a bunch of rag-tag conquistadors and religious malcontents unwilling to pay taxes and to bow to the fair demands of the Crown. For this reason, the Monarch keeps a special Royal Expeditionary Force (REF) ready to quell any attempts to declare independence and to secede from the home country.\n\nThe Royal Expeditionary Force is partially balanced by the Intervention Force, which will be dispatched by a foreign power sympathetic to your cause, provided you can produce a sufficient number of liberty bells. From time to time, further units will be added to both the Royal Expeditionary Force and the Intervention Force.",
+    "text": "In classic rules, the Monarch can send a Royal Expeditionary Force (REF) to oppose a declaration of independence. Its composition and reinforcements depend on the game and active rules.\n\nThe unit entries show the current attributes of forces in the ruleset.",
     "facts": [],
     "related": [
       "colopedia.concepts.independence",
@@ -81,13 +81,63 @@
     "category": "concepts",
     "title": "Intervention Force",
     "summary": "",
-    "text": "Any attempt of your colonies to declare independence will inevitably weaken your home country. This is in the interest of your home country's enemies. For this reason, one of them will dispatch an Intervention Force to support you against the Royal Expeditionary Force in the War of Independence, provided you can produce a sufficient number of liberty bells.\n\nOver the course of the game, both the Intervention Force and the Royal Expeditionary Force will be reinforced with further units.",
+    "text": "Some classic rules include an Intervention Force that can support the rebels during the War of Independence. Whether it appears, when it arrives and which units it contains depend on the rules and the course of the game.",
     "facts": [],
     "related": [
       "colopedia.concepts.independence",
       "colopedia.concepts.ref",
       "model.goods.bells"
     ],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.colonyDevelopment",
+    "category": "concepts",
+    "title": "Developing Colonies",
+    "summary": "",
+    "text": "A colony connects its center, surrounding tiles and buildings into an economy. Assign colonists to suitable workplaces and compare building inputs and outputs with the terrain and goods facts.\n\nFood, available workers, storage and building materials all affect development. The active rules determine yields and requirements.",
+    "facts": [],
+    "related": ["model.goods.food", "model.goods.hammers", "model.unit.freeColonist"],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.productionChains",
+    "category": "concepts",
+    "title": "Production Chains",
+    "summary": "",
+    "text": "Many goods are produced in stages: raw materials are gathered and refined in appropriate buildings. Each production site can consume some goods and create others.\n\nCheck a building's inputs, outputs and modifiers, as well as workers' equipment and skills. Displayed amounts come from the active specification.",
+    "facts": [],
+    "related": ["model.goods.sugar", "model.goods.rum", "model.goods.tobacco", "model.goods.cigars", "model.goods.cotton", "model.goods.cloth"],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.tradeAndMarket",
+    "category": "concepts",
+    "title": "Trade and the Market",
+    "summary": "",
+    "text": "Goods can move between colonies, Europe and other trading partners. Market prices respond to supply and demand; imports, exports, taxes and boycotts can affect trade.\n\nGoods facts show the reference price and quantity from the rules. The current price may change with the actual market stock.",
+    "facts": [],
+    "related": ["model.goods.rum", "model.goods.cigars", "colopedia.concepts.taxes"],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.exploration",
+    "category": "concepts",
+    "title": "Exploration",
+    "summary": "",
+    "text": "Exploring units reveal unknown areas and can discover terrain, resources and settlements. Movement, sight and special abilities vary by unit.\n\nUse the unit and resource facts to choose an exploration team. Encounters with settlements may lead to trade, knowledge or political consequences.",
+    "facts": [],
+    "related": ["model.unit.seasonedScout", "model.resource.minerals", "model.resource.game"],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.indigenousRelations",
+    "category": "concepts",
+    "title": "Relations with Indigenous Peoples",
+    "summary": "",
+    "text": "Indigenous settlements are independent actors. Encounters may allow trade, knowledge exchange, missionary work or conflict; available actions depend on the unit, relationship and ruleset.\n\nReview the entries for the units, roles and nations involved before approaching a settlement.",
+    "facts": [],
+    "related": ["model.role.missionary", "model.nation.iroquois", "colopedia.concepts.exploration"],
     "icon": null
   }
 ]

@@ -4361,7 +4361,7 @@
     "id": "model.foundingFather.henryHudson",
     "category": "fathers",
     "title": "Henry Hudson",
-    "summary": "",
+    "summary": "Incrementa las capturas de los Cazadores de pieles en un 100%.",
     "text": "Fue un navegante inglés que exploró y realizó mapas de una gran parte del noreste continental de Norte América. Muchas vías fluviales en esa región reciben su nombre en su honor. Su objetivo inicial era encontrar el famoso Paso del Noroeste.",
     "facts": [
       {
@@ -4436,7 +4436,7 @@
     "id": "model.foundingFather.francisDrake",
     "category": "fathers",
     "title": "Francis Drake",
-    "summary": "",
+    "summary": "Aumenta en un 50 % la fuerza de combate de todos los corsarios.",
     "text": "Un gran capitán de marina inglés, Drake fue el primer inglés en circunnavegar el globo y héroe que combatió contra la Armada Española.",
     "facts": [
       {
@@ -4466,7 +4466,7 @@
     "id": "model.foundingFather.thomasJefferson",
     "category": "fathers",
     "title": "Thomas Jefferson",
-    "summary": "",
+    "summary": "Incrementa la producción de Campanas de la Libertad en un 50%.",
     "text": "Una poderosa voz de patriotismo, a Jefferson se le atribuyó el mérito de escribir la Declaración de Independencia. Más tarde se convirtió en el tercer presidente de los U.S.",
     "facts": [
       {
@@ -4511,7 +4511,7 @@
     "id": "model.foundingFather.simonBolivar",
     "category": "fathers",
     "title": "Simon Bolivar",
-    "summary": "",
+    "summary": "La afiliación de Hijos de la Libertad en las colonias aumenta en un 20%.",
     "text": "Recordado como un gran líder en la lucha de la independencia Sudamericana de España. Bolivar liberó lo que hoy es Venezuela y se convirtió en su primer Presidente.",
     "facts": [
       {
@@ -4556,7 +4556,7 @@
     "id": "model.foundingFather.williamPenn",
     "category": "fathers",
     "title": "William Penn",
-    "summary": "",
+    "summary": "La producción de cruces en todas las colonias aumenta en un 50%.",
     "text": "Como amigo íntimo del Duque de York, se le concedió el territorio en su mayoría de Pennsylvania, Delaware y New Jersey. Dirigió a los miembros de la colonia religiosa Quaker durante varios años en sus esfuerzos para conseguir un lugar seguro.",
     "facts": [
       {
@@ -4586,7 +4586,7 @@
     "id": "model.foundingFather.juanDeSepulveda",
     "category": "fathers",
     "title": "Juan de Sepúlveda",
-    "summary": "",
+    "summary": "Aumenta en un 20 % la probabilidad de que la población de un asentamiento indígena sometido se convierta y se una a tus colonias.",
     "text": "Fue un teólogo español que promovió la conquista de las tierras indias y la forzada evangelización de los nativos.",
     "facts": [
       {

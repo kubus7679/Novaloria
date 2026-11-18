@@ -4,7 +4,7 @@
     "category": "concepts",
     "title": "Steuern",
     "summary": "",
-    "text": "Am Anfang des Spiels erhebt der Monarch keine Steuern auf Euer Einkommen. Im Laufe der Zeit wird der Monarch allerdings die Umsatzsteuer aufgrund einer Reihe von Gründen erhöhen, die Ihr mehr oder weniger überzeugend finden werdet. Jedes Mal, wenn der Monarch eine Steuererhöhung vorschlägt, könnt Ihr dies ablehnen. Für diesen Fall wird jedoch eine bestimmte Ware boykottiert werden. Dies bedeutet für Euch, dass Ihr diese Ware nicht länger in Europa kaufen oder verkaufen werden könnt. Zudem werden bis zu hundert Stück dieser Ware von erzürnten Kolonisten in einer Eurer Kolonien vernichtet werden.\n\nBoykotte können aufgehoben werden, indem Ihr Eure Steuerrückstände zahlt, was allerdings sehr kostspielig ist. Oder es wird Jacob Fugger in den Kontinentalkongress gewählt.",
+    "text": "Der Monarch kann Steuern auf den Handel erheben und später erhöhen. Wird eine Erhöhung abgelehnt, kann die betroffene Ware boykottiert werden: Sie lässt sich dann nach den Regeln nicht mehr in Europa kaufen oder verkaufen.\n\nEin Boykott kann durch das Begleichen von Steuerrückständen oder durch andere im Regelwerk vorgesehene Möglichkeiten enden. Höhe und Folgen der Steuer hängen vom aktiven Regelwerk ab.",
     "facts": [],
     "related": [],
     "icon": null
@@ -14,7 +14,7 @@
     "category": "concepts",
     "title": "Effizienz",
     "summary": "",
-    "text": "Die Effizienz Eurer Kolonien hängt von ihrer Unterstützung für die Idee der Unabhängigkeit ab. Sofern 50 Prozent der Kolonisten die Ziele der Rebellen unterstützen, erhält die Kolonie einen Produktionsbonus von +1. Sobald dieser Wert 100 Prozent beträgt, erhöht sich der Produktionsbonus auf +2.\n\nSofern andererseits die Zahl der königstreuen Kolonisten den Grenzwert für eine schlechte Regierung überschreitet, existiert ein Abzug von -1. Sobald die Zahl der königstreuen Kolonisten den Grenzwert für eine sehr schlechte Regierung überschreitet, erhöht sich der Abzug auf -2. Diese beiden Grenzwerte sind vom Schwierigkeitsgrad abhängig und können im Bericht zum Schwierigkeitsgrad eingesehen werden.\n\nUm die Effizienz einer Kolonie zu erhöhen, muss entweder deren Einwohnerzahl reduziert werden oder es müssen mehr Freiheitsglocken produziert werden.",
+    "text": "Die politische Stimmung einer Kolonie beeinflusst ihre Produktion. Unterstützung für die Unabhängigkeit kann Produktionsboni bewirken; ein hoher Anteil königstreuer Einwohner kann sie verringern. Die genauen Schwellen hängen von Schwierigkeitsgrad und aktivem Regelwerk ab und stehen unten bei den Fakten.\n\nFreiheitsglocken verändern die politische Stimmung nach den geltenden Regeln. Auch die Bevölkerungszahl wirkt sich auf die Effizienz aus.",
     "facts": [],
     "related": [
       "model.goods.bells"
@@ -26,7 +26,7 @@
     "category": "concepts",
     "title": "Bildung",
     "summary": "",
-    "text": "Der effizienteste Weg zur Ausbildung Eurer Kolonisten ist der Bau einer Schule und die Zuteilung einer erfahrenen Einheit als Lehrer. Der Lehrer wird dann von einem freien Kolonisten zu einer erfahrenen Einheit gleichen Typs. Lehrer sind auch in der Lage, Kleinkriminelle in Schuldknechte und Schuldknechte in freie Kolonisten zu verwandeln.\n\nEinige Fähigkeiten können auch von den Ureinwohnern durch Entsendung eines freien Kolonisten oder Schuldknechten erlernt werden, um für einen Zug in einer Ureinwohnersiedlung zu leben. Und einige Fähigkeiten können auch durch Erfahrung durch Setzen eines freien Kolonisten erlernt werden. Freie Kolonisten, die in den umliegenden Feldern und Wäldern Eurer Kolonien arbeiten, sammeln bis zu 200 Punkte an Erfahrung, was einer vierprozentigen Chance der Beförderung entspricht.",
+    "text": "Schulen ermöglichen es, erfahrene Kolonisten als Lehrer einzusetzen. Welche Einheitentypen sie ausbilden können und wie lange das dauert, bestimmt das aktive Regelwerk und die verfügbare Schule.\n\nFähigkeiten lassen sich außerdem durch Arbeit oder in indigenen Siedlungen erlernen. Voraussetzungen, Erfahrung und mögliche Beförderungen variieren je nach Einheit und Regelwerk.",
     "facts": [],
     "related": [
       "model.building.schoolhouse",
@@ -41,7 +41,7 @@
     "category": "concepts",
     "title": "Verschanzen",
     "summary": "",
-    "text": "Einheiten können sich selbst auf einem Feld verschanzen (durch das Bauen von temporären Gräben und Barrieren), um ihre Verteidigungsfähigkeit zu verbessern. Zur vollständingen Verschanzung braucht es einen Zug. Verschanzung bewahrt Einheiten auch vor Überfällen und eine verschanzte Artillerie wird nicht mehr als „auf freiem Feld“ angesehen, wobei Angriffe die Befestigungen zerstören. Verschanzungen bieten nur einen Verteidigungskampfbonus in Abwesenheit anderer günstiger Verteidigungsfunktionen. Dadurch ist kein Bonus beim Verschanzen auf Bergen oder in einer Kolonie mit einem Fort oder einer Festung verfügbar.",
+    "text": "Einheiten können den Befehl zum Verschanzen nutzen, um ihre Stellung zu sichern. Dauer, Schutzwirkung und Kampfboni richten sich nach Einheit, Gelände und aktivem Regelwerk. Andere Verteidigungsmerkmale eines Feldes oder einer Kolonie können den zusätzlichen Nutzen verändern.",
     "facts": [],
     "related": [],
     "icon": null
@@ -51,7 +51,7 @@
     "category": "concepts",
     "title": "Unabhängigkeit",
     "summary": "",
-    "text": "Ihr startet das Spiel als Entdecker, der über ein geringe Anzahl von Einheiten verfügt. Der Monarch erwartet, dass Ihr eine Kolonie in der Neuen Welt gründet und Schätze wie auch exotische Waren zum Heimathafen schickt. Ihr habt allerdings andere Pläne und möchtet eine unabhängige Nation errichten.\n\nUm die Unabhängigkeit erklären zu können, müsst Ihr mindestens 50% der Bevölkerung Eurer Kolonien davon überzeugen. Dies kann geschehen, indem Ihr Freiheitsglocken produziert, die wiederum die Effizienz Eurer Kolonien erhöhen.\n\nWie Ihr Euch vielleicht vorstellen könnt, wird der Monarch dies nicht einfach zulassen. Nach der Unabhängigkeitserklärung werdet Ihr das Königliche Expeditionskorps (KEK) bekämpfen und besiegen müssen. Sofern das KEK alle Küstenkolonien kontrolliert oder mindestens 90% Eurer Bevölkerung, werdet Ihr die Unabhängigkeit nicht durchsetzen können.",
+    "text": "Ein mögliches Spielziel ist, die Kolonien vom Mutterland unabhängig zu machen. Freiheitsglocken und die politische Stimmung der Bevölkerung spielen dabei eine Rolle; die erforderlichen Voraussetzungen werden vom aktiven Regelwerk festgelegt.\n\nEine Unabhängigkeitserklärung kann einen Krieg mit dem Königlichen Expeditionskorps auslösen. Siegbedingungen, Truppenstärke und Niederlagebedingungen hängen von den Spielregeln ab.",
     "facts": [],
     "related": [
       "model.goods.bells",
@@ -66,6 +66,7 @@
     "title": "Königliches Expeditionskorps",
     "summary": "",
     "text": "Der Monarch weiß es besser, als einem bunt gemischten Haufen von Konquistadoren und unzufriedenen Religiösen zu vertrauen, die unwillig sind, Steuern zu zahlen sowie sich den gerechten Forderungen der Krone zu beugen. Aus diesem Grunde unterhält der Monarch ein Königliches Expeditionskorps (KEK), das bereit ist, jegliche Versuche der Unabhängigkeit vom Mutterland niederzuschlagen.\n\nDas Königliche Expeditionskorps wird teilweise durch die Eingreiftruppe ergänzt, die von einer befreundeten ausländischen Macht entsandt wird, sofern Ihr eine ausreichenden Anzahl an Freiheitsglocken produzieren könnt. Von Zeit zu Zeit werden sowohl das Königliche Expeditionskorps wie auch die Eingreiftruppe um zusätzliche Einheiten verstärkt.",
+      "text": "In klassischen Regelwerken kann der Monarch ein Königliches Expeditionskorps (KEK) entsenden, um eine Unabhängigkeitserklärung zu bekämpfen. Zusammensetzung und Verstärkung dieser Armee richten sich nach Spielverlauf und aktiven Regeln.\n\nDie Einträge der beteiligten Einheiten zeigen ihre aktuellen Werte.",
     "facts": [],
     "related": [
       "colopedia.concepts.independence",
@@ -80,12 +81,63 @@
     "title": "Eingreiftruppe",
     "summary": "",
     "text": "Jeder Versuch Eurer Kolonien, die Unabhängigkeit zu erklären, wird unweigerlich zur Schwächung des Mutterlandes führen. Dies liegt im Interesse der Feinde Eures Mutterlandes. Aus diesem Grund wird einer von ihnen eine Eingreiftruppe entsenden, um Euch im Kampf gegen das Königliche Expeditionskorps zu unterstützen. Voraussetzung ist, dass Ihr eine ausreichende Anzahl an Freiheitsglocken produzieren könnt.\n\nIm Verlauf des Spiels werden sowohl die Eingreiftruppe wie auch das Königliche Expeditionskorps um zusätzliche Einheiten verstärkt.",
+      "text": "Einige klassische Regelwerke sehen eine Eingreiftruppe vor, die Rebellen im Unabhängigkeitskrieg unterstützen kann. Ob sie erscheint, wann sie eintrifft und aus welchen Einheiten sie besteht, hängt von den geltenden Regeln und dem Spielverlauf ab.",
     "facts": [],
     "related": [
       "colopedia.concepts.independence",
       "colopedia.concepts.ref",
       "model.goods.bells"
     ],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.colonyDevelopment",
+    "category": "concepts",
+    "title": "Kolonien entwickeln",
+    "summary": "",
+    "text": "Eine Kolonie verbindet ihr Zentrum, umliegende Felder und Gebäude zu einer Wirtschaft. Weise Kolonisten passenden Arbeitsplätzen zu und vergleiche Ertrag und Verbrauch der Gebäude mit den Gelände- und Warenfakten.\n\nNahrung, freie Arbeitskräfte, Lagerraum und Baumaterial beeinflussen die Entwicklung. Welche Erträge und Voraussetzungen gelten, zeigt das aktive Regelwerk.",
+    "facts": [],
+    "related": ["model.goods.food", "model.goods.hammers", "model.unit.freeColonist"],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.productionChains",
+    "category": "concepts",
+    "title": "Produktionsketten",
+    "summary": "",
+    "text": "Viele Waren entstehen in mehreren Schritten: Rohstoffe werden gesammelt und in passenden Gebäuden weiterverarbeitet. Jede Produktionsstätte kann Waren verbrauchen und andere erzeugen.\n\nPrüfe die Eingänge, Ausgänge und Modifikatoren eines Gebäudes sowie die Ausrüstung und Fähigkeiten der Arbeiter. Die angezeigten Mengen stammen aus der aktiven Spezifikation.",
+    "facts": [],
+    "related": ["model.goods.sugar", "model.goods.rum", "model.goods.tobacco", "model.goods.cigars", "model.goods.cotton", "model.goods.cloth"],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.tradeAndMarket",
+    "category": "concepts",
+    "title": "Handel und Markt",
+    "summary": "",
+    "text": "Waren können zwischen Kolonien, Europa und anderen Handelspartnern bewegt werden. Marktpreise reagieren auf Angebot und Nachfrage; Einfuhr, Ausfuhr, Steuern und Boykotte können den Handel beeinflussen.\n\nDie Warenfakten nennen Referenzpreis und Referenzmenge aus dem Regelwerk. Der aktuelle Preis kann sich durch den tatsächlichen Marktbestand ändern.",
+    "facts": [],
+    "related": ["model.goods.rum", "model.goods.cigars", "colopedia.concepts.taxes"],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.exploration",
+    "category": "concepts",
+    "title": "Erkundung",
+    "summary": "",
+    "text": "Erkundende Einheiten decken unbekannte Gebiete auf und können neue Geländearten, Ressourcen und Siedlungen entdecken. Bewegung, Sichtweite und besondere Fähigkeiten unterscheiden sich je nach Einheit.\n\nNutze die Einheiten- und Ressourcenfakten, um passende Erkundungsteams auszuwählen. Begegnungen mit Siedlungen können Handel, Wissen oder politische Folgen haben.",
+    "facts": [],
+    "related": ["model.unit.seasonedScout", "model.resource.minerals", "model.resource.game"],
+    "icon": null
+  },
+  {
+    "id": "colopedia.concepts.indigenousRelations",
+    "category": "concepts",
+    "title": "Beziehungen zu indigenen Völkern",
+    "summary": "",
+    "text": "Indigene Siedlungen sind eigenständige Akteure. Begegnungen können Handel, Wissensaustausch, Missionierung oder Konflikte ermöglichen; verfügbare Aktionen hängen von Einheit, Beziehung und Regelwerk ab.\n\nPrüfe die Einträge der beteiligten Einheiten, Rollen und Nationen, bevor du dich einer Siedlung näherst.",
+    "facts": [],
+    "related": ["model.role.missionary", "model.nation.iroquois", "colopedia.concepts.exploration"],
     "icon": null
   }
 ]

@@ -131,14 +131,25 @@ struct ColopediaView: View {
                     Text(entry.category.title).foregroundStyle(.secondary)
                 }
             }
-            if !entry.summary.isEmpty { Text(entry.summary).textSelection(.enabled) }
+            if !entry.summary.isEmpty && entry.category != .fathers {
+                Text(entry.summary).textSelection(.enabled)
+            }
             if !entry.text.isEmpty { Text(entry.text).textSelection(.enabled) }
             let facts = entry.facts(using: state.game?.specification)
             if !facts.isEmpty {
                 Divider()
                 ForEach(Array(facts.enumerated()), id: \.offset) { _, fact in
-                    LabeledContent(fact.label, value: fact.value)
-                        .font(.callout)
+                    if fact.label == L10n.text("Bonus", table: "ColopediaCatalog") {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(fact.label).font(.callout.bold())
+                            Text(fact.value).font(.callout).textSelection(.enabled)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        LabeledContent(fact.label, value: fact.value)
+                            .font(.callout)
+                    }
                 }
             }
             let related = entries.filter { entry.related.contains($0.id) }

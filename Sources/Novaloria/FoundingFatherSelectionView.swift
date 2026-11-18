@@ -1,7 +1,9 @@
 import SwiftUI
+import FreeColGame
 
 struct FoundingFatherSelectionView: View {
     let options: [GameState.FoundingFatherOption]
+    let specification: Specification?
     let canChoose: Bool
     let onChoose: (String) -> Void
 
@@ -80,7 +82,7 @@ struct FoundingFatherSelectionView: View {
                     }
                 }
                 if let entry {
-                    if !entry.summary.isEmpty {
+                    if !entry.summary.isEmpty && entry.category != .fathers {
                         Text(entry.summary)
                             .font(.body)
                             .fixedSize(horizontal: false, vertical: true)
@@ -93,9 +95,18 @@ struct FoundingFatherSelectionView: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .lineLimit(5)
                     }
-                    ForEach(Array(entry.facts.enumerated()), id: \.offset) { _, fact in
-                        LabeledContent(fact.label, value: fact.value)
-                            .font(.callout)
+                    ForEach(Array(entry.facts(using: specification).enumerated()), id: \.offset) { _, fact in
+                        if fact.label == L10n.text("Bonus", table: "ColopediaCatalog") {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(fact.label).font(.callout.bold())
+                                Text(fact.value).font(.callout)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            LabeledContent(fact.label, value: fact.value)
+                                .font(.callout)
+                        }
                     }
                 }
             }

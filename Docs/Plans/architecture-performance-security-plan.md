@@ -1,6 +1,6 @@
 # Architektur-, Performance- und Sicherheitsplan
 
-> **Stand:** 31. Oktober 2026  
+> **Stand:** 18. November 2026
 > **Umsetzung:** Phasen 1, 2 und 4 sind abgeschlossen. Phase 3 enthält bereits
 > viewport-basiertes Zeichnen, räumliche Tile-Indizes und reproduzierbare
 > XCTest-Zeitvergleiche samt Canvas-Path-Proxy. Der Index wurde nach Messung
@@ -8,7 +8,11 @@
 > und weist ungültige Ports ab. Ein natives UI-Profil und TLS-Unterstützung
 > bleiben offen. Für Phase 6 sind jetzt Instruments-Signposts für den Aufbau
 > der Renderdaten und die Canvas-Zeichenbefehle vorhanden; Messungen in der
-> laufenden App und belastbare Allocations-Daten stehen noch aus.
+> laufenden App und belastbare Allocations-Daten stehen noch aus. Die Codeprüfung
+> vom 18. November bestätigt die Protokollgrenzen, Kartenindizierung und
+> Ausschiffpfade. Regressionstests für XML-Knotenzahl und Frame-Queue-Überlauf
+> sind ergänzt, konnten lokal aber wegen des fehlenden SwiftUI-Makroplugins nicht
+> ausgeführt werden.
 
 ## Prüfergebnisse
 
@@ -71,7 +75,7 @@
 
 | Phase | Priorität | Inhalt und Abnahmekriterien |
 |---|---|---|
-| 1 — Protokollgrenzen | Hoch, abgeschlossen | Frame-Limit von 16 MiB für Senden und Empfangen; AsyncStream auf acht wartende Frames begrenzen und Überlauf explizit melden; UTF-8 erst nach vollständiger Zeile dekodieren; XML auf 128 Ebenen und 250.000 Elemente begrenzen; externe Entitäten nicht auflösen; ungültige Ports als Fehler behandeln; einzeiliges Framing durchsetzen und Attribut-Zeilenumbrüche maskieren; Nachrichteninhalte nicht protokollieren. Tests decken Fragmentierung, Größenüberschreitung, UTF-8, XML-Tiefe und XML-Escaping ab. |
+| 1 — Protokollgrenzen | Hoch, umgesetzt | Frame-Limit von 16 MiB für Senden und Empfangen; AsyncStream auf acht wartende Frames begrenzen und Überlauf explizit melden; UTF-8 erst nach vollständiger Zeile dekodieren; XML auf 128 Ebenen und 250.000 Elemente begrenzen; externe Entitäten nicht auflösen; ungültige Ports als Fehler behandeln; einzeiliges Framing durchsetzen und Attribut-Zeilenumbrüche maskieren; Nachrichteninhalte nicht protokollieren. Tests decken Fragmentierung, Größenüberschreitung, UTF-8, XML-Tiefe, XML-Escaping, Knotenzahl und Frame-Queue-Überlauf ab. Die beiden neuen Grenzwerttests warten noch auf Ausführung mit einer funktionierenden SwiftUI-Makrotoolchain. |
 | 2 — Fehlerbehandlung | Mittel, abgeschlossen | Serverfehler-Mapping in `ServerErrorMessage` aus `GameState` herausgelöst; reale Java-Texte und unbekannte Meldungen werden unabhängig von UI-/Actor-Zustand getestet. |
 | 3 — Kartenprofiling | Teilweise abgeschlossen | Canvas zeichnet nur Tiles, deren Bounds den Viewport schneiden. `TileSpatialIndex` beschleunigt Hit-Tests; Canvas-Path-Proxy-Messungen vergleichen alle Tiles gegen das Viewport-Fenster auf zwei Kartengrößen. Ein vollständiges SwiftUI-Zeichen-/Rasterizing-Profil bleibt offen. |
 | 4 — CLI-Aufteilung | Mittel, abgeschlossen | 60 Mock-Server-Integrationstests in fünf thematische Dateien verschoben; `main.swift` auf den 9-zeiligen CLI-Einstieg reduziert. Login-/Zug-Helfer extrahiert und Actor-Zugriffe explizit asynchron gemacht; Swift-6-Actor-Isolationsdiagnosen sind damit beseitigt. |
@@ -91,17 +95,21 @@ selektiert das Viewport-Fenster und erzeugt nur dessen Pfade.
 
 ## Nächste Phasen
 
-1. **Phase 6 abschließen:** App mit einer reproduzierbaren großen Karte starten und
+1. **Protokolltests verifizieren:** Regressionen für mehr als 250.000 XML-Elemente
+  und den Überlauf der acht Frames umfassenden Empfangswarteschlange sind ergänzt.
+  Mit einer funktionierenden SwiftUI-Makrotoolchain ausführen und den erwarteten
+  Ressourcenlimit-Fehler bestätigen.
+2. **Phase 6 abschließen:** App mit einer reproduzierbaren großen Karte starten und
    in Instruments die Signposts `RenderDataBuild` sowie `CanvasCommands` erfassen.
    Parallel SwiftUI/Core Animation für Layout, Rasterizing und Framezeiten prüfen;
    diese liegen außerhalb der Canvas-Signpost-Intervalle. Allocations in einem
    separaten, frischen Profil-Lauf messen und Referenz-/Indexläufe nicht anhand
    prozessweiter XCTest-Spitzenwerte vergleichen.
-2. **Phase 5 vorbereiten:** Mit dem FreeCol-Serverprojekt klären, ob TLS nativ oder
+3. **Phase 5 vorbereiten:** Mit dem FreeCol-Serverprojekt klären, ob TLS nativ oder
    über einen unterstützten Tunnel bereitgestellt wird. Vor einer Implementierung
    müssen Protokoll, Serverversion, Zertifikatsvertrauen und Fehlerverhalten
    dokumentiert sowie ein Interoperabilitätstest festgelegt sein.
-3. **Phase 7 erst danach ausführen:** Gegen den vereinbarten TLS-Endpunkt
+4. **Phase 7 erst danach ausführen:** Gegen den vereinbarten TLS-Endpunkt
    Zertifikatsfehler, Verbindungsabbruch und Klartext-/Downgrade-Verhalten testen.
    Bis dahin keine TLS-Aushandlung im Client erfinden oder unverschlüsselte
    Verbindungen stillschweigend als vertraulich behandeln.
@@ -479,3 +487,32 @@ eigenem und fremdem Zug live prüfen.
   Vollständige Java-Matrix: **14 bestanden, 0 übersprungen, 0 fehlgeschlagen**;
   die Gameplay-Probe bestätigt Küstenlandung und die neue Ausschiffen-Probe
   das Ausladen eines erschöpften Passagiers in Europa.
+
+### Code-Nachprüfung am 18. November 2026
+
+- `Connection` begrenzt Frames auf 16 MiB, puffert höchstens acht vollständige
+  Frames und beendet die Verbindung beim Queue-Überlauf. `LineFramer` dekodiert
+  UTF-8 erst nach dem vollständigen Frame; der XML-Parser begrenzt Tiefe und
+  Knotenzahl und löst keine externen Entitäten auf. Logs enthalten Framegrößen
+  und Nachrichtentags, keine vollständigen Nutzdaten.
+- Regressionstests prüfen jetzt mehr als 250.000 XML-Elemente und den TCP-Queue-
+  Überlauf nach acht Frames. `swiftc -frontend -parse` für die Testdatei und
+  `swift build --target FreeColProtocol` sind erfolgreich. Der gezielte XCTest-
+  Aufruf scheitert beim Kompilieren des App-Moduls, weil das externe
+  `SwiftUIMacros.StateMacro`-Plugin in der lokalen Toolchain fehlt.
+- Der Encoder maskiert CR/LF/TAB in Attributwerten. `send(raw:)` weist LF in
+  Rohframes zurück. Der Login zeigt weiterhin ausdrücklich die Warnung für
+  unverschlüsseltes TCP; eine TLS-Implementierung ist nicht vorhanden und bleibt
+  von Server-/Tunnel-Kompatibilität abhängig.
+- `MapView` verwendet den sortierten `TileSpatialIndex` für Viewport-Auswahl und
+  Trefferprüfung. `RenderDataBuild` und `CanvasCommands` sind signpost-markiert;
+  diese Quellprüfung ersetzt keine Laufzeit-, Rasterizing- oder Allocations-Messung.
+- Die Ausschiffpfade unterscheiden Küstenlandung per `move` vom Hafen-/Europa-
+  Ausschiffen per `disembark`, warten auf Serverbestätigung und haben dedizierte
+  Regressionstests. In den geprüften Bereichen wurde keine Implementierungs-
+  abweichung vom dokumentierten Verhalten gefunden.
+- Verifikation am lokalen Stand: `swift build --target FreeColProtocol`
+  erfolgreich, mit bestehenden `var`-statt-`let`-Warnungen in Nachrichten-
+  implementierungen. `swift test` konnte nicht bis zur Testausführung bauen:
+  die Toolchain meldet, dass das externe `SwiftUIMacros.StateMacro`-Plugin fehlt.
+  Das ist ein Umgebungsblocker, kein fehlgeschlagener Test.

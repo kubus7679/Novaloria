@@ -98,14 +98,18 @@ struct GameView: View {
                             if state.selectedUnit != nil {
                                 unitQuickActions
                             } else {
-                                ScrollView { InfoPanelView() }
+                                ScrollView {
+                                    InfoPanelView()
+                                        .padding(8)
+                                }
                             }
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     }
-                    .frame(width: 260, height: inspectorGeometry.size.height)
+                    .frame(maxWidth: .infinity, maxHeight: inspectorGeometry.size.height)
+                    .background(AtlasPalette.inspector)
                 }
-                .frame(width: 260)
+                .frame(minWidth: 260, idealWidth: 280, maxWidth: 320)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -816,6 +820,7 @@ struct GameView: View {
                         case .foundingFather:
                             FoundingFatherSelectionView(
                                 options: state.pendingFoundingFathers,
+                                specification: state.game?.specification,
                                 canChoose: state.canRespondToPendingDecision(),
                                 onChoose: state.choosePendingFoundingFather
                             )
@@ -1497,9 +1502,6 @@ struct GameView: View {
             .padding(8)
             .frame(maxWidth: .infinity, alignment: .leading)
             .buttonStyle(GameActionButtonStyle(fillsAvailableWidth: true))
-            .background(Color(NSColor.windowBackgroundColor).opacity(0.95))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .shadow(radius: 4)
         }
         .frame(maxHeight: .infinity, alignment: .top)
     }
