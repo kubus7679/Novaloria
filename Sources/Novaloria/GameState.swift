@@ -1180,6 +1180,13 @@ final class GameState {
             case "tribalChief", "tribalChief.mounds":
                 return L10n.text("Ein Häuptling beschenkt Euch mit Schmuck im Wert von \(money) Gold.", table: "GameState")
             default:
+                if let template = localizedModelMessageTemplate(messageId) {
+                    var replacements = message.replacements.mapValues(modelMessageReplacement)
+                    for (key, value) in message.replacementTemplates {
+                        replacements[key] = modelMessageTemplateValue(value)
+                    }
+                    return formatModelMessage(template, replacements: replacements)
+                }
                 if result.hasPrefix("nothing.") {
                     return L10n.text("Das Gerücht über eine verlorene Stadt war nichts als ein Gerücht.", table: "GameState")
                 }
@@ -1238,7 +1245,7 @@ final class GameState {
     }
 
     private func formatModelMessage(_ template: String, replacements: [String: String]) -> String {
-        var text = template
+        var text = renderFreeColTemplateDirectives(in: template, replacements: replacements)
         for (key, value) in replacements.sorted(by: { $0.key.count > $1.key.count }) {
             let resolved = modelMessageReplacement(value)
             guard !resolved.isEmpty else { continue }
@@ -1253,6 +1260,64 @@ final class GameState {
             }
         }
         return text
+    }
+
+    /// Resolve FreeCol's inline `{{tag:...}}` and `{{plural:...}}` template
+    /// expressions before substituting the ordinary `%placeholder%` values.
+    private func renderFreeColTemplateDirectives(in template: String, replacements: [String: String]) -> String {
+        guard let expression = try? NSRegularExpression(pattern: #"\{\{([^{}]+)\}\}"#) else {
+            return template
+        }
+        var text = template
+        while true {
+            let range = NSRange(text.startIndex..., in: text)
+            let matches = expression.matches(in: text, range: range)
+            guard !matches.isEmpty else { return text }
+            for match in matches.reversed() {
+                guard let wholeRange = Range(match.range, in: text),
+                      let bodyRange = Range(match.range(at: 1), in: text) else {
+                    continue
+                }
+                let body = String(text[bodyRange])
+                let replacement = resolveFreeColTemplateDirective(body, replacements: replacements)
+                text.replaceSubrange(wholeRange, with: replacement)
+            }
+        }
+    }
+
+    private func resolveFreeColTemplateDirective(_ body: String, replacements: [String: String]) -> String {
+        let parts = body.components(separatedBy: "|")
+        guard let head = parts.first,
+              let separator = head.firstIndex(of: ":") else {
+            return parts.last ?? body
+        }
+        let kind = String(head[..<separator])
+        let selectorKey = String(head[head.index(after: separator)...])
+        let selector = replacements[selectorKey] ?? selectorKey
+        var options: [String: String] = [:]
+        for part in parts.dropFirst() {
+            guard let equals = part.firstIndex(of: "=") else { continue }
+            options[String(part[..<equals])] = String(part[part.index(after: equals)...])
+        }
+
+        guard !options.isEmpty else {
+            return parts.last ?? body
+        }
+        let optionKey: String
+        switch kind {
+        case "plural":
+            optionKey = Int(selector) == 1 ? "one" : "other"
+        case "tag":
+            optionKey = selector
+        default:
+            optionKey = selector
+        }
+        let fallbackOption = parts.dropFirst().first { $0.contains("=") }
+            .flatMap { part -> String? in
+                guard let equals = part.firstIndex(of: "=") else { return nil }
+                return String(part[part.index(after: equals)...])
+            }
+        return options[optionKey] ?? options["default"] ?? options["other"] ?? fallbackOption ?? body
     }
 
     private func modelMessageReplacement(_ rawValue: String) -> String {
@@ -2508,12 +2573,17 @@ final class GameState {
         case "gameEnded":
             // The server broadcasts this to every player; only the winner reacts.
             let winner = parsed.attributes["winner"]
+            let winnerName = winner.flatMap { winnerId in
+                cachedGame?.players[winnerId].flatMap { player in
+                    player.name ?? player.nationId.map(GameLabels.name)
+                }
+            } ?? winner ?? L10n.text("unbekannt", table: "GameState")
             isGameEnded = true
             isVictorious = winner != nil && winner == resolveLocalPlayerId()
             gameEndedHighScore = (parsed.attributes["highScore"] ?? "").lowercased() == "true"
             statusMessage = isVictorious
-                ? "Du hast das Spiel gewonnen!"
-                : "Das Spiel ist beendet. Sieger: \(winner ?? "unbekannt")"
+                ? L10n.text("Du hast das Spiel gewonnen!", table: "GameState")
+                : L10n.text("Das Spiel ist beendet. Sieger: \(winnerName)", table: "GameState")
             pendingServerDecision = nil
         case "fountainOfYouth":
             if isDecisionResponse(parsed) {
@@ -2565,7 +2635,7 @@ final class GameState {
     }
 
     private func applyChatMessage(_ parsed: ParsedMessage) {
-        let sender = parsed.attributes["sender"] ?? "?"
+        let sender = parsed.attributes["sender"] ?? parsed.attributes["userName"] ?? "?"
         let message = parsed.attributes["message"] ?? ""
         let senderName = cachedGame?.players[sender]?.name ?? sender
         incomingChatLog.append("\(senderName): \(message)")
@@ -2601,15 +2671,17 @@ final class GameState {
             style = .attack
         }
         showMapAnimationCue(sourceTileId: source, targetTileId: target, style: style)
-        let attacker = parsed.attributes["attacker"] ?? "unknown attacker"
-        let defender = parsed.attributes["defender"] ?? "unknown defender"
+        let attacker = parsed.attributes["attacker"] ?? L10n.text("unbekannte Einheit", table: "GameState")
+        let defender = parsed.attributes["defender"] ?? L10n.text("unbekannte Einheit", table: "GameState")
+        let attackerName = modelMessageObjectName(attacker) ?? attacker
+        let defenderName = modelMessageObjectName(defender) ?? defender
         switch success {
         case .some(true):
-            statusMessage = L10n.text("Angriff erfolgreich: \(attacker) gegen \(defender)", table: "GameState")
+            statusMessage = L10n.text("Angriff erfolgreich: \(attackerName) gegen \(defenderName)", table: "GameState")
         case .some(false):
-            statusMessage = L10n.text("Angriff fehlgeschlagen: \(attacker) gegen \(defender)", table: "GameState")
+            statusMessage = L10n.text("Angriff fehlgeschlagen: \(attackerName) gegen \(defenderName)", table: "GameState")
         case .none:
-            statusMessage = L10n.text("Angriff: \(attacker) gegen \(defender)", table: "GameState")
+            statusMessage = L10n.text("Angriff: \(attackerName) gegen \(defenderName)", table: "GameState")
         }
         errorMessage = nil
     }
@@ -2618,7 +2690,13 @@ final class GameState {
         errorMessage = nil
         if let result = parsed.attributes["result"], !result.isEmpty {
             // Response echo: record it instead of opening a new prompt.
-            statusMessage = L10n.text("Erstkontakt abgeschlossen: \(result)", table: "GameState")
+            let outcome: String
+            switch result.lowercased() {
+            case "true": outcome = L10n.text("diplomatische Beziehungen aufgenommen", table: "GameState")
+            case "false": outcome = L10n.text("diplomatische Beziehungen abgelehnt", table: "GameState")
+            default: outcome = result
+            }
+            statusMessage = L10n.text("Erstkontakt abgeschlossen: \(outcome).", table: "GameState")
             return
         }
         clearPendingDecision()
@@ -2634,7 +2712,13 @@ final class GameState {
         let action = parsed.attributes["action"] ?? ""
         // A result attribute means this is a response echo, not a new offer.
         if let result = parsed.attributes["result"], !result.isEmpty {
-            statusMessage = L10n.text("Monarch – \(monarchActionDescription(action)) (\(result))", table: "GameState")
+            let outcome: String
+            switch result.lowercased() {
+            case "true": outcome = L10n.text("angenommen", table: "GameState")
+            case "false": outcome = L10n.text("abgelehnt", table: "GameState")
+            default: outcome = result
+            }
+            statusMessage = L10n.text("Monarch – \(monarchActionDescription(action)): \(outcome).", table: "GameState")
             return
         }
         // Only these actions create a MonarchSession on the server and require
@@ -2716,16 +2800,24 @@ final class GameState {
     }
 
     private func applyActionResultLog(_ parsed: ParsedMessage) {
-        var parts: [String] = [parsed.tag]
-        for key in ["unit", "settlement", "result", "success", "gold", "goods", "action"] {
-            if let value = parsed.attributes[key] { parts.append("\(key): \(value)") }
+        let unit = parsed.attributes["unit"]
+            .flatMap { modelMessageObjectName($0) }
+            ?? L10n.text("Einheit", table: "GameState")
+        switch parsed.tag {
+        case "learnSkill":
+            statusMessage = L10n.text("\(unit) hat eine neue Fähigkeit erlernt.", table: "GameState")
+        case "askSkill":
+            statusMessage = L10n.text("Für \(unit) wurde eine Fähigkeit angefragt.", table: "GameState")
+        case "scoutSpeakToChief":
+            statusMessage = L10n.text("Der Kundschafter spricht mit dem Häuptling.", table: "GameState")
+        default:
+            let label = parsed.tag
+                .replacingOccurrences(of: "([a-z])([A-Z])", with: "$1 $2", options: .regularExpression)
+                .capitalized
+            statusMessage = L10n.text("Spielmeldung: \(label).", table: "GameState")
         }
-        let line = parts.joined(separator: " · ")
-        incomingChatLog.append(line)
-        if incomingChatLog.count > 8 {
-            incomingChatLog.removeFirst(incomingChatLog.count - 8)
-        }
-        statusMessage = line
+        incomingChatLog.append(statusMessage)
+        if incomingChatLog.count > 8 { incomingChatLog.removeFirst(incomingChatLog.count - 8) }
         errorMessage = nil
     }
 
@@ -2739,7 +2831,9 @@ final class GameState {
         if let colony = game.colonies[settlementId] {
             statusMessage = L10n.text("Erkundet: \(colony.name ?? settlementId).", table: "GameState")
         } else {
-            statusMessage = L10n.text("Erkundungsbericht: \(settlementId)", table: "GameState")
+            let settlementName = modelMessageObjectName(settlementId)
+                ?? L10n.text("Siedlung", table: "GameState")
+            statusMessage = L10n.text("Erkundungsbericht: \(settlementName)", table: "GameState")
         }
         openColonyPanel(colonyId: settlementId)
     }
@@ -2753,7 +2847,10 @@ final class GameState {
             pendingServerDecision = nil
             statusMessage = L10n.text("Deine Nation wurde besiegt.", table: "GameState")
         } else {
-            statusMessage = L10n.text("Spieler ausgeschaltet: \(deadId)", table: "GameState")
+            let playerName = cachedGame?.players[deadId].flatMap { player in
+                player.name ?? player.nationId.map(GameLabels.name)
+            } ?? L10n.text("Spieler", table: "GameState")
+            statusMessage = L10n.text("\(playerName) wurde ausgeschaltet.", table: "GameState")
         }
     }
 

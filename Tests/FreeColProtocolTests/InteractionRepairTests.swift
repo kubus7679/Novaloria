@@ -147,6 +147,81 @@ final class InteractionRepairTests: XCTestCase {
     }
 
     @MainActor
+    func testServerEventCatalogResolvesCombatAndFreeColTemplateDirectives() {
+        let previousLanguage = LocalizationSettings.shared.language
+        LocalizationSettings.shared.language = .german
+        defer { LocalizationSettings.shared.language = previousLanguage }
+
+        let state = GameState()
+        let combat = ModelMessage(
+            id: "combat.shipSunk.ours",
+            source: nil,
+            display: nil,
+            messageType: "COMBAT_RESULT",
+            hasBeenDisplayed: false,
+            replacements: [
+                "%location%": "Boston",
+                "%unit%": "Karavelle",
+                "%enemyUnit%": "Fregatte",
+                "%enemyNation%": "model.nation.spanish",
+            ]
+        )
+        let combatText = state.modelMessageText(combat)
+        XCTAssertTrue(combatText.contains("versenkt"))
+        XCTAssertTrue(combatText.contains("Boston"))
+        XCTAssertTrue(combatText.contains("Spanisch"))
+        XCTAssertFalse(combatText.contains("%"))
+
+        let plural = ModelMessage(
+            id: "combat.shipsSunk",
+            source: nil,
+            display: nil,
+            messageType: "COMBAT_RESULT",
+            hasBeenDisplayed: false,
+            replacements: ["%ships%": "Zwei Schiffe", "%number%": "2"]
+        )
+        XCTAssertTrue(state.modelMessageText(plural).contains("wurden versenkt"))
+
+        let monarch = ModelMessage(
+            id: "model.monarch.action.lowerTaxOther.text",
+            source: nil,
+            display: nil,
+            messageType: "DEFAULT",
+            hasBeenDisplayed: false,
+            replacements: ["%number%": "2", "%difference%": "3", "%newTax%": "15"]
+        )
+        let monarchText = state.modelMessageText(monarch)
+        XCTAssertTrue(monarchText.contains("Geburt des Kronprinzen"))
+        XCTAssertTrue(monarchText.contains("15%"))
+        XCTAssertFalse(monarchText.contains("{{"))
+
+        let historicalRumour = ModelMessage(
+            id: "model.lostCityRumour.nothing.mayans.description",
+            source: nil,
+            display: nil,
+            messageType: "LOST_CITY_RUMOUR",
+            hasBeenDisplayed: false,
+            replacements: ["%years%": "20"]
+        )
+        let rumourText = state.modelMessageText(historicalRumour)
+        XCTAssertTrue(rumourText.contains("Inschriften"))
+        XCTAssertTrue(rumourText.contains("20"))
+        XCTAssertFalse(rumourText.contains("%years%"))
+
+        state.applySessionMessage(ParsedMessage(tag: "firstContact", attributes: ["result": "true"], children: []))
+        XCTAssertTrue(state.statusMessage.contains("Beziehungen aufgenommen"))
+        XCTAssertFalse(state.statusMessage.contains("true"))
+
+        state.applySessionMessage(ParsedMessage(
+            tag: "monarchAction",
+            attributes: ["action": "raise_tax_act", "result": "false"],
+            children: []
+        ))
+        XCTAssertTrue(state.statusMessage.contains("abgelehnt"))
+        XCTAssertFalse(state.statusMessage.contains("false"))
+    }
+
+    @MainActor
     func testDiplomacyStanceMessagesShowTheFullChangeAndNations() throws {
         let previousLanguage = LocalizationSettings.shared.language
         LocalizationSettings.shared.language = .german

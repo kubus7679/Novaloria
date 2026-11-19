@@ -1512,12 +1512,15 @@ struct ColonyPanelView: View {
         Button {
             onSetBuildQueue(buildQueueItems)
         } label: {
-            Label(L10n.text("Bauliste übernehmen", table: "ColonyPanelView"), systemImage: "checkmark")
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark")
+                Text(L10n.text("Bauliste übernehmen", table: "ColonyPanelView"))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
         }
         .buttonStyle(.borderedProminent)
-        .fixedSize()
+        .fixedSize(horizontal: true, vertical: false)
         .accessibilityIdentifier("build-queue-apply")
     }
 
