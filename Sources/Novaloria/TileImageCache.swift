@@ -210,12 +210,12 @@ final class TileImageCache {
 
     private func modImage(for resourceKeys: [String], variationSeed: Int? = nil) -> NSImage? {
         let catalog = ModImageCatalog.shared
-        let signature = catalog.currentSignature()
-        let variant = variationSeed.map(String.init) ?? "base"
-        let key = "mod[\(signature)]/\(resourceKeys.joined(separator: "|"))/\(variant)"
+        guard let asset = catalog.image(forResourceKeys: resourceKeys, variationSeed: variationSeed) else {
+            return nil
+        }
+        let key = "mod/\(asset.cacheKey)"
         if let image = cache[key] { return image }
-        guard let asset = catalog.image(forResourceKeys: resourceKeys, variationSeed: variationSeed),
-              let image = NSImage(data: asset.data) else { return nil }
+        guard let image = NSImage(data: asset.data) else { return nil }
         image.size = asset.logicalSize
         cache[key] = image
         return image

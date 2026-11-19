@@ -1,7 +1,12 @@
 import numpy as np
+import pytest
 from PIL import Image
 
-from novaloria_art.post import diamond_mask, finish_tile, place_sprite, resize
+from novaloria_art.artspec import FIGURE_CANVAS, _figure
+from novaloria_art.cli import _finish
+from novaloria_art.manifest import ImageInfo, hires_name
+from novaloria_art.post import diamond_mask, finish_figure, finish_tile, place_sprite, resize
+from novaloria_art.render import SUPERSAMPLE
 
 
 def test_diamond_mask_is_binary_and_tiles_without_gaps():
@@ -59,3 +64,55 @@ def test_icon_is_centered_inside_its_box():
     rows = np.flatnonzero((alpha > 128).any(axis=1))
     assert rows[0] == 2 and rows[-1] == 29
     assert abs((cols[0] + cols[-1]) / 2 - 15.5) <= 1
+
+
+def test_figure_finishing_preserves_person_size_regardless_of_equipment(tmp_path):
+    spec = _figure("colonist")
+    bounds = {}
+    for variant, equipment in enumerate(((70, 40, 90, 340), (4, 4, 50, 370))):
+        path = f"resources/images/units/civilian/figure{variant}.png"
+        raw = Image.new("RGBA", tuple(side * SUPERSAMPLE for side in FIGURE_CANVAS))
+        raw.paste((220, 30, 30, 255), (152, 80, 200, 320))
+        raw.paste((30, 60, 220, 255), equipment)
+        raw_path = tmp_path / f"raw{variant}.png"
+        raw.save(raw_path)
+        info = ImageInfo(path, 21 + variant * 20, 60, (0, 0, 21 + variant * 20, 60))
+        _finish(path, spec, info, raw_path, tmp_path / "out")
+
+        for factor in (1, 2):
+            output = tmp_path / "out" / (path if factor == 1 else hires_name(path))
+            with Image.open(output) as image:
+                pixels = np.asarray(image.convert("RGBA"), dtype=np.int16)
+            person = (
+                (pixels[:, :, 0] > 150)
+                & (pixels[:, :, 0] > pixels[:, :, 1] * 2)
+                & (pixels[:, :, 0] > pixels[:, :, 2] * 2)
+                & (pixels[:, :, 3] > 128)
+            )
+            rows, columns = np.nonzero(person)
+            bounds[variant, factor] = (columns.min(), rows.min(), columns.max() + 1, rows.max() + 1)
+
+    for factor in (1, 2):
+        assert bounds[0, factor] == bounds[1, factor]
+        assert bounds[0, factor][3] - bounds[0, factor][1] == 60 * factor
+
+
+def test_figure_finishing_rejects_stale_autoframed_raw(tmp_path):
+    path = "resources/images/units/civilian/freeColonist.png"
+    raw_path = tmp_path / "old.png"
+    Image.new("RGBA", (384, 384), (150, 100, 50, 255)).save(raw_path)
+    info = ImageInfo(path, 33, 64, (4, 1, 32, 62))
+
+    with pytest.raises(ValueError, match="rerender without --skip-render"):
+        _finish(path, _figure("colonist"), info, raw_path, tmp_path / "out")
+
+
+@pytest.mark.parametrize("factor", [1, 2])
+def test_figure_shadows_fade_smoothly_at_the_canvas_edge(factor):
+    raw = Image.new("RGBA", tuple(side * SUPERSAMPLE for side in FIGURE_CANVAS), (20, 20, 20, 120))
+    result = finish_figure(raw, FIGURE_CANVAS, factor)
+    alpha = np.asarray(result.getchannel("A"))
+    assert not alpha[0].any() and not alpha[-1].any()
+    assert not alpha[:, 0].any() and not alpha[:, -1].any()
+    middle = alpha.shape[1] // 2
+    assert 0 < alpha[2 * factor, middle] < alpha[5 * factor, middle] == 120

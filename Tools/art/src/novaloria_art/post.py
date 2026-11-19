@@ -64,6 +64,19 @@ def finish_overlay(raw: Image.Image, canvas: tuple[int, int], factor: int) -> Im
     return grade(image)
 
 
+def finish_figure(raw: Image.Image, canvas: tuple[int, int], factor: int) -> Image.Image:
+    """Keep the fixed figure frame while tapering faint ground shadows at its edges."""
+    image = finish_overlay(raw, canvas, factor)
+    width, height = image.size
+    xs = np.minimum(np.arange(width), np.arange(width)[::-1])
+    ys = np.minimum(np.arange(height), np.arange(height)[::-1])
+    fade = np.clip(np.minimum(ys[:, None], xs[None, :]) / (5 * factor), 0.0, 1.0)
+    alpha = np.rint(np.asarray(image.getchannel("A")) * fade).astype(np.uint8)
+    alpha[alpha < 4] = 0
+    image.putalpha(Image.fromarray(alpha, "L"))
+    return image
+
+
 def place_sprite(
     raw: Image.Image,
     canvas: tuple[int, int],

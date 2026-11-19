@@ -1,6 +1,7 @@
 import SwiftUI
 import FreeColGame
 import AppKit
+import os
 
 /// Inspector minimap, modelled on the Java client's MiniMap: terrain diamonds,
 /// fog overlay, viewport rectangle and click-to-center.
@@ -22,6 +23,21 @@ struct MiniMapView: View {
         let playerColors: [String: Color]
         let colonyTiles: Set<String>
     }
+
+    private struct MiniDataKey: Equatable {
+        let game: ObjectIdentifier
+        let revision: Int
+        let playerId: String?
+        let width: Double
+        let maxHeight: Double
+    }
+
+    private final class MiniDataCache {
+        var key: MiniDataKey?
+        var value: MiniData?
+    }
+
+    @State private var miniDataCache = MiniDataCache()
 
     var body: some View {
         if let game = state.game, let data = miniData(for: game) {
@@ -120,6 +136,17 @@ struct MiniMapView: View {
 
     private func miniData(for game: Game) -> MiniData? {
         guard game.map != nil else { return nil }
+        let key = MiniDataKey(
+            game: ObjectIdentifier(game),
+            revision: state.gameUpdateID,
+            playerId: state.localPlayerId,
+            width: minimapWidth,
+            maxHeight: maxMiniHeight
+        )
+        if miniDataCache.key == key {
+            return miniDataCache.value
+        }
+
         let tiles = Array(game.tiles.values).sorted {
             if $0.y == $1.y { return $0.x < $1.x }
             return $0.y < $1.y
@@ -156,7 +183,7 @@ struct MiniMapView: View {
 
         let colonyTiles = Set(game.colonies.values.compactMap(\.tileId))
 
-        return MiniData(
+        let result = MiniData(
             tiles: tiles,
             scale: scale,
             tileW: 64 * scale,
@@ -167,6 +194,9 @@ struct MiniMapView: View {
             playerColors: playerColors,
             colonyTiles: colonyTiles
         )
+        miniDataCache.key = key
+        miniDataCache.value = result
+        return result
     }
 
     private func minimapHeight(for data: MiniData) -> Double {
@@ -198,6 +228,7 @@ struct MiniMapView: View {
             }
         }
         if let tile = best?.tile {
+            os_signpost(.event, log: mapRenderLog, name: "MinimapJumpRequested")
             state.requestMapScroll(to: tile.id)
         }
     }

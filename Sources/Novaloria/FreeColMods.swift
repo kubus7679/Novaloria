@@ -240,32 +240,55 @@ final class ModImageCatalog {
         let mod: FreeColMod
         let path: String
         let entryPaths: Set<String>
+        let entriesByParent: [String: [String]]
+
+        func siblings(of path: String) -> [String] {
+            let parent = URL(fileURLWithPath: path).deletingLastPathComponent().path
+            return entriesByParent[parent] ?? []
+        }
     }
 
     struct ImageAsset {
         let data: Data
         let logicalSize: CGSize
+        let cacheKey: String
     }
 
     private(set) var signature = ""
     private var resources: [String: Resource] = [:]
+    private var lastInstallationPath = ""
+    private var lastActiveModIDs = "[]"
+    private var imageAssets: [String: ImageAsset] = [:]
+    private var imageVariants: [String: [String]] = [:]
 
     private func refreshIfNeeded() {
-        let installationPath = NSString(string: UserDefaults.standard.string(forKey: "freecol.javaInstallation") ?? "")
-            .expandingTildeInPath
+        let defaults = UserDefaults.standard
+        let configuredInstallationPath = defaults.string(forKey: "freecol.javaInstallation") ?? ""
+        let activeModIDsRaw = defaults.string(forKey: FreeColModSelection.storageKey) ?? "[]"
+        guard configuredInstallationPath != lastInstallationPath || activeModIDsRaw != lastActiveModIDs else { return }
+        lastInstallationPath = configuredInstallationPath
+        lastActiveModIDs = activeModIDsRaw
+
+        let installationPath = NSString(string: configuredInstallationPath).expandingTildeInPath
         let installation = installationPath.isEmpty ? nil : URL(fileURLWithPath: installationPath)
         let activeIDs = Set((try? JSONDecoder().decode(
             [String].self,
-            from: Data((UserDefaults.standard.string(forKey: FreeColModSelection.storageKey) ?? "[]").utf8)
+            from: Data(activeModIDsRaw.utf8)
         )) ?? [])
         let nextSignature = "\(installation?.path ?? "")|\(activeIDs.sorted().joined(separator: ","))"
         guard nextSignature != signature else { return }
         signature = nextSignature
         resources = [:]
+        imageAssets.removeAll(keepingCapacity: true)
+        imageVariants.removeAll(keepingCapacity: true)
         for mod in FreeColMod.discover(installation: installation) where activeIDs.contains(mod.id) {
             let entryPaths = mod.entryPaths()
+            let entriesByParent = Dictionary(grouping: entryPaths) {
+                URL(fileURLWithPath: $0).deletingLastPathComponent().path
+            }
             for (key, value) in mod.resourceProperties() {
-                resources[key] = Resource(mod: mod, path: value, entryPaths: entryPaths)
+                resources[key] = Resource(mod: mod, path: value, entryPaths: entryPaths,
+                                          entriesByParent: entriesByParent)
             }
         }
     }
@@ -288,13 +311,20 @@ final class ModImageCatalog {
         refreshIfNeeded()
         for key in keys {
             guard let resource = resource(for: key, visited: []),
-                  let basePath = selectedPath(resource.path, entryPaths: resource.entryPaths,
-                                              variationSeed: variationSeed),
-                  let baseData = resource.mod.imageData(at: basePath),
+                  let basePath = selectedPath(for: resource, variationSeed: variationSeed) else { continue }
+            let cacheKey = "\(signature)|\(resource.mod.location.path)|\(basePath)"
+            if let cached = imageAssets[cacheKey] { return cached }
+            guard let baseData = resource.mod.imageData(at: basePath),
                   let bitmap = NSBitmapImageRep(data: baseData) else { continue }
-            let hires = hiresPath(for: basePath, entryPaths: resource.entryPaths)
+            let hires = hiresPath(for: basePath, siblings: resource.siblings(of: basePath))
             let data = hires.flatMap { resource.mod.imageData(at: $0) } ?? baseData
-            return ImageAsset(data: data, logicalSize: CGSize(width: bitmap.pixelsWide, height: bitmap.pixelsHigh))
+            let asset = ImageAsset(
+                data: data,
+                logicalSize: CGSize(width: bitmap.pixelsWide, height: bitmap.pixelsHigh),
+                cacheKey: cacheKey
+            )
+            imageAssets[cacheKey] = asset
+            return asset
         }
         return nil
     }
@@ -307,16 +337,23 @@ final class ModImageCatalog {
         return resource
     }
 
-    private func selectedPath(_ path: String, entryPaths: Set<String>, variationSeed: Int?) -> String? {
-        guard entryPaths.contains(path) else { return nil }
-        guard let variationSeed else { return path }
-        let variations = siblingPaths(for: path, entryPaths: entryPaths)
-        let choices = [path] + variations
-        let index = ((variationSeed % choices.count) + choices.count) % choices.count
+    private func selectedPath(for resource: Resource, variationSeed: Int?) -> String? {
+        guard resource.entryPaths.contains(resource.path) else { return nil }
+        guard let variationSeed else { return resource.path }
+        let key = "\(resource.mod.location.path)|\(resource.path)"
+        let choices: [String]
+        if let cached = imageVariants[key] {
+            choices = cached
+        } else {
+            choices = [resource.path] + siblingPaths(for: resource.path, siblings: resource.siblings(of: resource.path))
+            imageVariants[key] = choices
+        }
+        let remainder = variationSeed % choices.count
+        let index = remainder < 0 ? remainder + choices.count : remainder
         return choices[index]
     }
 
-    private func siblingPaths(for path: String, entryPaths: Set<String>) -> [String] {
+    private func siblingPaths(for path: String, siblings: [String]) -> [String] {
         let url = URL(fileURLWithPath: path)
         let stem = url.deletingPathExtension().lastPathComponent
         let ext = url.pathExtension
@@ -324,28 +361,24 @@ final class ModImageCatalog {
         let pattern = "^" + NSRegularExpression.escapedPattern(for: prefix) + #"\d{1,2}\."#
             + NSRegularExpression.escapedPattern(for: ext) + "$"
         guard let expression = try? NSRegularExpression(pattern: pattern) else { return [] }
-        let parent = url.deletingLastPathComponent().path
-        return entryPaths.filter { candidate in
+        return siblings.filter { candidate in
             let candidateURL = URL(fileURLWithPath: candidate)
-            return candidateURL.deletingLastPathComponent().path == parent
-                && candidate != path
+            return candidate != path
                 && expression.firstMatch(in: candidateURL.lastPathComponent,
                                          range: NSRange(candidateURL.lastPathComponent.startIndex..., in: candidateURL.lastPathComponent)) != nil
         }.sorted { variationNumber($0) < variationNumber($1) }
     }
 
-    private func hiresPath(for path: String, entryPaths: Set<String>) -> String? {
+    private func hiresPath(for path: String, siblings: [String]) -> String? {
         let url = URL(fileURLWithPath: path)
         let stem = url.deletingPathExtension().lastPathComponent
         let ext = url.pathExtension
         let pattern = "^" + NSRegularExpression.escapedPattern(for: stem) + #"\.size(\d+)\."#
             + NSRegularExpression.escapedPattern(for: ext) + "$"
         guard let expression = try? NSRegularExpression(pattern: pattern) else { return nil }
-        let parent = url.deletingLastPathComponent().path
-        return entryPaths.filter { candidate in
+        return siblings.filter { candidate in
             let candidateURL = URL(fileURLWithPath: candidate)
-            return candidateURL.deletingLastPathComponent().path == parent
-                && expression.firstMatch(in: candidateURL.lastPathComponent,
+            return expression.firstMatch(in: candidateURL.lastPathComponent,
                                          range: NSRange(candidateURL.lastPathComponent.startIndex..., in: candidateURL.lastPathComponent)) != nil
         }.max { hiresFactor($0) < hiresFactor($1) }
     }

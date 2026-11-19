@@ -6,6 +6,10 @@ import FreeColProtocol
 @testable import Novaloria
 
 final class MapPresentationTests: XCTestCase {
+    private final class ViewportCapture {
+        var value: MapViewportInfo?
+    }
+
     func testAdjacentTerritoriesMergeAcrossBothRowParities() throws {
         for row in [2, 3] {
             let stagger = row.isMultiple(of: 2) ? 0 : 1
@@ -161,6 +165,76 @@ final class MapPresentationTests: XCTestCase {
     }
 
     @MainActor
+    func testRoadHasShadedSurfaceAndContinuousExits() throws {
+        let road = TileImprovement(id: "road", type: "model.improvement.road", turns: 0,
+                                   magnitude: 1, virtual: false, style: "00100010")
+        for zoom in [1.0, 2.0, 3.0] {
+            let size = CGSize(width: 128 * zoom, height: 64 * zoom)
+            let renderer = ImageRenderer(content: Canvas { context, canvasSize in
+                var context = context
+                TileImprovementRenderer.draw([road], in: &context,
+                                             rect: CGRect(origin: .zero, size: canvasSize), zoomScale: zoom)
+            }.frame(width: size.width, height: size.height))
+            let bitmap = NSBitmapImageRep(cgImage: try XCTUnwrap(renderer.cgImage))
+            let midY = bitmap.pixelsHigh / 2
+            for x in 0..<bitmap.pixelsWide {
+                XCTAssertGreaterThan(try XCTUnwrap(bitmap.colorAt(x: x, y: midY)).alphaComponent, 0.9)
+            }
+            var tones = Set<Int>()
+            for y in (midY - Int(zoom * 3))...(midY + Int(zoom * 3)) {
+                for x in 0..<bitmap.pixelsWide {
+                    let color = try XCTUnwrap(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB))
+                    if color.alphaComponent > 0.5 {
+                        tones.insert(Int((color.redComponent * 255).rounded()))
+                    }
+                }
+            }
+            XCTAssertGreaterThanOrEqual(tones.count, 4)
+        }
+    }
+
+    @MainActor
+    func testFogRoadsAndUnexploredShadeRender() throws {
+        let tiles = (0..<16).flatMap { y in
+            (0..<10).map { x -> String in
+                if x >= 6 { return #"<tile id="t-\#(x)-\#(y)" x="\#(x)" y="\#(y)"/>"# }
+                let type = (y % 4 == 2) ? "model.tile.mixed" : (x == 4 ? "model.tile.hills" : "model.tile.plains")
+                let road = x == 2 ? #"<tileItemContainer id="c-\#(x)-\#(y)"><tileImprovement id="r-\#(x)-\#(y)" type="model.improvement.road" turns="0" style="10001000"/></tileItemContainer>"# : ""
+                let owner = y < 8 && x < 3 ? #" owner="owner""# : ""
+                return #"<tile id="t-\#(x)-\#(y)" x="\#(x)" y="\#(y)" type="\#(type)"\#(owner)>\#(road)</tile>"#
+            }
+        }.joined()
+        let game = Game()
+        try game.load(from: XMLDecoder.decode("""
+        <game id="game" clientUserName="Alice" currentPlayer="owner">
+          <player id="owner" username="Alice" nationId="model.nation.dutch"/>
+          <map id="map" width="10" height="16">\(tiles)</map>
+        </game>
+        """))
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+        state.showFogOfWar = true
+        state.mapZoomScale = 2
+        let host = NSHostingView(rootView: MapView().environment(state))
+        host.frame = CGRect(x: 0, y: 0, width: 1000, height: 650)
+        let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        defer { window.close() }
+        host.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: bitmap)
+        if let directory = ProcessInfo.processInfo.environment["FREECOL_UI_SNAPSHOTS"] {
+            let url = URL(fileURLWithPath: directory, isDirectory: true)
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+            try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+                .write(to: url.appendingPathComponent("fog-roads-unexplored.png"))
+        }
+    }
+
+    @MainActor
     func testMapPresentationAtMultipleZooms() throws {
         let state = try makeState()
         for zoom in [0.5, 1, 2, 3, 5] {
@@ -183,6 +257,35 @@ final class MapPresentationTests: XCTestCase {
                     .write(to: url.appendingPathComponent("colony-map-\(zoom).png"))
             }
         }
+    }
+
+    @MainActor
+    func testMapCacheUpdatesCanvasSizeAfterZoomAndScroll() throws {
+        let state = try makeState()
+        state.mapZoomScale = 1
+        let capture = ViewportCapture()
+        let host = NSHostingView(rootView: MapView().environment(state)
+            .onPreferenceChange(MapViewportKey.self) { capture.value = $0 })
+        host.frame = CGRect(x: 0, y: 0, width: 300, height: 200)
+        let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        defer { window.close() }
+        host.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        let initialSize = try XCTUnwrap(capture.value?.canvasSize)
+
+        state.mapZoomScale = 2
+        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        let zoomedSize = try XCTUnwrap(capture.value?.canvasSize)
+        XCTAssertEqual(zoomedSize.width, initialSize.width * 2, accuracy: 0.001)
+        XCTAssertEqual(zoomedSize.height, initialSize.height * 2, accuracy: 0.001)
+
+        state.requestMapScroll(to: "tile-11-12")
+        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        XCTAssertNil(state.requestedMapScrollTileId)
+        let rect = try XCTUnwrap(capture.value?.visibleRect)
+        XCTAssertTrue(rect.contains(MapGeometry.origin(x: 11, y: 12, tileW: 64, tileH: 32)))
     }
 
     private func edgeKey(_ a: CGPoint, _ b: CGPoint) -> String {

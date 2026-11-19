@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from novaloria_art.artspec import PROTOTYPE, SPECS, full_specs
+from novaloria_art.artspec import FIGURE_CANVAS, PROTOTYPE, SPECS, _generated_spec, full_specs
 from novaloria_art.manifest import (
     canonical_path,
     classify,
@@ -69,6 +69,14 @@ def test_sibling_names_follow_freecol_rules():
     assert sibling_variations("f/mixed0101.png", ["f/mixed0101.png", "f/mixed.png", "f/mixed1100.png"]) == []
 
 
+@pytest.mark.parametrize("role", ["scout", "dragoon", "cavalry", "mountedBrave", "nativeDragoon"])
+def test_mounted_roles_use_the_mounted_figure(role):
+    spec = _generated_spec(f"resources/images/units/{role}/example.png", "unit",
+                           f"image.unit.model.unit.example.{role}")
+    assert spec is not None
+    assert spec.params["mounted"] is True
+
+
 def test_manifest_reads_sizes_aliases_and_siblings(tmp_path):
     data = tmp_path / "data" / "default"
     _png(data / "resources/images/terrain/ocean/center0.png", (128, 64), (0, 0, 128, 64))
@@ -129,3 +137,26 @@ def test_full_specs_cover_all_concrete_supported_image_paths():
         spec.kit for spec in specs.values()
     }
     assert all(path in manifest.images for path in specs)
+
+
+@pytest.mark.skipif(
+    not (FREECOL / "data/default/resources.properties").is_file(), reason="FreeCol tree missing"
+)
+def test_all_mounted_unit_images_have_mounted_specs():
+    specs = full_specs(load_manifest(FREECOL))
+    roles = {"scout", "dragoon", "cavalry", "mountedBrave", "nativeDragoon"}
+    mounted = {path: spec for path, spec in specs.items()
+               if Path(path).parent.name in roles and spec.kit == "figure"}
+    assert {Path(path).parent.name for path in mounted} == roles
+    assert all(spec.params.get("mounted") for spec in mounted.values())
+
+
+@pytest.mark.skipif(
+    not (FREECOL / "data/default/resources.properties").is_file(), reason="FreeCol tree missing"
+)
+def test_all_figure_specs_use_the_same_canvas_and_framing():
+    specs = full_specs(load_manifest(FREECOL))
+    figures = [spec for spec in specs.values() if spec.kit == "figure"]
+    assert figures
+    assert all(spec.canvas == FIGURE_CANVAS and spec.mode == "figure" for spec in figures)
+    assert len({spec.elevation for spec in figures}) == 1

@@ -3,7 +3,7 @@ import FreeColGame
 import AppKit
 import os
 
-private let mapRenderLog = OSLog(subsystem: "org.freecol.client", category: "MapRendering")
+let mapRenderLog = OSLog(subsystem: "org.freecol.client", category: "MapRendering")
 
 private let baseTileW: Double = 64
 private let baseTileH: Double = 32
@@ -175,7 +175,31 @@ struct MapView: View {
         let territoryBorders: TerritoryBorders
     }
 
+    private struct RenderDataKey: Equatable {
+        let game: ObjectIdentifier
+        let revision: Int
+        let playerId: String?
+        let zoom: Double
+    }
+
+    private final class RenderDataCache {
+        var key: RenderDataKey?
+        var value: RenderData?
+    }
+
+    @State private var renderDataCache = RenderDataCache()
+
     private func renderData(for game: Game) -> RenderData? {
+        let key = RenderDataKey(
+            game: ObjectIdentifier(game),
+            revision: state.gameUpdateID,
+            playerId: state.localPlayerId,
+            zoom: state.mapZoomScale
+        )
+        if renderDataCache.key == key {
+            return renderDataCache.value
+        }
+
         let signpostID = OSSignpostID(log: mapRenderLog)
         os_signpost(.begin, log: mapRenderLog, name: "RenderDataBuild", signpostID: signpostID)
         defer {
@@ -225,7 +249,7 @@ struct MapView: View {
             colonyByTile[tile.id] = colony
         }
 
-        return RenderData(
+        let result = RenderData(
             tiles: tiles,
             canvasSize: MapGeometry.canvasSize(maxX: maxCol, maxY: maxRow, tileW: tileW, tileH: tileH),
             playerColorById: playerColorById,
@@ -235,6 +259,9 @@ struct MapView: View {
             visibleTileIds: visibleTileIds,
             territoryBorders: TerritoryBorders(tiles: tiles)
         )
+        renderDataCache.key = key
+        renderDataCache.value = result
+        return result
     }
 
     var body: some View {
@@ -255,65 +282,66 @@ struct MapView: View {
                             tileW: tileW,
                             tileH: tileH
                         )
+                        let showFog = state.showFogOfWar
+                        // Pass 1: ground (terrain, shores, rivers, fields), clipped to each diamond.
+                        var unexploredArea = Path()
                         for tile in visibleTiles {
                             let origin = tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
-                            let verts = diamondVertices(at: origin, tileW: tileW, tileH: tileH)
-                            var path = Path()
-                            path.addLines(verts)
-                            path.closeSubpath()
-                            let explored = tile.type != nil
-                            let showFog = state.showFogOfWar
-                            let isVisible = data.visibleTileIds.contains(tile.id)
-                            let isDimmed = explored && !isVisible && showFog
-
-                            // --- Terrain fill ---
-                            let tileRect = CGRect(
-                                x: origin.x - tileW / 2,
-                                y: origin.y - tileH / 2,
-                                width: tileW,
-                                height: tileH
-                            )
-                            if !explored {
-                                // Unexplored – draw original cloud texture
-                                ctx.fill(path, with: .color(Color.black.opacity(0.78)))
-                                if let cloudImg = TileImageCache.shared.cloudImage(forX: tile.x, y: tile.y) {
-                                    var clipped = ctx
-                                    clipped.clip(to: path)
-                                    clipped.draw(Image(nsImage: cloudImg), in: tileRect)
-                                }
+                            let path = diamondPath(at: origin)
+                            let tileRect = CGRect(x: origin.x - tileW / 2, y: origin.y - tileH / 2,
+                                                  width: tileW, height: tileH)
+                            guard tile.type != nil else {
+                                ctx.fill(path, with: .color(Self.unexploredColor))
+                                unexploredArea.addPath(path)
                                 continue
                             }
+                            let isDimmed = !data.visibleTileIds.contains(tile.id) && showFog
+                            var ground = ctx
+                            if isDimmed { ground.addFilter(.colorMultiply(Self.fogMultiply)) }
                             if let nsImg = TileImageCache.shared.terrainImage(
                                 forType: tile.type, x: tile.x, y: tile.y
                             ) {
-                                var clipped = ctx
+                                var clipped = ground
                                 clipped.clip(to: path)
                                 clipped.draw(Image(nsImage: nsImg), in: tileRect)
                             } else {
-                                ctx.fill(path, with: .color(colorForTile(tile.type)))
+                                ground.fill(path, with: .color(colorForTile(tile.type)))
                             }
                             if ["model.tile.ocean", "model.tile.lake", "model.tile.highSeas", "model.tile.greatRiver"]
                                 .contains(tile.type ?? "") {
                                 for beach in TileImageCache.shared.beachImages(
                                     style: tile.style, x: tile.x, y: tile.y
                                 ) {
-                                    ctx.draw(Image(nsImage: beach), in: tileRect)
+                                    ground.draw(Image(nsImage: beach), in: tileRect)
                                 }
+                            }
+                        }
+
+                        // Pass 2: overlays reaching beyond the diamond (forests, hills),
+                        // rivers, fields and tile items, back to front. Fog is applied
+                        // to the drawn content itself so there are no brightness seams.
+                        for tile in visibleTiles where tile.type != nil {
+                            let origin = tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
+                            let tileRect = CGRect(x: origin.x - tileW / 2, y: origin.y - tileH / 2,
+                                                  width: tileW, height: tileH)
+                            var items = ctx
+                            if !data.visibleTileIds.contains(tile.id) && showFog {
+                                items.addFilter(.colorMultiply(Self.fogMultiply))
                             }
                             if let overlay = TileImageCache.shared.terrainOverlay(
                                 forType: tile.type, x: tile.x, y: tile.y
                             ) {
                                 let height = tileW * overlay.size.height / max(1, overlay.size.width)
-                                ctx.draw(Image(nsImage: overlay), in: CGRect(
+                                items.draw(Image(nsImage: overlay), in: CGRect(
                                     x: tileRect.minX, y: tileRect.maxY - height, width: tileW, height: height
                                 ))
                             }
-                            drawImprovements(tile, at: origin, context: &ctx)
+                            drawImprovements(tile, at: origin, context: &items, layers: .withoutRoads)
                             for resource in tile.resources {
                                 if let image = TileImageCache.shared.resourceImage(for: resource.type) {
                                     let width = tileW * 0.25
                                     let height = width * image.size.height / max(1, image.size.width)
-                                    ctx.draw(Image(nsImage: image), in: CGRect(
+                                    items.draw(Image(nsImage: image), in: CGRect(
                                         x: origin.x - width / 2, y: origin.y - height / 2,
                                         width: width, height: height
                                     ))
@@ -322,17 +350,31 @@ struct MapView: View {
                             if let image = TileImageCache.shared.lostCityRumourImage(for: tile) {
                                 let width = tileW * 0.5
                                 let height = width * image.size.height / max(1, image.size.width)
-                                ctx.draw(Image(nsImage: image), in: CGRect(
+                                items.draw(Image(nsImage: image), in: CGRect(
                                     x: origin.x - width / 2, y: origin.y - height / 2,
                                     width: width, height: height
                                 ))
                             }
-                            // Explored but not currently visible: keep the terrain
-                            // recognizable, but make fog clearly visible over the
-                            // detailed land textures as well as over water.
-                            if isDimmed {
-                                ctx.fill(path, with: .color(.black.opacity(0.4)))
+                        }
+
+                        // Pass 3: roads always sit on top of all terrain art.
+                        for tile in visibleTiles where tile.type != nil {
+                            let origin = tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
+                            var roads = ctx
+                            if !data.visibleTileIds.contains(tile.id) && showFog {
+                                roads.addFilter(.colorMultiply(Self.fogMultiply))
                             }
+                            drawImprovements(tile, at: origin, context: &roads, layers: .roadsOnly)
+                        }
+
+                        drawUnexploredShade(visibleTiles.filter { $0.type == nil }, area: unexploredArea,
+                                            context: &ctx)
+
+                        // Pass 4: grid, selection, settlements and units.
+                        for tile in visibleTiles where tile.type != nil {
+                            let origin = tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
+                            let path = diamondPath(at: origin)
+                            let isVisible = data.visibleTileIds.contains(tile.id)
 
                             if state.showMapGrid {
                                 ctx.stroke(path, with: .color(.black.opacity(0.25)), lineWidth: 0.5)
@@ -690,6 +732,7 @@ struct MapView: View {
                     .onChange(of: state.requestedMapScrollTileId) { _, newValue in
                         if let tileId = newValue {
                             centerCamera(on: tileId, data: data, game: game)
+                            os_signpost(.event, log: mapRenderLog, name: "MapScrollCameraUpdated")
                             state.requestedMapScrollTileId = nil
                         }
                     }
@@ -816,11 +859,50 @@ struct MapView: View {
     }
 
     /// Scale an image's size down to fit within `maxSize`, preserving aspect ratio.
-    private func drawImprovements(_ tile: Tile, at origin: CGPoint, context: inout GraphicsContext) {
+    private func drawImprovements(_ tile: Tile, at origin: CGPoint, context: inout GraphicsContext,
+                                  layers: TileImprovementRenderer.Layers) {
         let rect = CGRect(x: origin.x - tileW / 2, y: origin.y - tileH / 2,
                           width: tileW, height: tileH)
         TileImprovementRenderer.draw(tile.improvements, in: &context, rect: rect,
-                                     zoomScale: CGFloat(state.mapZoomScale))
+                                     zoomScale: CGFloat(state.mapZoomScale), layers: layers)
+    }
+
+    private func diamondPath(at origin: CGPoint) -> Path {
+        var path = Path()
+        path.addLines(diamondVertices(at: origin, tileW: tileW, tileH: tileH))
+        path.closeSubpath()
+        return path
+    }
+
+    static let unexploredColor = Color(red: 0.09, green: 0.10, blue: 0.13)
+    /// Explored-but-not-visible content is multiplied instead of covered with a
+    /// black diamond, so overlays reaching into neighbours keep one brightness.
+    static let fogMultiply = Color(white: 0.6)
+
+    /// Soft shading over unexplored tiles: a dark, blurred mass with faint cloud
+    /// texture that fades into explored neighbours instead of hard diamond edges.
+    private func drawUnexploredShade(_ tiles: [Tile], area: Path, context ctx: inout GraphicsContext) {
+        guard !area.isEmpty else { return }
+        let radius = max(3, tileH * 0.2)
+        ctx.drawLayer { layer in
+            layer.addFilter(.blur(radius: radius))
+            // Widen the mass so the blur ramp starts at full darkness on the
+            // diamond edge and fades outward instead of leaving a visible step.
+            layer.fill(area, with: .color(Self.unexploredColor))
+            layer.stroke(area, with: .color(Self.unexploredColor),
+                         style: StrokeStyle(lineWidth: radius * 1.6, lineJoin: .round))
+            var clouds = layer
+            clouds.clip(to: area)
+            clouds.opacity = 0.45
+            for tile in tiles {
+                guard let cloud = TileImageCache.shared.cloudImage(forX: tile.x, y: tile.y) else { continue }
+                let origin = tileOrigin(x: tile.x, y: tile.y, tileW: tileW, tileH: tileH)
+                clouds.draw(Image(nsImage: cloud), in: CGRect(
+                    x: origin.x - tileW * 0.75, y: origin.y - tileH * 0.75,
+                    width: tileW * 1.5, height: tileH * 1.5
+                ))
+            }
+        }
     }
 
     private func drawMissionMarker(at origin: CGPoint, ownerColor: Color, context: inout GraphicsContext) {

@@ -41,13 +41,19 @@ def run(job: dict) -> None:
     common.reset()
     view = common.View(job["elevation"])
     common.world()
-    common.sun()
+    sun_direction = figures.FIGURE_SUN_FROM if job["mode"] == "figure" else common.SUN_FROM
+    common.sun(direction=sun_direction)
     rng = random.Random(job["seed"])
     BUILDERS[job["kit"]](job, view, rng)
-    if job["mode"] == "sprite":
+    if job["mode"] in {"sprite", "figure"}:
         common.shadow_catcher()
-        common.frame_sprite(view, max(job["raw"]))
+        if job["mode"] == "figure":
+            figures.frame_figure(view, job["raw"])
+        else:
+            common.frame_sprite(view, max(job["raw"]))
     else:
+        if job["kit"] == "forest":
+            common.fit_tile_contents(view, job["canvas"])
         common.frame_tile(view, job["canvas"], job["raw"])
     common.render(job["output"])
 

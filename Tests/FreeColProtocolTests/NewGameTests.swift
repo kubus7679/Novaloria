@@ -242,6 +242,10 @@ final class NewGameTests: XCTestCase {
         try base.write(to: images.appendingPathComponent("center0.png"))
         try second.write(to: images.appendingPathComponent("center1.png"))
         try hires.write(to: images.appendingPathComponent("center0.size2.png"))
+        let unrelatedImages = modDirectory.appendingPathComponent("images/other")
+        try FileManager.default.createDirectory(at: unrelatedImages, withIntermediateDirectories: true)
+        try second.write(to: unrelatedImages.appendingPathComponent("center2.png"))
+        try second.write(to: unrelatedImages.appendingPathComponent("center0.size3.png"))
 
         let defaults = UserDefaults.standard
         let oldInstallation = defaults.object(forKey: "freecol.javaInstallation")
@@ -265,6 +269,78 @@ final class NewGameTests: XCTestCase {
         ))
         XCTAssertEqual(variation.data, second)
         XCTAssertEqual(variation.logicalSize, CGSize(width: 8, height: 4))
+
+        let cache = TileImageCache.shared
+        let first = try XCTUnwrap(cache.terrainImage(forType: "model.tile.plains", x: 0, y: 0))
+        let sameVariant = try XCTUnwrap(cache.terrainImage(forType: "model.tile.plains", x: 2, y: 0))
+        let otherVariant = try XCTUnwrap(cache.terrainImage(forType: "model.tile.plains", x: 1, y: 0))
+        XCTAssertTrue(first === sameVariant)
+        XCTAssertFalse(first === otherVariant)
+        XCTAssertEqual(ModImageCatalog.shared.image(
+            forResourceKeys: ["image.tile.model.tile.plains.center"], variationSeed: -1
+        )?.data, second)
+
+        try FileManager.default.removeItem(at: images.appendingPathComponent("center1.png"))
+        defaults.set("[]", forKey: FreeColModSelection.storageKey)
+        XCTAssertNil(ModImageCatalog.shared.image(forResourceKeys: ["image.tile.model.tile.plains.center"]))
+        defaults.set(#"["hires-test"]"#, forKey: FreeColModSelection.storageKey)
+        XCTAssertEqual(ModImageCatalog.shared.image(
+            forResourceKeys: ["image.tile.model.tile.plains.center"], variationSeed: 1
+        )?.data, hires)
+    }
+
+    func testAtlasFiguresUseOneLogicalSizeAcrossProfessionsAndRoles() throws {
+        let directory = try fixture()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let mods = directory.appendingPathComponent("data/mods", isDirectory: true)
+        try FileManager.default.createDirectory(at: mods, withIntermediateDirectories: true)
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let modID = "novaloria-figure-test-\(UUID().uuidString)"
+        let installedAtlas = mods.appendingPathComponent(modID, isDirectory: true)
+        try FileManager.default.copyItem(
+            at: root.appendingPathComponent("Mods/NovaloriaAtlas", isDirectory: true),
+            to: installedAtlas
+        )
+        try "<mod id=\"\(modID)\"/>".write(
+            to: installedAtlas.appendingPathComponent("mod.xml"), atomically: true, encoding: .utf8
+        )
+
+        let defaults = UserDefaults.standard
+        let oldInstallation = defaults.object(forKey: "freecol.javaInstallation")
+        let oldMods = defaults.object(forKey: FreeColModSelection.storageKey)
+        defer {
+            if let oldInstallation { defaults.set(oldInstallation, forKey: "freecol.javaInstallation") }
+            else { defaults.removeObject(forKey: "freecol.javaInstallation") }
+            if let oldMods { defaults.set(oldMods, forKey: FreeColModSelection.storageKey) }
+            else { defaults.removeObject(forKey: FreeColModSelection.storageKey) }
+            _ = ModImageCatalog.shared.currentSignature()
+        }
+        defaults.set(directory.path, forKey: "freecol.javaInstallation")
+        let selection = try JSONEncoder().encode([modID])
+        defaults.set(try XCTUnwrap(String(data: selection, encoding: .utf8)), forKey: FreeColModSelection.storageKey)
+
+        let figures: [(String, String?)] = [
+            ("model.unit.freeColonist", nil),
+            ("model.unit.expertFarmer", nil),
+            ("model.unit.jesuitMissionary", nil),
+            ("model.unit.masterBlacksmith", nil),
+            ("model.unit.freeColonist", "model.role.pioneer"),
+            ("model.unit.freeColonist", "model.role.soldier"),
+            ("model.unit.freeColonist", "model.role.scout"),
+            ("model.unit.freeColonist", "model.role.dragoon"),
+        ]
+        let logicalSize = CGSize(width: 88, height: 96)
+        for (unit, role) in figures {
+            let suffix = role.flatMap { $0.split(separator: ".").last }.map { ".\($0)" } ?? ""
+            let key = "image.unit.\(unit)\(suffix)"
+            let asset = try XCTUnwrap(ModImageCatalog.shared.image(forResourceKeys: [key]), key)
+            XCTAssertEqual(asset.logicalSize, logicalSize, key)
+            let bitmap = try XCTUnwrap(NSBitmapImageRep(data: asset.data), key)
+            XCTAssertEqual(bitmap.pixelsWide, 176, key)
+            XCTAssertEqual(bitmap.pixelsHigh, 192, key)
+            XCTAssertEqual(TileImageCache.shared.unitImage(forUnitType: unit, role: role)?.size, logicalSize, key)
+        }
     }
 
     func testActiveGraphicModResolvesMapLayersAndColopediaCategories() throws {

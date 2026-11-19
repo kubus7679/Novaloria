@@ -169,7 +169,11 @@ def _ground_material(kind: str):
     color = common.ramp(tree, large, config["stops"])
     at = config["patch_at"]
     mask = common.ramp(tree, medium, [(at, (0.0, 0.0, 0.0)), (at + 0.07, (1.0, 1.0, 1.0))])
-    color = common.mix_color(tree, mask, color, config["patch"])
+    color = common.mix_color(tree, common.math_node(tree, "MULTIPLY", mask, 0.65), color, config["patch"])
+    warm = common.ramp(tree, medium, [
+        (0.15, (0.60, 0.57, 0.43)), (0.5, (0.85, 0.83, 0.67)), (0.85, (1.0, 0.94, 0.78)),
+    ])
+    color = common.mix_color(tree, 0.22, color, warm, blend="MULTIPLY")
     hsv = tree.nodes.new("ShaderNodeHueSaturation")
     tree.links.new(color, hsv.inputs["Color"])
     detail = config["detail"]

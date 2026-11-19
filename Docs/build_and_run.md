@@ -319,6 +319,40 @@ bash Tools/build-app.sh
 
 ## Debugging
 
+### Karten-Performance messen
+
+Ein reproduzierbarer Vergleich mit Release-Build und der im Repository liegenden
+Atlas-Mod lässt sich ohne Server ausführen:
+
+```bash
+NOVALORIA_MAP_BENCHMARK=1 swift test -c release --filter MapPerformanceTests/testAtlasMapJumpBenchmark
+```
+
+Der Test verwendet eine temporäre Kopie der Atlas-Mod und eine synthetische Karte mit 80 × 80 Feldern, Nebel und
+1000 × 650 Punkten Ansichtsgröße. Er misst 200 Atlas-Bildabfragen und sechs
+Kamerasprünge über denselben Scroll-Mechanismus wie die Minikarte und prüft das
+Ziel. `atlas_lookups_200_ms` ist die Gesamtzeit für wiederholte Bildabfragen,
+`atlas_cold_lookups_9_ms` für neun zuvor nicht abgefragte Geländetypen nach
+Initialisierung des Mod-Katalogs; `jump_p50_ms` ist der Median und
+`jump_p95_ms` bei sechs Messwerten der Maximalwert. Die Einzelwerte stehen in
+`samples`; `camera_p50_ms` misst bis zur Verarbeitung der Scroll-Anfrage,
+`snapshot_p50_ms` nur den synchronen Bitmap-Snapshot. Die Sprungmessung umfasst
+SwiftUI-Update und ein synchrones Offscreen-Bitmap, aber weder einen echten Mausklick noch die tatsächliche
+Bildschirmpräsentation oder GPU-Auslastung. Erste Sprünge können noch Bilder
+nachladen; mehrere Läufe auf demselben Rechner vergleichen. Der Test wird
+ohne Umgebungsvariable übersprungen und stellt die Mod-Einstellungen wieder her.
+
+Für eine echte Partie Instruments an den laufenden Novaloria-Prozess anhängen:
+**Time Profiler** für CPU und Hauptthread, **Metal System Trace** für
+GPU-Aktivität und Präsentation. Mehrere Minikartensprünge mit gleichem Zoom,
+Fenster, Mod und Spielstand aufzeichnen. Die `os_signpost`-Instrumentierung
+unter `org.freecol.client / MapRendering` markiert `MinimapJumpRequested`,
+`MapScrollCameraUpdated`, `RenderDataBuild` und `CanvasCommands`.
+Die Differenz zwischen Anfrage und Kameraänderung misst nur die Verarbeitung
+bis zur Kameraänderung, nicht das fertige Bild. CPU- und GPU-Traces sowie
+Bildpräsentation gemeinsam betrachten, bevor Renderoptionen wie `drawingGroup`
+geändert werden. Profilaufzeichnungen können Spiel- und Prozessdaten enthalten.
+
 ### Laufzeit-Logs in der Konsole
 
 Beim Start über `swift run Novaloria` siehst du Debug-Logs direkt im Terminal (z. B. gesendete/empfangene XML-Nachrichten).

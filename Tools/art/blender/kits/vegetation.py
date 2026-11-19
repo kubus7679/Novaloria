@@ -195,7 +195,7 @@ def _heightfield(mountain: bool, rng):
             )
         )
     else:
-        peaks[0] = (*peaks[0][:3], 0.48, 0.38)
+        peaks[0] = (*peaks[0][:2], rng.uniform(0.22, 0.30), 0.70, 0.58)
     for vertex in bm.verts:
         x, y = vertex.co.x, vertex.co.y
         diamond = max(0.0, 1.0 - (abs(x) + abs(y)) / HALF)
@@ -209,7 +209,7 @@ def _heightfield(mountain: bool, rng):
             z += (ridge * 0.15 + detail * 0.035) * min(1.0, z * 2.0)
             z = max(0.0, z)
         else:
-            z += 0.018 * math.sin(17.0 * x + 2.0 * math.cos(9.0 * y)) * math.sin(14.0 * y)
+            z += 0.008 * math.sin(17.0 * x + 2.0 * math.cos(9.0 * y)) * math.sin(14.0 * y)
             z = max(0.0, z)
         vertex.co.z = z * min(1.0, diamond * 5.0)
     bmesh.ops.delete(bm, geom=[face for face in bm.faces if not face.is_valid], context="FACES")

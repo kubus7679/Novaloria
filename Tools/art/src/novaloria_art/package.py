@@ -7,6 +7,7 @@ import shutil
 import zipfile
 from pathlib import Path
 
+from .animation import SHIP_ANIMATION_OVERRIDES
 from .manifest import RESOURCE_PREFIX, Manifest, canonical_path
 
 MOD_ID = "novaloria-atlas"
@@ -39,6 +40,10 @@ def resource_lines(manifest: Manifest, produced: set[str]) -> list[str]:
     included: dict[str, str] = {}
     aliases: dict[str, str] = {}
     for key, value in manifest.entries.items():
+        override = SHIP_ANIMATION_OVERRIDES.get(key)
+        if override is not None and override[1] in produced:
+            included[key] = override[1]
+            continue
         if value.startswith(RESOURCE_PREFIX):
             aliases[key] = value[len(RESOURCE_PREFIX) :]
             continue

@@ -12,6 +12,7 @@ IMAGES = "resources/images/"
 TILE = (128, 64)
 FOREST = (128, 84)
 OVERLAY = (128, 96)
+FIGURE_CANVAS = (88, 96)
 
 
 @dataclass(frozen=True)
@@ -37,7 +38,10 @@ def _relief(kind: str) -> Spec:
 
 
 def _figure(profession: str, **params: Any) -> Spec:
-    return Spec("figure", {"profession": profession, **params}, elevation=18.0)
+    return Spec(
+        "figure", {"profession": profession, **params},
+        mode="figure", canvas=FIGURE_CANVAS, elevation=18.0,
+    )
 
 
 def _building(kind: str) -> Spec:
@@ -126,7 +130,7 @@ def _generated_spec(path: str, family: str, key: str) -> Spec | None:
             name,
             unit=unit,
             role=parent,
-            mounted=parent in {"dragoon", "cavalry", "mountedBrave", "nativeDragoon"},
+            mounted=parent in {"scout", "dragoon", "cavalry", "mountedBrave", "nativeDragoon"},
         )
     if family == "building":
         building = key.removeprefix("image.buildingicon.model.building.").split(".", 1)[0]

@@ -48,6 +48,55 @@ def contact_sheet(pairs: list[tuple[str, Path, Path]], output: Path) -> None:
     sheet.save(output)
 
 
+def preview_sheet(
+    pairs: list[tuple[str, Path, Path]],
+    output: Path,
+    headings: tuple[str, str] = ("Aktueller Atlas", "Vorschlag"),
+) -> None:
+    """Compare two sets of sprites enlarged and at native size."""
+    rows = []
+    native_width = 72
+    for label, old, new in pairs:
+        images = []
+        for file in (old, new):
+            with Image.open(file) as image:
+                sprite = image.convert("RGBA")
+            hires = Path(hires_name(str(file)))
+            enlarged = sprite
+            if hires.is_file():
+                with Image.open(hires) as image:
+                    if image.size == (sprite.width * 2, sprite.height * 2):
+                        enlarged = image.convert("RGBA")
+            images.append((sprite, enlarged))
+            native_width = max(native_width, sprite.width)
+        rows.append((label, images, max(180, *(sprite.height + 40 for sprite, _ in images))))
+    column_width = 230 + native_width + 25
+    width = 255 + 2 * column_width
+    sheet = Image.new("RGBA", (width, 52 + sum(row[2] for row in rows)), BACKGROUND)
+    draw = ImageDraw.Draw(sheet)
+    font = _font(16)
+    small = _font(13)
+    draw.text((280, 15), headings[0], fill=INK, font=font)
+    draw.text((280 + column_width, 15), headings[1], fill=INK, font=font)
+    top = 52
+    for label, images, height in rows:
+        draw.line((10, top, width - 10, top), fill=(164, 151, 123, 255), width=1)
+        draw.text((15, top + 65), label, fill=INK, font=small)
+        for column, (sprite, enlarged) in enumerate(images):
+            scale = min(4.0, 180 / sprite.width, 145 / sprite.height)
+            size = (max(1, round(sprite.width * scale)), max(1, round(sprite.height * scale)))
+            thumb = enlarged.resize(size, Image.Resampling.LANCZOS)
+            left = 255 + column * column_width
+            sheet.alpha_composite(thumb, (left + (180 - thumb.width) // 2,
+                                          top + (height - thumb.height) // 2))
+            native_x = left + 210 + (native_width - sprite.width) // 2
+            sheet.alpha_composite(sprite, (native_x, top + (height - sprite.height) // 2))
+            draw.text((left + 210 + native_width // 2 - 10, top + height - 23), "1:1", fill=INK, font=small)
+        top += height
+    output.parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(output)
+
+
 # Synthetic excerpt in FreeCol's staggered layout; values are terrain, overlay and item keys.
 MAP_ROWS = [
     "O O O O O O O",
@@ -89,6 +138,8 @@ UNITS = {
     (1, 4): "units/ship/caravel.png",
 }
 ITEMS = {(4, 2): "bonus/grain.png", (4, 3): "misc/lostCityRumour.png"}
+RIVER_TILES = {(4, 3), (4, 4), (4, 5), (4, 6), (4, 7), (5, 8)}
+FIELDS = {(3, 4), (2, 5), (3, 7)}
 
 
 def map_excerpt(image_root: Path, output: Path, scale: int, hires: bool) -> None:
@@ -109,6 +160,10 @@ def map_excerpt(image_root: Path, output: Path, scale: int, hires: bool) -> None
         return loaded
 
     rows = [row.split() for row in MAP_ROWS]
+
+    def is_land(x, y):
+        return 0 <= y < len(rows) and 0 <= x < len(rows[y]) and rows[y][x][0] != "O"
+
     columns = max(len(row) for row in rows)
     canvas = Image.new(
         "RGBA",
@@ -122,6 +177,26 @@ def map_excerpt(image_root: Path, output: Path, scale: int, hires: bool) -> None
             base = load(TERRAIN[cell[0]])
             if base is not None:
                 canvas.alpha_composite(base.resize((tile_w, tile_h)), dest=(left, top))
+            east = 1 if y % 2 else 0
+            neighbors = [(x + east, y - 1), (x + east, y + 1),
+                         (x + east - 1, y + 1), (x + east - 1, y - 1)]
+            if cell[0] == "O":
+                edges = [is_land(*point) for point in neighbors]
+                corners = [(x, y - 2), (x + 1, y), (x, y + 2), (x - 1, y)]
+                corner_bits = sum(
+                    1 << i for i, point in enumerate(corners)
+                    if is_land(*point) and not edges[i] and not edges[(i - 1) % 4]
+                )
+                for kind, bits in (("edge", sum(1 << i for i, edge in enumerate(edges) if edge)),
+                                   ("corner", corner_bits)):
+                    if bits and (beach := load(f"terrain/beach/{kind}{bits}_0.png")) is not None:
+                        canvas.alpha_composite(beach.resize((tile_w, tile_h)), dest=(left, top))
+            if (x, y) in FIELDS and (field := load("misc/plowed.png")) is not None:
+                canvas.alpha_composite(field.resize((tile_w, tile_h)), dest=(left, top))
+            if (x, y) in RIVER_TILES:
+                index = sum(3 ** i for i, point in enumerate(neighbors) if point in RIVER_TILES)
+                if (river := load(f"river/river{index}.png")) is not None:
+                    canvas.alpha_composite(river.resize((tile_w, tile_h)), dest=(left, top))
     for y, row in enumerate(rows):
         for x, cell in enumerate(row):
             left = x * tile_w + (tile_w // 2 if y % 2 else 0)

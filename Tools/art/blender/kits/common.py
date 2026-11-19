@@ -152,6 +152,27 @@ def frame_tile(view: View, canvas, raw) -> None:
     camera(view, view.up * shift, width, raw)
 
 
+def fit_tile_contents(view: View, canvas, margin: int = 3) -> None:
+    """Keep the ground anchor and camera fixed while fitting all forest crowns into the canvas."""
+    bpy.context.view_layer.update()
+    width, shift = tile_metrics(canvas)
+    pixel = width / canvas[0]
+    limits = (width / 2 - margin * pixel, canvas[1] / 2 * pixel - margin * pixel)
+    factor = 1.0
+    for obj in bpy.context.scene.objects:
+        if obj.type != "MESH" or obj.is_shadow_catcher or obj.hide_render:
+            continue
+        for corner in obj.bound_box:
+            x, y = view.screen(obj.matrix_world @ Vector(corner))
+            if x:
+                factor = min(factor, limits[0] / abs(x))
+            if y:
+                factor = min(factor, (limits[1] + (shift if y > 0 else -shift)) / abs(y))
+    for obj in bpy.context.scene.objects:
+        if obj.type == "MESH" and not obj.is_shadow_catcher:
+            obj.matrix_world = Matrix.Scale(factor, 4) @ obj.matrix_world
+
+
 def frame_sprite(view: View, longest: int, margin: float = 0.05) -> None:
     bpy.context.view_layer.update()
     travel = -SUN_FROM.normalized()

@@ -16,9 +16,22 @@ enum TileImprovementRenderer {
         }
     }
 
+    /// Which improvements to draw; the world map renders roads in a separate,
+    /// final pass so they stay above terrain overlays of neighbouring tiles.
+    enum Layers {
+        case all, withoutRoads, roadsOnly
+    }
+
     static func draw(_ improvements: [TileImprovement], in context: inout GraphicsContext,
-                     rect: CGRect, zoomScale: CGFloat = 1) {
+                     rect: CGRect, zoomScale: CGFloat = 1, layers: Layers = .all) {
         let completed = improvements.filter { $0.turns == 0 }
+
+        if layers == .roadsOnly {
+            for improvement in completed where improvement.type == "model.improvement.road" {
+                drawRoad(style: improvement.style, in: &context, rect: rect, zoomScale: zoomScale)
+            }
+            return
+        }
 
         // The original FreeCol river art is a transparent, full-tile sprite
         // selected by the improvement's four directional connection digits.
@@ -30,7 +43,9 @@ enum TileImprovementRenderer {
         for improvement in completed {
             guard let type = improvement.type else { continue }
             if type == "model.improvement.road" {
-                drawRoad(style: improvement.style, in: &context, rect: rect, zoomScale: zoomScale)
+                if layers == .all {
+                    drawRoad(style: improvement.style, in: &context, rect: rect, zoomScale: zoomScale)
+                }
             } else if type != "model.improvement.river",
                       let image = TileImageCache.shared.improvementImage(forType: type) {
                 context.draw(Image(nsImage: image), in: rect)
@@ -68,8 +83,19 @@ enum TileImprovementRenderer {
                 road.addLine(to: CGPoint(x: rect.minX + point.x, y: rect.minY + point.y))
             }
         }
-        context.stroke(road, with: .color(Color(red: 128 / 255, green: 64 / 255, blue: 0)),
-                       style: StrokeStyle(lineWidth: max(1.25, zoomScale * 2), lineCap: .round))
+        let width = max(1.8, zoomScale * 3.2)
+        for (color, fraction) in [
+            (Color(red: 0.28, green: 0.22, blue: 0.14).opacity(0.8), 1.35),
+            (Color(red: 0.53, green: 0.40, blue: 0.25), 1.0),
+            (Color(red: 0.70, green: 0.56, blue: 0.36), 0.63),
+            (Color(red: 0.79, green: 0.66, blue: 0.45).opacity(0.75), 0.23),
+        ] {
+            context.stroke(road, with: .color(color),
+                           style: StrokeStyle(lineWidth: width * fraction, lineCap: .round, lineJoin: .round))
+        }
+        context.stroke(road, with: .color(Color(red: 0.39, green: 0.30, blue: 0.19).opacity(0.45)),
+                       style: StrokeStyle(lineWidth: max(0.45, zoomScale * 0.55), lineCap: .round,
+                                          dash: [max(1, zoomScale), max(1.5, zoomScale * 2.5)]))
     }
 
     private static func drawImprovementMarker(type: String, in context: inout GraphicsContext,

@@ -29,7 +29,6 @@ def build_beach(job: dict, view, rng) -> None:
         "warm coastal sand", (0.78, 0.63, 0.39), roughness=0.94, variation=0.12, scale=12.0, bump=0.08
     )
     wet = _mat("wet shoreline", (0.55, 0.48, 0.34), roughness=0.58, variation=0.08)
-    palm = _mat("driftwood", (0.30, 0.19, 0.10), roughness=0.9)
     if kind == "center0":
         bm = bmesh.new()
         bmesh.ops.create_grid(bm, x_segments=1, y_segments=1, size=TILE / 2)
@@ -40,50 +39,29 @@ def build_beach(job: dict, view, rng) -> None:
         return
     form, raw_index = match.groups()
     index = int(raw_index)
-    turn = (index % 4) * math.pi / 2
-    if form == "edge":
-        points = [
-            (-1.0, -0.75),
-            (-0.55, -0.68),
-            (-0.10, -0.83),
-            (0.32, -0.73),
-            (0.70, -0.84),
-            (1.0, -0.72),
-            (1.0, -1.0),
-            (-1.0, -1.0),
-        ]
-    else:
-        points = [
-            (-1.0, -0.80),
-            (-0.65, -0.60),
-            (-0.46, -0.35),
-            (-0.18, -0.19),
-            (-0.35, -0.05),
-            (-0.68, -0.20),
-            (-0.86, -0.47),
-            (-1.0, -0.58),
-        ]
-    rotated = [
-        (x * math.cos(turn) - y * math.sin(turn), x * math.sin(turn) + y * math.cos(turn)) for x, y in points
-    ]
-    _polygon("shore sand", rotated, 0.018, sand)
-    if form == "edge":
-        for step in range(8):
-            x = -0.78 + step * 0.22
-            y = -0.73 + rng.uniform(-0.035, 0.035)
-            common.sphere("wet sand", 0.07, (x, y, 0.027), wet, scale=(1.5, 0.42, 0.12), subdivisions=2)
-    for _ in range(4 if form == "corner" else 2):
-        x, y = rng.choice(rotated)
-        common.sphere(
-            "beach pebble",
-            rng.uniform(0.025, 0.055),
-            (x, y, 0.035),
-            palm,
-            scale=(1.3, 0.8, 0.45),
-            subdivisions=1,
-            jitter=0.01,
-            seed=rng.randrange(50000),
-        )
+    # FreeCol bit order: edges NE, SE, SW, NW; corners N, E, S, W.
+    for direction in range(4):
+        if not index & (1 << direction):
+            continue
+        turn = -direction * math.pi / 2
+
+        def rotate(points, turn=turn):
+            return [
+                (x * math.cos(turn) - y * math.sin(turn),
+                 x * math.sin(turn) + y * math.cos(turn))
+                for x, y in points
+            ]
+
+        if form == "edge":
+            coast = [(x, 0.77 + 0.035 * math.sin(step * 1.8))
+                     for step, x in enumerate((-1.0, -0.6, -0.2, 0.2, 0.6, 1.0))]
+            points = [(-1.0, 1.0), *coast, (1.0, 1.0)]
+        else:
+            coast = [(-1.0, 0.67), (-0.91, 0.76), (-0.78, 0.84), (-0.67, 1.0)]
+            points = [(-1.0, 1.0), *coast]
+        _polygon("shore sand", rotate(points), 0.0, sand)
+        wet_strip = coast + [(x * 0.96, y * 0.96) for x, y in reversed(coast)]
+        _polygon("wet shoreline", rotate(wet_strip), 0.0, wet)
 
 
 def build_river(job: dict, view, rng) -> None:
@@ -93,19 +71,38 @@ def build_river(job: dict, view, rng) -> None:
     for direction, digit in enumerate(style):
         if digit == "0":
             continue
-        angle = direction * math.pi / 2 + math.pi / 4
-        end = (math.cos(angle) * HALF, math.sin(angle) * HALF, 0.025)
-        bend = (
-            math.cos(angle) * 0.18 + rng.uniform(-0.12, 0.12),
-            math.sin(angle) * 0.18 + rng.uniform(-0.12, 0.12),
-            0.03,
-        )
-        width = 0.075 if digit == "1" else 0.115
-        common.limb("sandy river bank", (0.0, 0.0, 0.018), bend, width * 1.65, width * 1.25, bank)
-        common.limb("river channel", (0.0, 0.0, 0.035), bend, width, width * 0.82, water)
-        common.limb("river channel", bend, end, width * 0.82, width * 0.52, water)
+        # Axis-aligned world edges project to the diamond's NE, SE, SW, NW sides.
+        dx, dy = ((0, 1), (1, 0), (0, -1), (-1, 0))[direction]
+        width = 0.065 if digit == "1" else 0.105
+        bend = rng.uniform(-0.10, 0.10)
+        centers = []
+        for step in range(33):
+            t = step / 32
+            lateral = bend * math.sin(math.pi * t) ** 2
+            centers.append((dx * HALF * t - dy * lateral, dy * HALF * t + dx * lateral))
+        for name, low, high, material in (
+            ("river channel", -width, width, water),
+            ("left river bank", -width * 1.5, -width, bank),
+            ("right river bank", width, width * 1.5, bank),
+        ):
+            bm = bmesh.new()
+            previous = None
+            for step, (x, y) in enumerate(centers):
+                t = step / 32
+                slope = bend * math.pi * math.sin(2 * math.pi * t)
+                tx, ty = dx * HALF - dy * slope, dy * HALF + dx * slope
+                length = math.hypot(tx, ty)
+                pair = [bm.verts.new((x - ty / length * w, y + tx / length * w, 0.0))
+                        for w in (low, high)]
+                if previous:
+                    bm.faces.new((previous[0], pair[0], pair[1], previous[1]))
+                previous = pair
+            common.from_bmesh(name, bm, material, smooth=False)
     if any(digit != "0" for digit in style):
-        common.sphere("river pool", 0.12, (0.0, 0.0, 0.035), water, scale=(1.0, 0.8, 0.22), subdivisions=2)
+        _polygon("river junction", [
+            (0.108 * math.cos(i * math.tau / 32), 0.108 * math.sin(i * math.tau / 32))
+            for i in range(32)
+        ], 0.001, water)
         stones = _mat("river stones", (0.48, 0.45, 0.38), roughness=0.84)
         for _ in range(5):
             x, y = rng.uniform(-0.65, 0.65), rng.uniform(-0.4, 0.4)
@@ -190,22 +187,23 @@ def build_river_texture(job: dict, view, rng) -> None:
 
 
 def build_plow(job: dict, view, rng) -> None:
-    soil = _mat("turned earth", (0.38, 0.27, 0.13), roughness=0.96)
-    furrow = _mat("furrow shadow", (0.20, 0.15, 0.08), roughness=0.98)
-    for row in range(-4, 5):
-        offset = row * 0.19
-        start = (-0.95, offset * 0.42, 0.025)
-        end = (0.95, offset * 0.42 + 0.22, 0.026)
-        common.limb("plowed ridge", start, end, 0.035, 0.032, soil, segments=7)
-        common.limb(
-            "plow furrow",
-            (start[0], start[1] - 0.045, 0.024),
-            (end[0], end[1] - 0.045, 0.024),
-            0.016,
-            0.014,
-            furrow,
-            segments=6,
-        )
+    soils = [
+        _mat(f"earth tone {i}", color, roughness=0.96, variation=0.28, scale=18, bump=0.2)
+        for i, color in enumerate(((0.37, 0.26, 0.14), (0.46, 0.33, 0.18), (0.53, 0.40, 0.24)))
+    ]
+    furrow = _mat("furrow shadow", (0.24, 0.18, 0.11), roughness=0.98, variation=0.2)
+    for row in range(-6, 7):
+        y = row * 0.12
+        edge = 0.91 - 0.05 * abs(row) / 6
+        points = [(-edge + step * edge / 16, y + 0.018 * math.sin(step * 0.65 + row))
+                  for step in range(33)]
+        _polygon("plow furrow", points + [(x, y + 0.105) for x, y in reversed(points)], 0.0, furrow)
+        _polygon("plowed ridge", points + [(x, y + 0.070) for x, y in reversed(points)],
+                 0.001, rng.choice(soils))
+    for _ in range(95):
+        x, y = rng.uniform(-0.84, 0.84), rng.uniform(-0.7, 0.7)
+        common.sphere("soil clod", rng.uniform(0.008, 0.024), (x, y, 0.012),
+                      rng.choice(soils), scale=(1.4, 0.8, 0.45), subdivisions=1)
 
 
 def build_clouds(job: dict, view, rng) -> None:

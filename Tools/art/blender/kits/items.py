@@ -275,7 +275,175 @@ def build_goods(job: dict, view, rng) -> None:
     dark = _mat("iron", (0.16, 0.15, 0.13), roughness=0.38, metallic=0.62)
     wicker = _mat("willow wicker", (0.55, 0.37, 0.17), roughness=0.9, variation=0.12)
     brass = _mat("brass", (0.62, 0.42, 0.15), roughness=0.28, metallic=0.65)
-    if kind == "food":
+    if kind == "grain":
+        straw = _mat("golden grain", (0.82, 0.61, 0.25), roughness=0.9)
+        heads = _mat("ripe wheat heads", (0.94, 0.72, 0.28), roughness=0.84)
+        for index in range(9):
+            angle = index * math.tau / 9
+            x, y = math.cos(angle) * 0.25, math.sin(angle) * 0.18
+            top = 0.68 + 0.06 * (index % 3)
+            common.limb("wheat stalk", (x * 0.65, y * 0.65, 0.05), (x, y, top),
+                        0.014, 0.009, straw, segments=6)
+            common.sphere("wheat ear", 0.075, (x, y, top), heads,
+                          scale=(0.50, 0.50, 1.65), subdivisions=2)
+            for side in (-1, 1):
+                common.limb("grain awn", (x, y, top + 0.03), (x + side * 0.06, y, top + 0.17),
+                            0.008, 0.002, straw, segments=5)
+        common.cylinder("sheaf binding", 0.095, 0.065, (0.0, 0.0, 0.30), brass, segments=16)
+    elif kind == "cotton":
+        linen = _mat("cotton bale cloth", (0.72, 0.68, 0.55), roughness=0.96)
+        cotton = _mat("white cotton", (0.95, 0.93, 0.84), roughness=0.96, variation=0.08)
+        common.box("cotton bale", (0.57, 0.42, 0.32), (0.0, 0.0, 0.20), linen, bevel=0.06)
+        for x in (-0.17, 0.0, 0.17):
+            for y in (-0.12, 0.10):
+                common.sphere("cotton tuft", 0.12, (x, y, 0.43 + (0.03 if x == 0 else 0)), cotton,
+                              scale=(1.1, 0.95, 0.90), subdivisions=2, jitter=0.01,
+                              seed=rng.randrange(50000))
+                common.sphere("cotton tuft lobe", 0.063, (x + 0.045, y - 0.025, 0.49), cotton,
+                              scale=(1.0, 0.85, 0.85), subdivisions=2, seed=rng.randrange(50000))
+        for x in (-0.16, 0.16):
+            common.limb("bale tie", (x, -0.22, 0.08), (x, -0.22, 0.35), 0.014, 0.014, wood, segments=6)
+            common.limb("bale top tie", (x, -0.21, 0.36), (x, 0.21, 0.36), 0.014, 0.014, wood, segments=6)
+    elif kind == "tobacco":
+        leaf_colors = [(0.45, 0.34, 0.12), (0.35, 0.39, 0.15), (0.57, 0.43, 0.17)]
+        for index, color in enumerate(leaf_colors):
+            leaf = _mat(f"tobacco leaf {index}", color, roughness=0.91)
+            angle = (index - 1) * 0.40
+            obj = common.sphere("broad tobacco leaf", 0.26, ((index - 1) * 0.13, 0.0, 0.20 + index * 0.06),
+                                leaf, scale=(0.66, 0.20, 1.55), subdivisions=2)
+            obj.rotation_euler.y = angle
+            common.limb("tobacco leaf vein", ((index - 1) * 0.13, -0.06, 0.08),
+                        ((index - 1) * 0.13 + math.sin(angle) * 0.30, -0.06, 0.53 + index * 0.06),
+                        0.012, 0.006, brass, segments=5)
+            for height in (0.23, 0.33, 0.43):
+                center_x = (index - 1) * 0.13 + math.sin(angle) * (height - 0.08) * 0.65
+                for side in (-1, 1):
+                    common.limb("tobacco leaf rib", (center_x, -0.07, height),
+                                (center_x + side * 0.10, -0.07, height + 0.06),
+                                0.006, 0.003, brass, segments=5)
+        common.limb("tobacco bundle tie", (-0.30, -0.08, 0.19), (0.30, -0.08, 0.19),
+                    0.018, 0.018, wood, segments=7)
+    elif kind == "cloth":
+        blue = _mat("indigo cloth", (0.24, 0.37, 0.62), roughness=0.92)
+        pale = _mat("linen cloth", (0.78, 0.71, 0.54), roughness=0.95)
+        common.box("folded linen", (0.66, 0.43, 0.11), (0.0, 0.0, 0.08), pale, bevel=0.035)
+        common.box("folded blue cloth", (0.60, 0.39, 0.10), (0.0, 0.0, 0.18), blue, bevel=0.035)
+        common.box("linen fold edge", (0.60, 0.018, 0.025), (0.0, -0.205, 0.10), pale,
+                   bevel=0.005)
+        common.cylinder("cloth roll", 0.13, 0.58, (0.0, 0.0, 0.37), blue, segments=20,
+                        rotation=(0.0, math.pi / 2, 0.0))
+        for x in (-0.31, 0.31):
+            common.cylinder("roll linen end", 0.105, 0.015, (x, 0.0, 0.37), pale, segments=20,
+                            rotation=(0.0, math.pi / 2, 0.0))
+            common.cylinder("roll core", 0.035, 0.018, (x * 1.04, 0.0, 0.37), blue, segments=16,
+                            rotation=(0.0, math.pi / 2, 0.0))
+    elif kind == "coats":
+        coat = _mat("red wool coat", (0.59, 0.19, 0.13), roughness=0.9)
+        lining = _mat("coat lining", (0.83, 0.71, 0.50), roughness=0.92)
+        common.box("folded coat body", (0.40, 0.18, 0.55), (0.0, 0.0, 0.34), coat, bevel=0.055)
+        for side in (-1, 1):
+            common.limb("coat sleeve", (side * 0.16, 0.0, 0.52), (side * 0.34, 0.0, 0.19),
+                        0.09, 0.075, coat, segments=12)
+            common.box("coat lapel", (0.075, 0.025, 0.24), (side * 0.08, -0.105, 0.48),
+                       lining, rotation=(0.0, side * 0.16, 0.0), bevel=0.01)
+            common.box("coat cuff", (0.13, 0.15, 0.055), (side * 0.33, -0.01, 0.19),
+                       lining, bevel=0.015)
+        for z in (0.25, 0.34, 0.43):
+            common.sphere("coat button", 0.022, (0.0, -0.115, z), brass, subdivisions=2)
+    elif kind == "hammers":
+        common.box("hammer rack", (0.52, 0.32, 0.15), (0.0, 0.0, 0.09), wood, bevel=0.025)
+        for side in (-1, 1):
+            common.limb("hammer handle", (side * 0.20, 0.0, 0.14), (-side * 0.08, 0.0, 0.65),
+                        0.035, 0.03, wood, segments=8)
+            common.box("hammer head", (0.26, 0.11, 0.12), (-side * 0.08, 0.0, 0.65), dark, bevel=0.02)
+    elif kind == "meat":
+        meat = _mat("cured ham", (0.55, 0.20, 0.14), roughness=0.67, variation=0.18)
+        bone = _mat("ham bone", (0.88, 0.83, 0.68), roughness=0.78)
+        common.sphere("ham", 0.30, (0.02, 0.0, 0.31), meat,
+                      scale=(1.25, 0.72, 0.80), subdivisions=3)
+        common.limb("ham bone", (-0.31, 0.0, 0.30), (-0.54, 0.0, 0.30), 0.05, 0.05, bone, segments=10)
+        for y in (-0.055, 0.055):
+            common.sphere("ham bone end", 0.065, (-0.54, y, 0.30), bone, subdivisions=2)
+        for index in range(3):
+            common.limb("ham scoring", (0.05 + index * 0.10, -0.20, 0.20),
+                        (0.15 + index * 0.10, -0.20, 0.39), 0.008, 0.008, bone, segments=5)
+    elif kind == "tradeGoods":
+        glaze = _mat("trade pottery", (0.20, 0.43, 0.46), roughness=0.32)
+        red = _mat("trade cloth", (0.62, 0.20, 0.14), roughness=0.88)
+        common.box("trade chest", (0.52, 0.35, 0.23), (0.0, 0.0, 0.14), wood, bevel=0.035)
+        common.box("trade folded cloth", (0.29, 0.27, 0.08), (-0.14, 0.0, 0.31), red, bevel=0.025)
+        common.cylinder("trade pottery jar", 0.13, 0.24, (0.17, 0.0, 0.38), glaze, radius2=0.10, segments=16)
+        common.cylinder("trade jar rim", 0.105, 0.035, (0.17, 0.0, 0.51), brass, segments=16)
+        for index in range(5):
+            common.sphere("trade bead", 0.035, (-0.24 + index * 0.10, -0.19, 0.24), brass, subdivisions=2)
+    elif kind == "sugar":
+        sack = _mat("sugar sack", (0.68, 0.58, 0.39), roughness=0.96)
+        crystal = _mat("raw sugar", (0.90, 0.83, 0.66), roughness=0.86)
+        cane = _mat("sugar cane", (0.57, 0.62, 0.27))
+        common.sphere("sugar sack", 0.25, (0.0, 0.0, 0.25), sack,
+                      scale=(1.15, 0.90, 1.15), subdivisions=2)
+        common.cylinder("open sack rim", 0.18, 0.06, (0.0, 0.0, 0.49), sack, segments=16)
+        common.sphere("sugar crystals", 0.15, (0.0, 0.0, 0.50), crystal,
+                      scale=(1.0, 1.0, 0.35), subdivisions=2, jitter=0.02, seed=2)
+        for index in range(3):
+            x = -0.22 + index * 0.08
+            common.limb("sugar cane stalk", (x, 0.12, 0.18), (x - 0.10, 0.12, 0.68),
+                        0.022, 0.018, cane, segments=7)
+    elif kind == "horses":
+        hide = _mat("horse chestnut", (0.45, 0.23, 0.12), variation=0.18)
+        mane = _mat("horse mane", (0.16, 0.10, 0.06))
+        common.limb("horse neck", (0.05, 0.0, 0.10), (0.02, 0.0, 0.56), 0.20, 0.14, hide)
+        common.sphere("horse head", 0.18, (-0.09, -0.02, 0.57), hide,
+                      scale=(0.95, 0.72, 1.25), subdivisions=2)
+        common.sphere("horse muzzle", 0.09, (-0.21, -0.08, 0.47), hide,
+                      scale=(1.2, 0.85, 0.70), subdivisions=2)
+        for side in (-1, 1):
+            common.limb("horse ear", (-0.05, side * 0.09, 0.70), (-0.06, side * 0.09, 0.86),
+                        0.045, 0.006, hide, segments=7)
+        common.limb("horse mane", (0.12, 0.0, 0.64), (0.20, 0.0, 0.20), 0.08, 0.035, mane, segments=8)
+        common.sphere("horse eye", 0.025, (-0.12, -0.13, 0.61), mane, subdivisions=2)
+    elif kind == "lumber":
+        bark = _mat("log bark", (0.30, 0.19, 0.10), roughness=0.96, bands=16.0)
+        cut = _mat("cut wood", (0.74, 0.56, 0.32), roughness=0.85)
+        for index, (y, z) in enumerate(((-0.15, 0.13), (0.15, 0.13), (0.0, 0.34))):
+            x = 0.03 * (index - 1)
+            common.cylinder("log bark", 0.13, 0.66, (x, y, z), bark, segments=16,
+                            rotation=(0.0, math.pi / 2, 0.0))
+            for side in (-1, 1):
+                common.cylinder("log cut end", 0.11, 0.015, (x + side * 0.34, y, z), cut, segments=16,
+                                rotation=(0.0, math.pi / 2, 0.0))
+                common.cylinder("log heartwood", 0.04, 0.018, (x + side * 0.35, y, z), wood, segments=12,
+                                rotation=(0.0, math.pi / 2, 0.0))
+    elif kind == "ore":
+        ore = _mat("iron bearing rock", (0.33, 0.28, 0.24), roughness=0.92)
+        vein = _mat("rust mineral vein", (0.61, 0.31, 0.17), roughness=0.78, metallic=0.2)
+        for index in range(6):
+            angle = index * math.tau / 6
+            x, y = math.cos(angle) * 0.19, math.sin(angle) * 0.15
+            common.sphere("iron ore chunk", 0.16, (x, y, 0.16 + (index % 2) * 0.12), ore,
+                          scale=(1.0, 0.8, 1.0), subdivisions=1, jitter=0.025, seed=index)
+            common.limb("iron ore seam", (x - 0.06, y - 0.11, 0.17), (x + 0.06, y - 0.11, 0.27),
+                        0.018, 0.012, vein, segments=5)
+    elif kind == "silver":
+        silver = _mat("silver ingot", (0.76, 0.79, 0.80), roughness=0.27, metallic=0.75)
+        for x, z in ((-0.16, 0.09), (0.16, 0.09), (0.0, 0.24)):
+            common.box("silver ingot", (0.30, 0.38, 0.13), (x, 0.0, z), silver, bevel=0.025)
+            common.box("ingot stamp", (0.07, 0.07, 0.008), (x, 0.0, z + 0.07), dark, bevel=0.01)
+    elif kind == "fish":
+        fish = _mat("fish silver blue", (0.42, 0.59, 0.64), roughness=0.38, metallic=0.25)
+        belly = _mat("fish belly", (0.72, 0.76, 0.70), roughness=0.6)
+        for index in range(3):
+            x = (index - 1) * 0.15
+            z = 0.15 + index * 0.16
+            common.sphere("fish body", 0.17, (x, 0.0, z), fish, scale=(1.35, 0.58, 0.65), subdivisions=2)
+            common.sphere("fish belly", 0.12, (x - 0.01, -0.02, z - 0.04), belly,
+                          scale=(1.40, 0.55, 0.50), subdivisions=2)
+            common.limb("fish tail", (x + 0.20, 0.0, z), (x + 0.33, 0.0, z),
+                        0.025, 0.105, fish, segments=5, rounded=False)
+            common.sphere("fish eye", 0.022, (x - 0.15, -0.095, z + 0.035), dark, subdivisions=2)
+            common.limb("fish fin", (x, 0.0, z + 0.08), (x + 0.07, 0.0, z + 0.17),
+                        0.05, 0.006, fish, segments=5, rounded=False)
+    elif kind == "food":
         _basket(0.0, 0.04, 0.0, 1.0, wicker)
         _produce(
             0.0,
@@ -305,6 +473,12 @@ def build_goods(job: dict, view, rng) -> None:
                 scale=(0.8, 0.8, 1.5),
                 subdivisions=2,
             )
+        bread = _mat("bread crust", (0.72, 0.46, 0.22), roughness=0.9)
+        common.sphere("bread loaf", 0.15, (0.0, -0.04, 0.39), bread,
+                      scale=(1.35, 0.65, 0.65), subdivisions=2)
+        for x in (-0.08, 0.0, 0.08):
+            common.limb("bread scoring", (x - 0.025, -0.10, 0.47), (x + 0.025, -0.03, 0.48),
+                        0.009, 0.009, brass, segments=5)
     elif kind == "furs":
         fur = [
             _mat("beaver fur", (0.27, 0.15, 0.08), roughness=0.96, variation=0.24),
@@ -320,6 +494,8 @@ def build_goods(job: dict, view, rng) -> None:
                 size=0.9 + 0.12 * (index % 2),
                 seed=index + 3,
             )
+        common.limb("fur bundle tie", (-0.30, -0.04, 0.27), (0.30, -0.04, 0.27),
+                    0.016, 0.016, brass, segments=6)
     elif kind == "rum":
         _barrel(-0.09, 0.02, 0.0, 1.0, wood, dark)
         glass = _mat("dark bottle glass", (0.10, 0.24, 0.19), roughness=0.22, metallic=0.12)
@@ -329,6 +505,10 @@ def build_goods(job: dict, view, rng) -> None:
         common.box(
             "bottle label", (0.09, 0.015, 0.11), (0.22, -0.164, 0.20), _mat("cream label", (0.84, 0.72, 0.48))
         )
+        common.limb("barrel tap", (-0.09, -0.21, 0.18), (-0.09, -0.32, 0.18),
+                    0.025, 0.018, brass, segments=8)
+        common.limb("tap handle", (-0.14, -0.31, 0.22), (-0.04, -0.31, 0.22),
+                    0.012, 0.012, brass, segments=6)
     elif kind == "tools":
         common.box("tool crate", (0.61, 0.44, 0.29), (0.0, 0.02, 0.15), wood, bevel=0.045)
         for x in (-0.19, 0.0, 0.19):
@@ -355,6 +535,11 @@ def build_goods(job: dict, view, rng) -> None:
                 scale=(1.0, 0.35, 0.65),
                 subdivisions=1,
             )
+        common.limb("wrench handle", (-0.31, -0.22, 0.20), (-0.18, -0.22, 0.52),
+                    0.025, 0.025, dark, segments=8)
+        for side in (-1, 1):
+            common.limb("wrench jaw", (-0.18, -0.22, 0.52), (-0.18 + side * 0.06, -0.22, 0.60),
+                        0.016, 0.014, dark, segments=6)
     elif kind == "muskets":
         _barrel(-0.06, 0.13, 0.02, 0.66, wood, dark)
         for side in (-1, 1):
@@ -381,8 +566,18 @@ def build_goods(job: dict, view, rng) -> None:
                 brass,
                 segments=6,
             )
-    else:
+            common.limb("musket bayonet", (-x0 * 0.6, -0.075, 1.03), (-x0 * 0.6, -0.075, 1.21),
+                        0.012, 0.0, brass, segments=5, rounded=False)
+    elif kind in {"bells", "cigars", "crosses"}:
         _generic_good(kind, rng, wood, dark, brass)
+        if kind == "bells":
+            common.cylinder("bell lip", 0.21, 0.035, (0.0, 0.0, 0.08), brass, segments=20)
+        elif kind == "cigars":
+            common.box("cigar box", (0.52, 0.31, 0.10), (0.0, 0.0, 0.04), wood, bevel=0.02)
+        else:
+            common.box("crosses base", (0.52, 0.28, 0.09), (0.0, 0.0, 0.035), wood, bevel=0.02)
+    else:
+        raise ValueError(f"Unknown goods type: {kind}")
 
 
 def build_bonus(job: dict, view, rng) -> None:
