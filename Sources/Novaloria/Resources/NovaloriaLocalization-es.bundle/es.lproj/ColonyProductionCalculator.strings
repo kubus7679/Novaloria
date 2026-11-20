@@ -25,3 +25,6 @@
 "Ergebnis: %lld %@ pro Runde" = "Resultado: %lld %@ por turno";
 "Bilanz: %lld − %lld = %lld" = "Balance: %lld − %lld = %lld";
 "%@: %@ %@ = %@" = "%@: %@ %@ = %@";
+"Zucht: Bestand %lld, Schwelle %lld, Teiler %lld, Faktor %lld = %lld" = "Cría: manada %lld, umbral %lld, divisor %lld, factor %lld = %lld";
+"Zuchtbedarf: %lld" = "Necesidad de cría: %lld";
+"Freistellung für Einheiten ohne Glockenverbrauch: %lld" = "Exención para unidades que no consumen campanas: %lld";

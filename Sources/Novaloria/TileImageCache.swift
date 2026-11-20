@@ -5,6 +5,8 @@ import FreeColGame
 final class TileImageCache {
     static let shared = TileImageCache()
     private var cache: [String: NSImage] = [:]
+    private var normalizedGoodsImages: [String: (signature: String, image: NSImage)] = [:]
+    private var unitPortraitImages: [String: (signature: String, image: NSImage)] = [:]
 
     private init() {}
 
@@ -155,6 +157,25 @@ final class TileImageCache {
         return loadImage(named: name, folder: "units")
     }
 
+    /// Cropped portrait for colony work slots, where the sprite should fill its tile
+    /// instead of retaining the large transparent margins used by map sprites.
+    func unitPortraitImage(forUnitType unitType: String?, role: String? = nil) -> NSImage? {
+        guard let unitType else { return nil }
+        let key = "\(unitType)|\(role ?? "")"
+        let signature = ModImageCatalog.shared.currentSignature()
+        if let cached = unitPortraitImages[key], cached.signature == signature {
+            return cached.image
+        }
+        guard let source = unitImage(forUnitType: unitType, role: role) else { return nil }
+        guard let cropped = croppedArtwork(from: source) else { return source }
+        let portrait = NSImage(
+            cgImage: cropped,
+            size: NSSize(width: cropped.width, height: cropped.height)
+        )
+        unitPortraitImages[key] = (signature, portrait)
+        return portrait
+    }
+
     func settlementImage(for settlement: SettlementKind) -> NSImage? {
         if let image = modImage(for: settlement.modResourceKeys) { return image }
         return loadImage(named: settlement.imageName, folder: "settlements")
@@ -166,9 +187,38 @@ final class TileImageCache {
     }
 
     func goodsImage(for goodsType: String) -> NSImage? {
-        if let image = modImage(for: ["image.icon.\(goodsType)"]) { return image }
-        guard let entry = ColopediaCatalog.classicEntries.first(where: { $0.id == goodsType }) else { return nil }
-        return colopediaImage(for: entry)
+        let signature = ModImageCatalog.shared.currentSignature()
+        if let cached = normalizedGoodsImages[goodsType], cached.signature == signature {
+            return cached.image
+        }
+
+        let source: NSImage?
+        if let modImage = modImage(for: ["image.icon.\(goodsType)"]) {
+            source = modImage
+        } else if let entry = ColopediaCatalog.classicEntries.first(where: { $0.id == goodsType }) {
+            source = colopediaImage(for: entry)
+        } else {
+            source = nil
+        }
+        guard let source else { return nil }
+
+        let image = normalizedGoodsIcon(source)
+        normalizedGoodsImages[goodsType] = (signature, image)
+        return image
+    }
+
+    func educationImage() -> NSImage? {
+        let signature = ModImageCatalog.shared.currentSignature()
+        if let cached = normalizedGoodsImages["education"], cached.signature == signature {
+            return cached.image
+        }
+        guard let source = modImage(for: ["image.icon.model.goods.education"])
+                ?? loadImage(named: "education.png", folder: "colopedia") else {
+            return nil
+        }
+        let image = normalizedGoodsIcon(source)
+        normalizedGoodsImages["education"] = (signature, image)
+        return image
     }
 
     func colopediaImage(for entry: ColopediaEntry) -> NSImage? {
@@ -219,6 +269,74 @@ final class TileImageCache {
         image.size = asset.logicalSize
         cache[key] = image
         return image
+    }
+
+    /// Trims inconsistent transparent margins, then fits every goods symbol to the same
+    /// visible 28×28 area on a 32×32 canvas.
+    private func normalizedGoodsIcon(_ image: NSImage) -> NSImage {
+        guard let cropped = croppedArtwork(from: image) else {
+            return image
+        }
+
+        let canvasSize: CGFloat = 32
+        let targetExtent: CGFloat = 28
+        let scale = min(
+            targetExtent / CGFloat(cropped.width),
+            targetExtent / CGFloat(cropped.height)
+        )
+        let drawSize = CGSize(
+            width: CGFloat(cropped.width) * scale,
+            height: CGFloat(cropped.height) * scale
+        )
+        let drawRect = CGRect(
+            x: (canvasSize - drawSize.width) / 2,
+            y: (canvasSize - drawSize.height) / 2,
+            width: drawSize.width,
+            height: drawSize.height
+        )
+
+        let normalized = NSImage(size: NSSize(width: canvasSize, height: canvasSize))
+        normalized.lockFocus()
+        NSGraphicsContext.current?.imageInterpolation = .high
+        NSImage(cgImage: cropped, size: NSSize(
+            width: cropped.width, height: cropped.height
+        )).draw(
+            in: drawRect,
+            from: .zero,
+            operation: .sourceOver,
+            fraction: 1
+        )
+        normalized.unlockFocus()
+        return normalized
+    }
+
+    private func croppedArtwork(from image: NSImage) -> CGImage? {
+        var proposedRect = CGRect(origin: .zero, size: image.size)
+        guard let cgImage = image.cgImage(forProposedRect: &proposedRect, context: nil, hints: nil) else {
+            return nil
+        }
+        let bitmap = NSBitmapImageRep(cgImage: cgImage)
+        var minX = bitmap.pixelsWide
+        var minY = bitmap.pixelsHigh
+        var maxX = 0
+        var maxY = 0
+        for y in 0..<bitmap.pixelsHigh {
+            for x in 0..<bitmap.pixelsWide {
+                let alpha = bitmap.colorAt(x: x, y: y)?
+                    .usingColorSpace(.deviceRGB)?.alphaComponent ?? 1
+                guard alpha > 0.04 else { continue }
+                minX = min(minX, x)
+                minY = min(minY, y)
+                maxX = max(maxX, x + 1)
+                maxY = max(maxY, y + 1)
+            }
+        }
+        guard minX < maxX, minY < maxY else { return nil }
+        let imageBounds = CGRect(x: 0, y: 0, width: bitmap.pixelsWide, height: bitmap.pixelsHigh)
+        let visibleBounds = CGRect(
+            x: minX, y: minY, width: maxX - minX, height: maxY - minY
+        ).insetBy(dx: -1, dy: -1).intersection(imageBounds)
+        return cgImage.cropping(to: visibleBounds)
     }
 }
 

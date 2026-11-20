@@ -1147,7 +1147,7 @@
     "id": "model.role.default",
     "category": "roles",
     "title": "Standard",
-    "summary": "",
+    "summary": "Die Standardeinheit trägt keine besondere Ausrüstung und hat keine spezialisierte Rolle.",
     "text": "",
     "facts": [],
     "related": [],
@@ -1157,7 +1157,7 @@
     "id": "model.role.scout",
     "category": "roles",
     "title": "Späher",
-    "summary": "",
+    "summary": "Mit Pferden ausgerüstete Späher erkunden die Neue Welt und können indigene Siedlungen besuchen.",
     "text": "",
     "facts": [
       {
@@ -1175,7 +1175,7 @@
     "id": "model.role.soldier",
     "category": "roles",
     "title": "Soldat",
-    "summary": "",
+    "summary": "Musketen machen einen Kolonisten zum Soldaten und verbessern seine Kampffähigkeiten.",
     "text": "",
     "facts": [
       {
@@ -1193,7 +1193,7 @@
     "id": "model.role.dragoon",
     "category": "roles",
     "title": "Dragoner",
-    "summary": "",
+    "summary": "Dragoner tragen Musketen und reiten Pferde; so verbinden sie Feuerkraft mit Beweglichkeit.",
     "text": "",
     "facts": [
       {
@@ -1216,7 +1216,7 @@
     "id": "model.role.pioneer",
     "category": "roles",
     "title": "Pionier",
-    "summary": "",
+    "summary": "Pioniere verbrauchen Werkzeuge, um Straßen und andere Geländeverbesserungen anzulegen.",
     "text": "",
     "facts": [
       {
@@ -1238,7 +1238,7 @@
     "id": "model.role.missionary",
     "category": "roles",
     "title": "Missionar",
-    "summary": "",
+    "summary": "Missionare können indigene Siedlungen besuchen und dort ihren Glauben verbreiten.",
     "text": "",
     "facts": [],
     "related": [
@@ -1250,7 +1250,7 @@
     "id": "model.role.infantry",
     "category": "roles",
     "title": "Infanterie",
-    "summary": "",
+    "summary": "Mit Musketen ausgerüstete Infanterie ist für den Kampf zu Fuß spezialisiert.",
     "text": "",
     "facts": [
       {
@@ -1268,7 +1268,7 @@
     "id": "model.role.cavalry",
     "category": "roles",
     "title": "Kavallerie",
-    "summary": "",
+    "summary": "Kavallerie verbindet Musketen mit Pferden und ist für den berittenen Kampf ausgerüstet.",
     "text": "",
     "facts": [
       {
@@ -1291,7 +1291,7 @@
     "id": "model.role.mountedBrave",
     "category": "roles",
     "title": "Berittene Krieger",
-    "summary": "",
+    "summary": "Indigene Krieger können Pferde einsetzen, um sich beritten fortzubewegen und zu kämpfen.",
     "text": "",
     "facts": [
       {
@@ -1308,7 +1308,7 @@
     "id": "model.role.armedBrave",
     "category": "roles",
     "title": "Bewaffnete Krieger",
-    "summary": "",
+    "summary": "Indigene Krieger können Musketen für den Kampf erhalten.",
     "text": "",
     "facts": [
       {
@@ -1325,7 +1325,7 @@
     "id": "model.role.nativeDragoon",
     "category": "roles",
     "title": "Ureinwohner-Dragoner",
-    "summary": "",
+    "summary": "Diese Rolle rüstet indigene Krieger mit Pferden und Musketen für den berittenen Kampf aus.",
     "text": "",
     "facts": [
       {

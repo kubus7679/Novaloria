@@ -48,6 +48,8 @@ enum ColonyProductionCalculator {
     private struct BuildingPlan {
         var locationId: String
         var name: String
+        var buildingTypeId: String
+        var isAutoProduction: Bool
         var inputs: [String: Int]
         var inputDetails: [String: [String]]
         var outputs: [String: Int]
@@ -59,6 +61,7 @@ enum ColonyProductionCalculator {
                           tiles: [String: Tile],
                           workers: [FreeColGame.Unit],
                           player: Player?,
+                          unitsThatUseNoBells: Int? = nil,
                           goodsLabel: (String) -> String) -> [ColonyGoodsFlow] {
         var production: [String: Int] = [:]
         var consumption: [String: Int] = [:]
@@ -153,6 +156,10 @@ enum ColonyProductionCalculator {
             let unattendedInputs = specification.buildingInputs(for: buildingTypeId, unattended: true)
             let assigned = workers.filter { $0.location == building.id }
             var plan = BuildingPlan(locationId: building.id, name: GameLabels.name(buildingTypeId),
+                                    buildingTypeId: buildingTypeId,
+                                    isAutoProduction: specification.buildingHasAbility(
+                                        "model.ability.autoProduction", buildingTypeId: buildingTypeId
+                                    ),
                                     inputs: [:], inputDetails: [:],
                                     outputs: [:], outputDetails: [:])
 
@@ -199,19 +206,105 @@ enum ColonyProductionCalculator {
             if !plan.outputs.isEmpty || !plan.inputs.isEmpty { buildingPlans.append(plan) }
         }
 
+        let foodGoods = Set(specification.goodsTypes.values.filter(\.isFood).map(\.id))
+        let unitFoodConsumption = workers.reduce(into: 0) { total, worker in
+            guard let unitType = worker.unitType else { return }
+            total += specification.consumes(forUnitType: unitType)
+                .filter { foodGoods.contains($0.key) }
+                .reduce(0) { $0 + $1.value }
+        }
+        // FreeCol's consume-only-surplus consumers are supplied from current
+        // production, not warehouse stock. Unit food consumption is removed
+        // before the stable applies its surplus fraction.
+        var remainingFoodSurplus = max(
+            0,
+            production.filter { foodGoods.contains($0.key) }
+                .reduce(0) { $0 + $1.value } - unitFoodConsumption
+        )
+
         for plan in buildingPlans {
+            var plan = plan
+            let buildingModifiers = specification.productionModifiers(
+                forBuildingType: plan.buildingTypeId
+            )
+            let surplusModifiers = buildingModifiers.filter {
+                $0.goodsType == "model.modifier.consumeOnlySurplusProduction"
+            }
+
+            if plan.isAutoProduction {
+                let breedingDivisor = Int(applyFeatureModifiers(
+                    base: 0,
+                    modifierId: "model.modifier.breedingDivisor",
+                    modifiers: buildingModifiers
+                ))
+                let breedingFactor = Int(applyFeatureModifiers(
+                    base: 0,
+                    modifierId: "model.modifier.breedingFactor",
+                    modifiers: buildingModifiers
+                ))
+                for goods in Array(plan.outputs.keys) {
+                    guard let baseOutput = plan.outputs[goods], baseOutput > 0 else { continue }
+                    guard let breedingNumber = specification.goodsTypes[goods]?.breedingNumber else {
+                        continue
+                    }
+                    let herdSize = available[goods, default: 0]
+                    let bredAmount = herdSize < breedingNumber || breedingDivisor <= 0
+                        ? 0
+                        : ((herdSize - 1) / breedingDivisor + 1) * breedingFactor
+                    plan.outputs[goods] = bredAmount
+                    plan.outputDetails[goods, default: []].append(
+                        L10n.text(
+                            "Zucht: Bestand \(herdSize), Schwelle \(breedingNumber), Teiler \(breedingDivisor), Faktor \(breedingFactor) = \(bredAmount)",
+                            table: "ColonyProductionCalculator"
+                        )
+                    )
+
+                    let scale = Double(bredAmount) / Double(baseOutput)
+                    for input in Array(plan.inputs.keys) {
+                        let scaledInput = Int((Double(plan.inputs[input, default: 0]) * scale)
+                            .rounded(.down))
+                        plan.inputs[input] = scaledInput
+                        plan.inputDetails[input] = [
+                            L10n.text("Zuchtbedarf: \(scaledInput)", table: "ColonyProductionCalculator")
+                        ]
+                    }
+                }
+            }
+
             let ratio = plan.inputs.reduce(1.0) { partial, pair in
                 guard pair.value > 0 else { return partial }
-                return min(partial, Double(available[pair.key, default: 0]) / Double(pair.value))
+                let inputAvailable: Int
+                if !surplusModifiers.isEmpty, foodGoods.contains(pair.key) {
+                    inputAvailable = max(0, Int(applyFeatureModifiers(
+                        base: Double(remainingFoodSurplus),
+                        modifierId: "model.modifier.consumeOnlySurplusProduction",
+                        modifiers: surplusModifiers
+                    )))
+                } else {
+                    inputAvailable = available[pair.key, default: 0]
+                }
+                return min(partial, Double(inputAvailable) / Double(pair.value))
             }
             let boundedRatio = max(0, min(1, ratio))
             var inputExplanations: [String] = []
             for (goods, amount) in plan.inputs.sorted(by: { $0.key < $1.key }) {
                 let actual = Int(floor(Double(amount) * boundedRatio))
-                let stock = available[goods, default: 0]
+                let stock: Int
+                if !surplusModifiers.isEmpty, foodGoods.contains(goods) {
+                    stock = max(0, Int(applyFeatureModifiers(
+                        base: Double(remainingFoodSurplus),
+                        modifierId: "model.modifier.consumeOnlySurplusProduction",
+                        modifiers: surplusModifiers
+                    )))
+                } else {
+                    stock = available[goods, default: 0]
+                }
                 if actual > 0 {
                     consumption[goods, default: 0] += actual
-                    available[goods, default: 0] = max(0, stock - actual)
+                    available[goods, default: 0] = max(0, available[goods, default: 0] - actual)
+                    if !surplusModifiers.isEmpty, foodGoods.contains(goods) {
+                        remainingFoodSurplus = max(0, remainingFoodSurplus - actual)
+                    }
                 }
                 let stockLimit = boundedRatio < 1
                     ? " (" + L10n.text("durch Vorrat begrenzt", table: "ColonyProductionCalculator") + ")"
@@ -240,12 +333,38 @@ enum ColonyProductionCalculator {
 
         // Unit-level recurring consumption (food, bells, etc.). Resolve
         // inherited consume declarations before charging each colony unit.
+        var unitConsumption: [String: Int] = [:]
         for worker in workers {
             guard let unitType = worker.unitType else { continue }
             for (goods, amount) in specification.consumes(forUnitType: unitType) where amount > 0 {
-                addConsumption(goods, amount: amount,
-                               explanation: L10n.text("\(workerName(worker, specification: specification)): \(amount) \(goodsLabel(goods))", table: "ColonyProductionCalculator"))
+                unitConsumption[goods, default: 0] += amount
+                details[goods, default: []].append(
+                    L10n.text("\(workerName(worker, specification: specification)): \(amount) \(goodsLabel(goods))",
+                              table: "ColonyProductionCalculator")
+                )
             }
+        }
+
+        // FreeCol's unitsThatUseNoBells option exempts a number of colony
+        // units from the colonist bell upkeep. The server applies this as a
+        // colony-level offset to unit consumption.
+        let bellGoods = "model.goods.bells"
+        let noBellUnitCount = min(
+            max(0, unitsThatUseNoBells ?? specification.unitsThatUseNoBells),
+            max(colony.unitCount, workers.count)
+        )
+        let bellExemption = min(unitConsumption[bellGoods, default: 0], noBellUnitCount)
+        if bellExemption > 0 {
+            unitConsumption[bellGoods, default: 0] -= bellExemption
+            details[bellGoods, default: []].append(
+                L10n.text("Freistellung für Einheiten ohne Glockenverbrauch: \(bellExemption)",
+                          table: "ColonyProductionCalculator")
+            )
+        }
+
+        for (goods, amount) in unitConsumption where amount > 0 {
+            consumption[goods, default: 0] += amount
+            available[goods, default: 0] = max(0, available[goods, default: 0] - amount)
         }
 
         let goodsIds = Set(production.keys).union(consumption.keys).union(details.keys)
@@ -263,6 +382,25 @@ enum ColonyProductionCalculator {
                                    produced: produced, consumed: consumed,
                                    explanation: tooltip, sources: sources[goods, default: []])
         }.sorted { $0.label < $1.label }
+    }
+
+    private static func applyFeatureModifiers(base: Double,
+                                              modifierId: String,
+                                              modifiers: [ProductionModifierInfo]) -> Double {
+        modifiers.enumerated()
+            .filter { $0.element.goodsType == modifierId && !$0.element.isDelete }
+            .sorted {
+                if $0.element.index == $1.element.index { return $0.offset < $1.offset }
+                return $0.element.index < $1.element.index
+            }
+            .reduce(base) { value, entry in
+                let modifier = entry.element
+                switch modifier.kind {
+                case .additive: return value + modifier.value
+                case .multiplicative: return value * modifier.value
+                case .percentage: return value + value * modifier.value / 100
+                }
+            }
     }
 
     /// Estimates the next population growth using FreeCol's food threshold and

@@ -134,10 +134,23 @@
     "id": "colopedia.concepts.indigenousRelations",
     "category": "concepts",
     "title": "Relations with Indigenous Peoples",
-    "summary": "",
-    "text": "Indigenous settlements are independent actors. Encounters may allow trade, knowledge exchange, missionary work or conflict; available actions depend on the unit, relationship and ruleset.\n\nReview the entries for the units, roles and nations involved before approaching a settlement.",
-    "facts": [],
-    "related": ["model.role.missionary", "model.nation.iroquois", "colopedia.concepts.exploration"],
+    "summary": "Relations with Indigenous settlements are shaped in part by their alarm toward each European nation.",
+    "text": "Indigenous settlements are independent actors. Encounters may allow trade, knowledge exchange, missionary work or conflict; available actions depend on the unit, relationship and ruleset.\n\nThe alarm value represents tension between one native settlement and one European nation. It is tracked separately for every settlement and European nation, and is an internal point value, not a percentage. FreeCol maps it to a relationship level: HAPPY (0–100), CONTENT (101–600), DISPLEASED (601–700), ANGRY (701–800), or HATEFUL (over 800). Thus, an alarm value of 1085 means HATEFUL.\n\nThe levels have concrete effects: trade sessions can generally still be opened at HAPPY, CONTENT and DISPLEASED, though increasing displeasure can worsen trade terms. From ANGRY onward, the native AI may refuse to open a trade session as hostile. HATEFUL is the highest alarm level; hostile relations can also lead to attacks. The relationship with a village is not automatically a formal declaration of war.\n\nAlarm can rise due to nearby colonies and armed units, and through using, improving or taking native land. More distant colonies have less impact; exact changes depend on the ruleset and options. Trade and gifts can lower alarm; the effect depends in part on goods value and game options. Successfully establishing a mission lowers that settlement's alarm by 100 points once. A new missionary can only be established at DISPLEASED or below; at ANGRY or HATEFUL, the missionary is killed. An established missionary also lowers alarm each turn; the strength depends on the Mission Influence option (−10 by default in the classic ruleset, doubled for an expert missionary). Higher alarm also increases conversion progress. The tribe's general tension gradually declines over turns and affects its settlements' alarms; local events can offset or outweigh this decrease. A ceasefire or peace can reduce tension further. In rulesets with Pocahontas, recruiting that founding father resets native alarm.\n\nAvoid provocations: attacks, taking land without payment and war raise alarm. Demanding tribute also raises it, even if the demand is accepted. If a settlement is already ANGRY or HATEFUL, it may refuse to open a trade session; without one, a gift cannot be delivered either. Review the entries for the units, roles and nations involved before approaching a settlement.",
+    "facts": [
+      {
+        "label": "Alarm levels (FreeCol)",
+        "value": "HAPPY ≤100 · CONTENT 101–600 · DISPLEASED 601–700 · ANGRY 701–800 · HATEFUL >800"
+      },
+      {
+        "label": "Trade refusal",
+        "value": "At ANGRY (>700), the native AI may refuse to open a trade session"
+      },
+      {
+        "label": "Scope",
+        "value": "Tracked separately for each settlement and European nation"
+      }
+    ],
+    "related": ["model.role.missionary", "model.nation.iroquois", "colopedia.concepts.exploration", "model.goods.tradeGoods", "model.foundingFather.pocahontas"],
     "icon": null
   }
 ]

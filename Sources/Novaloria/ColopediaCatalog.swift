@@ -378,13 +378,64 @@ enum ColopediaCatalog {
         ]
         for (category, ids) in extra {
             for id in ids where id.hasPrefix("model.") && known.insert(id).inserted {
+                let roleInfo = specification?.roleTypes[id]
+                let title = category == .roles ? roleTitle(id) : GameLabels.name(id)
                 result.append(ColopediaEntry(
-                    id: id, category: category, title: GameLabels.name(id),
-                    summary: "", text: "", facts: [], related: [], icon: nil
+                    id: id, category: category, title: title,
+                    summary: category == .roles ? roleSummary(roleInfo) : "",
+                    text: "", facts: [], related: [], icon: nil
                 ))
             }
         }
         return result.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+    }
+
+    private static func roleTitle(_ id: String) -> String {
+        let prefix = "model.role."
+        guard id.hasPrefix(prefix) else {
+            return id == "model.role"
+                ? L10n.text("Unbenannte Rolle", table: "ColopediaCatalog")
+                : GameLabels.name(id)
+        }
+        let title = GameLabels.name(id)
+        let genericNames = ["Rolle", "Role", "Función"]
+        if !genericNames.contains(title) { return title }
+        let suffix = String(id.dropFirst(prefix.count))
+        let suffixTitle = suffix.isEmpty ? "" : GameLabels.name(suffix)
+        if !suffixTitle.isEmpty, !genericNames.contains(suffixTitle) {
+            return suffixTitle
+        }
+        return id == "model.role"
+            ? L10n.text("Unbenannte Rolle", table: "ColopediaCatalog")
+            : "\(L10n.text("Rolle", table: "ColopediaCatalog")) (\(id))"
+    }
+
+    private static func roleSummary(_ info: RoleTypeInfo?) -> String {
+        guard let info else {
+            return L10n.text("Für diese Rolle liegen keine Ausrüstungsdetails vor.", table: "ColopediaCatalog")
+        }
+        var details: [String] = []
+        let equipment = info.requiredGoods.sorted { $0.key < $1.key }.map {
+            "\(GameLabels.name($0.key)) ×\($0.value)"
+        }
+        if !equipment.isEmpty {
+            details.append("\(L10n.text("Ausrüstung", table: "ColopediaCatalog")): \(equipment.joined(separator: ", "))")
+        }
+        let grantedAbilities = info.abilities.filter(\.value).keys.sorted().map(GameLabels.name)
+        if !grantedAbilities.isEmpty {
+            details.append(
+                "\(L10n.text("Gewährte Fähigkeit", table: "ColopediaCatalog")): \(grantedAbilities.joined(separator: ", "))"
+            )
+        }
+        let requiredAbilities = info.requiredAbilities.filter(\.value).keys.sorted().map(GameLabels.name)
+        if !requiredAbilities.isEmpty {
+            details.append(
+                "\(L10n.text("Erforderliche Fähigkeit", table: "ColopediaCatalog")): \(requiredAbilities.joined(separator: ", "))"
+            )
+        }
+        return details.isEmpty
+            ? L10n.text("Diese Rolle benötigt keine zusätzliche Ausrüstung und gewährt keine besonderen Fähigkeiten.", table: "ColopediaCatalog")
+            : details.joined(separator: ". ") + "."
     }
 
     static func search(_ entries: [ColopediaEntry], query: String) -> [ColopediaEntry] {

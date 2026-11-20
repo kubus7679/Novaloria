@@ -47,6 +47,9 @@ struct GameView: View {
                         if let message = state.errorMessage, !message.isEmpty {
                             errorBanner(message)
                                 .padding(10)
+                        } else if let message = state.nativeInteractionNotice, !message.isEmpty {
+                            actionNoticeBanner(message)
+                                .padding(10)
                         }
                     }
                     .overlay(alignment: .topTrailing) {
@@ -465,6 +468,34 @@ struct GameView: View {
         .overlay {
             RoundedRectangle(cornerRadius: 10)
                 .stroke(Color.red.opacity(0.55), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.2), radius: 6, y: 2)
+        .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private func actionNoticeBanner(_ message: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Label(L10n.text("Aktion abgeschlossen", table: "GameView"), systemImage: "checkmark.circle.fill")
+                .font(.caption.bold())
+                .foregroundStyle(.green)
+            Text(message)
+                .font(.callout)
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+            Button(L10n.text("Schließen", table: "GameView")) {
+                state.clearNativeInteractionNotice()
+            }
+            .font(.caption)
+            .buttonStyle(.plain)
+        }
+        .padding(10)
+        .frame(maxWidth: 460, alignment: .leading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.green.opacity(0.45), lineWidth: 1)
         }
         .shadow(color: .black.opacity(0.2), radius: 6, y: 2)
         .accessibilityElement(children: .contain)
@@ -1224,6 +1255,19 @@ struct GameView: View {
                         Button(L10n.text("Gehe nach Europa", table: "GameView")) { state.goSelectedShipToEurope() }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .disabled(!state.canGoSelectedShipToEurope)
+                    }
+
+                    if let unit = state.selectedUnit, unit.treasureAmount > 0 {
+                        actionSectionTitle(L10n.text("Schatz", table: "GameView"))
+                        Text(L10n.text("Schatzwert: \(unit.treasureAmount) Gold", table: "GameView"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Button(L10n.text("Schatztransport einlösen", table: "GameView")) {
+                            state.cashInSelectedTreasureTrain()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .disabled(!state.canCashInSelectedTreasureTrain)
                     }
 
                     Button(L10n.text("Einheit auflösen…", table: "GameView"), role: .destructive) {

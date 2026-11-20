@@ -348,9 +348,11 @@ struct InfoPanelView: View {
                                 .foregroundColor(.secondary)
                         }
                         if let localId = state.localPlayerId, let alarm = settlement.alarm[localId] {
-                            Text(L10n.text("Alarmstufe: \(alarm)", table: "InfoPanelView"))
+                            let alarmLevel = NativeAlarmLevel(value: alarm)
+                            Text(L10n.text("Alarmstufe: \(NativeAlarmDisplay.label(for: alarm))", table: "InfoPanelView"))
                                 .font(.caption2)
-                                .foregroundColor(alarm > 50 ? .red : .secondary)
+                                .foregroundColor(alarmLevel.isHostile ? .red : .secondary)
+                                .help(L10n.text("Interner Alarmwert: \(alarm)", table: "NativeSettlementPanelView"))
                         }
                     }
                 }

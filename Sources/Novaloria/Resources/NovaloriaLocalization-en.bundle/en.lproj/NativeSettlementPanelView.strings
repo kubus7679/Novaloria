@@ -4,6 +4,12 @@
 "Einheit auswählen" = "Select unit";
 "Erlernbare Fähigkeit" = "Learnable skill";
 "Gesuchte Waren" = "Wanted goods";
+"HAPPY" = "Happy";
+"CONTENT" = "Content";
+"DISPLEASED" = "Displeased";
+"ANGRY" = "Angry";
+"HATEFUL" = "Hateful";
+"Interner Alarmwert: %lld" = "Internal alarm value: %lld";
 "Informationen zum Dorf" = "Village information";
 "Interaktionsmöglichkeiten" = "Interactions";
 "Keine eigene Einheit ist in Reichweite." = "No own unit is within range.";

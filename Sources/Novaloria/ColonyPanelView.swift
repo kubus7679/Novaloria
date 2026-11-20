@@ -841,7 +841,6 @@ struct ColonyPanelView: View {
                         }
                     }
                 )
-                .help(L10n.text("Arbeiter auswählen, dann ein Feld anklicken. Ein belegtes Feld tauscht die Arbeiter.", table: "ColonyTerrainView"))
                 .sheet(item: $pendingWorkField) { field in
                     ColonyFieldProductionChooser(field: field) { goodsType in
                         guard let locationId = field.workLocationId else { return }
@@ -890,13 +889,13 @@ struct ColonyPanelView: View {
             onSelectWorker(worker.id)
         } label: {
             HStack(spacing: 6) {
-                if let image = TileImageCache.shared.unitImage(
+                if let image = TileImageCache.shared.unitPortraitImage(
                     forUnitType: worker.unitType, role: worker.role
                 ) {
                     Image(nsImage: image)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 38, height: 46)
+                        .frame(width: 52, height: 68)
                         .accessibilityHidden(true)
                 } else {
                     Image(systemName: "person.fill")
@@ -1054,10 +1053,6 @@ struct ColonyPanelView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(workplace.label)
-                        .font(.callout.weight(.semibold))
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
                     Text(L10n.text("\(workplace.workers.count)/\(workplace.capacity) Arbeiter", table: "ColonyPanelView"))
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
@@ -1065,8 +1060,13 @@ struct ColonyPanelView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .frame(minHeight: 68, alignment: .leading)
-            .help(workplace.label)
+            .frame(minHeight: 64, alignment: .leading)
+
+            Text(workplace.label)
+                .font(.callout.weight(.semibold))
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .help(workplace.label)
 
             Group {
                 if let goodsTypeId = workplace.goodsTypeId {
@@ -1094,9 +1094,21 @@ struct ColonyPanelView: View {
                         table: "ColonyPanelView"
                     ))
                 } else if workplace.isTeachingBuilding {
-                    Label(L10n.text("Ausbildung", table: "ColonyPanelView"), systemImage: "graduationcap")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 6) {
+                        if let image = TileImageCache.shared.educationImage() {
+                            Image(nsImage: image)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 42, height: 42)
+                                .accessibilityHidden(true)
+                        } else {
+                            Image(systemName: "graduationcap")
+                                .frame(width: 42, height: 42)
+                        }
+                        Text(L10n.text("Ausbildung", table: "ColonyPanelView"))
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
                 } else {
                     Text(L10n.text("Keine aktive Produktion", table: "ColonyPanelView"))
                         .font(.caption)
@@ -1111,30 +1123,32 @@ struct ColonyPanelView: View {
                         Button {
                             onSelectWorker(worker.id)
                         } label: {
-                            HStack(spacing: 4) {
-                                if let image = TileImageCache.shared.unitImage(
+                            ZStack(alignment: .bottomTrailing) {
+                                if let image = TileImageCache.shared.unitPortraitImage(
                                     forUnitType: worker.unitType, role: worker.role
                                 ) {
                                     Image(nsImage: image)
                                         .resizable()
                                         .scaledToFit()
-                                        .frame(width: 46, height: 58)
+                                        .frame(width: 58, height: 78)
                                         .accessibilityHidden(true)
                                 } else {
                                     Image(systemName: "person.fill")
                                         .font(.title2)
-                                        .frame(width: 46, height: 46)
+                                        .frame(width: 58, height: 78)
                                 }
                                 if let progress = workplace.educationProgress.first(where: {
                                     $0.id == worker.id
                                 }) {
                                     Text("\(progress.remainingTurns)")
                                         .font(.caption.monospacedDigit())
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 2)
+                                        .background(.black.opacity(0.7), in: Capsule())
                                 }
                             }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 5)
+                            .frame(width: 66, height: 84)
                             .background(
                                 worker.id == selectedWorkerUnitId
                                     ? Color.accentColor.opacity(0.2)
@@ -1177,7 +1191,7 @@ struct ColonyPanelView: View {
                             .foregroundStyle(.tertiary)
                     }
                 }
-                .frame(minHeight: 66, alignment: .leading)
+                .frame(minHeight: 88, alignment: .leading)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -1202,7 +1216,7 @@ struct ColonyPanelView: View {
     private func buildingWorkerHelp(_ worker: FreeColGame.Unit, workplace: ColonyBuildingWorkplace) -> String {
         let name = worker.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyPanelView")
         guard let progress = workplace.educationProgress.first(where: { $0.id == worker.id }) else {
-            return L10n.text("\(name) auswählen", table: "ColonyPanelView")
+            return name
         }
         return name + "\n" + L10n.text("Schüler: \(GameLabels.name(progress.studentUnitTypeId)). Bisherige Ausbildung: \(worker.turnsOfTraining) Runden. Rest: \(progress.remainingTurns) Runden (Spezifikationsdauer minus bisherige Runden, mindestens eine Runde).", table: "ColonyPanelView")
     }
@@ -1490,37 +1504,21 @@ struct ColonyPanelView: View {
 
             if canManage {
                 Divider()
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) {
-                        applyBuildQueueButton
-                        Spacer(minLength: 0)
-                        resetBuildQueueButton
-                    }
-                    VStack(alignment: .leading, spacing: 8) {
-                        applyBuildQueueButton
-                        HStack {
-                            Spacer(minLength: 0)
-                            resetBuildQueueButton
-                        }
-                    }
+                HStack(spacing: 8) {
+                    applyBuildQueueButton
+                    Spacer(minLength: 0)
+                    resetBuildQueueButton
                 }
             }
         }
     }
 
     private var applyBuildQueueButton: some View {
-        Button {
+        Button(L10n.text("Bauliste übernehmen", table: "ColonyPanelView")) {
             onSetBuildQueue(buildQueueItems)
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "checkmark")
-                Text(L10n.text("Bauliste übernehmen", table: "ColonyPanelView"))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
         }
         .buttonStyle(.borderedProminent)
-        .fixedSize(horizontal: true, vertical: false)
+        .fixedSize()
         .accessibilityIdentifier("build-queue-apply")
     }
 

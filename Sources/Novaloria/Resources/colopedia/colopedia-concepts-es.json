@@ -134,10 +134,23 @@
     "id": "colopedia.concepts.indigenousRelations",
     "category": "concepts",
     "title": "Relaciones con los pueblos indígenas",
-    "summary": "",
-    "text": "Los asentamientos indígenas son actores independientes. Los encuentros pueden permitir comercio, intercambio de conocimientos, actividad misionera o conflictos; las acciones disponibles dependen de la unidad, las relaciones y el reglamento.\n\nConsulta las fichas de las unidades, funciones y naciones implicadas antes de acercarte a un asentamiento.",
-    "facts": [],
-    "related": ["model.role.missionary", "model.nation.iroquois", "colopedia.concepts.exploration"],
+    "summary": "Las relaciones con los asentamientos indígenas dependen, entre otras cosas, de su alarma hacia cada nación europea.",
+    "text": "Los asentamientos indígenas son actores independientes. Los encuentros pueden permitir comercio, intercambio de conocimientos, actividad misionera o conflictos; las acciones disponibles dependen de la unidad, las relaciones y el reglamento.\n\nLa alarma representa la tensión entre un asentamiento indígena concreto y una nación europea. Se registra por separado para cada asentamiento y nación europea. Es un valor interno en puntos, no un porcentaje. FreeCol lo convierte en un nivel de relación: HAPPY (0–100), CONTENT (101–600), DISPLEASED (601–700), ANGRY (701–800) o HATEFUL (más de 800). Por tanto, un valor de 1085 significa HATEFUL.\n\nLos niveles tienen consecuencias concretas: normalmente se puede abrir una sesión comercial en HAPPY, CONTENT y DISPLEASED, aunque una mayor insatisfacción puede empeorar las condiciones del comercio. Desde ANGRY, la IA indígena puede rechazar el inicio del comercio por hostilidad. HATEFUL es el nivel máximo; las relaciones hostiles también pueden provocar ataques. La relación con una aldea no equivale automáticamente a una declaración formal de guerra.\n\nLa alarma puede aumentar por la proximidad de colonias y unidades armadas, y por usar, mejorar o apropiarse de tierras indígenas. Las colonias más lejanas tienen menos impacto; los cambios exactos dependen del reglamento y las opciones. El comercio y los regalos pueden reducir la alarma; el efecto depende, entre otras cosas, del valor de las mercancías y de las opciones de la partida. Establecer una misión con éxito reduce una sola vez en 100 puntos la alarma de ese asentamiento. Solo se puede establecer un nuevo misionero con un nivel DISPLEASED o inferior; con ANGRY o HATEFUL, el misionero muere. Un misionero establecido también reduce la alarma cada turno; la intensidad depende de la opción Mission Influence (−10 de forma predeterminada en el reglamento clásico, el doble para un misionero experto). Una alarma alta también aumenta el progreso de conversión. La tensión general de la tribu disminuye gradualmente con los turnos y afecta a la alarma de sus asentamientos; los acontecimientos locales pueden compensar o superar esa reducción. Un alto el fuego o la paz pueden reducir aún más la tensión. En los reglamentos que incluyen a Pocahontas, reclutar a esta fundadora restablece la alarma indígena.\n\nEvita las provocaciones: los ataques, apropiarse de tierras sin pagar y la guerra aumentan la alarma. Exigir tributo también la aumenta, incluso si se acepta la exigencia. Si un asentamiento ya está ANGRY o HATEFUL, puede rechazar el inicio de una sesión comercial; sin ella tampoco se puede entregar un regalo. Consulta las entradas de las unidades, los roles y las naciones implicados antes de acercarte a un asentamiento.",
+    "facts": [
+      {
+        "label": "Niveles de alarma (FreeCol)",
+        "value": "HAPPY ≤100 · CONTENT 101–600 · DISPLEASED 601–700 · ANGRY 701–800 · HATEFUL >800"
+      },
+      {
+        "label": "Rechazo del comercio",
+        "value": "Desde ANGRY (>700), la IA indígena puede rechazar la sesión comercial"
+      },
+      {
+        "label": "Ámbito",
+        "value": "Se registra por separado para cada asentamiento y nación europea"
+      }
+    ],
+    "related": ["model.role.missionary", "model.nation.iroquois", "colopedia.concepts.exploration", "model.goods.tradeGoods", "model.foundingFather.pocahontas"],
     "icon": null
   }
 ]

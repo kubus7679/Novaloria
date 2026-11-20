@@ -13,6 +13,8 @@
 "Als Missionar ausrüsten" = "Equip as missionary";
 "Als Pionier ausrüsten (%lld Werkzeuge)" = "Equip as pioneer (%lld tools)";
 "Angebot des Monarchen wartet auf Antwort." = "Waiting for a response to the monarch's offer.";
+"Geschenk überbracht." = "Gift delivered.";
+"Diese Ware kann der Siedlung nicht geschenkt werden." = "This good cannot be given to the settlement.";
 "Angreifen" = "Attack";
 "Angriff erfolgreich: %@ gegen %@" = "Attack succeeded: %@ against %@";
 "Angriff fehlgeschlagen: %@ gegen %@" = "Attack failed: %@ against %@";
@@ -114,6 +116,7 @@
 "Diplomatie: Angebot angenommen." = "Diplomacy: offer accepted.";
 "Diplomatie: Angebot wartet auf eine Antwort." = "Diplomacy: offer is awaiting a response.";
 "Diplomatie: Annahme gesendet." = "Diplomacy: acceptance sent.";
+"Ein diplomatisches Ereignis wurde gemeldet." = "A diplomatic event was reported.";
 "Diplomatische Nachricht ohne Vereinbarung." = "Diplomatic message without an agreement.";
 "Diplomatischen Vorschlag prüfen." = "Review the diplomatic proposal.";
 "Du bist gerade nicht am Zug." = "It is not your turn.";

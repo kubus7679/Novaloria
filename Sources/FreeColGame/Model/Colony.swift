@@ -117,6 +117,12 @@ public struct Colony: GameObject, PartiallyUpdatable, Identifiable {
     public init(id: String, attributes: Attributes, children: [ParsedMessage], game: Game) throws {
         self.id = id
         applyPartial(attributes: attributes)
+        if attributes["unitCount"] == nil {
+            unitCount = children.filter { child in
+                guard child.tag == "unit" else { return false }
+                return child.attributes["location"].map { $0 == id } ?? true
+            }.count
+        }
         for child in children {
             switch child.tag {
             case "buildQueueItem":

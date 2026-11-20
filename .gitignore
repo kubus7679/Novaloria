@@ -1,11 +1,17 @@
 .build/
 build/art/
 Tools/art/.venv/
-Tools/art/.pytest_cache/
-Tools/art/.ruff_cache/
 .swiftpm/xcode/xcuserdata/
 .swiftpm/xcode/package.xcworkspace/xcuserdata/
 *.xcuserstate
 .DS_Store
-__pycache__
-*.pyc
+
+# Python bytecode and tool caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.hypothesis/

@@ -124,7 +124,7 @@ struct ColonyTerrainView: View {
                                     .background(.black.opacity(0.75), in: RoundedRectangle(cornerRadius: 3))
                                 } else if let worker = field.workers.first, onSelectWorker == nil {
                                     VStack(spacing: 0) {
-                                        workerPortrait(worker, height: height)
+                                        workerPortrait(worker, height: height * 0.86)
                                         productionBadges(field)
                                     }
                                 } else if !field.workers.isEmpty {
@@ -164,8 +164,8 @@ struct ColonyTerrainView: View {
                             Button {
                                 onSelectWorker(worker.id)
                             } label: {
-                                workerPortrait(worker, height: height * 0.62)
-                                    .frame(width: width * 0.36, height: height * 0.64)
+                                workerPortrait(worker, height: height * 0.9)
+                                    .frame(width: width * 0.62, height: height * 0.94)
                                     .background(.black.opacity(0.15), in: RoundedRectangle(cornerRadius: 4))
                                     .overlay {
                                         RoundedRectangle(cornerRadius: 4)
@@ -178,19 +178,12 @@ struct ColonyTerrainView: View {
                             .buttonStyle(.plain)
                             .disabled(!canManage)
                             .draggable(worker.id)
-                            .help(worker.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyTerrainView"))
                             .contextMenu {
                                 if worker.id == selectedWorkerId, let workerContextMenu {
                                     workerContextMenu(worker.id)
                                 }
                             }
-                            .help(
-                                worker.id == selectedWorkerId
-                                    ? L10n.text("Rechtsklick für Ausbildungsaktionen", table: "ColonyPanelView")
-                                    : L10n.text(
-                                        "\(worker.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyTerrainView")) auswählen",
-                                        table: "ColonyTerrainView")
-                            )
+                            .help(worker.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyTerrainView"))
                             .accessibilityLabel(
                                 L10n.text(
                                     "\(worker.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyTerrainView")) auswählen",
@@ -248,7 +241,7 @@ struct ColonyTerrainView: View {
 
     private func workerPortrait(_ worker: FreeColGame.Unit, height: CGFloat) -> some View {
         Group {
-            if let image = TileImageCache.shared.unitImage(
+            if let image = TileImageCache.shared.unitPortraitImage(
                 forUnitType: worker.unitType, role: worker.role
             ) {
                 Image(nsImage: image)

@@ -242,6 +242,7 @@ final class GameState {
     var phase: Phase = .disconnected
     var statusMessage: String = ""
     var errorMessage: String?
+    var nativeInteractionNotice: String?
     var pendingServerDecision: PendingServerDecision?
     var hasPendingDecision: Bool {
         pendingServerDecision != nil
@@ -1361,7 +1362,12 @@ final class GameState {
         let display = modelMessageObjectName(message.display)
         let source = message.display == message.source ? nil : modelMessageObjectName(message.source)
         let context = [display, source].compactMap { $0 }
-        guard !context.isEmpty else { return category + "." }
+        guard !context.isEmpty else {
+            if type == "FOREIGN_DIPLOMACY" {
+                return L10n.text("Ein diplomatisches Ereignis wurde gemeldet.", table: "GameState")
+            }
+            return category + "."
+        }
         return L10n.text("\(category): \(context.joined(separator: " · ")).", table: "GameState")
     }
 
@@ -2427,6 +2433,7 @@ final class GameState {
     }
 
     func clearError() { errorMessage = nil }
+    func clearNativeInteractionNotice() { nativeInteractionNotice = nil }
 
     func applyLoginResult(_ result: LoginResult) {
         if localPlayerName == nil {
@@ -2884,6 +2891,7 @@ final class GameState {
 
         switch action {
         case "ACK_OPEN":
+            nativeInteractionNotice = nil
             clearPendingDecision()
             pendingServerDecision = PendingServerDecision(
                 type: .nativeTrade,
@@ -2899,7 +2907,8 @@ final class GameState {
             statusMessage = tradeItemStatus(L10n.text("Verkauft", table: "GameState"), session: pendingNativeTrade)
         case "ACK_GIFT":
             mergeIntoPrompt()
-            statusMessage = L10n.text("Geschenk angenommen.", table: "GameState")
+            nativeInteractionNotice = L10n.text("Geschenk angenommen.", table: "GameState")
+            statusMessage = nativeInteractionNotice ?? ""
         case "ACK_BUY_HAGGLE", "ACK_SELL_HAGGLE":
             mergeIntoPrompt()
             if let item = pendingNativeTrade?.item {
@@ -2911,7 +2920,13 @@ final class GameState {
             clearPendingDecision()
             statusMessage = L10n.text("Handel mit Ureinwohnern beendet.", table: "GameState")
         case "NAK_GOODS", "NAK_HAGGLE", "NAK_HOSTILE", "NAK_NOSALE", "NAK_INVALID":
-            statusMessage = L10n.text("Handel mit Ureinwohnern abgelehnt: \(nativeTradeActionDescription(action))", table: "GameState")
+            let message = L10n.text("Handel mit Ureinwohnern abgelehnt: \(nativeTradeActionDescription(action))", table: "GameState")
+            statusMessage = message
+            nativeInteractionNotice = nil
+            errorMessage = message
+            if action != "NAK_GOODS" {
+                clearPendingDecision()
+            }
         default:
             // Includes a stray server-side OPEN echo.
             mergeIntoPrompt()
@@ -3234,7 +3249,8 @@ final class GameState {
     }
 
     var canOpenNativeTrade: Bool {
-        guard phase == .inGame,
+        guard nativeInteractionRequestID == nil,
+              phase == .inGame,
               isLocalPlayersTurn,
               let game = cachedGame,
               let unit = selectedUnit,
@@ -3279,6 +3295,7 @@ final class GameState {
             return
         }
         errorMessage = nil
+        closeNativeSettlementPanel()
         let session = NativeTradeSession(unitId: unitId, settlementId: settlementId)
         sendNativeTrade(session.toMessage(action: "OPEN", item: nil))
     }
@@ -3302,8 +3319,19 @@ final class GameState {
     }
 
     func closeNativeTrade() {
+        closeNativeTrade(successNotice: nil, errorAfterClose: nil)
+    }
+
+    private func closeNativeTrade(successNotice: String?, errorAfterClose: String? = nil) {
         guard let session = pendingNativeTrade else { return }
-        sendNativeTrade(session.toMessage(action: "CLOSE", item: nil))
+        requestNativeInteraction(session.toMessage(action: "CLOSE", item: nil)) { [weak self] _ in
+            if let successNotice {
+                self?.nativeInteractionNotice = successNotice
+            }
+            if let errorAfterClose {
+                self?.errorMessage = errorAfterClose
+            }
+        }
         clearPendingDecision()
     }
 
@@ -3351,6 +3379,7 @@ final class GameState {
         let requestID = UUID()
         nativeInteractionRequestID = requestID
         errorMessage = nil
+        nativeInteractionNotice = nil
         statusMessage = L10n.text("Siedlungsaktion wird verarbeitet …", table: "GameState")
         Task {
             do {
@@ -7080,7 +7109,14 @@ final class GameState {
             return []
         }
 
-        return specification.roleTypes.values
+        var roleTypes = Array(specification.roleTypes.values)
+        if !roleTypes.contains(where: { $0.id == "model.role.missionary" }) {
+            // Missionary is a special role in FreeCol and may be omitted from
+            // the server's role list even though equipForRole supports it.
+            roleTypes.append(RoleTypeInfo(id: "model.role.missionary"))
+        }
+
+        return roleTypes
             .filter { roleInfo in
                 guard roleInfo.id.hasPrefix("model.role."),
                       roleInfo.id != "model.role.default",
@@ -7091,10 +7127,15 @@ final class GameState {
                 return name != "role" && name != "rolle"
             }
             .compactMap { roleInfo in
-                for (abilityId, expectedValue) in roleInfo.requiredAbilities {
-                    let actualValue = specification.effectiveAbility(unitTypeId: unitType,
-                                                                     abilityId: abilityId) ?? false
-                    if actualValue != expectedValue { return nil }
+                // A free colonist can be blessed as a missionary in a church;
+                // requiring a missionary-specific unit ability here hides the
+                // option before the church eligibility check can run.
+                if roleInfo.id != "model.role.missionary" {
+                    for (abilityId, expectedValue) in roleInfo.requiredAbilities {
+                        let actualValue = specification.effectiveAbility(unitTypeId: unitType,
+                                                                         abilityId: abilityId) ?? false
+                        if actualValue != expectedValue { return nil }
+                    }
                 }
 
                 let isUpgrade = unit.role == roleInfo.id
@@ -7165,10 +7206,12 @@ final class GameState {
                                               abilityId: "model.ability.canBeEquipped") == false {
                 return false
             }
-            for (abilityId, expectedValue) in roleInfo?.requiredAbilities ?? [:] {
-                let actualValue = specification.effectiveAbility(unitTypeId: unitType,
-                                                                 abilityId: abilityId) ?? false
-                if actualValue != expectedValue { return false }
+            if roleId != "model.role.missionary" {
+                for (abilityId, expectedValue) in roleInfo?.requiredAbilities ?? [:] {
+                    let actualValue = specification.effectiveAbility(unitTypeId: unitType,
+                                                                     abilityId: abilityId) ?? false
+                    if actualValue != expectedValue { return false }
+                }
             }
         } else if !(roleInfo?.requiredAbilities.isEmpty ?? true) {
             return false
@@ -7501,37 +7544,50 @@ final class GameState {
             errorMessage = L10n.text("Geschenk kann nicht übergeben werden.", table: "GameState")
             return
         }
-        guard !settlementId.isEmpty else {
-            errorMessage = L10n.text("Siedlungs-ID erforderlich.", table: "GameState")
+        guard nativeTradeTargetsForSelectedUnit.contains(where: { $0.settlementId == settlementId }) else {
+            errorMessage = L10n.text("Keine angrenzende Siedlung der Ureinwohner.", table: "GameState")
             return
         }
         errorMessage = nil
+        nativeInteractionNotice = nil
 
-
-        let goods = ParsedMessage(
-            tag: "goods",
-            attributes: [
-                "type": goodsType,
-                "amount": String(amount),
-                "location": unitId,
-            ],
-            children: []
-        )
-        requestNativeInteraction(ParsedMessage(
-            tag: "deliverGift",
-            attributes: ["unit": unitId, "settlement": settlementId],
-            children: [goods]
-        ))
+        // Native gifts are a GIFT action in an open native-trade session.
+        // A hostile settlement rejects OPEN, so no invalid gift request is sent.
+        let session = NativeTradeSession(unitId: unitId, settlementId: settlementId)
+        requestNativeInteraction(session.toMessage(action: "OPEN", item: nil)) { [weak self] _ in
+            guard let self,
+                  let openedSession = self.pendingNativeTrade,
+                  openedSession.unitId == unitId,
+                  openedSession.settlementId == settlementId else {
+                return
+            }
+            guard var gift = openedSession.unitToSettlement.first(where: {
+                $0.goodsType == goodsType
+            }), amount > 0, amount <= gift.amount else {
+                self.closeNativeTrade(
+                    successNotice: nil,
+                    errorAfterClose: L10n.text("Diese Ware kann der Siedlung nicht geschenkt werden.", table: "GameState")
+                )
+                return
+            }
+            gift.amount = amount
+            self.requestNativeInteraction(openedSession.toMessage(action: "GIFT", item: gift)) { [weak self] _ in
+                guard let self else { return }
+                if self.errorMessage == nil {
+                    self.closeNativeTrade(
+                        successNotice: L10n.text("Geschenk überbracht.", table: "GameState")
+                    )
+                } else if self.pendingNativeTrade != nil {
+                    self.closeNativeTrade(successNotice: nil, errorAfterClose: self.errorMessage)
+                }
+            }
+        }
     }
 
     var canDeliverGiftWithSelectedUnit: Bool {
-        guard phase == .inGame,
-              isLocalPlayersTurn,
-              let game = cachedGame,
+        guard canOpenNativeTrade,
               let unitId = selectedUnitId,
-              let unit = game.units[unitId],
-              let localPlayerId = resolveLocalPlayerId(),
-              unit.owner == localPlayerId,
+              let unit = cachedGame?.units[unitId],
               unit.goods.values.contains(where: { $0 > 0 }) else {
             return false
         }

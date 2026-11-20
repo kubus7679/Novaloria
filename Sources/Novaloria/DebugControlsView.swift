@@ -124,23 +124,6 @@ struct DebugControlsView: View {
                         .padding(.vertical, 4)
                     }
 
-                    if let selected = state.selectedUnit, selected.treasureAmount > 0 {
-                        GroupBox(L10n.text("Schatz", table: "DebugControlsView")) {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(L10n.text("Menge: \(selected.treasureAmount)", table: "DebugControlsView"))
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-
-                                Button(L10n.text("Schatztransport einlösen", table: "DebugControlsView")) {
-                                    state.cashInSelectedTreasureTrain()
-                                }
-                                .buttonStyle(.bordered)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .disabled(!state.canCashInSelectedTreasureTrain)
-                            }
-                            .padding(.vertical, 4)
-                        }
-                    }
                     if state.selectedUnit != nil {
                         Button(L10n.text("Hügel ablehnen", table: "DebugControlsView")) {
                             state.declineMoundsForSelectedUnit()

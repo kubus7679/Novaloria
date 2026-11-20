@@ -1,4 +1,5 @@
 "Alarmstufe: %lld" = "Nivel de alarma: %lld";
+"Alarmstufe: %@" = "Nivel de alarma: %@";
 "Alle Einheiten fertig?" = "¿Han terminado todas las unidades?";
 "Als Ziel setzen" = "Establecer como destino";
 "Am meisten verhasst: %@" = "Más odiado: %@";

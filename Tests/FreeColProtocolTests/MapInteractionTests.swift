@@ -849,6 +849,10 @@ final class MapInteractionTests: XCTestCase {
         for father in entries where father.category == .fathers {
             XCTAssertFalse(father.summary.isEmpty, father.id)
         }
+        for role in entries where role.category == .roles {
+            XCTAssertFalse(role.summary.isEmpty, role.id)
+            XCTAssertFalse(["Role", "Rolle", "Función"].contains(role.title), role.id)
+        }
         for goods in ["model.goods.grain", "model.goods.cotton", "model.goods.food"] {
             XCTAssertNotNil(TileImageCache.shared.goodsImage(for: goods), goods)
         }
@@ -891,6 +895,7 @@ final class MapInteractionTests: XCTestCase {
                         <role id="model.role.modCartographer" maximum-count="3">
                             <required-goods id="model.goods.modTools" value="12"/>
                         </role>
+                        <role id="model.role.role" maximum-count="1"/>
                     </roles>
                     <resource-type id="model.resource.modSilver"/>
                 </freecol-specification>
@@ -903,8 +908,14 @@ final class MapInteractionTests: XCTestCase {
 
                 let role = try XCTUnwrap(entries.first { $0.id == "model.role.modCartographer" })
                 XCTAssertEqual(role.category, .roles)
+                XCTAssertEqual(role.title, "Mod Cartographer")
+                XCTAssertFalse(role.summary.isEmpty)
                 XCTAssertTrue(role.facts(using: specification).contains { $0.value == "3" })
                 XCTAssertTrue(role.facts(using: specification).contains { $0.value == "12" })
+
+                let unnamedRole = try XCTUnwrap(entries.first { $0.id == "model.role.role" })
+                XCTAssertFalse(["Role", "Rolle", "Función"].contains(unnamedRole.title))
+                XCTAssertFalse(unnamedRole.summary.isEmpty)
 
                 let resource = try XCTUnwrap(entries.first { $0.id == "model.resource.modSilver" })
                 XCTAssertEqual(resource.category, .resources)

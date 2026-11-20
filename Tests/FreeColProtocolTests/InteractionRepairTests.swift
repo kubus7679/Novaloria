@@ -266,6 +266,36 @@ final class InteractionRepairTests: XCTestCase {
     }
 
     @MainActor
+    func testDiplomacyModelMessagesHaveReadableTextInsteadOfCategoryOnly() throws {
+        let previousLanguage = LocalizationSettings.shared.language
+        LocalizationSettings.shared.language = .german
+        defer { LocalizationSettings.shared.language = previousLanguage }
+
+        let state = GameState()
+        let tribute = ModelMessage(
+            id: "scoutSettlement.tributeAgree",
+            source: nil,
+            display: nil,
+            messageType: "FOREIGN_DIPLOMACY",
+            hasBeenDisplayed: false,
+            replacements: ["%amount%": "75"]
+        )
+        XCTAssertEqual(
+            state.modelMessageText(tribute),
+            "Das Volk der Siedlung zahlt 75 Gold, um den Frieden zu wahren. Fordert jedoch kein zweites Mal Tribut!"
+        )
+
+        let unknown = ModelMessage(
+            id: "unknown.diplomaticEvent",
+            source: nil,
+            display: nil,
+            messageType: "FOREIGN_DIPLOMACY",
+            hasBeenDisplayed: false
+        )
+        XCTAssertEqual(state.modelMessageText(unknown), "Ein diplomatisches Ereignis wurde gemeldet.")
+    }
+
+    @MainActor
     func testLostCityRumourResultsFromServerAreReadable() throws {
         let game = Game()
         try game.load(from: XMLDecoder.decode("""
@@ -1986,6 +2016,62 @@ final class InteractionRepairTests: XCTestCase {
         )
         XCTAssertTrue(europeDragoon.isAvailable,
                       "Europe should allow buying the role's required goods when the player has enough gold")
+    }
+
+    @MainActor
+    func testMissionaryEquipmentOptionAppearsWhenRoleIsMissingFromSpecification() throws {
+        let state = try makeMissionaryEquipmentState(roleDefinition: "")
+
+        let missionary = try XCTUnwrap(
+            state.selectedUnitRoleEquipmentOptions.first { $0.roleId == "model.role.missionary" }
+        )
+        XCTAssertTrue(missionary.isAvailable)
+        XCTAssertEqual(missionary.buttonTitle, "Als Missionar ausrüsten")
+    }
+
+    @MainActor
+    func testFreeColonistCanEquipMissionaryDespiteRoleAbilityRequirement() throws {
+        let state = try makeMissionaryEquipmentState(roleDefinition: """
+          <role id="model.role.missionary" maximum-count="1">
+            <required-ability id="model.ability.expertMissionary" value="true"/>
+          </role>
+        """)
+
+        let missionary = try XCTUnwrap(
+            state.selectedUnitRoleEquipmentOptions.first { $0.roleId == "model.role.missionary" }
+        )
+        XCTAssertTrue(missionary.isAvailable)
+    }
+
+    @MainActor
+    private func makeMissionaryEquipmentState(roleDefinition: String) throws -> GameState {
+        let game = Game()
+        try game.load(from: XMLDecoder.decode("""
+        <game id="missionary-equipment" clientUserName="Alice" currentPlayer="player-1">
+          <freecol-specification>
+            <unit-type id="model.unit.freeColonist">
+              <ability id="model.ability.canBeEquipped" value="true"/>
+            </unit-type>
+            <role id="model.role.default" maximum-count="1"/>
+            \(roleDefinition)
+          </freecol-specification>
+          <player id="player-1" username="Alice" nationId="model.nation.dutch"/>
+          <map id="map-1" width="1" height="1">
+            <tile id="tile-0" x="0" y="0" type="model.tile.plains" owner="player-1"/>
+          </map>
+          <colony id="colony-1" name="Braunschweig" owner="player-1" tile="tile-0">
+            <building id="church-1" buildingType="model.building.church"/>
+          </colony>
+          <unit id="colonist-1" owner="player-1" unitType="model.unit.freeColonist"
+                role="model.role.default" roleCount="0" location="tile-0"/>
+        </game>
+        """))
+
+        let state = GameState()
+        state.phase = .inGame
+        state.installGame(game)
+        state.selectUnit("colonist-1", onTile: "tile-0")
+        return state
     }
 
     @MainActor

@@ -496,12 +496,15 @@ extension GameState {
     func colonyProductionSummary(_ colony: Colony) -> [ColonyGoodsFlow] {
         guard let game = cachedGame, let specification = game.specification else { return [] }
         let player = colony.owner.flatMap { game.players[$0] }
+        let unitsThatUseNoBells = Int(game.optionValues["model.option.unitsThatUseNoBells"] ?? "")
+            ?? specification.unitsThatUseNoBells
         return ColonyProductionCalculator.calculate(
             colony: colony,
             specification: specification,
             tiles: game.tiles,
             workers: colonyWorkerUnits(colony),
             player: player,
+            unitsThatUseNoBells: unitsThatUseNoBells,
             goodsLabel: goodsDisplayName
         )
     }
@@ -576,9 +579,13 @@ extension GameState {
         )
         let libertyGoods = specification.libertyGoodsTypes
         let production = localColonies.reduce(0) { total, colony in
-            total + colonyProductionSummary(colony).reduce(0) { subtotal, flow in
-                subtotal + (libertyGoods.contains(flow.id) ? flow.produced : 0)
+            // Liberty goods are non-storable: the server credits only the
+            // positive net result after colony and unit consumption. Gross
+            // output alone can show bells that never become liberty.
+            let colonyLiberty = colonyProductionSummary(colony).reduce(0) { subtotal, flow in
+                subtotal + (libertyGoods.contains(flow.id) ? max(0, flow.net) : 0)
             }
+            return total + colonyLiberty
         }
         return FoundingFatherProgress(
             liberty: player.liberty,

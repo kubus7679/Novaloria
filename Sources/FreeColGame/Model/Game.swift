@@ -1043,6 +1043,14 @@ public final class Game: @unchecked Sendable {
         let colonyId = parsed.attributes["id"] ?? UUID().uuidString
         var colony = try Colony(id: colonyId, attributes: parsed.attributes,
                                 children: parsed.children, game: self)
+        if parsed.attributes["unitCount"] == nil,
+           !parsed.children.contains(where: { $0.tag == "unit" }) {
+            // Savegames may serialize the full settlement on its tile and a
+            // second, abbreviated settlement record with alarms/contact data.
+            // Preserve the actual residents when that later record replaces
+            // the earlier one.
+            colony.unitCount = units.values.filter { $0.location == colonyId }.count
+        }
         if colony.tileId == nil { colony.tileId = tileId ?? colonies[colonyId]?.tileId }
         colonies[colonyId] = colony
         for child in parsed.children {

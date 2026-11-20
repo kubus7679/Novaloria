@@ -23,6 +23,12 @@ struct NativeSettlementPanelView: View {
                     .keyboardShortcut(.cancelAction)
                 }
 
+                if let message = state.errorMessage, !message.isEmpty {
+                    interactionFeedback(message, isError: true)
+                } else if let message = state.nativeInteractionNotice, !message.isEmpty {
+                    interactionFeedback(message, isError: false)
+                }
+
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
                         settlementInformation(settlement)
@@ -48,8 +54,6 @@ struct NativeSettlementPanelView: View {
                     detailRow(L10n.text("Siedlungstyp", table: "NativeSettlementPanelView"),
                               GameLabels.name(settlementType))
                 }
-                detailRow(L10n.text("Bewohner", table: "NativeSettlementPanelView"),
-                          "\(settlement.unitCount)")
                 if let skill = settlement.learnableSkill {
                     detailRow(L10n.text("Erlernbare Fähigkeit", table: "NativeSettlementPanelView"),
                               GameLabels.name(skill))
@@ -64,20 +68,32 @@ struct NativeSettlementPanelView: View {
                 }
                 if let localPlayerId = state.localPlayerId,
                    let alarm = settlement.alarm[localPlayerId] {
-                    detailRow(L10n.text("Alarmstufe", table: "NativeSettlementPanelView"), "\(alarm)")
+                    detailRow(
+                        L10n.text("Alarmstufe", table: "NativeSettlementPanelView"),
+                        NativeAlarmDisplay.label(for: alarm),
+                        valueColor: NativeAlarmLevel(value: alarm).isHostile ? .red : .primary,
+                        help: L10n.text("Interner Alarmwert: \(alarm)", table: "NativeSettlementPanelView")
+                    )
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    private func detailRow(_ title: String, _ value: String) -> some View {
+    private func detailRow(
+        _ title: String,
+        _ value: String,
+        valueColor: Color = .primary,
+        help: String? = nil
+    ) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(title)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 12)
             Text(value)
                 .multilineTextAlignment(.trailing)
+                .foregroundColor(valueColor)
+                .help(help ?? "")
         }
         .font(.caption)
     }
@@ -202,14 +218,42 @@ struct NativeSettlementPanelView: View {
                     .disabled(!isValidTarget || !state.canInciteSelectedUnit
                               || state.diplomacyVictimOptions().isEmpty)
                 }
-                if let error = state.errorMessage {
-                    Text(error)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                        .textSelection(.enabled)
-                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func interactionFeedback(_ message: String, isError: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Label(
+                    L10n.text(isError ? "Aktion fehlgeschlagen" : "Aktion abgeschlossen", table: "GameView"),
+                    systemImage: isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
+                )
+                .font(.caption.bold())
+                .foregroundStyle(isError ? Color.red : Color.green)
+                Spacer()
+                Button(L10n.text("Schließen", table: "GameView")) {
+                    if isError {
+                        state.clearError()
+                    } else {
+                        state.clearNativeInteractionNotice()
+                    }
+                }
+                .font(.caption)
+                .buttonStyle(.plain)
+            }
+            Text(message)
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background((isError ? Color.red : Color.green).opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke((isError ? Color.red : Color.green).opacity(0.4), lineWidth: 1)
         }
     }
 

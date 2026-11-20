@@ -13,6 +13,8 @@
 "Als Missionar ausrüsten" = "Equipar como misionero";
 "Als Pionier ausrüsten (%lld Werkzeuge)" = "Equipar como pionero (%lld herramientas)";
 "Angebot des Monarchen wartet auf Antwort." = "Esperando respuesta a la oferta del monarca.";
+"Geschenk überbracht." = "Regalo entregado.";
+"Diese Ware kann der Siedlung nicht geschenkt werden." = "No se puede regalar esta mercancía al asentamiento.";
 "Angreifen" = "Atacar";
 "Angriff erfolgreich: %@ gegen %@" = "Ataque exitoso: %@ contra %@";
 "Angriff fehlgeschlagen: %@ gegen %@" = "Ataque fallido: %@ contra %@";
@@ -114,6 +116,7 @@
 "Diplomatie: Angebot angenommen." = "Diplomacia: oferta aceptada.";
 "Diplomatie: Angebot wartet auf eine Antwort." = "Diplomacia: la oferta espera una respuesta.";
 "Diplomatie: Annahme gesendet." = "Diplomacia: aceptación enviada.";
+"Ein diplomatisches Ereignis wurde gemeldet." = "Se ha informado de un acontecimiento diplomático.";
 "Diplomatische Nachricht ohne Vereinbarung." = "Mensaje diplomático sin acuerdo.";
 "Diplomatischen Vorschlag prüfen." = "Revisar la propuesta diplomática.";
 "Du bist gerade nicht am Zug." = "No es tu turno.";

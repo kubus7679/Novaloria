@@ -1147,7 +1147,7 @@
     "id": "model.role.default",
     "category": "roles",
     "title": "Default",
-    "summary": "",
+    "summary": "A standard unit carries no special equipment and has no specialized role.",
     "text": "",
     "facts": [],
     "related": [],
@@ -1157,7 +1157,7 @@
     "id": "model.role.scout",
     "category": "roles",
     "title": "Scout",
-    "summary": "",
+    "summary": "Equipped with horses, scouts explore the New World and can visit native settlements.",
     "text": "",
     "facts": [
       {
@@ -1175,7 +1175,7 @@
     "id": "model.role.soldier",
     "category": "roles",
     "title": "Soldier",
-    "summary": "",
+    "summary": "Muskets turn a colonist into a soldier and improve their combat ability.",
     "text": "",
     "facts": [
       {
@@ -1193,7 +1193,7 @@
     "id": "model.role.dragoon",
     "category": "roles",
     "title": "Dragoon",
-    "summary": "",
+    "summary": "Dragoons carry muskets and ride horses, combining firepower with mobility.",
     "text": "",
     "facts": [
       {
@@ -1216,7 +1216,7 @@
     "id": "model.role.pioneer",
     "category": "roles",
     "title": "Pioneer",
-    "summary": "",
+    "summary": "Pioneers use up tools to build roads and other tile improvements.",
     "text": "",
     "facts": [
       {
@@ -1238,7 +1238,7 @@
     "id": "model.role.missionary",
     "category": "roles",
     "title": "Missionary",
-    "summary": "",
+    "summary": "Missionaries can visit native settlements and spread their faith there.",
     "text": "",
     "facts": [],
     "related": [
@@ -1250,7 +1250,7 @@
     "id": "model.role.infantry",
     "category": "roles",
     "title": "Infantry",
-    "summary": "",
+    "summary": "Equipped with muskets, infantry specializes in fighting on foot.",
     "text": "",
     "facts": [
       {
@@ -1268,7 +1268,7 @@
     "id": "model.role.cavalry",
     "category": "roles",
     "title": "Cavalry",
-    "summary": "",
+    "summary": "Cavalry combines muskets and horses for mounted combat.",
     "text": "",
     "facts": [
       {
@@ -1291,7 +1291,7 @@
     "id": "model.role.mountedBrave",
     "category": "roles",
     "title": "Mounted Brave",
-    "summary": "",
+    "summary": "Native warriors can use horses to move and fight on horseback.",
     "text": "",
     "facts": [
       {
@@ -1308,7 +1308,7 @@
     "id": "model.role.armedBrave",
     "category": "roles",
     "title": "Armed Brave",
-    "summary": "",
+    "summary": "Native warriors can be equipped with muskets for combat.",
     "text": "",
     "facts": [
       {
@@ -1325,7 +1325,7 @@
     "id": "model.role.nativeDragoon",
     "category": "roles",
     "title": "Native Dragoon",
-    "summary": "",
+    "summary": "This role equips native warriors with horses and muskets for mounted combat.",
     "text": "",
     "facts": [
       {

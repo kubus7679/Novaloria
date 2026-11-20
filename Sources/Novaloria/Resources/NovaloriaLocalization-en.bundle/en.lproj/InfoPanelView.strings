@@ -1,4 +1,5 @@
 "Alarmstufe: %lld" = "Alarm level: %lld";
+"Alarmstufe: %@" = "Alarm level: %@";
 "Alle Einheiten fertig?" = "All units finished?";
 "Als Ziel setzen" = "Set as destination";
 "Am meisten verhasst: %@" = "Most hated: %@";

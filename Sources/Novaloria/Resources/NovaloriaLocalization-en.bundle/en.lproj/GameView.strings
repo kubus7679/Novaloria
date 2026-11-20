@@ -11,6 +11,7 @@
 "%lld Einheiten ohne Befehl. Nächste Einheit auswählen." = "%lld units without orders. Select next unit.";
 "%lld ohne Befehl" = "%lld without orders";
 "Abbrechen" = "Cancel";
+"Aktion abgeschlossen" = "Action completed";
 "Ablehnen" = "Reject";
 "Aktion erneut senden?" = "Resend action?";
 "Aktion fehlgeschlagen" = "Action failed";
@@ -77,6 +78,9 @@
 "Einheit dauerhaft aus dem Spiel entfernen." = "Permanently remove the unit from the game.";
 "Einheit in Verteidigungsbereitschaft versetzen." = "Put the unit on defensive alert.";
 "Einheit wieder für Befehle aktivieren." = "Reactivate the unit so it can receive orders.";
+"Schatz" = "Treasure";
+"Schatzwert: %lld Gold" = "Treasure value: %lld gold";
+"Schatztransport einlösen" = "Cash in treasure";
 "Einwanderung %lld/%lld" = "Immigration %lld/%lld";
 "Erklären" = "Declare";
 "Erneut senden" = "Resend";

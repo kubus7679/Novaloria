@@ -76,6 +76,9 @@
 "Einheit dauerhaft aus dem Spiel entfernen." = "Eliminar permanentemente la unidad de la partida.";
 "Einheit in Verteidigungsbereitschaft versetzen." = "Poner la unidad en alerta defensiva.";
 "Einheit wieder für Befehle aktivieren." = "Vuelve a activar la unidad para que pueda recibir órdenes.";
+"Schatz" = "Tesoro";
+"Schatzwert: %lld Gold" = "Valor del tesoro: %lld de oro";
+"Schatztransport einlösen" = "Cobrar tesoro";
 "Einwanderung %lld/%lld" = "Inmigración %lld/%lld";
 "Erklären" = "Declarar";
 "Erneut senden" = "Volver a enviar";

@@ -69,3 +69,7 @@
 "Benötigte Rolle" = "Función requerida";
 "Konzepte" = "Conceptos";
 "Konzepte" = "Conceptos";
+"Unbenannte Rolle" = "Función sin nombre";
+"Rolle" = "Función";
+"Für diese Rolle liegen keine Ausrüstungsdetails vor." = "No hay detalles de equipo disponibles para esta función.";
+"Diese Rolle benötigt keine zusätzliche Ausrüstung und gewährt keine besonderen Fähigkeiten." = "Esta función no requiere equipo adicional ni otorga habilidades especiales.";

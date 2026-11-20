@@ -1147,7 +1147,7 @@
     "id": "model.role.default",
     "category": "roles",
     "title": "Predeterminado",
-    "summary": "",
+    "summary": "La unidad estándar no lleva equipo especial ni tiene una función especializada.",
     "text": "",
     "facts": [],
     "related": [],
@@ -1157,7 +1157,7 @@
     "id": "model.role.scout",
     "category": "roles",
     "title": "Explorador",
-    "summary": "",
+    "summary": "Equipados con caballos, los exploradores recorren el Nuevo Mundo y visitan asentamientos indígenas.",
     "text": "",
     "facts": [
       {
@@ -1175,7 +1175,7 @@
     "id": "model.role.soldier",
     "category": "roles",
     "title": "Soldado",
-    "summary": "",
+    "summary": "Los mosquetes convierten a un colono en soldado y mejoran su capacidad de combate.",
     "text": "",
     "facts": [
       {
@@ -1193,7 +1193,7 @@
     "id": "model.role.dragoon",
     "category": "roles",
     "title": "Dragón",
-    "summary": "",
+    "summary": "Los dragones llevan mosquetes y montan a caballo, combinando potencia de fuego y movilidad.",
     "text": "",
     "facts": [
       {
@@ -1216,7 +1216,7 @@
     "id": "model.role.pioneer",
     "category": "roles",
     "title": "Pionero",
-    "summary": "",
+    "summary": "Los pioneros consumen herramientas para construir caminos y otras mejoras del terreno.",
     "text": "",
     "facts": [
       {
@@ -1238,7 +1238,7 @@
     "id": "model.role.missionary",
     "category": "roles",
     "title": "Misionero",
-    "summary": "",
+    "summary": "Los misioneros pueden visitar asentamientos indígenas y difundir allí su fe.",
     "text": "",
     "facts": [],
     "related": [
@@ -1250,7 +1250,7 @@
     "id": "model.role.infantry",
     "category": "roles",
     "title": "Infantería",
-    "summary": "",
+    "summary": "La infantería equipada con mosquetes se especializa en el combate a pie.",
     "text": "",
     "facts": [
       {
@@ -1268,7 +1268,7 @@
     "id": "model.role.cavalry",
     "category": "roles",
     "title": "Caballería",
-    "summary": "",
+    "summary": "La caballería combina mosquetes y caballos para el combate montado.",
     "text": "",
     "facts": [
       {
@@ -1291,7 +1291,7 @@
     "id": "model.role.mountedBrave",
     "category": "roles",
     "title": "Bravo Montado",
-    "summary": "",
+    "summary": "Los guerreros indígenas pueden usar caballos para desplazarse y combatir montados.",
     "text": "",
     "facts": [
       {
@@ -1308,7 +1308,7 @@
     "id": "model.role.armedBrave",
     "category": "roles",
     "title": "Guerrero Armado",
-    "summary": "",
+    "summary": "Los guerreros indígenas pueden equiparse con mosquetes para combatir.",
     "text": "",
     "facts": [
       {
@@ -1325,7 +1325,7 @@
     "id": "model.role.nativeDragoon",
     "category": "roles",
     "title": "Nativo Dragón",
-    "summary": "",
+    "summary": "Esta función equipa a los guerreros indígenas con caballos y mosquetes para el combate montado.",
     "text": "",
     "facts": [
       {

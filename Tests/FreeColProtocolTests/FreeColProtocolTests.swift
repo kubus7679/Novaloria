@@ -606,6 +606,61 @@ final class FreeColProtocolTests: XCTestCase {
     }
 
     @MainActor
+    func testNativeTradeHostileRejectionIsSurfaced() {
+        let state = GameState()
+        state.applySessionMessage(ParsedMessage(
+            tag: "nativeTrade",
+            attributes: ["action": "NAK_HOSTILE"],
+            children: []
+        ))
+
+        XCTAssertNotNil(state.errorMessage)
+        XCTAssertNil(state.pendingServerDecision)
+    }
+
+    func testNativeAlarmLevelsMatchFreeColThresholds() {
+        XCTAssertEqual(NativeAlarmLevel(value: 100), .happy)
+        XCTAssertEqual(NativeAlarmLevel(value: 101), .content)
+        XCTAssertEqual(NativeAlarmLevel(value: 600), .content)
+        XCTAssertEqual(NativeAlarmLevel(value: 601), .displeased)
+        XCTAssertEqual(NativeAlarmLevel(value: 700), .displeased)
+        XCTAssertEqual(NativeAlarmLevel(value: 701), .angry)
+        XCTAssertEqual(NativeAlarmLevel(value: 800), .angry)
+        XCTAssertEqual(NativeAlarmLevel(value: 801), .hateful)
+        XCTAssertEqual(NativeAlarmLevel(value: 1085), .hateful)
+        XCTAssertTrue(NativeAlarmLevel(value: 1085).isHostile)
+        XCTAssertFalse(NativeAlarmLevel(value: 600).isHostile)
+    }
+
+    func testNativeAlarmDisplayUsesRelationshipName() {
+        XCTAssertEqual(
+            NativeAlarmDisplay.label(for: 1085),
+            L10n.text("HATEFUL", table: "NativeSettlementPanelView")
+        )
+    }
+
+    @MainActor
+    func testNativeGiftAcknowledgementCreatesVisibleNotice() {
+        let state = GameState()
+        state.applySessionMessage(ParsedMessage(
+            tag: "nativeTrade",
+            attributes: ["action": "ACK_GIFT"],
+            children: []
+        ))
+
+        XCTAssertNotNil(state.nativeInteractionNotice)
+    }
+
+    func testColopediaExplainsNativeAlarmAndTensionLevels() throws {
+        let entry = try XCTUnwrap(
+            ColopediaCatalog.classicEntries.first { $0.id == "colopedia.concepts.indigenousRelations" }
+        )
+
+        XCTAssertTrue(entry.text.contains("1085"))
+        XCTAssertTrue(entry.text.contains("HATEFUL"))
+    }
+
+    @MainActor
     func testNativeTradeCloseDismissesPromptWithoutServerConfirmation() {
         let state = GameState()
         state.phase = .inGame
@@ -1396,6 +1451,69 @@ final class FreeColProtocolTests: XCTestCase {
         }
     }
 
+    func testColonyBellConsumptionUsesConfiguredNoBellUnits() throws {
+        let previousLanguage = LocalizationSettings.shared.language
+        defer { LocalizationSettings.shared.language = previousLanguage }
+        LocalizationSettings.shared.language = .german
+
+        let game = Game()
+        try game.load(from: XMLDecoder.decode("""
+        <game id="game-1">
+          <player id="player-1" username="Alice"/>
+          <colony id="colony-1" name="Boston" owner="player-1" unitCount="3">
+            <building id="town-hall" buildingType="model.building.townHall"/>
+            <unit id="worker-1" unitType="model.unit.colonist" owner="player-1" location="colony-1"/>
+            <unit id="worker-2" unitType="model.unit.colonist" owner="player-1" location="colony-1"/>
+            <unit id="worker-3" unitType="model.unit.colonist" owner="player-1" location="colony-1"/>
+          </colony>
+          <freecol-specification difficulty-level="model.difficulty.test">
+            <optionGroup id="model.difficulty.test">
+              <integerOption id="model.option.unitsThatUseNoBells" value="2"/>
+            </optionGroup>
+            <goods-type id="model.goods.bells" storable="false"/>
+            <unit-type id="model.unit.colonist">
+              <consumes id="model.goods.bells" value="1"/>
+            </unit-type>
+            <building-type id="model.building.townHall">
+              <production unattended="true">
+                <output goods-type="model.goods.bells" value="1"/>
+              </production>
+            </building-type>
+          </freecol-specification>
+        </game>
+        """))
+
+        let colony = try XCTUnwrap(game.colonies["colony-1"])
+        let specification = try XCTUnwrap(game.specification)
+        XCTAssertEqual(specification.unitsThatUseNoBells, 2)
+
+        let flows = ColonyProductionCalculator.calculate(
+            colony: colony,
+            specification: specification,
+            tiles: game.tiles,
+            workers: Array(game.units.values),
+            player: game.players["player-1"],
+            goodsLabel: { $0 }
+        )
+        let bells = try XCTUnwrap(flows.first { $0.id == "model.goods.bells" })
+        XCTAssertEqual(bells.produced, 1)
+        XCTAssertEqual(bells.consumed, 1, "Two of three residents are exempt from bell upkeep")
+        XCTAssertEqual(bells.net, 0)
+        XCTAssertTrue(bells.explanation.contains("Freistellung für Einheiten ohne Glockenverbrauch: 2"))
+
+        let overriddenFlows = ColonyProductionCalculator.calculate(
+            colony: colony,
+            specification: specification,
+            tiles: game.tiles,
+            workers: Array(game.units.values),
+            player: game.players["player-1"],
+            unitsThatUseNoBells: 1,
+            goodsLabel: { $0 }
+        )
+        XCTAssertEqual(overriddenFlows.first { $0.id == "model.goods.bells" }?.consumed, 2,
+                       "An active game option should override the ruleset default")
+    }
+
     func testColonyTooltipShowsPercentageCalculationAndRounding() throws {
         let previousLanguage = LocalizationSettings.shared.language
         defer { LocalizationSettings.shared.language = previousLanguage }
@@ -1423,6 +1541,81 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(source.amount, 3)
         XCTAssertTrue(source.explanation.contains("3 + 25 % = 3,75"))
         XCTAssertTrue(source.explanation.contains("Abgerundet: 3"))
+    }
+
+    func testColonyProductionForecastAppliesStableBreedingAndSurplusFoodLimit() throws {
+        let game = Game()
+        try game.load(from: XMLDecoder.decode("""
+        <game id="game-1">
+          <player id="player-1" username="Alice"/>
+          <map id="map-1" width="1" height="1">
+            <tile id="tile-0-0" x="0" y="0" type="model.tile.plains"/>
+          </map>
+          <colony id="colony-1" name="Boston" owner="player-1" tile="tile-0-0"
+                  unitCount="7">
+            <building id="stables-1" buildingType="model.building.stables"/>
+            <unit id="worker-1" unitType="model.unit.colonist" owner="player-1" location="colony-1"/>
+            <unit id="worker-2" unitType="model.unit.colonist" owner="player-1" location="colony-1"/>
+            <unit id="worker-3" unitType="model.unit.colonist" owner="player-1" location="colony-1"/>
+            <unit id="worker-4" unitType="model.unit.colonist" owner="player-1" location="colony-1"/>
+            <unit id="worker-5" unitType="model.unit.colonist" owner="player-1" location="colony-1"/>
+            <unit id="worker-6" unitType="model.unit.colonist" owner="player-1" location="colony-1"/>
+            <unit id="worker-7" unitType="model.unit.colonist" owner="player-1" location="colony-1"/>
+            <goodsContainer><storedGoods>
+              <goods type="model.goods.horses" amount="76"/>
+              <goods type="model.goods.food" amount="199"/>
+            </storedGoods></goodsContainer>
+          </colony>
+          <freecol-specification>
+            <goods-type id="model.goods.grain" is-food="true"/>
+            <goods-type id="model.goods.food" is-food="true"/>
+            <goods-type id="model.goods.horses" breeding-number="2"/>
+            <tile-type id="model.tile.plains">
+              <production unattended="true">
+                <output goods-type="model.goods.grain" value="21"/>
+              </production>
+            </tile-type>
+            <unit-type id="model.unit.colonist">
+              <consumes id="model.goods.food" value="2"/>
+            </unit-type>
+            <building-type id="model.building.country">
+              <production unattended="true">
+                <input goods-type="model.goods.grain" value="1"/>
+                <output goods-type="model.goods.horses" value="1"/>
+              </production>
+              <ability id="model.ability.autoProduction"/>
+              <modifier id="model.modifier.breedingDivisor" type="additive" value="50" index="60"/>
+              <modifier id="model.modifier.breedingFactor" type="additive" value="2" index="60"/>
+              <modifier id="model.modifier.consumeOnlySurplusProduction" type="multiplicative" value="0.5" index="60"/>
+            </building-type>
+            <building-type id="model.building.stables" extends="model.building.country">
+              <modifier id="model.modifier.breedingDivisor" type="multiplicative" value="0.5" index="60"/>
+            </building-type>
+          </freecol-specification>
+        </game>
+        """))
+
+        let colony = try XCTUnwrap(game.colonies["colony-1"])
+        let specification = try XCTUnwrap(game.specification)
+        let flows = ColonyProductionCalculator.calculate(
+            colony: colony,
+            specification: specification,
+            tiles: game.tiles,
+            workers: Array(game.units.values),
+            player: game.players["player-1"],
+            goodsLabel: { $0 }
+        )
+        let byGoods = Dictionary(uniqueKeysWithValues: flows.map { ($0.id, $0) })
+
+        XCTAssertEqual(byGoods["model.goods.horses"]?.produced, 3,
+                       "The stable's nominal eight-horse output is limited by its three surplus-food units")
+        XCTAssertEqual(byGoods["model.goods.grain"]?.consumed, 3)
+        XCTAssertEqual(byGoods["model.goods.food"]?.consumed, 14)
+        let stable = try XCTUnwrap(byGoods["model.goods.horses"]?.production(at: "stables-1"))
+        XCTAssertTrue(stable.explanation.contains("Bestand 76"))
+        XCTAssertTrue(stable.explanation.contains("Teiler 25"))
+        XCTAssertTrue(stable.explanation.contains("Ergebnis: 3"))
+        XCTAssertTrue(stable.explanation.contains("Vorrat 3, Verbrauch 3"))
     }
 
     func testSpecificationResolvesNationTypeForNation() throws {
@@ -2790,6 +2983,9 @@ final class FreeColProtocolTests: XCTestCase {
             <goods-type id="model.goods.bells" storable="false">
               <modifier id="model.modifier.liberty" type="multiplicative" value="1"/>
             </goods-type>
+            <unit-type id="model.unit.freeColonist">
+              <consumes id="model.goods.bells" value="1"/>
+            </unit-type>
             <building-type id="model.building.townHall">
               <production><output goods-type="model.goods.bells" value="12"/></production>
             </building-type>
@@ -2811,8 +3007,9 @@ final class FreeColProtocolTests: XCTestCase {
         let progress = try XCTUnwrap(state.localFoundingFatherProgress)
         XCTAssertEqual(progress.liberty, 50)
         XCTAssertEqual(progress.requiredLiberty, 129)
-        XCTAssertEqual(progress.libertyPerTurn, 12)
-        XCTAssertEqual(progress.turnsRemaining, 7)
+        XCTAssertEqual(progress.libertyPerTurn, 11,
+                       "Bell upkeep must be subtracted from gross production")
+        XCTAssertEqual(progress.turnsRemaining, 8)
         XCTAssertEqual(progress.fractionComplete, 50.0 / 129.0, accuracy: 0.0001)
 
         XCTAssertEqual(FoundingFatherProgress.requiredLiberty(fatherCount: 0, factor: 24), 24)
@@ -2852,6 +3049,48 @@ final class FreeColProtocolTests: XCTestCase {
         XCTAssertEqual(settlement.wantedGoods, ["model.goods.rum", "model.goods.tobacco"])
         XCTAssertEqual(settlement.mostHated, "player-2")
         XCTAssertEqual(settlement.alarm["player-1"], 45)
+    }
+
+    func testSettlementPopulationFallsBackToResidentUnitsWhenUnitCountIsMissing() throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1">
+          <indianSettlement id="village-1" name="Iguaçu" owner="player-native" tile="tile-0-0">
+            <unit id="brave-1" unitType="model.unit.brave" location="village-1"/>
+            <unit id="brave-2" unitType="model.unit.brave" location="village-1"/>
+            <ownedUnits id="brave-1"/>
+            <ownedUnits id="brave-2"/>
+            <ownedUnits id="brave-away"/>
+          </indianSettlement>
+        </game>
+        """)
+        try game.load(from: parsed)
+
+        let settlement = try XCTUnwrap(game.colonies["village-1"])
+        XCTAssertEqual(settlement.unitCount, 2)
+    }
+
+    func testAbbreviatedSettlementRecordPreservesPopulationFromTileRecord() throws {
+        let game = Game()
+        let parsed = try XMLDecoder.decode("""
+        <game id="game-1">
+          <map id="map-1" width="1" height="1">
+            <tile id="tile-0-0" x="0" y="0" type="model.tile.plains">
+              <indianSettlement id="village-1" name="Iguaçu" owner="player-native" tile="tile-0-0">
+                <unit id="brave-1" unitType="model.unit.brave" owner="player-native" location="village-1"/>
+                <unit id="brave-2" unitType="model.unit.brave" owner="player-native" location="village-1"/>
+              </indianSettlement>
+              <indianSettlement id="village-1" name="Iguaçu" owner="player-native" tile="tile-0-0">
+                <contactLevel level="scouted" player="player-1"/>
+                <alarm player="player-1" value="100"/>
+              </indianSettlement>
+            </tile>
+          </map>
+        </game>
+        """)
+        try game.load(from: parsed)
+
+        XCTAssertEqual(game.colonies["village-1"]?.unitCount, 2)
     }
 
     @MainActor

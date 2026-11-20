@@ -526,6 +526,13 @@ struct EuropePanelView: View {
                                 unitPortrait(unit.unitType)
                                 Text(unitLabel(unit.unitType))
                                 Spacer()
+                                if unit.treasureAmount > 0 {
+                                    Button(L10n.text("Schatztransport einlösen", table: "EuropePanelView")) {
+                                        state.selectUnit(unit.id, onTile: nil)
+                                        state.cashInSelectedTreasureTrain()
+                                    }
+                                    .disabled(!state.isLocalPlayersTurn)
+                                }
                                 Button(L10n.text("Von Bord gehen", table: "EuropePanelView")) {
                                     state.selectUnit(unit.id, onTile: nil)
                                     state.disembarkSelectedUnit()
@@ -569,6 +576,13 @@ struct EuropePanelView: View {
                         unitPortrait(unit.unitType)
                         Text(unitLabel(unit.unitType))
                         Spacer()
+                        if unit.treasureAmount > 0 {
+                            Button(L10n.text("Schatztransport einlösen", table: "EuropePanelView")) {
+                                state.selectUnit(unit.id, onTile: nil)
+                                state.cashInSelectedTreasureTrain()
+                            }
+                            .disabled(!state.isLocalPlayersTurn)
+                        }
                         Button(L10n.text("An Bord", table: "EuropePanelView")) {
                             state.selectUnit(unit.id, onTile: nil)
                             state.embarkSelectedUnit(onCarrier: selectedCarrierId)

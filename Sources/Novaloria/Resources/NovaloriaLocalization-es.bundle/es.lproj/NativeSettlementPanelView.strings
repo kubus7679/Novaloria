@@ -4,6 +4,12 @@
 "Einheit auswählen" = "Seleccionar unidad";
 "Erlernbare Fähigkeit" = "Habilidad aprendible";
 "Gesuchte Waren" = "Mercancías deseadas";
+"HAPPY" = "Feliz";
+"CONTENT" = "Contento";
+"DISPLEASED" = "Disgustado";
+"ANGRY" = "Enfadado";
+"HATEFUL" = "Odiado";
+"Interner Alarmwert: %lld" = "Valor interno de alarma: %lld";
 "Informationen zum Dorf" = "Información de la aldea";
 "Interaktionsmöglichkeiten" = "Interacciones";
 "Keine eigene Einheit ist in Reichweite." = "No hay unidades propias al alcance.";

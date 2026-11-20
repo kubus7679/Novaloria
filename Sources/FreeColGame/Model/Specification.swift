@@ -193,6 +193,9 @@ public struct GoodsTypeInfo: @unchecked Sendable {
     public var isTradeGoods: Bool
     /// Whether goods of this type can be stored/traded (`storable`, default true).
     public var isStorable: Bool
+    /// Minimum herd size required for automatic breeding, if this goods type
+    /// is breedable.
+    public var breedingNumber: Int?
     /// Fixed price for non-storable goods used by the building payment quote.
     public var price: Int
     /// New-world goods participate in the market price clamp work-around.
@@ -213,6 +216,7 @@ public struct GoodsTypeInfo: @unchecked Sendable {
                 isBuildingMaterial: Bool,
                 isTradeGoods: Bool,
                 isStorable: Bool = true,
+                breedingNumber: Int? = nil,
                 price: Int = 0,
                 isNewWorldGoods: Bool = false,
                 marketInitialAmount: Int = 0,
@@ -226,6 +230,7 @@ public struct GoodsTypeInfo: @unchecked Sendable {
         self.isBuildingMaterial = isBuildingMaterial
         self.isTradeGoods = isTradeGoods
         self.isStorable = isStorable
+        self.breedingNumber = breedingNumber
         self.price = price
         self.isNewWorldGoods = isNewWorldGoods
         self.marketInitialAmount = marketInitialAmount
@@ -466,6 +471,8 @@ public final class Specification: @unchecked Sendable {
     public private(set) var colonyGovernmentRules: ColonyGovernmentRules = .classic
     /// Whether liberty accumulation stops at 100% Sons of Liberty by default.
     public private(set) var bellAccumulationCapped = true
+    /// Number of colony units exempt from the recurring bell consumption.
+    public private(set) var unitsThatUseNoBells = 0
     private var foundingFatherLibertyModifiers: [String: [ColonyLibertyModifier]] = [:]
     private var nationTypeLibertyModifiers: [String: [ColonyLibertyModifier]] = [:]
     private var nationTypeParents: [String: String] = [:]
@@ -509,6 +516,13 @@ public final class Specification: @unchecked Sendable {
             "model.option.bellAccumulationCapped",
             in: parsed
         ) ?? true
+        let activeDifficulty = difficultyLevel.flatMap {
+            Self.optionGroup(withId: $0, in: parsed)
+        }
+        unitsThatUseNoBells = Self.integerOption(
+            "model.option.unitsThatUseNoBells",
+            in: activeDifficulty ?? parsed
+        ) ?? 0
         collectUnitTypes(from: parsed)
         collectEducationChanges(from: parsed)
         collectGoodsTypes(from: parsed)
@@ -998,6 +1012,7 @@ public final class Specification: @unchecked Sendable {
                     isTradeGoods: child.attributes.bool("trade-goods",
                                                         default: child.attributes.bool("tradeGoods", default: false)),
                     isStorable: child.attributes.bool("storable", default: true),
+                    breedingNumber: child.attributes["breeding-number"].flatMap(Int.init),
                     price: child.attributes.int("price", default: 0),
                     isNewWorldGoods: child.attributes.bool("new-world-goods", default: false),
                     marketInitialAmount: market?.attributes.int("initial-amount") ?? 0,
@@ -1275,7 +1290,12 @@ public final class Specification: @unchecked Sendable {
         children.compactMap { child in
             guard child.tag == "modifier",
                   let goodsType = child.attributes["id"],
-                  goodsType.hasPrefix("model.goods.") else { return nil }
+                  goodsType.hasPrefix("model.goods.")
+                    || [
+                        "model.modifier.breedingDivisor",
+                        "model.modifier.breedingFactor",
+                        "model.modifier.consumeOnlySurplusProduction"
+                    ].contains(goodsType) else { return nil }
             let isDelete = child.attributes.bool("delete", default: false)
             guard let value = Double(child.attributes["value"] ?? (isDelete ? "0" : "")) else {
                 return nil

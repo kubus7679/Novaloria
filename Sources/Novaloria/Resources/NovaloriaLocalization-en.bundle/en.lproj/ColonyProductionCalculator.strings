@@ -25,3 +25,6 @@
 "Ergebnis: %lld %@ pro Runde" = "Result: %lld %@ per turn";
 "Bilanz: %lld − %lld = %lld" = "Balance: %lld − %lld = %lld";
 "%@: %@ %@ = %@" = "%@: %@ %@ = %@";
+"Zucht: Bestand %lld, Schwelle %lld, Teiler %lld, Faktor %lld = %lld" = "Breeding: herd %lld, threshold %lld, divisor %lld, factor %lld = %lld";
+"Zuchtbedarf: %lld" = "Breeding input: %lld";
+"Freistellung für Einheiten ohne Glockenverbrauch: %lld" = "Exemption for units that do not consume bells: %lld";

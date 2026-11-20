@@ -134,10 +134,23 @@
     "id": "colopedia.concepts.indigenousRelations",
     "category": "concepts",
     "title": "Beziehungen zu indigenen Völkern",
-    "summary": "",
-    "text": "Indigene Siedlungen sind eigenständige Akteure. Begegnungen können Handel, Wissensaustausch, Missionierung oder Konflikte ermöglichen; verfügbare Aktionen hängen von Einheit, Beziehung und Regelwerk ab.\n\nPrüfe die Einträge der beteiligten Einheiten, Rollen und Nationen, bevor du dich einer Siedlung näherst.",
-    "facts": [],
-    "related": ["model.role.missionary", "model.nation.iroquois", "colopedia.concepts.exploration"],
+    "summary": "Beziehungen zu indigenen Siedlungen werden unter anderem durch ihren Alarmwert gegenüber jeder europäischen Nation bestimmt.",
+    "text": "Indigene Siedlungen sind eigenständige Akteure. Begegnungen können Handel, Wissensaustausch, Missionierung oder Konflikte ermöglichen; verfügbare Aktionen hängen von Einheit, Beziehung und Regelwerk ab.\n\nDer Alarmwert beschreibt die Spannung zwischen einem bestimmten Dorf und einer europäischen Nation. Er wird für jedes Dorf und jede europäische Nation getrennt gespeichert und ist ein interner Punktwert, keine Prozentangabe. FreeCol leitet daraus eine Beziehungsstufe ab: HAPPY (0–100), CONTENT (101–600), DISPLEASED (601–700), ANGRY (701–800) oder HATEFUL (über 800). Ein Wert wie 1085 bedeutet daher HATEFUL.\n\nDie Stufen haben konkrete Folgen: Bei HAPPY, CONTENT und DISPLEASED ist eine Handelssitzung grundsätzlich noch möglich; mit steigender Unzufriedenheit können sich die Handelsbedingungen verschlechtern. Ab ANGRY kann die indigene KI den Handelsbeginn als feindselig ablehnen. HATEFUL ist die höchste Alarmstufe; feindselige Beziehungen können außerdem Angriffe auslösen. Die Beziehung zu einem Dorf ist nicht automatisch eine formelle Kriegserklärung.\n\nAlarm entsteht unter anderem durch Kolonien und bewaffnete Einheiten in der Nähe sowie durch die Nutzung, Verbesserung oder Aneignung indigener Ländereien. Weiter entfernte Kolonien wirken schwächer; genaue Änderungen hängen von Regelwerk und Optionen ab. Handel und Geschenke können den Alarm senken; die Wirkung richtet sich unter anderem nach dem Warenwert und den Spieleinstellungen. Eine erfolgreich etablierte Mission senkt den Alarm des Dorfes einmalig um 100 Punkte. Ein neuer Missionar kann nur bei DISPLEASED oder niedriger stationiert werden; bei ANGRY oder HATEFUL wird er getötet. Ein stationierter Missionar senkt den Alarm zusätzlich in jeder Runde; die Stärke hängt von der Option „Missionseinfluss“ ab (im klassischen Regelwerk standardmäßig −10, bei einem Experten doppelt so viel). Ein hoher Alarm erhöht zugleich den Konversionsfortschritt. Auch die allgemeine Spannung zum Stamm nimmt im Lauf der Runden etwas ab und wirkt sich auf die Alarme seiner Siedlungen aus; örtliche Ereignisse können diesen Rückgang ausgleichen oder übertreffen. Waffenstillstand oder Frieden können die Spannung zusätzlich senken. Pocahontas setzt in Regelwerken mit diesem Gründervater den Alarm der indigenen Völker zurück.\n\nVermeide Übergriffe: Angriffe, Landnahme ohne Bezahlung und Krieg erhöhen den Alarm. Auch eine Tributforderung erhöht ihn – selbst wenn sie angenommen wird. Ist ein Dorf bereits ANGRY oder HATEFUL, kann es den Handelsbeginn verweigern; ohne Handelssitzung lässt sich dort auch kein Geschenk überbringen. Prüfe die Einträge der beteiligten Einheiten, Rollen und Nationen, bevor du dich einer Siedlung näherst.",
+    "facts": [
+      {
+        "label": "Alarmstufen (FreeCol)",
+        "value": "HAPPY ≤100 · CONTENT 101–600 · DISPLEASED 601–700 · ANGRY 701–800 · HATEFUL >800"
+      },
+      {
+        "label": "Handelsverweigerung",
+        "value": "Ab ANGRY (über 700) kann die indigene KI den Handelsbeginn ablehnen"
+      },
+      {
+        "label": "Geltungsbereich",
+        "value": "Je Dorf und europäischer Nation getrennt"
+      }
+    ],
+    "related": ["model.role.missionary", "model.nation.iroquois", "colopedia.concepts.exploration", "model.goods.tradeGoods", "model.foundingFather.pocahontas"],
     "icon": null
   }
 ]

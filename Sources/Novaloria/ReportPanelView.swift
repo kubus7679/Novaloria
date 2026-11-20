@@ -636,7 +636,7 @@ struct ReportPanelView: View {
                                 "\(Int((progress.fractionComplete * 100).rounded()))%")
                             row(L10n.text("Freiheit", table: "ReportPanelView"),
                                 "\(progress.liberty) / \(progress.requiredLiberty)")
-                            row(L10n.text("Glocken pro Runde", table: "ReportPanelView"),
+                            row(L10n.text("Netto-Glocken pro Runde", table: "ReportPanelView"),
                                 "\(progress.libertyPerTurn)")
                             let turns = progress.turnsRemaining.map { remaining in
                                 remaining == 0

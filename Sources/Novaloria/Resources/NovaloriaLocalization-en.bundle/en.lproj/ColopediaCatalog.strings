@@ -69,3 +69,7 @@
 "Benötigte Rolle" = "Required Role";
 "Konzepte" = "Concepts";
 "Konzepte" = "Concepts";
+"Unbenannte Rolle" = "Unnamed Role";
+"Rolle" = "Role";
+"Für diese Rolle liegen keine Ausrüstungsdetails vor." = "No equipment details are available for this role.";
+"Diese Rolle benötigt keine zusätzliche Ausrüstung und gewährt keine besonderen Fähigkeiten." = "This role requires no additional equipment and grants no special abilities.";

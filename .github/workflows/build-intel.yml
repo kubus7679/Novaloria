@@ -8,15 +8,23 @@ permissions:
 
 jobs:
   build-and-test:
-    name: macOS build and tests
-    runs-on: [self-hosted, macOS, ARM64]
+    name: Intel macOS build and tests
+    runs-on: macos-15-intel
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
 
+      - name: Set up Swift 5.10.1
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "5.10.1"
+
       - name: Show Swift version
         run: swift --version
+
+      - name: Verify Intel runner
+        run: test "$(uname -m)" = "x86_64"
 
       - name: Run tests
         run: swift test
@@ -27,6 +35,7 @@ jobs:
       - name: Create DMG
         run: |
           bin_dir="$(swift build --show-bin-path)"
+          lipo -verify_arch x86_64 "$bin_dir/Novaloria.app/Contents/MacOS/Novaloria"
           mkdir -p dist/dmg-root
           ditto \
             "$bin_dir/Novaloria.app" \
@@ -37,12 +46,12 @@ jobs:
             -srcfolder dist/dmg-root \
             -ov \
             -format UDZO \
-            dist/Novaloria-macOS.dmg
+            dist/Novaloria-macOS-x86_64.dmg
 
       - name: Upload app package
         uses: actions/upload-artifact@v6
         with:
-          name: Novaloria-macOS
-          path: dist/Novaloria-macOS.dmg
+          name: Novaloria-macOS-x86_64
+          path: dist/Novaloria-macOS-x86_64.dmg
           if-no-files-found: error
           retention-days: 14

@@ -168,6 +168,7 @@ struct MapView: View {
         let tiles: [Tile]
         let canvasSize: CGSize
         let playerColorById: [String: Color]
+        let nativePlayerIds: Set<String>
         let unitsByTile: [String: [FreeColGame.Unit]]
         let colonyByTile: [String: Colony]
         let tileIndex: TileSpatialIndex
@@ -218,6 +219,9 @@ struct MapView: View {
         let playerColorById: [String: Color] = Dictionary(
             uniqueKeysWithValues: game.players.values.map { ($0.id, state.playerColor(for: $0.id)) }
         )
+        let nativePlayerIds = Set(game.players.values
+            .filter { $0.playerType == .indian }
+            .map(\.id))
         let visibleTileIds: Set<String>
         if let localPlayerId = state.localPlayerId {
             visibleTileIds = game.visibleTileIds(for: localPlayerId)
@@ -253,6 +257,7 @@ struct MapView: View {
             tiles: tiles,
             canvasSize: MapGeometry.canvasSize(maxX: maxCol, maxY: maxRow, tileW: tileW, tileH: tileH),
             playerColorById: playerColorById,
+            nativePlayerIds: nativePlayerIds,
             unitsByTile: unitsByTile,
             colonyByTile: colonyByTile,
             tileIndex: TileSpatialIndex(sortedTiles: tiles),
@@ -774,21 +779,24 @@ struct MapView: View {
             let gap = max(2, fontSize * 0.2)
             let title = context.resolve(Text(colony.name ?? "?")
                 .font(.system(size: fontSize, weight: .bold)).foregroundColor(AtlasPalette.paper))
-            let population = context.resolve(Text("\(state.colonyPopulation(colony))")
-                .font(.system(size: fontSize, weight: .bold)).foregroundColor(AtlasPalette.paper))
+            let showPopulation = colony.owner.map { !data.nativePlayerIds.contains($0) } ?? true
+            let population = showPopulation
+                ? context.resolve(Text("\(state.colonyPopulation(colony))")
+                    .font(.system(size: fontSize, weight: .bold)).foregroundColor(AtlasPalette.paper))
+                : nil
             let construction = state.colonyMapBuildLabel(colony).map {
                 context.resolve(Text($0).font(.system(size: fontSize * 0.85, weight: .semibold))
                     .foregroundColor(AtlasPalette.muted))
             }
             let unconstrained = CGSize(width: CGFloat.infinity, height: CGFloat.infinity)
             let titleSize = title.measure(in: unconstrained)
-            let populationSize = population.measure(in: unconstrained)
+            let populationSize = population?.measure(in: unconstrained) ?? .zero
             let constructionSize = construction?.measure(in: unconstrained) ?? .zero
-            let badgeWidth = max(populationSize.width, titleSize.height) + padding * 2
+            let badgeWidth = showPopulation ? max(populationSize.width, titleSize.height) + padding * 2 : 0
             let nameWidth = max(titleSize.width, constructionSize.width) + padding * 2
             let nameHeight = titleSize.height + padding * 2
                 + (construction == nil ? 0 : constructionSize.height + gap)
-            let labelWidth = badgeWidth + gap + nameWidth
+            let labelWidth = badgeWidth + (showPopulation ? gap : 0) + nameWidth
             let rect = CGRect(x: min(max(origin.x - labelWidth / 2, viewport.minX),
                                      max(viewport.minX, viewport.maxX - labelWidth)),
                               y: min(max(origin.y + tileH * 0.3, viewport.minY),
@@ -814,15 +822,22 @@ struct MapView: View {
             let ownerColor = colony.owner.flatMap { data.playerColorById[$0] } ?? .gray
             let badge = CGRect(x: labelRect.minX, y: labelRect.minY, width: badgeWidth,
                                height: titleSize.height + padding * 2)
-            let nameRect = CGRect(x: badge.maxX + gap, y: labelRect.minY, width: nameWidth, height: nameHeight)
-            let badgePath = Path(roundedRect: badge, cornerRadius: 3)
+            let nameRect = CGRect(
+                x: labelRect.minX + badgeWidth + (showPopulation ? gap : 0),
+                y: labelRect.minY,
+                width: nameWidth,
+                height: nameHeight
+            )
             let namePath = Path(roundedRect: nameRect, cornerRadius: 3)
             let labelBorder = max(1, min(2, state.mapZoomScale))
-            context.fill(badgePath, with: .color(AtlasPalette.ink.opacity(0.92)))
+            if let population {
+                let badgePath = Path(roundedRect: badge, cornerRadius: 3)
+                context.fill(badgePath, with: .color(AtlasPalette.ink.opacity(0.92)))
+                context.stroke(badgePath, with: .color(ownerColor), lineWidth: labelBorder)
+                context.draw(population, at: CGPoint(x: badge.midX, y: badge.midY))
+            }
             context.fill(namePath, with: .color(AtlasPalette.ink.opacity(0.92)))
-            context.stroke(badgePath, with: .color(ownerColor), lineWidth: labelBorder)
             context.stroke(namePath, with: .color(ownerColor), lineWidth: labelBorder)
-            context.draw(population, at: CGPoint(x: badge.midX, y: badge.midY))
             context.draw(title, at: CGPoint(x: nameRect.midX, y: nameRect.minY + padding + titleSize.height / 2))
             if let construction {
                 context.draw(construction, at: CGPoint(x: nameRect.midX,
