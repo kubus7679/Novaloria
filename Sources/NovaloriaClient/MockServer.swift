@@ -52,8 +52,11 @@ public actor MockServer {
         serverIOWrapper.send(batch)
     }
 
-    public func nextLine(timeout: TimeInterval = 10) async throws -> String {
-        try await withThrowingTaskGroup(of: String.self) { group in
+    public func nextLine(timeout: TimeInterval? = 10) async throws -> String {
+        guard let timeout else {
+            return try await readNextLine()
+        }
+        return try await withThrowingTaskGroup(of: String.self) { group in
             group.addTask {
                 try await self.readNextLine()
             }

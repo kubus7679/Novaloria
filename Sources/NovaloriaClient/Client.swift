@@ -81,10 +81,16 @@ public actor NovaloriaClient {
     }
 
     /// Start processing incoming messages (call this after login).
+    /// Prepare before exposing the logged-in state so actions cannot race
+    /// the message loop's reply dispatcher setup.
+    public func prepareMessageLoop() async {
+        await connection.setDispatching(true)
+    }
+
     public func startMessageLoop() async {
         FreeColLogger.shared.info("Starting message loop...")
         FreeColLogger.shared.info("Question wrapper handling enabled")
-        await connection.setDispatching(true)
+        await prepareMessageLoop()
         do {
             while true {
                 let line = try await connection.nextLine()

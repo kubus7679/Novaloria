@@ -2143,6 +2143,7 @@ final class GameState {
                 // Make sure handshake completed
                 _ = try await serverHandshake
 
+                await client.prepareMessageLoop()
                 applyLoginResult(result)
                 statusMessage = ""
                 startMessageLoop(client: client, server: server)
@@ -2168,7 +2169,7 @@ final class GameState {
         localServerTask?.cancel()
         localServerTask = Task { [weak self] in
             while !Task.isCancelled {
-                guard let line = try? await server.nextLine() else { break }
+                guard let line = try? await server.nextLine(timeout: nil) else { break }
                 guard let parsed = try? XMLDecoder.decode(line) else { continue }
                 let message = (parsed.tag == "question" && !parsed.children.isEmpty)
                     ? parsed.children[0]
@@ -2354,6 +2355,7 @@ final class GameState {
                 cachedGame = await client.game
                 localPlayerName = result.playerName
                 localNationId = result.nationId
+                await client.prepareMessageLoop()
 
                 // FreeCol assigns the first vacant nation during login and ignores
                 // the requested nationId. Apply the player's choice before exposing
@@ -8434,6 +8436,7 @@ final class GameState {
                     self.client = newClient
                     self.bridge = newBridge
                     self.cachedGame = await newClient.game
+                    await newClient.prepareMessageLoop()
                     self.applyLoginResult(result)
                     self.statusMessage = L10n.text("Wiederverbunden. Prüfe ausstehende Aktionen vor dem erneuten Senden.", table: "GameState")
                     self.reconnectTask = nil
