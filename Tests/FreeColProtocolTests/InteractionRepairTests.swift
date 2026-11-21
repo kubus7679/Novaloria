@@ -529,26 +529,29 @@ final class InteractionRepairTests: XCTestCase {
         XCTAssertFalse(state.canSetSelectedUnitDestination(to: "tile-3-2"))
         try await waitUntil { state.movingUnitId == nil }
         XCTAssertNotNil(state.errorMessage)
-        XCTAssertNil(state.selectedUnit?.destination)
+        XCTAssertNil(state.game?.units["outside-worker"]?.destination)
+        state.selectUnit("outside-worker", onTile: "tile-2-2")
         state.setSelectedUnitDestination(to: "tile-4-2")
         try await waitUntil { state.movingUnitId == nil }
-        XCTAssertEqual(state.selectedUnit?.destination, "tile-4-2")
+        XCTAssertEqual(state.game?.units["outside-worker"]?.destination, "tile-4-2")
         XCTAssertNil(state.errorMessage, "An acknowledged correction should clear the stale server rejection")
+        state.selectUnit("outside-worker", onTile: "tile-2-2")
         state.clearSelectedUnitDestination()
-        XCTAssertEqual(state.selectedUnit?.destination, "tile-4-2")
+        XCTAssertEqual(state.game?.units["outside-worker"]?.destination, "tile-4-2")
         XCTAssertFalse(state.canClearSelectedUnitDestination)
         try await waitUntil { state.movingUnitId == nil }
-        XCTAssertNil(state.selectedUnit?.destination)
-        XCTAssertTrue(state.movementPath(for: try XCTUnwrap(state.selectedUnit)).isEmpty)
+        XCTAssertNil(state.game?.units["outside-worker"]?.destination)
+        XCTAssertTrue(state.movementPath(for: try XCTUnwrap(state.game?.units["outside-worker"])).isEmpty)
         XCTAssertNil(state.errorMessage)
         try state.game?.applyPartial(XMLDecoder.decode("""
         <partial id="outside-worker" destination="tile-4-2" state="sentry"/>
         """))
         state.gameUpdateID += 1
+        state.selectUnit("outside-worker", onTile: "tile-2-2")
         state.clearSelectedUnitOrders()
         try await waitUntil { state.movingUnitId == nil }
-        XCTAssertNil(state.selectedUnit?.destination)
-        XCTAssertEqual(state.selectedUnit?.state, .active)
+        XCTAssertNil(state.game?.units["outside-worker"]?.destination)
+        XCTAssertEqual(state.game?.units["outside-worker"]?.state, .active)
         XCTAssertEqual(state.statusMessage, "Befehle gelöscht.")
         try await serverTask.value
     }
