@@ -754,7 +754,7 @@ final class GameState {
     var mapAnimationCue: MapAnimationCue?
     private var mapAnimationCueToken: Int = 0
     private var didAutoFocusInitialUnit: Bool = false
-    private var didAutoSelectAwaitingUnitThisTurn: Bool = false
+    private var didSelectUnitForCurrentTurn: Bool = false
     private var lastObservedTurnNumber: Int?
 
     // MARK: - UI state (Java-client parity)
@@ -3721,7 +3721,7 @@ final class GameState {
         isEndingTurn = false
         pendingEndTurnTurn = nil
         didAutoFocusInitialUnit = false
-        didAutoSelectAwaitingUnitThisTurn = false
+        didSelectUnitForCurrentTurn = false
         lastObservedTurnNumber = nil
         incomingChatLog = []
         marketPriceHistory = [:]
@@ -4801,10 +4801,13 @@ final class GameState {
         }
     }
 
-    func selectUnit(_ unitId: String?, onTile tileId: String?) {
+    func selectUnit(_ unitId: String?, onTile tileId: String?, userInitiated: Bool = true) {
         isChoosingMoveDestination = false
         selectedUnitId = unitId
         selectedTileId = tileId
+        if userInitiated, phase == .inGame {
+            didSelectUnitForCurrentTurn = true
+        }
     }
 
     func selectMapTile(_ tileId: String, openColony: Bool = false) {
@@ -4831,9 +4834,9 @@ final class GameState {
             .sorted { $0.id < $1.id }
         if !units.isEmpty {
             if let index = units.firstIndex(where: { $0.id == selectedUnitId }) {
-                selectedUnitId = units[(index + 1) % units.count].id
+                selectUnit(units[(index + 1) % units.count].id, onTile: tileId)
             } else {
-                selectedUnitId = units[0].id
+                selectUnit(units[0].id, onTile: tileId)
             }
         }
     }
@@ -7998,8 +8001,11 @@ final class GameState {
         reconcilePendingEndTurnWithGame()
         if let turnNumber = cachedGame?.turn.number,
            turnNumber != lastObservedTurnNumber {
+            let isFirstObservedTurn = lastObservedTurnNumber == nil
             lastObservedTurnNumber = turnNumber
-            didAutoSelectAwaitingUnitThisTurn = false
+            if !isFirstObservedTurn {
+                didSelectUnitForCurrentTurn = false
+            }
         }
         // Saved movement orders are attempted once per local turn, not once
         // per calendar turn. Clear the guard as soon as control passes away so
@@ -8007,7 +8013,7 @@ final class GameState {
         // server has not advanced the global turn number yet.
         if !isLocalPlayersTurn {
             movementAttempts.removeAll()
-            didAutoSelectAwaitingUnitThisTurn = false
+            didSelectUnitForCurrentTurn = false
         } else {
             autoSelectAwaitingUnitAtTurnStartIfNeeded()
         }
@@ -8016,7 +8022,7 @@ final class GameState {
     }
 
     private func autoSelectAwaitingUnitAtTurnStartIfNeeded() {
-        guard !didAutoSelectAwaitingUnitThisTurn,
+        guard !didSelectUnitForCurrentTurn,
               !showColonyPanel,
               phase == .inGame,
               isLocalPlayersTurn,
@@ -8025,8 +8031,8 @@ final class GameState {
             return
         }
 
-        selectUnit(unit.id, onTile: game.resolvedTileId(for: unit))
-        didAutoSelectAwaitingUnitThisTurn = true
+        selectUnit(unit.id, onTile: game.resolvedTileId(for: unit), userInitiated: false)
+        didSelectUnitForCurrentTurn = true
         didAutoFocusInitialUnit = true
     }
 
@@ -8330,7 +8336,7 @@ final class GameState {
             })
 
         guard let unit else { return }
-        selectUnit(unit.id, onTile: resolveUnitTileId(unit, in: game))
+        selectUnit(unit.id, onTile: resolveUnitTileId(unit, in: game), userInitiated: false)
         didAutoFocusInitialUnit = true
     }
 

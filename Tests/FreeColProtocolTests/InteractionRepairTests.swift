@@ -329,7 +329,7 @@ final class InteractionRepairTests: XCTestCase {
         )
         XCTAssertEqual(
             state.modelMessageText(messages[1]),
-            "Das Gerücht über eine verlorene Stadt war nichts als ein Gerücht."
+            "Das Gerücht über eine verlorene Stadt erweist sich als eben das: nichts als ein Gerücht!"
         )
         XCTAssertEqual(
             state.modelMessageText(messages[2]),
@@ -509,7 +509,7 @@ final class InteractionRepairTests: XCTestCase {
                 #"<partial id="outside-worker" destination=""/>"#,
                 #"<partial id="outside-worker" state="active"/>"#,
             ] {
-                let question = try XMLDecoder.decode(await server.nextLine())
+                let question = try XMLDecoder.decode(await server.nextLine(timeout: 5))
                 let expectedTag = response.contains("state=") ? "changeState" : "setDestination"
                 XCTAssertEqual(question.children.first?.tag, expectedTag)
                 let id = try XCTUnwrap(question.attributes["networkReplyId"])

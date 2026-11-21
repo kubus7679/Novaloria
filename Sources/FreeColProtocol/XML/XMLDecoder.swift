@@ -13,8 +13,22 @@ public struct ParsedMessage: Sendable {
 }
 
 public final class XMLDecoder: NSObject, XMLParserDelegate {
+    /// Reference-type builder so children can be appended in place. Copying the
+    /// parent's `children` array on every completed element would make decoding
+    /// quadratic in the number of elements.
+    private final class NodeBuilder {
+        let tag: String
+        let attributes: Attributes
+        var children: [ParsedMessage] = []
+
+        init(tag: String, attributes: Attributes) {
+            self.tag = tag
+            self.attributes = attributes
+        }
+    }
+
     private var root: ParsedMessage?
-    private var stack: [(tag: String, attributes: Attributes, children: [ParsedMessage])] = []
+    private var stack: [NodeBuilder] = []
     private var nodeCount = 0
     private var decodingError: FreeColProtocolError?
 
@@ -59,7 +73,7 @@ public final class XMLDecoder: NSObject, XMLParserDelegate {
             return
         }
         nodeCount += 1
-        stack.append((elementName, attributeDict, []))
+        stack.append(NodeBuilder(tag: elementName, attributes: attributeDict))
     }
 
     public func parser(
@@ -74,10 +88,8 @@ public final class XMLDecoder: NSObject, XMLParserDelegate {
             attributes: completed.attributes,
             children: completed.children
         )
-        if let parent = stack.popLast() {
-            var children = parent.children
-            children.append(node)
-            stack.append((parent.tag, parent.attributes, children))
+        if let parent = stack.last {
+            parent.children.append(node)
         } else {
             root = node
         }

@@ -52,7 +52,24 @@ public actor MockServer {
         serverIOWrapper.send(batch)
     }
 
-    public func nextLine() async throws -> String {
+    public func nextLine(timeout: TimeInterval = 10) async throws -> String {
+        try await withThrowingTaskGroup(of: String.self) { group in
+            group.addTask {
+                try await self.readNextLine()
+            }
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                throw FreeColProtocolError.timeout
+            }
+            defer { group.cancelAll() }
+            guard let line = try await group.next() else {
+                throw FreeColProtocolError.timeout
+            }
+            return line
+        }
+    }
+
+    private func readNextLine() async throws -> String {
         for await line in stream {
             FreeColLogger.shared.debug("MockServer received protocol frame (\(line.utf8.count) bytes)")
             return line
@@ -60,10 +77,14 @@ public actor MockServer {
         throw FreeColProtocolError.disconnected
     }
 
-    public func waitForConnection() async throws {
+    public func waitForConnection(timeout: TimeInterval = 10) async throws {
         FreeColLogger.shared.info("MockServer waiting for client connection...")
-        while serverIOWrapper.clientFd < 0 {
+        let deadline = Date().addingTimeInterval(timeout)
+        while serverIOWrapper.clientFd < 0, Date() < deadline {
             try await Task.sleep(nanoseconds: 50_000_000)
+        }
+        guard serverIOWrapper.clientFd >= 0 else {
+            throw FreeColProtocolError.timeout
         }
         FreeColLogger.shared.info("MockServer client connected (fd=\(serverIOWrapper.clientFd))")
     }

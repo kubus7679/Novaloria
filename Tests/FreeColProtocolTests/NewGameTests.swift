@@ -411,7 +411,11 @@ final class NewGameTests: XCTestCase {
         XCTAssertEqual(cache.beachImages(style: 16, x: 1, y: 2).first?.size, CGSize(width: 10, height: 5))
         XCTAssertEqual(cache.riverImage(forStyle: "1000")?.size, CGSize(width: 16, height: 8))
         XCTAssertEqual(cache.cloudImage(forX: 1, y: 2)?.size, CGSize(width: 20, height: 15))
-        XCTAssertEqual(cache.goodsImage(for: "model.goods.food")?.size, CGSize(width: 7, height: 7))
+        XCTAssertEqual(
+            ModImageCatalog.shared.image(forResourceKeys: ["image.icon.model.goods.food"])?.logicalSize,
+            CGSize(width: 7, height: 7)
+        )
+        XCTAssertEqual(cache.goodsImage(for: "model.goods.food")?.size, CGSize(width: 32, height: 32))
 
         let resource = ColopediaEntry(id: "model.resource.fish", category: .resources, title: "Fish",
                                       summary: "", text: "", facts: [], related: [], icon: nil)
