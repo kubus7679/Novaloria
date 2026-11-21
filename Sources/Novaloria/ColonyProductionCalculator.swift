@@ -508,10 +508,16 @@ enum ColonyProductionCalculator {
                                         specification: Specification) -> [AppliedModifier] {
         guard colony.productionBonus != 0 else { return [] }
         var factor = specification.expertProduction(forUnitType: worker.unitType) == goods ? 2.0 : 1.0
-        let resourceMultipliers = tile.resources.flatMap { resource in
-            guard let type = resource.type else { return [ProductionModifierInfo]() }
-            return specification.resourceTypes[type]?.productionModifiers ?? []
-        }.filter { $0.goodsType == goods && $0.kind == .multiplicative }
+        var resourceMultipliers: [ProductionModifierInfo] = []
+        for resource in tile.resources {
+            guard let type = resource.type,
+                  let modifiers = specification.resourceTypes[type]?.productionModifiers else {
+                continue
+            }
+            resourceMultipliers.append(contentsOf: modifiers.filter {
+                $0.goodsType == goods && $0.kind == .multiplicative
+            })
+        }
         for modifier in resourceMultipliers { factor *= modifier.value }
         let bonus = max(colony.productionBonus, Int(floor(Double(colony.productionBonus) * factor)))
         return [AppliedModifier(value: .init(goodsType: goods, kind: .additive,

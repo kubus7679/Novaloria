@@ -45,173 +45,220 @@ struct ColonyTerrainView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if showsHeader {
-                Text(L10n.text("Koloniegelände", table: "ColonyTerrainView")).font(.headline)
-            }
-            if showsInstructions {
-                Text(L10n.text("Arbeiter auswählen, dann ein Feld anklicken. Ein belegtes Feld tauscht die Arbeiter.", table: "ColonyTerrainView"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(L10n.text("Besetzte Felder zeigen die Produktionsvorhersage mit Boni; freie Felder zeigen Basiswerte. Details stehen im Tooltip.", table: "ColonyTerrainView"))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
+            header
             GeometryReader { geometry in
-                let width = geometry.size.width / 3
-                let height = width / 2
-                ZStack {
-                    ForEach(fields) { field in
-                        Button {
-                            guard !field.canBuyLand else { return }
-                            if let onSelectField {
-                                onSelectField(field)
-                            } else if let locationId = field.workLocationId {
-                                onAssign(locationId)
-                            }
-                        } label: {
-                            ZStack {
-                                if let image = TileImageCache.shared.terrainImage(
-                                    forType: field.tile.type, x: field.tile.x, y: field.tile.y
-                                ) {
-                                    Image(nsImage: image)
-                                        .resizable()
-                                        .frame(width: width, height: height)
-                                } else {
-                                    Diamond().fill(.gray)
-                                }
-                                if let image = TileImageCache.shared.terrainOverlay(
-                                    forType: field.tile.type, x: field.tile.x, y: field.tile.y
-                                ) {
-                                    Image(nsImage: image)
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: width, height: height)
-                                }
-                                Canvas { context, size in
-                                    TileImprovementRenderer.draw(
-                                        field.tile.improvements, in: &context,
-                                        rect: CGRect(origin: .zero, size: size)
-                                    )
-                                }
-                                .frame(width: width, height: height)
-                                if let image = TileImageCache.shared.highSeasExitImage(for: field.tile) {
-                                    Image(nsImage: image)
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: width, height: width * image.size.height / max(1, image.size.width))
-                                }
-                                ForEach(field.tile.resources) { resource in
-                                    if let image = TileImageCache.shared.resourceImage(for: resource.type) {
-                                        Image(nsImage: image)
-                                            .resizable()
-                                            .scaledToFit()
-                                            .frame(width: width * 0.35, height: height * 0.7)
-                                            .offset(x: -width * 0.22, y: -height * 0.1)
-                                    }
-                                }
-                                Diamond().stroke(
-                                    field.workers.contains(where: { $0.id == selectedWorkerId }) ? .yellow : .white.opacity(0.5),
-                                    lineWidth: 2
-                                )
-                                if field.offset == .zero {
-                                    VStack(spacing: 2) {
-                                        Label(L10n.text("Zentrum", table: "ColonyTerrainView"), systemImage: "house.fill")
-                                            .font(.caption2.bold())
-                                            .labelStyle(.iconOnly)
-                                        productionBadges(field)
-                                    }
-                                    .padding(3)
-                                    .background(.black.opacity(0.75), in: RoundedRectangle(cornerRadius: 3))
-                                } else if let worker = field.workers.first, onSelectWorker == nil {
-                                    VStack(spacing: 0) {
-                                        workerPortrait(worker, height: height * 0.86)
-                                        productionBadges(field)
-                                    }
-                                } else if !field.workers.isEmpty {
-                                    productionBadges(field)
-                                } else if field.unavailableReason != nil {
-                                    Image(systemName: "lock.fill")
-                                        .foregroundStyle(.white)
-                                        .shadow(color: .black, radius: 2)
-                                }
-                            }
-                            .foregroundStyle(.white)
-                            .frame(width: width, height: height)
-                            .contentShape(Diamond())
-                        }
-                        .buttonStyle(.plain)
-                        .simultaneousGesture(TapGesture(count: 2).onEnded {
-                            guard field.canBuyLand else { return }
-                            onClaimLand?(field)
-                        })
-                        .disabled(
-                            !canManage || (!field.canBuyLand && (
-                                selectedWorkerId == nil || field.unavailableReason != nil
-                                    || field.workLocationId == nil
-                            ))
-                        )
-                        .help(fieldHelp(field))
-                        .accessibilityLabel(fieldHelp(field))
-                        .accessibilityIdentifier("colony-field-\(field.id)")
-                        .position(
-                            x: geometry.size.width / 2 + field.offset.x * width,
-                            y: geometry.size.height / 2 + field.offset.y * height)
-
-                        if let worker = field.workers.first,
-                            field.offset != .zero,
-                            let onSelectWorker
-                        {
-                            Button {
-                                onSelectWorker(worker.id)
-                            } label: {
-                                workerPortrait(worker, height: height * 0.9)
-                                    .frame(width: width * 0.62, height: height * 0.94)
-                                    .background(.black.opacity(0.15), in: RoundedRectangle(cornerRadius: 4))
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: 4)
-                                            .stroke(
-                                                worker.id == selectedWorkerId ? .yellow : .clear,
-                                                lineWidth: 2
-                                            )
-                                    }
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(!canManage)
-                            .draggable(worker.id)
-                            .contextMenu {
-                                if worker.id == selectedWorkerId, let workerContextMenu {
-                                    workerContextMenu(worker.id)
-                                }
-                            }
-                            .help(worker.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyTerrainView"))
-                            .accessibilityLabel(
-                                L10n.text(
-                                    "\(worker.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyTerrainView")) auswählen",
-                                    table: "ColonyTerrainView")
-                            )
-                            .accessibilityIdentifier("colony-field-worker-\(worker.id)")
-                            .position(
-                                x: geometry.size.width / 2 + field.offset.x * width,
-                                y: geometry.size.height / 2 + field.offset.y * height - height * 0.08
-                            )
-                            .zIndex(1)
-                        }
-                    }
-                }
-                .frame(width: geometry.size.width, height: geometry.size.height)
-                .dropDestination(for: String.self) { items, point in
-                    guard items.count == 1, let onDropWorker,
-                        let field = fields.first(where: { field in
-                              let centerX = geometry.size.width / 2 + field.offset.x * width
-                              let centerY = geometry.size.height / 2 + field.offset.y * height
-                              return abs(point.x - centerX) / (width / 2)
-                                  + abs(point.y - centerY) / (height / 2) <= 1
-                          }) else { return false }
-                    return onDropWorker(items[0], field)
-                }
+                terrainGrid(in: geometry)
             }
             .aspectRatio(2, contentMode: .fit)
             .frame(maxWidth: 760)
+        }
+    }
+
+    @ViewBuilder
+    private var header: some View {
+        if showsHeader {
+            Text(L10n.text("Koloniegelände", table: "ColonyTerrainView"))
+                .font(.headline)
+        }
+        if showsInstructions {
+            Text(L10n.text("Arbeiter auswählen, dann ein Feld anklicken. Ein belegtes Feld tauscht die Arbeiter.", table: "ColonyTerrainView"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(L10n.text("Besetzte Felder zeigen die Produktionsvorhersage mit Boni; freie Felder zeigen Basiswerte. Details stehen im Tooltip.", table: "ColonyTerrainView"))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func terrainGrid(in geometry: GeometryProxy) -> some View {
+        let width = geometry.size.width / 3
+        let height = width / 2
+        return ZStack {
+            ForEach(fields) { field in
+                fieldButton(field, width: width, height: height, size: geometry.size)
+                if let worker = field.workers.first,
+                   field.offset != .zero,
+                   onSelectWorker != nil {
+                    workerButton(worker, field: field, width: width, height: height, size: geometry.size)
+                }
+            }
+        }
+        .frame(width: geometry.size.width, height: geometry.size.height)
+        .dropDestination(for: String.self) { items, point in
+            guard items.count == 1,
+                  let workerID = items.first,
+                  let onDropWorker,
+                  let field = field(at: point, size: geometry.size, width: width, height: height) else {
+                return false
+            }
+            return onDropWorker(workerID, field)
+        }
+    }
+
+    private func fieldButton(_ field: ColonyTerrainField,
+                             width: CGFloat,
+                             height: CGFloat,
+                             size: CGSize) -> some View {
+        Button {
+            guard !field.canBuyLand else { return }
+            if let onSelectField {
+                onSelectField(field)
+            } else if let locationId = field.workLocationId {
+                onAssign(locationId)
+            }
+        } label: {
+            fieldArtwork(field, width: width, height: height)
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(TapGesture(count: 2).onEnded {
+            guard field.canBuyLand else { return }
+            onClaimLand?(field)
+        })
+        .disabled(
+            !canManage || (!field.canBuyLand && (
+                selectedWorkerId == nil || field.unavailableReason != nil
+                    || field.workLocationId == nil
+            ))
+        )
+        .help(fieldHelp(field))
+        .accessibilityLabel(fieldHelp(field))
+        .accessibilityIdentifier("colony-field-\(field.id)")
+        .position(
+            x: size.width / 2 + field.offset.x * width,
+            y: size.height / 2 + field.offset.y * height
+        )
+    }
+
+    private func fieldArtwork(_ field: ColonyTerrainField,
+                              width: CGFloat,
+                              height: CGFloat) -> some View {
+        ZStack {
+            if let image = TileImageCache.shared.terrainImage(
+                forType: field.tile.type, x: field.tile.x, y: field.tile.y
+            ) {
+                Image(nsImage: image)
+                    .resizable()
+                    .frame(width: width, height: height)
+            } else {
+                Diamond().fill(.gray)
+            }
+            if let image = TileImageCache.shared.terrainOverlay(
+                forType: field.tile.type, x: field.tile.x, y: field.tile.y
+            ) {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: width, height: height)
+            }
+            Canvas { context, size in
+                TileImprovementRenderer.draw(
+                    field.tile.improvements, in: &context,
+                    rect: CGRect(origin: .zero, size: size)
+                )
+            }
+            .frame(width: width, height: height)
+            if let image = TileImageCache.shared.highSeasExitImage(for: field.tile) {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: width, height: width * image.size.height / max(1, image.size.width))
+            }
+            ForEach(field.tile.resources) { resource in
+                if let image = TileImageCache.shared.resourceImage(for: resource.type) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: width * 0.35, height: height * 0.7)
+                        .offset(x: -width * 0.22, y: -height * 0.1)
+                }
+            }
+            Diamond().stroke(
+                field.workers.contains(where: { $0.id == selectedWorkerId }) ? .yellow : .white.opacity(0.5),
+                lineWidth: 2
+            )
+            fieldOverlay(field, height: height)
+        }
+        .foregroundStyle(.white)
+        .frame(width: width, height: height)
+        .contentShape(Diamond())
+    }
+
+    @ViewBuilder
+    private func fieldOverlay(_ field: ColonyTerrainField, height: CGFloat) -> some View {
+        if field.offset == .zero {
+            VStack(spacing: 2) {
+                Label(L10n.text("Zentrum", table: "ColonyTerrainView"), systemImage: "house.fill")
+                    .font(.caption2.bold())
+                    .labelStyle(.iconOnly)
+                productionBadges(field)
+            }
+            .padding(3)
+            .background(.black.opacity(0.75), in: RoundedRectangle(cornerRadius: 3))
+        } else if let worker = field.workers.first, onSelectWorker == nil {
+            VStack(spacing: 0) {
+                workerPortrait(worker, height: height * 0.86)
+                productionBadges(field)
+            }
+        } else if !field.workers.isEmpty {
+            productionBadges(field)
+        } else if field.unavailableReason != nil {
+            Image(systemName: "lock.fill")
+                .foregroundStyle(.white)
+                .shadow(color: .black, radius: 2)
+        }
+    }
+
+    private func workerButton(_ worker: FreeColGame.Unit,
+                              field: ColonyTerrainField,
+                              width: CGFloat,
+                              height: CGFloat,
+                              size: CGSize) -> some View {
+        Button {
+            onSelectWorker?(worker.id)
+        } label: {
+            workerPortrait(worker, height: height * 0.9)
+                .frame(width: width * 0.62, height: height * 0.94)
+                .background(.black.opacity(0.15), in: RoundedRectangle(cornerRadius: 4))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(
+                            worker.id == selectedWorkerId ? .yellow : .clear,
+                            lineWidth: 2
+                        )
+                }
+        }
+        .buttonStyle(.plain)
+        .disabled(!canManage)
+        .draggable(worker.id)
+        .contextMenu {
+            if worker.id == selectedWorkerId, let workerContextMenu {
+                workerContextMenu(worker.id)
+            }
+        }
+        .help(worker.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyTerrainView"))
+        .accessibilityLabel(
+            L10n.text(
+                "\(worker.unitType.map(GameLabels.name) ?? L10n.text("Arbeiter", table: "ColonyTerrainView")) auswählen",
+                table: "ColonyTerrainView")
+        )
+        .accessibilityIdentifier("colony-field-worker-\(worker.id)")
+        .position(
+            x: size.width / 2 + field.offset.x * width,
+            y: size.height / 2 + field.offset.y * height - height * 0.08
+        )
+        .zIndex(1)
+    }
+
+    private func field(at point: CGPoint,
+                       size: CGSize,
+                       width: CGFloat,
+                       height: CGFloat) -> ColonyTerrainField? {
+        fields.first { candidate in
+            let centerX = size.width / 2 + candidate.offset.x * width
+            let centerY = size.height / 2 + candidate.offset.y * height
+            let horizontalDistance = abs(point.x - centerX) / (width / 2)
+            let verticalDistance = abs(point.y - centerY) / (height / 2)
+            return horizontalDistance + verticalDistance <= 1
         }
     }
 
