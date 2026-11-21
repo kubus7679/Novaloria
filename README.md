@@ -10,11 +10,33 @@ Novaloria is an independent community project and is not officially affiliated w
 
 - Connect to a running FreeCol server
 - Create local Java games and load savegames
-- Explore the map, colonies, Europe, diplomacy and trade routes in a native macOS interface
+- Explore an illustrated game map with terrain, units, colonies and territory borders
+- Manage colony workers, production, construction, warehouses and harbor transport
+- Visit native settlements and review diplomacy, trade, reports and game messages
 - Save games through the Java server (with an optional server extension)
 - Swift protocol CLI for protocol testing and diagnostics
 
 See the [build and operation guide](Docs/build_and_run.md) for details and known limitations (currently available in German). The German README is [README_DE.md](README_DE.md).
+
+See the [v0.0.3 release notes](Docs/releases/0.0.3.md) for the latest changes.
+
+## Screenshots
+
+### World map
+
+![Novaloria game map showing colonies, units, terrain, and territory borders](Docs/images/Novaloria-Map.jpg)
+
+### Colony management
+
+![Novaloria colony view showing land, buildings, production, construction, and warehouse stock](Docs/images/Novaloria-Colony.jpg)
+
+## Using the Novaloria Atlas mod
+
+1. Download [`NovaloriaAtlas.zip`](Mods/NovaloriaAtlas.zip) and place it in your FreeCol installation's `data/mods/` folder or in `~/Library/Application Support/freecol/mods/`.
+2. In Novaloria, open **Mods** and select the FreeCol installation folder containing `FreeCol.jar` and `data/`.
+3. Enable **Novaloria Atlas**.
+
+The Atlas replaces artwork for the map, units, settlements, goods, and Colopedia. Rule-changing mods affect new local games; when connected to a server, the server determines the game rules. See [`Mods/README.md`](Mods/README.md) for details.
 
 ## Requirements
 
@@ -24,7 +46,13 @@ See the [build and operation guide](Docs/build_and_run.md) for details and known
 
 A local Java installation is not required to connect to a server.
 
+## Download
+
+Download the prebuilt macOS DMG from [GitHub Releases](https://github.com/kubus7679/Novaloria/releases/latest). You do not need to compile Novaloria yourself to use the app.
+
 ## Build and run
+
+Building from source is only necessary if you want to develop Novaloria or build it yourself:
 
 ```bash
 swift build --target Novaloria

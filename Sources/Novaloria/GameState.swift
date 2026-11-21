@@ -7110,9 +7110,11 @@ final class GameState {
         }
 
         var roleTypes = Array(specification.roleTypes.values)
-        if !roleTypes.contains(where: { $0.id == "model.role.missionary" }) {
+        if !roleTypes.contains(where: { $0.id == "model.role.missionary" }),
+           canEquipSelectedUnit(forRole: "model.role.missionary", count: 1) {
             // Missionary is a special role in FreeCol and may be omitted from
             // the server's role list even though equipForRole supports it.
+            // Only synthesize it where equipping is actually allowed.
             roleTypes.append(RoleTypeInfo(id: "model.role.missionary"))
         }
 
@@ -7551,37 +7553,24 @@ final class GameState {
         errorMessage = nil
         nativeInteractionNotice = nil
 
-        // Native gifts are a GIFT action in an open native-trade session.
-        // A hostile settlement rejects OPEN, so no invalid gift request is sent.
-        let session = NativeTradeSession(unitId: unitId, settlementId: settlementId)
-        requestNativeInteraction(session.toMessage(action: "OPEN", item: nil)) { [weak self] _ in
-            guard let self,
-                  let openedSession = self.pendingNativeTrade,
-                  openedSession.unitId == unitId,
-                  openedSession.settlementId == settlementId else {
-                return
-            }
-            guard var gift = openedSession.unitToSettlement.first(where: {
-                $0.goodsType == goodsType
-            }), amount > 0, amount <= gift.amount else {
-                self.closeNativeTrade(
-                    successNotice: nil,
-                    errorAfterClose: L10n.text("Diese Ware kann der Siedlung nicht geschenkt werden.", table: "GameState")
-                )
-                return
-            }
-            gift.amount = amount
-            self.requestNativeInteraction(openedSession.toMessage(action: "GIFT", item: gift)) { [weak self] _ in
-                guard let self else { return }
-                if self.errorMessage == nil {
-                    self.closeNativeTrade(
-                        successNotice: L10n.text("Geschenk überbracht.", table: "GameState")
-                    )
-                } else if self.pendingNativeTrade != nil {
-                    self.closeNativeTrade(successNotice: nil, errorAfterClose: self.errorMessage)
-                }
-            }
-        }
+        requestNativeInteraction(ParsedMessage(
+            tag: "deliverGift",
+            attributes: [
+                "unit": unitId,
+                "settlement": settlementId,
+            ],
+            children: [
+                ParsedMessage(
+                    tag: "goods",
+                    attributes: [
+                        "type": goodsType,
+                        "amount": "\(amount)",
+                        "location": unitId,
+                    ],
+                    children: []
+                ),
+            ]
+        ))
     }
 
     var canDeliverGiftWithSelectedUnit: Bool {
